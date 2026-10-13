@@ -1,7 +1,9 @@
 export type Theme = 'light' | 'dark' | 'system';
 export type SiteMode = 'all' | 'allow' | 'exclude';
-export interface Settings { theme: Theme; floating: boolean; siteMode: SiteMode; sites: string[] }
-export const defaultSettings: Settings = { theme: 'system', floating: true, siteMode: 'all', sites: [] };
+export type DockSide = 'left' | 'right';
+export interface FloatingPosition { side: DockSide; y: number }
+export interface Settings { theme: Theme; floating: boolean; floatingPosition: FloatingPosition; siteMode: SiteMode; sites: string[] }
+export const defaultSettings: Settings = { theme: 'system', floating: true, floatingPosition: { side: 'right', y: .8 }, siteMode: 'all', sites: [] };
 export interface SettingsStore {
   load(): Promise<Settings>;
   save(settings: Settings): Promise<void>;
@@ -15,6 +17,7 @@ export interface MediaState {
   paused: boolean;
   muted: boolean;
   volume: number;
+  maxVolume: number;
   rate: number;
   currentTime: number;
   duration: number | null;

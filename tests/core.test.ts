@@ -4,6 +4,8 @@ import { Window } from 'happy-dom';
 import { normalizeDomain, normalizeSettings, isSiteEnabled } from '../lib/settings';
 import { applyMediaCommand, createMediaController, isMediaCommand, mediaSnapshot } from '../lib/media';
 import { formatTime } from '../lib/utils';
+import { canAmplify, splitVolume } from '../lib/amplifier';
+import { dockedPoint, dropPosition, nudgePosition } from '../lib/dock';
 
 test('网站规则匹配域名及子域名，并拒绝内置页和后缀伪装', () => {
   const settings = normalizeSettings({ siteMode: 'allow', sites: ['*.YouTube.COM', 'https://bilibili.com/video/1'] });
@@ -22,7 +24,36 @@ test('设置加载防止无效数据覆盖默认值，域名输入支持网址�
   assert.equal(normalizeDomain('例子.中国'), 'xn--fsqu00a.xn--fiqs8s');
   for (const value of ['', 'a b.com', 'javascript:alert(1)', 'ftp://example.com', 'https://user:pass@example.com']) assert.throws(() => normalizeDomain(value));
   const settings = normalizeSettings({ theme: 'oops', floating: 'yes', sites: ['x.com', 'x.com', 12, ''], siteMode: 'oops' });
-  assert.deepEqual(settings, { theme: 'system', floating: true, siteMode: 'all', sites: ['x.com'] });
+  assert.deepEqual(settings, { theme: 'system', floating: true, floatingPosition: { side: 'right', y: .8 }, siteMode: 'all', sites: ['x.com'] });
+  assert.deepEqual(normalizeSettings({ floatingPosition: { side: 'left', y: .3 } }).floatingPosition, { side: 'left', y: .3 });
+  for (const floatingPosition of [{ side: 'top', y: .3 }, { side: 'left', y: 2 }, { side: 'left', y: NaN }, 'left']) {
+    assert.deepEqual(normalizeSettings({ floatingPosition }).floatingPosition, { side: 'right', y: .8 });
+  }
+});
+test('浮动入口松手吸附到较近一侧，贴边时半隐藏，方向键切换侧边和纵向移动', () => {
+  const viewport = { width: 1000, height: 800 };
+  assert.deepEqual(dropPosition({ x: 300, y: 376 }, viewport), { side: 'left', y: .5 });
+  assert.deepEqual(dropPosition({ x: 600, y: 900 }, viewport), { side: 'right', y: 1 });
+  assert.deepEqual(dockedPoint({ side: 'right', y: .5 }, viewport, false), { x: 976, y: 376 });
+  assert.deepEqual(dockedPoint({ side: 'right', y: .5 }, viewport, true), { x: 944, y: 376 });
+  assert.deepEqual(dockedPoint({ side: 'left', y: 0 }, viewport, false), { x: -24, y: 8 });
+  assert.deepEqual(dockedPoint({ side: 'left', y: 1 }, viewport, true), { x: 8, y: 744 });
+  assert.deepEqual(nudgePosition({ side: 'right', y: .5 }, 'ArrowLeft', viewport), { side: 'left', y: .5 });
+  assert.deepEqual(nudgePosition({ side: 'left', y: .5 }, 'ArrowUp', viewport), { side: 'left', y: .475 });
+  assert.deepEqual(nudgePosition({ side: 'left', y: 1 }, 'ArrowDown', viewport), { side: 'left', y: 1 });
+  assert.equal(nudgePosition({ side: 'left', y: .5 }, 'Enter', viewport), null);
+});
+test('音量拆分为元素音量与增益，跨域且无 CORS 的媒体不可放大', () => {
+  assert.deepEqual(splitVolume(.4), { volume: .4, gain: 1 });
+  assert.deepEqual(splitVolume(1.5), { volume: 1, gain: 1.5 });
+  assert.deepEqual(splitVolume(0), { volume: 0, gain: 1 });
+  const { media, document } = fixture();
+  const source = (value: string) => Object.defineProperty(media, 'currentSrc', { value, configurable: true });
+  source(''); assert.equal(canAmplify(media, document), false);
+  source('https://example.com/a.mp4'); assert.equal(canAmplify(media, document), true);
+  source('blob:https://example.com/1'); assert.equal(canAmplify(media, document), true);
+  source('https://cdn.test/a.mp4'); assert.equal(canAmplify(media, document), false);
+  media.setAttribute('crossorigin', 'anonymous'); assert.equal(canAmplify(media, document), true);
 });
 function fixture(ranges = [[0, 100]]) {
   const window = new Window({ url: 'https://example.com' });
@@ -47,7 +78,9 @@ test('静音保留音量，调高音量取消静音，非法值不触碰媒体',
   media.muted = true;
   await applyMediaCommand(media, { type: 'volume', value: .4 }); assert.equal(media.volume, .4); assert.equal(media.muted, false);
   await applyMediaCommand(media, { type: 'rate', value: 1.5 }); assert.equal(media.playbackRate, 1.5);
-  for (const command of [{ type: 'volume', value: -1 }, { type: 'volume', value: 2 }, { type: 'rate', value: NaN }, { type: 'seek', value: Infinity }, { type: 'evil', value: 1 }]) {
+  await assert.rejects(applyMediaCommand(media, { type: 'volume', value: 1.2 }), /无法放大/);
+  assert.equal(isMediaCommand({ type: 'volume', value: 1.5 }), true);
+  for (const command of [{ type: 'volume', value: -1 }, { type: 'volume', value: 1.51 }, { type: 'rate', value: NaN }, { type: 'seek', value: Infinity }, { type: 'evil', value: 1 }]) {
     assert.equal(isMediaCommand(command), false);
     await assert.rejects(applyMediaCommand(media, command as never));
   }

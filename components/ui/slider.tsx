@@ -39,7 +39,7 @@ function Slider({
         >
           <SliderPrimitive.Indicator
             data-slot="slider-range"
-            className="bg-primary select-none data-horizontal:h-full data-vertical:w-full"
+            className="bg-primary transition-colors select-none data-horizontal:h-full data-vertical:w-full group-data-[boost=true]/slider:bg-(--volume-boost)"
           />
         </SliderPrimitive.Track>
         {Array.from({ length: _values.length }, (_, index) => (
@@ -47,7 +47,7 @@ function Slider({
             aria-label={ariaLabel}
             data-slot="slider-thumb"
             key={index}
-            className="relative block size-3 shrink-0 rounded-full border border-ring bg-white ring-ring/50 transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:ring-3 focus-visible:ring-3 focus-visible:outline-hidden active:ring-3 disabled:pointer-events-none disabled:opacity-50 group-data-[size=pill]/slider:h-[7px]! group-data-[size=pill]/slider:w-[22px]! group-data-[size=pill]/slider:border-2 group-data-[size=pill]/slider:border-primary group-data-[size=pill]/slider:bg-background group-data-[size=pill]/slider:after:-inset-4"
+            className="relative block size-3 shrink-0 rounded-full border border-ring bg-white ring-ring/50 transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:ring-3 focus-visible:ring-3 focus-visible:outline-hidden active:ring-3 disabled:pointer-events-none disabled:opacity-50 group-data-[size=pill]/slider:h-[10px]! group-data-[size=pill]/slider:w-[28px]! group-data-[size=pill]/slider:border-2 group-data-[size=pill]/slider:border-primary group-data-[size=pill]/slider:bg-background group-data-[size=pill]/slider:shadow-[0_1px_4px_#15112933] group-data-[size=pill]/slider:transition-[scale,border-color,box-shadow] group-data-[size=pill]/slider:duration-150 group-data-[size=pill]/slider:after:-inset-4 group-data-[size=pill]/slider:hover:scale-110 group-data-[size=pill]/slider:group-data-dragging/slider:scale-125 group-data-[boost=true]/slider:border-(--volume-boost)!"
           />
         ))}
       </SliderPrimitive.Control>

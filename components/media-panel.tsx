@@ -49,7 +49,7 @@ export function MediaPanel({ client, store, openSettings }: { client: MediaClien
       <div className="flex min-h-[53px] items-center gap-3 border-t">
         <Button variant="ghost" size="icon" className="[&_svg:not([class*='size-'])]:size-6" aria-label={selected.muted ? '取消静音' : '静音'} aria-pressed={selected.muted} onClick={() => void command({ type: 'mute' })}>{selected.muted || selected.volume === 0 ? <VolumeX /> : <Volume2 />}</Button>
         <span className="shrink-0 text-sm">音量</span>
-        <Slider aria-label="音量" className="flex-1" min={0} max={100} step={1} value={[volume]} onValueChange={value => void command({ type: 'volume', value: (first(value) ?? 0) / 100 })} />
+        <Slider aria-label="音量" className="flex-1" min={0} max={Math.round(selected.maxVolume * 100)} step={1} value={[volume]} onValueChange={value => void command({ type: 'volume', value: (first(value) ?? 0) / 100 })} />
         <span className="w-10 text-right text-sm text-muted-foreground tabular-nums">{volume}%</span>
       </div>
       <div className="flex min-h-16 flex-wrap items-center gap-x-6 border-t py-2">
