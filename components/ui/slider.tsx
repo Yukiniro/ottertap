@@ -8,8 +8,11 @@ function Slider({
   value,
   min = 0,
   max = 100,
+  size = "default",
   ...props
-}: SliderPrimitive.Root.Props) {
+}: SliderPrimitive.Root.Props & {
+  size?: "default" | "pill"
+}) {
   const _values = Array.isArray(value)
     ? value
     : Array.isArray(defaultValue)
@@ -19,8 +22,9 @@ function Slider({
   return (
     <SliderPrimitive.Root
       aria-label={ariaLabel}
-      className={cn("data-horizontal:w-full data-vertical:h-full", className)}
+      className={cn("group/slider data-horizontal:w-full data-vertical:h-full", className)}
       data-slot="slider"
+      data-size={size}
       defaultValue={defaultValue}
       value={value}
       min={min}
@@ -28,10 +32,10 @@ function Slider({
       thumbAlignment="edge"
       {...props}
     >
-      <SliderPrimitive.Control className="relative flex w-full touch-none items-center select-none data-disabled:opacity-50 data-vertical:h-full data-vertical:min-h-40 data-vertical:w-auto data-vertical:flex-col">
+      <SliderPrimitive.Control className="relative flex w-full touch-none items-center select-none data-disabled:opacity-50 data-vertical:h-full data-vertical:min-h-40 data-vertical:w-auto data-vertical:flex-col group-data-[size=pill]/slider:size-full! group-data-[size=pill]/slider:min-h-0! group-data-[size=pill]/slider:cursor-ns-resize group-data-[size=pill]/slider:rounded-[inherit]">
         <SliderPrimitive.Track
           data-slot="slider-track"
-          className="relative grow overflow-hidden rounded-full bg-muted select-none data-horizontal:h-1 data-horizontal:w-full data-vertical:h-full data-vertical:w-1"
+          className="relative grow overflow-hidden rounded-full bg-muted select-none data-horizontal:h-1 data-horizontal:w-full data-vertical:h-full data-vertical:w-1 group-data-[size=pill]/slider:absolute group-data-[size=pill]/slider:inset-0 group-data-[size=pill]/slider:w-full! group-data-[size=pill]/slider:rounded-[inherit] group-data-[size=pill]/slider:bg-background group-data-[size=pill]/slider:ring-1 group-data-[size=pill]/slider:ring-border"
         >
           <SliderPrimitive.Indicator
             data-slot="slider-range"
@@ -43,7 +47,7 @@ function Slider({
             aria-label={ariaLabel}
             data-slot="slider-thumb"
             key={index}
-            className="relative block size-3 shrink-0 rounded-full border border-ring bg-white ring-ring/50 transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:ring-3 focus-visible:ring-3 focus-visible:outline-hidden active:ring-3 disabled:pointer-events-none disabled:opacity-50"
+            className="relative block size-3 shrink-0 rounded-full border border-ring bg-white ring-ring/50 transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:ring-3 focus-visible:ring-3 focus-visible:outline-hidden active:ring-3 disabled:pointer-events-none disabled:opacity-50 group-data-[size=pill]/slider:h-[7px]! group-data-[size=pill]/slider:w-[22px]! group-data-[size=pill]/slider:border-2 group-data-[size=pill]/slider:border-primary group-data-[size=pill]/slider:bg-background group-data-[size=pill]/slider:after:-inset-4"
           />
         ))}
       </SliderPrimitive.Control>

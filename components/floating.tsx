@@ -1,89 +1,71 @@
-import { useEffect, useId, useRef, useState } from 'react';
-import { Volume2, VolumeX } from 'lucide-react';
-import { Slider } from '@base-ui/react/slider';
+import { useEffect, useRef, useState } from 'react';
+import { CircleAlert, Volume2, VolumeX } from 'lucide-react';
 import otterMark from '../assets/otter-mark';
+import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Slider } from './ui/slider';
 import { useMedia } from '../hooks/use-media';
 import { useSettings } from '../hooks/use-settings';
 import type { MediaClient, SettingsStore } from '../lib/types';
+
+const clampPosition = (value: { x: number; y: number }) => ({ x: Math.max(8, Math.min(value.x, window.innerWidth - 56)), y: Math.max(8, Math.min(value.y, window.innerHeight - 56)) });
+const first = (value: number | readonly number[]) => Array.isArray(value) ? value[0] : value;
 
 export function FloatingController({ client, store }: { client: MediaClient; store: SettingsStore }) {
   const { settings } = useSettings(store);
   const { page, selected, command, error } = useMedia(client);
   const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState<number | null>(null);
-  const [position, setPosition] = useState({ x: Math.max(8, window.innerWidth - 72), y: Math.max(8, window.innerHeight - 170) });
+  const [position, setPosition] = useState(() => clampPosition({ x: window.innerWidth - 72, y: window.innerHeight - 170 }));
   const container = useRef<HTMLElement>(null);
-  const trigger = useRef<HTMLButtonElement>(null);
   const drag = useRef<{ x: number; y: number; startX: number; startY: number } | null>(null);
   const dragged = useRef(false);
-  const panelId = useId();
-  const pillWidth = Math.min(60, Math.max(24, window.innerWidth - 72));
-  const pillHeight = Math.min(184, Math.max(64, window.innerHeight - 16));
-  const clampPosition = (value: { x: number; y: number }, open = expanded) => {
-    let x = Math.max(8, Math.min(value.x, window.innerWidth - 56));
-    if (open && x < pillWidth + 16 && window.innerWidth - x - 56 < pillWidth + 8) x = x >= (window.innerWidth - 48) / 2 ? Math.max(8, window.innerWidth - 56) : 8;
-    return { x, y: Math.max(8, Math.min(value.y, window.innerHeight - 56)) };
-  };
-  const pillLeft = position.x >= pillWidth + 16 ? -pillWidth - 8 : 56;
-  const pillTop = Math.max(8 - position.y, Math.min((48 - pillHeight) / 2, window.innerHeight - 8 - position.y - pillHeight));
 
   useEffect(() => {
-    const resize = () => setPosition(previous => clampPosition(previous));
+    const resize = () => setPosition(clampPosition);
     window.addEventListener('resize', resize);
     return () => window.removeEventListener('resize', resize);
-  }, [expanded]);
+  }, []);
   useEffect(() => { setDraft(null); }, [selected?.id]);
-  useEffect(() => {
-    if (!expanded) return;
-    const outside = (event: PointerEvent) => { if (container.current && !event.composedPath().includes(container.current)) setExpanded(false); };
-    const escape = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      setExpanded(false);
-      if (container.current && event.composedPath().includes(container.current)) { event.preventDefault(); event.stopPropagation(); trigger.current?.focus(); }
-    };
-    document.addEventListener('pointerdown', outside, true);
-    document.addEventListener('keydown', escape, true);
-    return () => { document.removeEventListener('pointerdown', outside, true); document.removeEventListener('keydown', escape, true); };
-  }, [expanded]);
 
   if (!settings.floating || !page.enabled || !selected) return null;
   const volume = draft ?? Math.round((selected.muted ? 0 : selected.volume) * 100);
-  return <aside ref={container} className="floating-controller" aria-label="小獭浮动控制器" style={{ left: position.x, top: position.y }}>
-    <Button ref={trigger} variant="outline" size="icon" className="floating-trigger" aria-label={expanded ? '收起音量控制器，方向键可移动' : '打开音量控制器，方向键可移动'} aria-expanded={expanded} aria-controls={expanded ? panelId : undefined} aria-haspopup="dialog" title={selected.title + ' · 点击调节音量，拖动移动'} onClick={() => {
-      if (dragged.current) { dragged.current = false; return; }
-      if (!expanded) setPosition(previous => clampPosition(previous, true));
-      setExpanded(!expanded);
-    }} onPointerDown={event => {
-      if (event.button !== 0) return;
-      dragged.current = false;
-      drag.current = { x: event.clientX - position.x, y: event.clientY - position.y, startX: event.clientX, startY: event.clientY };
-      event.currentTarget.setPointerCapture(event.pointerId);
-    }} onPointerMove={event => {
-      const origin = drag.current;
-      if (!origin || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
-      if (Math.hypot(event.clientX - origin.startX, event.clientY - origin.startY) > 5) dragged.current = true;
-      if (dragged.current) { setExpanded(false); setPosition(clampPosition({ x: event.clientX - origin.x, y: event.clientY - origin.y }, false)); }
-    }} onPointerUp={event => { drag.current = null; if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); }} onPointerCancel={() => { drag.current = null; dragged.current = false; }} onKeyDown={event => {
-      const steps: Record<string, [number, number]> = { ArrowLeft: [-20, 0], ArrowRight: [20, 0], ArrowUp: [0, -20], ArrowDown: [0, 20] };
-      const step = steps[event.key];
-      if (step) { event.preventDefault(); setPosition(previous => clampPosition({ x: previous.x + step[0], y: previous.y + step[1] })); }
-    }}><img src={otterMark} alt="" aria-hidden="true" /></Button>
-    {expanded && <div id={panelId} role="dialog" aria-label="音量控制" className="floating-popover" style={{ left: pillLeft, top: pillTop, width: pillWidth, height: pillHeight }}>
-      <Slider.Root className="volume-capsule" orientation="vertical" min={0} max={100} step={1} value={[volume]} thumbAlignment="edge" onValueChange={value => {
-        const next = Array.isArray(value) ? value[0] : value;
-        if (next === undefined) return;
-        setDraft(next); void command({ type: 'volume', value: next / 100 });
-      }} onValueCommitted={value => {
-        const next = Array.isArray(value) ? value[0] : value;
-        if (next === undefined) return;
-        void command({ type: 'volume', value: next / 100 }).finally(() => setDraft(null));
-      }}>
-        <Slider.Control className="pill-control"><Slider.Track className="pill-track"><Slider.Indicator className="pill-fill" /></Slider.Track><Slider.Thumb className="pill-thumb" aria-label="音量" aria-valuetext={volume + '%'} /></Slider.Control>
-        <span className="pill-value" aria-hidden="true">{volume}%</span>
-      </Slider.Root>
-      <Button variant="ghost" size="icon" className="pill-mute" data-low-volume={volume < 22} aria-label={selected.muted ? '取消静音' : '静音'} aria-pressed={selected.muted} onClick={() => { setDraft(null); void command({ type: 'mute' }); }}>{selected.muted || volume === 0 ? <VolumeX /> : <Volume2 />}</Button>
-    </div>}
-    {error && <p className="floating-error" role="alert">{error}</p>}
+  return <aside ref={container} className="fixed z-2147483647 size-12" aria-label="浮动控制器" style={{ left: position.x, top: position.y }}>
+    <Popover open={expanded} onOpenChange={setExpanded}>
+      <PopoverTrigger render={<Button variant="outline" size="icon" />} className="size-12 cursor-grab touch-none rounded-full bg-background text-primary shadow-[0_5px_18px_#15112914] hover:border-2 hover:border-primary hover:bg-background active:cursor-grabbing aria-expanded:border-2 aria-expanded:border-primary aria-expanded:bg-background dark:bg-background dark:hover:bg-background" aria-label={expanded ? '收起音量药丸，方向键可移动浮动入口' : '打开音量药丸，方向键可移动浮动入口'} title={selected.title + ' · 点击调节音量，拖动移动'} onClick={event => {
+        if (!dragged.current) return;
+        dragged.current = false;
+        event.preventBaseUIHandler();
+      }} onPointerDown={event => {
+        if (event.button !== 0) return;
+        dragged.current = false;
+        drag.current = { x: event.clientX - position.x, y: event.clientY - position.y, startX: event.clientX, startY: event.clientY };
+        event.currentTarget.setPointerCapture(event.pointerId);
+      }} onPointerMove={event => {
+        const origin = drag.current;
+        if (!origin || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
+        if (Math.hypot(event.clientX - origin.startX, event.clientY - origin.startY) > 5) dragged.current = true;
+        if (dragged.current) { setExpanded(false); setPosition(clampPosition({ x: event.clientX - origin.x, y: event.clientY - origin.y })); }
+      }} onPointerUp={event => { drag.current = null; if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); }} onPointerCancel={() => { drag.current = null; dragged.current = false; }} onKeyDown={event => {
+        const steps: Record<string, [number, number]> = { ArrowLeft: [-20, 0], ArrowRight: [20, 0], ArrowUp: [0, -20], ArrowDown: [0, 20] };
+        const step = steps[event.key];
+        if (step) { event.preventDefault(); setPosition(previous => clampPosition({ x: previous.x + step[0], y: previous.y + step[1] })); }
+      }}><img src={otterMark} alt="" aria-hidden="true" className="pointer-events-none size-[34px] object-contain" /></PopoverTrigger>
+      <PopoverContent container={container} side="left" sideOffset={8} aria-label="音量药丸" className="relative h-[184px] w-[60px] gap-0 rounded-full p-0 shadow-[0_12px_28px_#15112924] ring-0">
+        <Slider size="pill" orientation="vertical" aria-label="音量" format={{ style: 'unit', unit: 'percent' }} className="size-full rounded-[inherit]" min={0} max={100} step={1} value={[volume]} onValueChange={value => {
+          const next = first(value);
+          if (next === undefined) return;
+          setDraft(next); void command({ type: 'volume', value: next / 100 });
+        }} onValueCommitted={value => {
+          const next = first(value);
+          if (next === undefined) return;
+          void command({ type: 'volume', value: next / 100 }).finally(() => setDraft(null));
+        }} />
+        <span aria-hidden="true" className="pointer-events-none absolute top-6 left-1/2 -translate-x-1/2 rounded-lg bg-background px-1 text-sm font-semibold tabular-nums">{volume}%</span>
+        <Button variant="ghost" size="icon" className="absolute bottom-2 left-1/2 size-11 -translate-x-1/2 rounded-full text-primary-foreground hover:bg-transparent hover:text-primary-foreground data-[low-volume=true]:text-foreground data-[low-volume=true]:hover:text-foreground dark:hover:bg-transparent [&_svg:not([class*='size-'])]:size-[23px]" data-low-volume={volume < 22} aria-label={selected.muted ? '取消静音' : '静音'} aria-pressed={selected.muted} onClick={() => { setDraft(null); void command({ type: 'mute' }); }}>{selected.muted || volume === 0 ? <VolumeX /> : <Volume2 />}</Button>
+      </PopoverContent>
+    </Popover>
+    {error && <Alert variant="destructive" className="fixed bottom-2 left-2 w-auto max-w-[min(320px,calc(100vw-16px))] shadow-md"><CircleAlert /><AlertDescription>{error}</AlertDescription></Alert>}
   </aside>;
 }

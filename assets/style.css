@@ -66,25 +66,5 @@
   button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
 }
 .popup-body { width: 400px; min-width: 320px; }
-.suibo-root [data-slot="button"] { font-size: 14px; }
-.suibo-root [data-slot="button"] svg { width: 16px; height: 16px; }
-.floating-controller { position: fixed; z-index: 2147483647; width: 48px; height: 48px; }
-.floating-trigger { width: 48px; height: 48px; padding: 0; border-radius: 50%; border: 1px solid var(--border); color: var(--primary); background: var(--background); box-shadow: 0 5px 18px #15112914; touch-action: none; cursor: grab; }
-.floating-trigger:hover, .floating-trigger[aria-expanded="true"] { background: var(--background); color: var(--primary); border: 2px solid var(--primary); }
-.floating-trigger:active { cursor: grabbing; }
-.floating-trigger > img { width: 34px; height: 34px; object-fit: contain; pointer-events: none; }
-.floating-popover { position: absolute; border-radius: 999px; box-shadow: 0 12px 28px #15112924; }
-.volume-capsule, .pill-control { width: 100%; height: 100%; position: relative; border-radius: inherit; }
-.pill-control { touch-action: none; cursor: ns-resize; user-select: none; }
-.pill-track { position: absolute; inset: 0; width: 100%; height: 100%; overflow: hidden; border-radius: inherit; background: var(--background); outline: 1px solid var(--border); }
-.pill-fill { width: 100%; background: var(--primary); }
-.pill-thumb { width: 22px; height: 7px; border: 2px solid var(--primary); border-radius: 999px; background: var(--background); left: 50%; outline-offset: 4px; }
-.pill-thumb::after { content: ''; position: absolute; inset: -16px -16px; }
-.pill-value { position: absolute; top: 25px; left: 50%; transform: translateX(-50%); padding: 0 3px; border-radius: 8px; color: var(--foreground); background: var(--background); font-size: 14px; line-height: 21px; font-weight: 600; font-variant-numeric: tabular-nums; pointer-events: none; }
-.pill-mute { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 44px; height: 44px; border-radius: 50%; padding: 0; color: var(--primary-foreground); }
-.pill-mute:hover { background: transparent; color: var(--primary-foreground); }
-.pill-mute[data-low-volume="true"], .pill-mute[data-low-volume="true"]:hover { color: var(--foreground); }
-.pill-mute svg { width: 23px !important; height: 23px !important; stroke-width: 1.8; }
-.floating-error { position: fixed; bottom: 8px; left: 8px; max-width: min(320px, calc(100vw - 16px)); margin: 0; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--background); color: #ae3345; font-size: 12px; box-shadow: 0 5px 18px #15112914; }
 .eyebrow { font-size: 12px; font-weight: 650; color: var(--primary); margin: 0 0 10px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; } }
