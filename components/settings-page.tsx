@@ -58,8 +58,8 @@ export function SettingsPage({ store, back }: { store: SettingsStore; back?: () 
     <aside className="flex shrink-0 flex-col border-b bg-[color-mix(in_srgb,var(--background),var(--muted)_16%)] px-4 pt-5 pb-3 md:sticky md:top-0 md:h-screen md:min-h-110 md:w-50 md:border-r md:border-b-0 md:px-3 md:pt-8 md:pb-7 lg:w-60">
       <Brand className="text-2xl md:h-11 md:px-4 md:text-3xl md:[&>img]:size-10" />
       <p className="mx-4 mt-7 mb-4 text-muted-foreground max-md:hidden">设置</p>
-      <TabsList className="h-auto w-full gap-0.5 bg-transparent p-0 max-md:mt-4 max-md:flex-row max-md:justify-start max-md:overflow-x-auto">
-        {categories.map(({ id, label, icon: Icon }) => <TabsTrigger key={id} value={id} className="h-11 flex-none gap-2 px-3 text-sm font-normal text-foreground md:h-14 md:gap-4 md:px-4 md:text-lg data-active:bg-accent data-active:font-semibold data-active:text-accent-foreground data-active:shadow-none dark:data-active:border-transparent dark:data-active:bg-accent dark:data-active:text-accent-foreground [&_svg:not([class*='size-'])]:size-5"><Icon /><span>{label}</span></TabsTrigger>)}
+      <TabsList className="h-auto w-full gap-0.5 bg-transparent p-0 no-scrollbar max-md:mt-4 max-md:flex-row max-md:justify-start max-md:overflow-x-auto">
+        {categories.map(({ id, label, icon: Icon }) => <TabsTrigger key={id} value={id} className="h-11 flex-none gap-2 px-3 max-md:w-auto! text-sm font-normal text-foreground md:h-14 md:gap-4 md:px-4 md:text-lg data-active:bg-accent data-active:font-semibold data-active:text-accent-foreground data-active:shadow-none dark:data-active:border-transparent dark:data-active:bg-accent dark:data-active:text-accent-foreground [&_svg:not([class*='size-'])]:size-5"><Icon /><span>{label}</span></TabsTrigger>)}
       </TabsList>
       <div className="md:mt-auto md:px-1 md:pt-5">
         {back && <Button variant="ghost" className="mt-3 text-muted-foreground md:mt-0 md:mb-4" onClick={back}><ArrowLeft />返回控制面板</Button>}
