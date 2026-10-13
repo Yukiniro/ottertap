@@ -22,9 +22,12 @@ export function normalizeSettings(value: unknown): Settings {
     if (typeof site !== 'string') continue;
     try { sites.push(normalizeDomain(site)); } catch { /* Ignore invalid saved entries. */ }
   }
+  const position = source.floatingPosition;
+  const validPosition = !!position && typeof position === 'object' && ['left', 'right'].includes(position.side) && Number.isFinite(position.y) && position.y >= 0 && position.y <= 1;
   return {
     theme: ['light', 'dark', 'system'].includes(source.theme ?? '') ? source.theme! : 'system',
     floating: typeof source.floating === 'boolean' ? source.floating : true,
+    floatingPosition: validPosition ? { side: position.side, y: position.y } : { ...defaultSettings.floatingPosition },
     siteMode: ['all', 'allow', 'exclude'].includes(source.siteMode ?? '') ? source.siteMode! : 'all',
     sites: [...new Set(sites)]
   };
