@@ -1,43 +1,70 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 @source "../components";
+@source "../preview";
 @custom-variant dark (&:where(.dark, .dark *));
 @theme inline {
+  --font-sans: "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--muted);
-  --color-secondary-foreground: var(--foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
   --color-border: var(--border);
-  --color-input: var(--border);
-  --color-ring: var(--primary);
-  --color-destructive: #b43c48;
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 :root, .suibo-root {
-  --background: #faf9f6; --foreground: #10131b; --primary: #655de9;
-  --primary-foreground: #fff; --muted: #ebe9e5; --muted-foreground: #717580;
-  --border: #e2e2e5; --accent: #ece8ff; --accent-foreground: #5144cf; --radius-md: 8px;
-  font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
-  font-size: 16px; line-height: 1.5; color: var(--foreground); color-scheme: light;
-  -webkit-font-smoothing: antialiased;
+  --radius: 10px;
+  --background: #faf9f6; --foreground: #10131b;
+  --card: #faf9f6; --card-foreground: #10131b;
+  --popover: #faf9f6; --popover-foreground: #10131b;
+  --primary: #655de9; --primary-foreground: #fff;
+  --secondary: #ebe9e5; --secondary-foreground: #10131b;
+  --muted: #ebe9e5; --muted-foreground: #717580;
+  --accent: #ece8ff; --accent-foreground: #5144cf;
+  --destructive: #ae3345;
+  --border: #e2e2e5; --input: #e2e2e5; --ring: #655de9;
+  color-scheme: light;
 }
 .dark, .suibo-root.dark {
-  --background: #191a21; --foreground: #f2f1f7; --primary: #a69cff;
-  --primary-foreground: #19152d; --muted: #30313b; --muted-foreground: #ababb8;
-  --border: #363742; --accent: #34304c; --accent-foreground: #beb6ff; color-scheme: dark;
+  --background: #191a21; --foreground: #f2f1f7;
+  --card: #191a21; --card-foreground: #f2f1f7;
+  --popover: #191a21; --popover-foreground: #f2f1f7;
+  --primary: #a69cff; --primary-foreground: #19152d;
+  --secondary: #30313b; --secondary-foreground: #f2f1f7;
+  --muted: #30313b; --muted-foreground: #ababb8;
+  --accent: #34304c; --accent-foreground: #beb6ff;
+  --destructive: #f07a8a;
+  --border: #363742; --input: #363742; --ring: #a69cff;
+  color-scheme: dark;
 }
-body { margin: 0; background: var(--background); color: var(--foreground); }
-.suibo-root { background: transparent; }
-.suibo-root *, #root * { box-sizing: border-box; }
-button, input, select { font: inherit; }
-button { cursor: pointer; }
-button.bg-primary:hover { background: var(--primary); }
-button:disabled { cursor: default; }
-button, input, select, [role="slider"] { -webkit-tap-highlight-color: transparent; }
-button:focus-visible, input:focus-visible, select:focus-visible, [role="slider"]:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
-svg { flex-shrink: 0; }
+/* Tailwind sizes are rem-based; inside the host page's shadow root rem follows the page's own html font-size. */
+.suibo-root { --spacing: 4px; --text-xs: 12px; --text-sm: 14px; --text-base: 16px; font-size: 16px; background: transparent; }
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  body, .suibo-root { @apply font-sans text-foreground antialiased; }
+  body { @apply bg-background; }
+  button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
+}
 .popup-body { width: 400px; min-width: 320px; }
 .media-panel { width: 400px; max-width: 100%; padding: 0 16px; background: var(--background); }
 .panel-header { height: 51px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
