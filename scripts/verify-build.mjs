@@ -1,0 +1,73 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import vm from 'node:vm';
+
+const directory = new URL('../.output/chrome-mv3/', import.meta.url);
+const manifest = JSON.parse(await readFile(new URL('manifest.json', directory), 'utf8'));
+assert.equal(manifest.manifest_version, 3);
+assert.equal(manifest.name, '小獭 OtterTap · 网页媒体控制');
+assert.equal(manifest.options_ui.open_in_tab, true);
+assert.equal(manifest.action.default_popup, 'popup.html');
+assert.equal(manifest.content_scripts[0].all_frames, true);
+assert.deepEqual(manifest.permissions, ['storage']);
+assert.deepEqual(manifest.host_permissions.sort(), ['http://*/*', 'https://*/*']);
+for (const file of ['popup.html', 'options.html', 'background.js', 'content-scripts/content.js', 'content-scripts/content.css', ...Object.values(manifest.icons)]) {
+  assert.ok((await readFile(new URL(file, directory))).length > 0, `${file} must exist`);
+}
+for (const [size, file] of Object.entries(manifest.icons)) {
+  const png = await readFile(new URL(file, directory));
+  assert.equal(png.readUInt32BE(16), Number(size));
+  assert.equal(png.readUInt32BE(20), Number(size));
+  assert.equal(png[25], 6, 'Brand icons must retain RGBA transparency');
+}
+assert.match(await readFile(new URL('content-scripts/content.js', directory), 'utf8'), /data:image\/png;base64,/);
+let handler;
+let settings = { siteMode: 'all', sites: [], floating: true, theme: 'light' };
+let tabUrl = 'https://www.bilibili.com/video/example';
+let removed;
+let updated;
+const commands = [];
+const chrome = {
+  runtime: { id: 'test-id', getURL: path => `chrome-extension://test-id${path}`, onMessage: { addListener: listener => { handler = listener; } }, openOptionsPage: async () => {} },
+  storage: { local: { get: async key => { assert.equal(key, 'suibo-settings-v1', 'Brand rename must preserve settings'); return { [key]: settings }; } } },
+  tabs: {
+    get: async id => ({ id, url: tabUrl }),
+    onRemoved: { addListener: listener => { removed = listener; } },
+    onUpdated: { addListener: listener => { updated = listener; } },
+    sendMessage: async (id, message, options) => {
+      if (message.type === 'snapshot') return { media: [{ id: '1', title: `frame ${options.frameId}`, paused: true }] };
+      commands.push({ id, message, options }); return { ok: true };
+    }
+  }
+};
+vm.runInNewContext(await readFile(new URL('background.js', directory), 'utf8'), { chrome, URL, console }, { timeout: 3000 });
+assert.equal(typeof handler, 'function');
+const sender = { id: 'test-id', url: 'chrome-extension://test-id/popup.html' };
+const invoke = (message, source = sender) => new Promise(resolve => {
+  const keepOpen = handler({ namespace: 'suibo', tabId: 7, ...message }, source, resolve);
+  assert.equal(keepOpen, true, 'Reply channels must stay open synchronously for Chromium compatibility');
+});
+const request = message => invoke(message);
+assert.equal(handler({ namespace: 'suibo', type: 'read', tabId: 7 }, { id: 'other-extension' }, () => assert.fail('untrusted sender')), undefined);
+assert.equal(handler({ namespace: 'suibo', type: 'unknown', tabId: 7 }, sender, () => assert.fail('unknown message')), undefined);
+await invoke({ type: 'register' }, { id: 'test-id', tab: { id: 7 }, frameId: 4 });
+let result = await request({ type: 'read' });
+assert.equal(result.media.length, 2);
+assert.equal(result.media[1].id, '4:1');
+await request({ type: 'command', id: '4:1', command: { type: 'rate', value: 1.5 } });
+assert.equal(commands.at(-1).options.frameId, 4);
+assert.equal(commands.at(-1).message.id, '1');
+settings = { ...settings, siteMode: 'exclude', sites: ['bilibili.com'] };
+assert.equal((await request({ type: 'read' })).enabled, false);
+assert.equal((await request({ type: 'read' })).media.length, 0);
+const count = commands.length;
+assert.ok((await request({ type: 'command', id: '4:1', command: { type: 'play' } })).error);
+assert.equal(commands.length, count);
+settings = { ...settings, siteMode: 'all' };
+assert.ok((await request({ type: 'command', id: '4:1', command: { type: 'volume', value: 2 } })).error);
+updated(7, { status: 'loading' });
+assert.equal((await request({ type: 'read' })).media.length, 1);
+removed(7);
+tabUrl = undefined;
+assert.ok((await request({ type: 'read' })).error);
+console.log('OtterTap branding, RGBA icons, settings compatibility, MV3 manifest, iframe routing, sender validation and website rules passed.');
