@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sun, Moon, Monitor, Globe, AppWindow, X, Check, CircleCheck, Database, ArrowLeft, CircleAlert } from 'lucide-react';
+import { Sun, Moon, Monitor, Globe, AppWindow, X, Check, CircleCheck, ArrowLeft, CircleAlert } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -17,7 +17,7 @@ import type { Settings, SettingsStore } from '../lib/types';
 
 const categories = [
   { id: 'appearance', label: '外观', description: '选择小獭的显示方式。', icon: Sun },
-  { id: 'floating', label: '浮动控制器', description: '把页面音量控制留在手边。', icon: AppWindow },
+  { id: 'floating', label: '浮动控制器', description: '启用后在网页上显示，关闭后隐藏。', icon: AppWindow },
   { id: 'sites', label: '网站规则', description: '决定小獭在哪些网页上工作。', icon: Globe }
 ] as const;
 type Category = (typeof categories)[number]['id'];
@@ -61,13 +61,9 @@ export function SettingsPage({ store, back }: { store: SettingsStore; back?: () 
       <TabsList className="h-auto w-full gap-0.5 bg-transparent p-0 no-scrollbar max-md:mt-4 max-md:flex-row max-md:justify-start max-md:overflow-x-auto">
         {categories.map(({ id, label, icon: Icon }) => <TabsTrigger key={id} value={id} className="h-11 flex-none gap-2 px-3 max-md:w-auto! text-sm font-normal text-foreground md:h-14 md:gap-4 md:px-4 md:text-lg data-active:bg-accent data-active:font-semibold data-active:text-accent-foreground data-active:shadow-none dark:data-active:border-transparent dark:data-active:bg-accent dark:data-active:text-accent-foreground [&_svg:not([class*='size-'])]:size-5"><Icon /><span>{label}</span></TabsTrigger>)}
       </TabsList>
-      <div className="md:mt-auto md:px-1 md:pt-5">
-        {back && <Button variant="ghost" className="mt-3 text-muted-foreground md:mt-0 md:mb-4" onClick={back}><ArrowLeft />返回控制面板</Button>}
-        <Item variant="muted" size="sm" className="max-md:hidden">
-          <ItemMedia variant="icon"><Database /></ItemMedia>
-          <ItemContent className="text-xs/5 text-muted-foreground">所有设置仅保存在本地<br />不会上传到任何服务器</ItemContent>
-        </Item>
-      </div>
+      {back && <div className="md:mt-auto md:px-1 md:pt-5">
+        <Button variant="ghost" className="mt-3 text-muted-foreground md:mt-0" onClick={back}><ArrowLeft />返回控制面板</Button>
+      </div>}
     </aside>
     <main className="max-w-[1100px] min-w-0 flex-1 px-5 pt-7 pb-10 md:px-7 md:pt-10 lg:pt-14 lg:pr-9 lg:pl-12">
       <header className="flex flex-wrap items-start justify-between gap-x-5 gap-y-3 border-b pb-7">
@@ -91,7 +87,6 @@ export function SettingsPage({ store, back }: { store: SettingsStore; back?: () 
             <FieldLabel htmlFor="settings-floating" className="text-base font-normal">在网页上显示浮动入口</FieldLabel>
             <Switch id="settings-floating" aria-label="浮动控制器" checked={settings.floating} disabled={disabled} onCheckedChange={checked => void save({ ...settings, floating: checked })} />
           </Field>
-          <FieldDescription className="mt-3">发现媒体时显示浮动入口。点击浮动入口展开音量药丸，拖动浮动入口移动。<br />点击页面其他位置或按 Esc 收起。</FieldDescription>
         </PropertyRow>
       </TabsContent>
       <TabsContent value="sites">
