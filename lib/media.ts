@@ -5,7 +5,7 @@ export function discoverMedia(root: Document | ShadowRoot, onRoot?: (root: Docum
   onRoot?.(root);
   const media = [...root.querySelectorAll<HTMLMediaElement>('audio,video')].filter(element => element.namespaceURI === 'http://www.w3.org/1999/xhtml');
   for (const element of root.querySelectorAll('*')) {
-    if (element.shadowRoot && element.localName !== 'suibo-controller') media.push(...discoverMedia(element.shadowRoot, onRoot));
+    if (element.shadowRoot && element.localName !== 'ottertap-controller') media.push(...discoverMedia(element.shadowRoot, onRoot));
   }
   return media;
 }

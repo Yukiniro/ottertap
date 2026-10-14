@@ -32,7 +32,7 @@
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
 }
-:root, .suibo-root {
+:root, .ottertap-root {
   --radius: 10px;
   --background: #faf9f6; --foreground: #10131b;
   --card: #faf9f6; --card-foreground: #10131b;
@@ -45,7 +45,7 @@
   --border: #e2e2e5; --input: #8e919b; --ring: #655de9;
   color-scheme: light;
 }
-.dark, .suibo-root.dark {
+.dark, .ottertap-root.dark {
   --background: #191a21; --foreground: #f2f1f7;
   --card: #191a21; --card-foreground: #f2f1f7;
   --popover: #191a21; --popover-foreground: #f2f1f7;
@@ -58,10 +58,10 @@
   color-scheme: dark;
 }
 /* Tailwind sizes are rem-based; inside the host page's shadow root rem follows the page's own html font-size. */
-.suibo-root { --spacing: 4px; --text-xs: 12px; --text-sm: 14px; --text-base: 16px; font-size: 16px; background: transparent; }
+.ottertap-root { --spacing: 4px; --text-xs: 12px; --text-sm: 14px; --text-base: 16px; font-size: 16px; background: transparent; }
 @layer base {
   * { @apply border-border outline-ring/50; }
-  body, .suibo-root { @apply font-sans text-foreground antialiased; }
+  body, .ottertap-root { @apply font-sans text-foreground antialiased; }
   body { @apply bg-background; }
   button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
 }

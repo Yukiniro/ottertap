@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useAtomValue, useSetAtom } from 'jotai';
 import { Sun, Moon, Monitor, Globe, AppWindow, X, Check, CircleCheck, ArrowLeft, CircleAlert } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Badge } from './ui/badge';
@@ -11,9 +12,9 @@ import { Switch } from './ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 import { Brand } from './brand';
-import { useSettings } from '../hooks/use-settings';
 import { normalizeDomain } from '../lib/settings';
-import type { Settings, SettingsStore } from '../lib/types';
+import type { Settings } from '../lib/types';
+import { useSettingsAtoms } from './theme';
 
 const categories = [
   { id: 'appearance', label: '外观', description: '选择小獭的显示方式。', icon: Sun },
@@ -31,25 +32,32 @@ function PropertyRow({ id, title, children }: { id: string; title: string; child
   </section>;
 }
 
-export function SettingsPage({ store, back }: { store: SettingsStore; back?: () => void }) {
-  const { settings, update, loading, error } = useSettings(store);
+export function SettingsPage({ back }: { back?: () => void }) {
+  const { themeAtom, floatingAtom, siteModeAtom, sitesAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const theme = useAtomValue(themeAtom);
+  const floating = useAtomValue(floatingAtom);
+  const siteMode = useAtomValue(siteModeAtom);
+  const sites = useAtomValue(sitesAtom);
+  const loading = useAtomValue(loadingAtom);
+  const error = useAtomValue(errorAtom);
+  const write = useSetAtom(writeSettingsAtom);
   const [category, setCategory] = useState<Category>('sites');
   const [input, setInput] = useState('');
   const [inputError, setInputError] = useState('');
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const current = categories.find(item => item.id === category)!;
-  const save: typeof update = async next => {
+  const save = async (next: Partial<Settings>) => {
     setSaving(true); setSaved(false);
-    const ok = await update(next);
+    const ok = await write(next);
     setSaving(false); setSaved(ok);
     return ok;
   };
   const addSite = async () => {
     try {
       const domain = normalizeDomain(input);
-      if (settings.sites.includes(domain)) { setInputError('这个网站已经在列表中。'); return; }
-      if (await save({ ...settings, sites: [...settings.sites, domain] })) { setInput(''); setInputError(''); }
+      if (sites.includes(domain)) { setInputError('这个网站已经在列表中。'); return; }
+      if (await save({ sites: [...sites, domain] })) { setInput(''); setInputError(''); }
     } catch (err) { setInputError(err instanceof Error ? err.message : '域名无效。'); }
   };
   const disabled = loading || saving;
@@ -75,8 +83,8 @@ export function SettingsPage({ store, back }: { store: SettingsStore; back?: () 
       </header>
       <TabsContent value="appearance">
         <PropertyRow id="theme-label" title="主题模式">
-          <ToggleGroup aria-labelledby="theme-label" variant="outline" spacing={2.5} className="flex-wrap" value={[settings.theme]} disabled={disabled} onValueChange={value => { const theme = value[0] as Settings['theme'] | undefined; if (theme) void save({ ...settings, theme }); }}>
-            {themes.map(({ value, label, icon: Icon }) => <ToggleGroupItem key={value} value={value} size="lg" className="h-13 gap-2 px-4 aria-pressed:border-primary aria-pressed:bg-accent aria-pressed:text-accent-foreground [&_svg:not([class*='size-'])]:size-5"><Icon /><span>{label}</span>{settings.theme === value && <Check className="size-4" />}</ToggleGroupItem>)}
+          <ToggleGroup aria-labelledby="theme-label" variant="outline" spacing={2.5} className="flex-wrap" value={[theme]} disabled={disabled} onValueChange={value => { const next = value[0] as Settings['theme'] | undefined; if (next) void save({ theme: next }); }}>
+            {themes.map(({ value, label, icon: Icon }) => <ToggleGroupItem key={value} value={value} size="lg" className="h-13 gap-2 px-4 aria-pressed:border-primary aria-pressed:bg-accent aria-pressed:text-accent-foreground [&_svg:not([class*='size-'])]:size-5"><Icon /><span>{label}</span>{theme === value && <Check className="size-4" />}</ToggleGroupItem>)}
           </ToggleGroup>
           <FieldDescription className="mt-3">弹出面板与浮动控制器使用相同的主题。</FieldDescription>
         </PropertyRow>
@@ -85,13 +93,13 @@ export function SettingsPage({ store, back }: { store: SettingsStore; back?: () 
         <PropertyRow id="floating-label" title="浮动控制器">
           <Field orientation="horizontal" className="justify-between">
             <FieldLabel htmlFor="settings-floating" className="text-base font-normal">在网页上显示浮动入口</FieldLabel>
-            <Switch id="settings-floating" aria-label="浮动控制器" checked={settings.floating} disabled={disabled} onCheckedChange={checked => void save({ ...settings, floating: checked })} />
+            <Switch id="settings-floating" aria-label="浮动控制器" checked={floating} disabled={disabled} onCheckedChange={checked => void save({ floating: checked })} />
           </Field>
         </PropertyRow>
       </TabsContent>
       <TabsContent value="sites">
         <PropertyRow id="site-mode-label" title="启用范围">
-          <RadioGroup aria-labelledby="site-mode-label" className="gap-3" value={settings.siteMode} disabled={disabled} onValueChange={value => void save({ ...settings, siteMode: value as Settings['siteMode'] })}>
+          <RadioGroup aria-labelledby="site-mode-label" className="gap-3" value={siteMode} disabled={disabled} onValueChange={value => void save({ siteMode: value as Settings['siteMode'] })}>
             {siteModes.map(mode => <FieldLabel key={mode.value} htmlFor={'site-mode-' + mode.value}>
               <Field orientation="horizontal">
                 <RadioGroupItem value={mode.value} id={'site-mode-' + mode.value} />
@@ -112,13 +120,13 @@ export function SettingsPage({ store, back }: { store: SettingsStore; back?: () 
               <FieldDescription id="domain-tip">规则包含子域名，不区分路径。</FieldDescription>
             </Field>
           </form>
-          {settings.sites.length
-            ? <ItemGroup aria-label="网站列表" className="mt-6 gap-0 border-t">{settings.sites.map(site => <Item key={site} role="listitem" className="rounded-none border-b-border px-0 sm:px-4">
+          {sites.length
+            ? <ItemGroup aria-label="网站列表" className="mt-6 gap-0 border-t">{sites.map(site => <Item key={site} role="listitem" className="rounded-none border-b-border px-0 sm:px-4">
               <ItemMedia variant="icon" className="text-muted-foreground"><Globe className="size-5" /></ItemMedia>
               <ItemContent><ItemTitle className="line-clamp-none text-base font-normal break-all">{site}</ItemTitle></ItemContent>
-              <ItemActions><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={'移除 ' + site} disabled={disabled} onClick={() => void save({ ...settings, sites: settings.sites.filter(value => value !== site) })}><X /></Button></ItemActions>
+              <ItemActions><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={'移除 ' + site} disabled={disabled} onClick={() => void save({ sites: sites.filter(value => value !== site) })}><X /></Button></ItemActions>
             </Item>)}</ItemGroup>
-            : <p className="mt-6 border-y px-2 py-6 text-sm text-muted-foreground">{settings.siteMode === 'allow' ? '添加第一个网站后，小獭才会启用。' : settings.siteMode === 'exclude' ? '列表为空，当前所有网站均启用。' : '暂未添加网站。全部网站模式无需配置列表。'}</p>}
+            : <p className="mt-6 border-y px-2 py-6 text-sm text-muted-foreground">{siteMode === 'allow' ? '添加第一个网站后，小獭才会启用。' : siteMode === 'exclude' ? '列表为空，当前所有网站均启用。' : '暂未添加网站。全部网站模式无需配置列表。'}</p>}
         </PropertyRow>
       </TabsContent>
       {error && <Alert variant="destructive" className="mt-4"><CircleAlert /><AlertDescription>{error}</AlertDescription></Alert>}

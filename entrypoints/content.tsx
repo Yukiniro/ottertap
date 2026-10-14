@@ -16,17 +16,17 @@ export default defineContentScript({
     const controller = createMediaController(document);
     let enabled = false;
     const refreshContext = async () => {
-      try { enabled = (await browser.runtime.sendMessage({ namespace: 'suibo', type: 'context' }))?.enabled === true; }
+      try { enabled = (await browser.runtime.sendMessage({ namespace: 'ottertap', type: 'context' }))?.enabled === true; }
       catch { enabled = false; }
     };
     await refreshContext();
     const unwatch = extensionStore.watch(() => { void refreshContext(); });
     const register = () => {
-      if (enabled && ctx.isValid && controller.snapshot().length) void browser.runtime.sendMessage({ namespace: 'suibo', type: 'register' }).catch(() => {});
+      if (enabled && ctx.isValid && controller.snapshot().length) void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'register' }).catch(() => {});
     };
     register(); ctx.setInterval(register, 2000);
     const listener: Parameters<typeof browser.runtime.onMessage.addListener>[0] = (message, sender, sendResponse) => {
-      if (sender.id !== browser.runtime.id || message?.namespace !== 'suibo') return;
+      if (sender.id !== browser.runtime.id || message?.namespace !== 'ottertap') return;
       if (!['snapshot', 'command'].includes(message.type)) return;
       void (async () => {
       if (message.type === 'snapshot') return { media: enabled ? controller.snapshot() : [] };
@@ -47,14 +47,14 @@ export default defineContentScript({
     if (window.top !== window) return;
     const client = createExtensionClient();
     const ui = await createShadowRootUi(ctx, {
-      name: 'suibo-controller',
+      name: 'ottertap-controller',
       position: 'overlay',
       anchor: 'body',
       isolateEvents: ['keydown', 'keyup', 'keypress'],
       onMount(container) {
-        container.className = 'suibo-root';
+        container.className = 'ottertap-root';
         const root = createRoot(container);
-        root.render(<ThemeProvider store={extensionStore} target={container}><FloatingController client={client} store={extensionStore} /></ThemeProvider>);
+        root.render(<ThemeProvider store={extensionStore} target={container}><FloatingController client={client} /></ThemeProvider>);
         return root;
       },
       onRemove(root) { root?.unmount(); }

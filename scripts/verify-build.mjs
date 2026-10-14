@@ -29,7 +29,7 @@ let updated;
 const commands = [];
 const chrome = {
   runtime: { id: 'test-id', getURL: path => `chrome-extension://test-id${path}`, onMessage: { addListener: listener => { handler = listener; } }, openOptionsPage: async () => {} },
-  storage: { local: { get: async key => { assert.equal(key, 'suibo-settings-v1', 'Brand rename must preserve settings'); return { [key]: settings }; } } },
+  storage: { local: { get: async key => { assert.equal(key, 'ottertap-settings-v1', 'Settings use the ottertap storage key'); return { [key]: settings }; } } },
   tabs: {
     get: async id => ({ id, url: tabUrl }),
     onRemoved: { addListener: listener => { removed = listener; } },
@@ -44,12 +44,12 @@ vm.runInNewContext(await readFile(new URL('background.js', directory), 'utf8'), 
 assert.equal(typeof handler, 'function');
 const sender = { id: 'test-id', url: 'chrome-extension://test-id/popup.html' };
 const invoke = (message, source = sender) => new Promise(resolve => {
-  const keepOpen = handler({ namespace: 'suibo', tabId: 7, ...message }, source, resolve);
+  const keepOpen = handler({ namespace: 'ottertap', tabId: 7, ...message }, source, resolve);
   assert.equal(keepOpen, true, 'Reply channels must stay open synchronously for Chromium compatibility');
 });
 const request = message => invoke(message);
-assert.equal(handler({ namespace: 'suibo', type: 'read', tabId: 7 }, { id: 'other-extension' }, () => assert.fail('untrusted sender')), undefined);
-assert.equal(handler({ namespace: 'suibo', type: 'unknown', tabId: 7 }, sender, () => assert.fail('unknown message')), undefined);
+assert.equal(handler({ namespace: 'ottertap', type: 'read', tabId: 7 }, { id: 'other-extension' }, () => assert.fail('untrusted sender')), undefined);
+assert.equal(handler({ namespace: 'ottertap', type: 'unknown', tabId: 7 }, sender, () => assert.fail('unknown message')), undefined);
 await invoke({ type: 'register' }, { id: 'test-id', tab: { id: 7 }, frameId: 4 });
 let result = await request({ type: 'read' });
 assert.equal(result.media.length, 2);
@@ -70,4 +70,4 @@ assert.equal((await request({ type: 'read' })).media.length, 1);
 removed(7);
 tabUrl = undefined;
 assert.ok((await request({ type: 'read' })).error);
-console.log('OtterTap branding, RGBA icons, settings compatibility, MV3 manifest, iframe routing, sender validation and website rules passed.');
+console.log('OtterTap branding, RGBA icons, settings storage, MV3 manifest, iframe routing, sender validation and website rules passed.');

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useAtomValue, useSetAtom } from 'jotai';
 import { CircleAlert, Volume2, VolumeX } from 'lucide-react';
 import otterMark from '../assets/otter-mark';
 import { Alert, AlertDescription } from './ui/alert';
@@ -6,17 +7,21 @@ import { Button } from './ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Slider } from './ui/slider';
 import { useMedia } from '../hooks/use-media';
-import { useSettings } from '../hooks/use-settings';
 import { dockedPoint, dockSize, dropPosition, nudgePosition, type Viewport } from '../lib/dock';
-import type { FloatingPosition, MediaClient, SettingsStore } from '../lib/types';
+import type { FloatingPosition, MediaClient } from '../lib/types';
+import { useSettingsAtoms } from './theme';
 
 const first = (value: number | readonly number[]) => Array.isArray(value) ? value[0] : value;
 const readViewport = (): Viewport => ({ width: document.documentElement.clientWidth || window.innerWidth, height: document.documentElement.clientHeight || window.innerHeight });
 const thumbHeight = 10;
 const boostColor = (volume: number, max: number) => `color-mix(in oklch, oklch(0.577 0.245 27.325) ${Math.max(0, Math.min(1, (volume - 100) / (max - 100))) * 100}%, oklch(0.705 0.213 47.604))`;
 
-export function FloatingController({ client, store }: { client: MediaClient; store: SettingsStore }) {
-  const { settings, loading, update } = useSettings(store);
+export function FloatingController({ client }: { client: MediaClient }) {
+  const { floatingAtom, floatingPositionAtom, loadingAtom, writeSettingsAtom } = useSettingsAtoms();
+  const floating = useAtomValue(floatingAtom);
+  const floatingPosition = useAtomValue(floatingPositionAtom);
+  const loading = useAtomValue(loadingAtom);
+  const write = useSetAtom(writeSettingsAtom);
   const { page, selected, command, error } = useMedia(client);
   const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState<number | null>(null);
@@ -37,8 +42,8 @@ export function FloatingController({ client, store }: { client: MediaClient; sto
   }, []);
   useEffect(() => { setDraft(null); }, [selected?.id]);
 
-  if (loading || !settings.floating || !page.enabled || !selected) return null;
-  const position = moved ?? settings.floatingPosition;
+  if (loading || !floating || !page.enabled || !selected) return null;
+  const position = moved ?? floatingPosition;
   const revealed = hovered || focused || expanded || !!dragPoint;
   const point = dragPoint ?? dockedPoint(position, viewport, revealed);
   const max = Math.round(selected.maxVolume * 100);
@@ -46,7 +51,7 @@ export function FloatingController({ client, store }: { client: MediaClient; sto
   const pillHeight = Math.min(280, viewport.height - 16);
   const move = (next: FloatingPosition) => {
     setMoved(next);
-    void update({ ...settings, floatingPosition: next }).then(saved => { if (saved) setMoved(null); });
+    void write({ floatingPosition: next }).then(saved => { if (saved) setMoved(null); });
   };
   const setVolume = (value: number | readonly number[], commit: boolean) => {
     const next = first(value);

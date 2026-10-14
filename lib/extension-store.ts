@@ -2,8 +2,7 @@ import { browser } from 'wxt/browser';
 import { normalizeSettings } from './settings';
 import type { SettingsStore } from './types';
 
-// Keep the storage key so the rename preserves existing user preferences.
-const key = 'suibo-settings-v1';
+const key = 'ottertap-settings-v1';
 export const extensionStore: SettingsStore = {
   async load() { return normalizeSettings((await browser.storage.local.get(key))[key]); },
   async save(settings) { await browser.storage.local.set({ [key]: normalizeSettings(settings) }); },

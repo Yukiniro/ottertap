@@ -3,7 +3,7 @@ import type { MediaClient } from './types';
 
 export function createExtensionClient(tabId?: number): MediaClient {
   async function request(message: object) {
-    const result = await browser.runtime.sendMessage({ namespace: 'suibo', tabId, ...message });
+    const result = await browser.runtime.sendMessage({ namespace: 'ottertap', tabId, ...message });
     if (!result || result.error) throw new Error(result?.error || '扩展连接已中断，请刷新页面。');
     return result;
   }

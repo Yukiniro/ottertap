@@ -12,6 +12,7 @@ test('设置分类只显示对应属性，保存保留其他分类数据，失�
   for (const name of ['getComputedStyle', 'requestAnimationFrame', 'cancelAnimationFrame'] as const) Object.defineProperty(globalThis, name, { value: window[name].bind(window), configurable: true });
   Object.defineProperty(globalThis, 'IS_REACT_ACT_ENVIRONMENT', { value: true, configurable: true });
   const { createRoot } = await import('react-dom/client');
+  const { ThemeProvider } = await import('../components/theme');
   const { SettingsPage } = await import('../components/settings-page');
   let value: Settings = { ...defaultSettings, theme: 'light', sites: ['bilibili.com'] };
   let reject = false;
@@ -26,7 +27,7 @@ test('设置分类只显示对应属性，保存保留其他分类数据，失�
   const button = (label: string) => [...host.querySelectorAll('button')].find(item => item.textContent === label)!;
   const click = async (element: Element) => { await act(async () => { (element as unknown as HTMLElement).click(); }); };
   try {
-    await act(async () => { root.render(createElement(SettingsPage, { store })); });
+    await act(async () => { root.render(createElement(ThemeProvider, { store, children: createElement(SettingsPage) })); });
     assert.equal(host.querySelector('h1')!.textContent, '网站规则');
     assert.ok(host.querySelector('#site-domain'));
     assert.equal(host.querySelector('[role="tab"][aria-selected="true"]')!.textContent, '网站规则');

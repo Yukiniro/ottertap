@@ -11,6 +11,7 @@ test('浮动入口贴边半隐藏、可切换侧边；药丸可调到 150%、静
   for (const name of ['getComputedStyle', 'requestAnimationFrame', 'cancelAnimationFrame'] as const) Object.defineProperty(globalThis, name, { value: window[name].bind(window), configurable: true });
   Object.defineProperty(globalThis, 'IS_REACT_ACT_ENVIRONMENT', { value: true, configurable: true });
   const { createRoot } = await import('react-dom/client');
+  const { ThemeProvider } = await import('../components/theme');
   const { FloatingController } = await import('../components/floating');
   let media: MediaState = { id: '1', title: '测试媒体', host: 'example.com', kind: 'video', paused: false, muted: false, volume: .75, maxVolume: 1.5, rate: 1, currentTime: 10, duration: 100, live: false, seekable: [{ start: 0, end: 100 }] };
   const client: MediaClient = {
@@ -27,7 +28,7 @@ test('浮动入口贴边半隐藏、可切换侧边；药丸可调到 150%、静
   const trigger = () => host.querySelector('[data-slot="popover-trigger"]')!;
   const slider = () => host.querySelector('input[type="range"]')!;
   const dock = () => host.querySelector('aside')!;
-  await act(async () => { root.render(createElement(FloatingController, { client, store })); });
+  await act(async () => { root.render(createElement(ThemeProvider, { store, children: createElement(FloatingController, { client }) })); });
   assert.equal(!!host.querySelector('[role="dialog"]'), false);
   assert.equal(dock().dataset.side, 'right');
   assert.equal(dock().dataset.revealed, 'false');

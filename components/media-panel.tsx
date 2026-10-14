@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useAtomValue, useSetAtom } from 'jotai';
 import { Settings2, Settings as SettingsIcon, Volume2, VolumeX, AppWindow, Pause, Play, RotateCcw, RotateCw, Keyboard, CircleAlert, Search, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
@@ -10,15 +11,19 @@ import { Switch } from './ui/switch';
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 import { Brand } from './brand';
 import { useMedia } from '../hooks/use-media';
-import { useSettings } from '../hooks/use-settings';
 import { formatTime } from '../lib/utils';
-import type { MediaClient, SettingsStore } from '../lib/types';
+import type { MediaClient } from '../lib/types';
+import { useSettingsAtoms } from './theme';
 
 const speeds = [0.75, 1, 1.25, 1.5, 2];
 const first = (value: number | readonly number[]) => Array.isArray(value) ? value[0] : value;
-export function MediaPanel({ client, store, openSettings }: { client: MediaClient; store: SettingsStore; openSettings: () => void }) {
+export function MediaPanel({ client, openSettings }: { client: MediaClient; openSettings: () => void }) {
   const { page, selected, select, command, refresh, loading, error } = useMedia(client);
-  const { settings, update, loading: settingsLoading, error: settingsError } = useSettings(store);
+  const { floatingAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const floating = useAtomValue(floatingAtom);
+  const settingsLoading = useAtomValue(loadingAtom);
+  const settingsError = useAtomValue(errorAtom);
+  const write = useSetAtom(writeSettingsAtom);
   const [seekDraft, setSeekDraft] = useState<number | null>(null);
   const ranges = selected?.seekable ?? [];
   const seekMin = ranges[0]?.start ?? 0;
@@ -71,7 +76,7 @@ export function MediaPanel({ client, store, openSettings }: { client: MediaClien
     <Field orientation="horizontal" className="min-h-14 gap-4 border-t">
       <AppWindow aria-hidden="true" className="size-[23px] shrink-0" />
       <FieldLabel htmlFor="floating-toggle" className="flex-1 font-normal">浮动控制器</FieldLabel>
-      <Switch id="floating-toggle" aria-label="浮动控制器" checked={settings.floating} disabled={settingsLoading} onCheckedChange={checked => void update({ ...settings, floating: checked })} />
+      <Switch id="floating-toggle" aria-label="浮动控制器" checked={floating} disabled={settingsLoading} onCheckedChange={checked => void write({ floating: checked })} />
     </Field>
     <footer className="flex min-h-[42px] items-center justify-center gap-2.5 border-t text-xs text-muted-foreground"><Keyboard aria-hidden="true" className="size-[18px]" /><span>随时调整，继续专注</span></footer>
   </section>;
