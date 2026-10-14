@@ -4,7 +4,7 @@ import { Window } from 'happy-dom';
 import { createElement, act } from 'react';
 import { defaultSettings, type Settings, type SettingsStore } from '../lib/types';
 
-test('设置分类只显示对应属性，保存保留其他分类数据，失败时不误报已保存', async () => {
+test('设置同页展示全部项，保存只改对应字段，失败时不误报已保存', async () => {
   const window = new Window({ url: 'https://example.com' });
   for (const name of ['window', 'document', 'navigator', 'HTMLElement', 'HTMLButtonElement', 'HTMLInputElement', 'Element', 'Node', 'Event', 'MouseEvent', 'PointerEvent', 'KeyboardEvent', 'MutationObserver', 'ResizeObserver'] as const) {
     Object.defineProperty(globalThis, name, { value: name === 'window' ? window : window[name], configurable: true, writable: true });
@@ -28,16 +28,13 @@ test('设置分类只显示对应属性，保存保留其他分类数据，失�
   const click = async (element: Element) => { await act(async () => { (element as unknown as HTMLElement).click(); }); };
   try {
     await act(async () => { root.render(createElement(ThemeProvider, { store, children: createElement(SettingsPage) })); });
-    assert.equal(host.querySelector('h1')!.textContent, '网站规则');
+    assert.equal(host.querySelector('h1')!.textContent, '设置');
+    assert.ok(host.querySelector('#theme-label'));
+    assert.ok(host.querySelector('#settings-floating'));
     assert.ok(host.querySelector('#site-domain'));
-    assert.equal(host.querySelector('[role="tab"][aria-selected="true"]')!.textContent, '网站规则');
-    await click(button('外观') as unknown as Element);
-    assert.equal(host.querySelector('h1')!.textContent, '外观');
-    assert.equal(host.querySelector('#site-domain'), null);
     await click(button('深色') as unknown as Element);
     assert.equal(value.theme, 'dark');
     assert.deepEqual(value.sites, ['bilibili.com']);
-    await click(button('浮动控制器') as unknown as Element);
     assert.equal(host.querySelector('[role="switch"]')!.getAttribute('aria-checked'), 'true');
     reject = true;
     await click(host.querySelector('[role="switch"]') as unknown as Element);
@@ -49,10 +46,7 @@ test('设置分类只显示对应属性，保存保留其他分类数据，失�
     assert.equal(value.floating, false);
     assert.equal(value.theme, 'dark');
     assert.deepEqual(value.sites, ['bilibili.com']);
-    await click(button('网站规则') as unknown as Element);
-    assert.ok(host.querySelector('#site-domain'));
     assert.match(host.querySelector('[role="list"][aria-label="网站列表"]')!.textContent!, /bilibili.com/);
-    assert.equal(host.querySelector('[role="switch"]'), null);
     assert.equal(listeners.size, 1);
   } finally {
     await act(async () => { root.unmount(); });

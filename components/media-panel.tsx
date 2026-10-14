@@ -62,11 +62,15 @@ export function MediaPanel({ client, openSettings }: { client: MediaClient; open
         <Slider aria-label="播放进度" className="py-2.5" min={seekMin} max={Math.max(seekMin + 1, seekMax)} step={1} value={[seekDraft ?? selected.currentTime]} disabled={!canSeek} onValueChange={value => setSeekDraft(first(value) ?? null)} onValueCommitted={value => { void command({ type: 'seek', value: first(value) ?? seekMin }).finally(() => setSeekDraft(null)); }} />
         <div className="mt-1 flex justify-between text-sm text-muted-foreground tabular-nums"><span>{formatTime(seekDraft ?? selected.currentTime)}</span><span>{selected.duration === null ? selected.live ? '直播' : '--:--' : formatTime(selected.duration)}</span></div>
       </div>
-      <div className="flex min-h-[53px] items-center gap-3 border-t">
-        <Button variant="ghost" size="icon" className="[&_svg:not([class*='size-'])]:size-6" aria-label={selected.muted ? '取消静音' : '静音'} aria-pressed={selected.muted} onClick={() => void command({ type: 'mute' })}>{selected.muted || selected.volume === 0 ? <VolumeX /> : <Volume2 />}</Button>
-        <span className="shrink-0 text-sm">音量</span>
-        <Slider aria-label="音量" className="flex-1" min={0} max={Math.round(selected.maxVolume * 100)} step={1} value={[volume]} onValueChange={value => void command({ type: 'volume', value: (first(value) ?? 0) / 100 })} />
-        <span className="w-10 text-right text-sm text-muted-foreground tabular-nums">{volume}%</span>
+      <div className="border-t py-3.5">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-sm font-semibold">音量</span>
+          <span className="text-sm font-medium tabular-nums">{volume}%</span>
+        </div>
+        <div className="flex items-center gap-2.5">
+          <Button variant="ghost" size="icon" className="[&_svg:not([class*='size-'])]:size-6" aria-label={selected.muted ? '取消静音' : '静音'} aria-pressed={selected.muted} onClick={() => void command({ type: 'mute' })}>{selected.muted || selected.volume === 0 ? <VolumeX /> : <Volume2 />}</Button>
+          <Slider size="bar" aria-label="音量" className="flex-1" min={0} max={Math.round(selected.maxVolume * 100)} step={1} value={[volume]} onValueChange={value => void command({ type: 'volume', value: (first(value) ?? 0) / 100 })} />
+        </div>
       </div>
       <div className="flex min-h-16 flex-wrap items-center gap-x-6 border-t py-2">
         <span id="speed-label" className="shrink-0 text-sm">倍速</span>
