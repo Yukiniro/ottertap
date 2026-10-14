@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { Settings2, Settings as SettingsIcon, Volume2, VolumeX, AppWindow, Pause, Play, RotateCcw, RotateCw, Keyboard, CircleAlert, Search, RefreshCw } from 'lucide-react';
+import { ChevronDown, Settings2, Settings as SettingsIcon, Volume2, VolumeX, AppWindow, Pause, Play, RotateCcw, RotateCw, Keyboard, CircleAlert, Search, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from './ui/empty';
 import { Field, FieldLabel } from './ui/field';
-import { NativeSelect, NativeSelectOption } from './ui/native-select';
 import { Slider } from './ui/slider';
 import { Switch } from './ui/switch';
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
@@ -16,6 +16,7 @@ import type { MediaClient } from '../lib/types';
 import { useSettingsAtoms } from './theme';
 
 const speeds = [0.75, 1, 1.25, 1.5, 2];
+const mediaLabel = (kind: 'audio' | 'video', title: string, index: number) => `${index + 1}. ${kind === 'video' ? '视频' : '音频'} · ${title}`;
 const first = (value: number | readonly number[]) => Array.isArray(value) ? value[0] : value;
 export function MediaPanel({ client, openSettings }: { client: MediaClient; openSettings: () => void }) {
   const { page, selected, select, command, refresh, loading, error } = useMedia(client);
@@ -33,8 +34,18 @@ export function MediaPanel({ client, openSettings }: { client: MediaClient; open
   return <section className="w-[400px] max-w-full bg-background px-4" aria-label="媒体控制面板">
     <header className="flex h-[51px] items-center justify-between border-b"><Brand /><Button variant="ghost" size="icon" aria-label="打开设置" onClick={openSettings}><SettingsIcon className="size-[23px]" /></Button></header>
     {page.media.length > 1 && <Field orientation="horizontal" className="border-b py-2.5">
-      <FieldLabel htmlFor="popup-media" className="shrink-0 text-xs font-normal text-muted-foreground">控制目标</FieldLabel>
-      <NativeSelect id="popup-media" size="sm" className="min-w-0 flex-1" value={selected?.id ?? ''} onChange={event => { select(event.target.value); setSeekDraft(null); }}>{page.media.map((media, index) => <NativeSelectOption key={media.id} value={media.id}>{index + 1}. {media.kind === 'video' ? '视频' : '音频'} · {media.title}</NativeSelectOption>)}</NativeSelect>
+      <FieldLabel htmlFor="popup-media" className="flex-none! text-xs font-normal text-muted-foreground">控制目标</FieldLabel>
+      <DropdownMenu>
+        <DropdownMenuTrigger id="popup-media" render={<Button variant="outline" size="sm" />} className="min-w-0 flex-1 shrink justify-between font-normal">
+          <span className="truncate">{selected ? mediaLabel(selected.kind, selected.title, page.media.findIndex(media => media.id === selected.id)) : '选择媒体'}</span>
+          <ChevronDown data-icon="inline-end" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuRadioGroup value={selected?.id ?? ''} onValueChange={id => { select(id); setSeekDraft(null); }}>
+            {page.media.map((media, index) => <DropdownMenuRadioItem key={media.id} value={media.id}><span className="truncate">{mediaLabel(media.kind, media.title, index)}</span></DropdownMenuRadioItem>)}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </Field>}
     {selected ? <>
       <div className="pt-3.5 text-center">
