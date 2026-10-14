@@ -81,9 +81,7 @@ pnpm preview
 
 本轮设置页检查：分类按钮与键盘操作、主题切换、浮动开关、三种网站范围、域名增删与重复 / 无效输入、刷新后配置保留；1080px 桌面和约 390px 窄窗口无横向溢出。保存失败由组件测试覆盖。
 
-本次品牌更新检查见 `design-qa.md`；设置页、浮动工具和 popup 的先前检查分别保留在 `settings-design-qa.md`、`floating-design-qa.md`、`popup-design-qa.md`。
-
-品牌更新保留原有本地设置键和内部通信标识，因此不会重置主题、网站规则及浮动开关。扩展目录名称保留旧路径以兼容已有开发预览；新交付包采用 ottertap 命名。
+品牌更新保留原有本地设置键和内部通信标识，因此不会重置主题、网站规则及浮动开关。扩展目录名称保留旧路径以兼容已有开发预览；新交付包采用 ottertap 命名。选定方案的源图和当前界面截图在 `docs/design/`。
 
 ## 未验证与限制
 
@@ -103,4 +101,4 @@ pnpm preview
 - [Chrome Tabs 权限说明](https://developer.chrome.com/docs/extensions/reference/api/tabs)
 - [Chrome 消息响应说明](https://developer.chrome.com/docs/extensions/develop/concepts/messaging)：接收端使用同步返回 `true` 和 `sendResponse`，兼容尚未启用 Promise listener 的浏览器。
 
-以上第三方库及 shadcn 组件遵循各自开源许可。水獭标志使用内置 imagegen 生成，提示词和处理说明见 `brand-generation.md`。`public/icon` 包含其 16 / 32 / 48 / 128px 透明 PNG 导出，页面中的标志使用同一资产。
+以上第三方库及 shadcn 组件遵循各自开源许可。水獭标志使用内置 imagegen 生成，提示词和处理说明见 `docs/design/brand-generation.md`。`public/icon` 包含其 16 / 32 / 48 / 128px 透明 PNG 导出，页面中的标志使用同一资产。

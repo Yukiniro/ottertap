@@ -2,9 +2,9 @@
 
 使用内置 imagegen 生成，非 CLI / API 回退。用户选择方案 1：小獭 / OtterTap，水獭小爪子托着播放键。
 
-- 原始生成文件：brand-reference.png，1280 × 1280，RGBA，透明背景。
-- 页面标志：assets/otter-mark.png，128 × 128；assets/otter-mark.ts 是同一 PNG 的 data URI，避免浮动组件在宿主网页中依赖相对资源地址。
-- 扩展图标：public/icon/16.png、32.png、48.png、128.png。
+- 原始生成文件：`brand-reference.png`（本目录），1280 × 1280，RGBA，透明背景。
+- 页面标志：`assets/otter-mark.png`，128 × 128；`assets/otter-mark.ts` 是同一 PNG 的 data URI，避免浮动组件在宿主网页中依赖相对资源地址。
+- 扩展图标：`public/icon/16.png`、`32.png`、`48.png`、`128.png`。
 - 后处理仅用 Lanczos 缩小并保留透明通道，没有重绘标志或添加图形。
 - 原始结果：exec-55060e92-b19c-4438-aae7-634fc024873f。
 
