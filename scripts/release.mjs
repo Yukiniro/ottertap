@@ -40,7 +40,8 @@ function main() {
   if (zips.length !== 1) throw new Error(`需要恰好一个 zip，实际是 ${zips.join(', ') || '没有'}`);
   if (!tagExists(tag)) run('pnpm', ['exec', 'changeset', 'tag']);
   if (!tagExists(tag)) throw new Error(`没有创建标签 ${tag}`);
-  run('git', ['push', 'origin', `refs/tags/${tag}`]);
+  try { execFileSync('git', ['push', 'origin', `refs/tags/${tag}`], { cwd: root, stdio: 'inherit' }); }
+  catch { execFileSync('git', ['ls-remote', '--exit-code', 'origin', `refs/tags/${tag}`], { cwd: root, stdio: 'ignore' }); }
   const notes = join(tmpdir(), `ottertap-${version}.md`);
   writeFileSync(notes, changelogEntry(readFileSync(new URL('../CHANGELOG.md', import.meta.url), 'utf8'), version));
   run('gh', ['release', 'create', tag, join(root, '.output', zips[0]), '--title', tag, '--notes-file', notes]);
