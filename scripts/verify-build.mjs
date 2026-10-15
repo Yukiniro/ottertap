@@ -27,6 +27,8 @@ let tabUrl = 'https://www.bilibili.com/video/example';
 let removed;
 let updated;
 const commands = [];
+let holdCommand = null;
+let failCommands = 0;
 const chrome = {
   runtime: { id: 'test-id', getURL: path => `chrome-extension://test-id${path}`, onMessage: { addListener: listener => { handler = listener; } }, openOptionsPage: async () => {} },
   storage: { local: { get: async key => { assert.equal(key, 'ottertap-settings-v1', 'Settings use the ottertap storage key'); return { [key]: settings }; } } },
@@ -36,7 +38,10 @@ const chrome = {
     onUpdated: { addListener: listener => { updated = listener; } },
     sendMessage: async (id, message, options) => {
       if (message.type === 'snapshot') return { media: [{ id: '1', title: `frame ${options.frameId}`, paused: true }] };
-      commands.push({ id, message, options }); return { ok: true };
+      commands.push({ id, message, options });
+      if (message.type === 'command' && holdCommand) await holdCommand;
+      if (message.type === 'command' && failCommands > 0) { failCommands -= 1; throw new Error('frame send failed'); }
+      return { ok: true };
     }
   }
 };
@@ -65,9 +70,32 @@ assert.ok((await request({ type: 'command', id: '4:1', command: { type: 'play' }
 assert.equal(commands.length, count);
 settings = { ...settings, siteMode: 'all' };
 assert.ok((await request({ type: 'command', id: '4:1', command: { type: 'volume', value: 2 } })).error);
+let releaseHold = () => {};
+holdCommand = new Promise(resolve => { releaseHold = resolve; });
+const queued = commands.length;
+const earlier = request({ type: 'command', id: '4:1', command: { type: 'volume', value: 0.4 } });
+for (let attempt = 0; attempt < 30 && commands.length === queued; attempt += 1) await new Promise(resolve => setTimeout(resolve, 0));
+assert.equal(commands.length, queued + 1);
+assert.equal(commands.at(-1).message.command.value, 0.4);
+const later = request({ type: 'command', id: '4:1', command: { type: 'volume', value: 0.9 } });
+await new Promise(resolve => setTimeout(resolve, 20));
+assert.equal(commands.length, queued + 1, 'A later command must wait until the earlier one finishes');
+releaseHold();
+holdCommand = null;
+assert.equal((await earlier).ok, true);
+assert.equal((await later).ok, true);
+assert.equal(commands[queued].message.command.value, 0.4);
+assert.equal(commands[queued + 1].message.command.value, 0.9);
+failCommands = 1;
+const failed = request({ type: 'command', id: '4:1', command: { type: 'volume', value: 0.3 } });
+const followed = request({ type: 'command', id: '4:1', command: { type: 'volume', value: 0.6 } });
+assert.ok((await failed).error);
+assert.equal((await followed).ok, true);
+assert.equal(commands.at(-2).message.command.value, 0.3);
+assert.equal(commands.at(-1).message.command.value, 0.6);
 updated(7, { status: 'loading' });
 assert.equal((await request({ type: 'read' })).media.length, 1);
 removed(7);
 tabUrl = undefined;
 assert.ok((await request({ type: 'read' })).error);
-console.log('OtterTap branding, RGBA icons, settings storage, MV3 manifest, iframe routing, sender validation and website rules passed.');
+console.log('OtterTap branding, RGBA icons, settings storage, MV3 manifest, iframe routing, sender validation, command order and website rules passed.');
