@@ -71,7 +71,7 @@ pnpm preview
 
 扩展需要 `storage`，以及 HTTP / HTTPS 主机权限和内容脚本匹配规则，以支持自动浮动控制器和读取当前标签页 URL。**网站规则控制扩展行为，不会撤销浏览器授予的主机 / 注入权限**。没有申请 microphone、camera、downloads、tabs 或历史记录权限。
 
-选定方案的源图和当前界面截图在 `docs/design/`。
+界面源图和截图在 `docs/design/`。
 
 ## 发布
 
