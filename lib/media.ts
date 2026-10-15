@@ -1,3 +1,4 @@
+import { i18n } from '#i18n';
 import { canAmplify, createAmplifier, maxGain, splitVolume, type Amplifier } from './amplifier';
 import type { MediaCommand, MediaState } from './types';
 import { formatTime } from './utils';
@@ -28,9 +29,9 @@ export function keptSelection(selectedId: string, ids: string[], failedFrames: S
 }
 
 export function mediaChoiceLabel(media: MediaState, index: number) {
-  const kind = media.kind === 'video' ? '视频' : '音频';
-  const playback = media.paused ? '已暂停' : '正在播放';
-  const sound = !media.muted && media.volume > 0 ? '有声' : '静音';
+  const kind = media.kind === 'video' ? i18n.t('video') : i18n.t('audio');
+  const playback = media.paused ? i18n.t('paused') : i18n.t('playing');
+  const sound = !media.muted && media.volume > 0 ? i18n.t('audible') : i18n.t('muted');
   const text = `${index + 1}. ${kind} · ${playback} · ${sound} · ${formatTime(media.currentTime)}`;
   return media.label ? `${text} · ${media.label}` : text;
 }
@@ -39,7 +40,7 @@ export function mediaSnapshot(element: HTMLMediaElement, id: string, document: D
   const ranges = element.seekable;
   const label = element.getAttribute('aria-label')?.trim() || element.getAttribute('title')?.trim() || '';
   return {
-    id, label, title: label || document.title || '未命名媒体',
+    id, label, title: label || document.title || i18n.t('unnamedMedia'),
     host: new URL(document.URL).hostname,
     kind: element.localName === 'video' ? 'video' : 'audio',
     paused: element.paused, muted: element.muted, volume: element.volume * (amplifier?.gain(element) ?? 1), maxVolume: maxVolume(element, amplifier), rate: element.playbackRate,
@@ -61,12 +62,12 @@ export function isMediaCommand(value: unknown): value is MediaCommand {
 }
 
 export async function applyMediaCommand(element: HTMLMediaElement, command: MediaCommand, amplifier?: Amplifier) {
-  if (!isMediaCommand(command)) throw new Error('无效的媒体控制指令。');
+  if (!isMediaCommand(command)) throw new Error(i18n.t('invalidMediaCommand'));
   if (command.type === 'play') { await element.play(); return; }
   if (command.type === 'pause') { element.pause(); return; }
   if (command.type === 'mute') { element.muted = !element.muted; return; }
   if (command.type === 'volume') {
-    if (command.value > maxVolume(element, amplifier)) throw new Error('此媒体来自其他域名，无法放大超过 100%。');
+    if (command.value > maxVolume(element, amplifier)) throw new Error(i18n.t('cannotBoostCrossOrigin'));
     const { volume, gain } = splitVolume(command.value);
     await amplifier?.set(element, gain);
     element.volume = volume;
@@ -74,9 +75,9 @@ export async function applyMediaCommand(element: HTMLMediaElement, command: Medi
     return;
   }
   if (command.type === 'rate') { element.playbackRate = command.value; return; }
-  if (!('value' in command)) throw new Error('无效的媒体控制指令。');
+  if (!('value' in command)) throw new Error(i18n.t('invalidMediaCommand'));
   const ranges = element.seekable;
-  if (!ranges.length) throw new Error('当前媒体尚不可跳转，请等待加载。');
+  if (!ranges.length) throw new Error(i18n.t('cannotSeek'));
   const target = command.type === 'skip' ? element.currentTime + command.value : command.value;
   let closest = ranges.start(0);
   let distance = Infinity;
@@ -117,7 +118,7 @@ export function createMediaController(document: Document) {
     },
     async command(id: string, command: MediaCommand) {
       const element = elements.find(media => ids.get(media) === id && media.isConnected);
-      if (!element) throw new Error('媒体已移除，请重新选择。');
+      if (!element) throw new Error(i18n.t('mediaRemoved'));
       await applyMediaCommand(element, command, amplifier);
     },
     flash(id: string) {

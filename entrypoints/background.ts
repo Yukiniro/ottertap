@@ -1,3 +1,4 @@
+import { i18n } from '#i18n';
 import { browser } from 'wxt/browser';
 import { extensionStore } from '../lib/extension-store';
 import { isSiteEnabled } from '../lib/settings';
@@ -83,10 +84,10 @@ export default defineBackground(() => {
     const tabId = sender.tab?.id ?? message.tabId;
     async function handle() {
       if (message.type === 'options') { await browser.runtime.openOptionsPage(); return { ok: true }; }
-      if (!Number.isInteger(tabId)) return { error: '找不到当前页面。' };
+      if (!Number.isInteger(tabId)) return { error: i18n.t('noTab') };
       try {
         const [tab, settings] = await Promise.all([browser.tabs.get(tabId), extensionStore.load()]);
-        if (!tab.url || !/^https?:\/\//.test(tab.url)) throw new Error('此页面不允许媒体控制，请切换到含有音视频的网页。');
+        if (!tab.url || !/^https?:\/\//.test(tab.url)) throw new Error(i18n.t('pageNotAllowed'));
         const enabled = isSiteEnabled(tab.url ?? '', settings);
         const host = tab.url ? new URL(tab.url).hostname : '';
         if (message.type === 'context') return { enabled, host, hasMedia: hasMedia(tabId) };
@@ -104,20 +105,20 @@ export default defineBackground(() => {
           const { media, failed } = await collect(tabId, host);
           return { host, enabled, media, selectedId: lockedId(tabId, media, failed) };
         }
-        if (!enabled) { pendingVolume.delete(tabId); throw new Error('当前网站已停用小獭。'); }
+        if (!enabled) { pendingVolume.delete(tabId); throw new Error(i18n.t('siteDisabled')); }
         if (message.type === 'select') {
-          if (!mediaId) throw new Error('无效的控制指令。');
+          if (!mediaId) throw new Error(i18n.t('invalidCommand'));
           if (gestures.get(tabId)?.id !== mediaId) gestures.delete(tabId);
           selectedIds.set(tabId, mediaId);
           return { ok: true };
         }
         if (message.type === 'highlight') {
-          if (!mediaId) throw new Error('无效的控制指令。');
+          if (!mediaId) throw new Error(i18n.t('invalidCommand'));
           await deliver(tabId, mediaId, 'highlight');
           return { ok: true };
         }
         if (message.type === 'hotkey') {
-          if (!isHotkeyAction(message.action)) throw new Error('无效的控制指令。');
+          if (!isHotkeyAction(message.action)) throw new Error(i18n.t('invalidCommand'));
           let percent: number | undefined;
           while (pendingVolume.get(tabId)) {
             const delta = pendingVolume.get(tabId)!;
@@ -131,12 +132,12 @@ export default defineBackground(() => {
           return { handled: true, percent };
         }
         if (message.type === 'command') {
-          if (!isMediaCommand(message.command) || !mediaId) throw new Error('无效的控制指令。');
+          if (!isMediaCommand(message.command) || !mediaId) throw new Error(i18n.t('invalidCommand'));
           if (message.command.type === 'volume' || message.command.type === 'mute') gestures.delete(tabId);
           await deliver(tabId, mediaId, 'command', message.command);
           return { ok: true };
         }
-      } catch (error) { return { error: error instanceof Error ? error.message : '当前页面暂时无法控制，请刷新后重试。' }; }
+      } catch (error) { return { error: error instanceof Error ? error.message : i18n.t('pageUnavailable') }; }
     }
     // Chain before the first await so a later command cannot pass an earlier one.
     if (message.type === 'hotkey' && message.action?.type === 'volume' && Number.isInteger(tabId) && isHotkeyAction(message.action)) {
@@ -144,7 +145,7 @@ export default defineBackground(() => {
     }
     const run = (message.type === 'command' || message.type === 'hotkey') && Number.isInteger(tabId) ? enqueueCommand(tabId, () => handle()) : handle();
     // Keep the channel open on Chromium versions without Promise listener support.
-    void run.then(sendResponse, () => sendResponse({ error: '扩展通信失败，请刷新网页后重试。' }));
+    void run.then(sendResponse, () => sendResponse({ error: i18n.t('extensionMessageFailed') }));
     return true;
   });
 });

@@ -1,10 +1,11 @@
+import { i18n } from '#i18n';
 import { atom, createStore, type Atom, type WritableAtom } from 'jotai';
 import { selectAtom } from 'jotai/utils';
 import { normalizeSettings } from './settings';
 import { defaultSettings, type FloatingPosition, type Settings, type SettingsStore, type SiteMode, type Theme } from './types';
 
-const readError = '设置读取失败，请重试。';
-const writeError = '设置未保存，请重试。';
+const readError = () => i18n.t('settingsReadError');
+const writeError = () => i18n.t('settingsWriteError');
 const samePosition = (a: FloatingPosition, b: FloatingPosition) => a.side === b.side && a.y === b.y;
 const sameSites = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((site, index) => site === b[index]);
 const sameSettings = (a: Settings, b: Settings) => a.theme === b.theme && a.floating === b.floating && a.siteMode === b.siteMode && samePosition(a.floatingPosition, b.floatingPosition) && sameSites(a.sites, b.sites);
@@ -72,7 +73,7 @@ export function createSettingsAtoms(source: SettingsStore): SettingsAtoms {
       } catch {
         if (version === writeVersion) {
           store.set(settingsAtom, stored ?? previous);
-          store.set(errorAtom, writeError);
+          store.set(errorAtom, writeError());
         }
         return false;
       } finally { pendingWrites -= 1; }
@@ -108,13 +109,13 @@ export function createSettingsAtoms(source: SettingsStore): SettingsAtoms {
             if (stale()) { requested = true; continue; }
             if (!sameSettings(store.get(settingsAtom), value)) store.set(settingsAtom, value);
             store.set(loadingAtom, false);
-            if (store.get(errorAtom) === readError) store.set(errorAtom, '');
+            if (store.get(errorAtom) === readError()) store.set(errorAtom, '');
             finishReady();
           } catch {
             if (stale()) { requested = true; continue; }
             const firstLoad = store.get(loadingAtom);
             store.set(loadingAtom, false);
-            if (firstLoad) store.set(errorAtom, readError);
+            if (firstLoad) store.set(errorAtom, readError());
             finishReady();
           }
         }

@@ -1,3 +1,4 @@
+import { i18n } from '#i18n';
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react';
 import { Provider, useAtomValue } from 'jotai';
 import { createSettingsAtoms, type SettingsAtoms } from '../lib/settings-atoms';
@@ -7,7 +8,7 @@ const SettingsAtomsContext = createContext<SettingsAtoms | null>(null);
 
 export function useSettingsAtoms() {
   const atoms = useContext(SettingsAtomsContext);
-  if (!atoms) throw new Error('缺少设置状态');
+  if (!atoms) throw new Error(i18n.t('missingSettings'));
   return atoms;
 }
 

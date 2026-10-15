@@ -5,7 +5,13 @@ import vm from 'node:vm';
 const directory = new URL('../.output/chrome-mv3/', import.meta.url);
 const manifest = JSON.parse(await readFile(new URL('manifest.json', directory), 'utf8'));
 assert.equal(manifest.manifest_version, 3);
-assert.equal(manifest.name, '小獭 OtterTap · 网页媒体控制');
+assert.equal(manifest.name, '__MSG_extName__');
+assert.equal(manifest.default_locale, 'en');
+for (const locale of ['en', 'zh_CN']) {
+  const messages = JSON.parse(await readFile(new URL(`_locales/${locale}/messages.json`, directory), 'utf8'));
+  assert.equal(typeof messages.extName.message, 'string');
+  assert.ok(messages.extName.message.length > 0, `${locale} extName must be present`);
+}
 assert.equal(manifest.options_ui.open_in_tab, true);
 assert.equal(manifest.action.default_popup, 'popup.html');
 assert.equal(manifest.content_scripts[0].all_frames, true);
@@ -31,6 +37,7 @@ let holdCommand = null;
 let failCommands = 0;
 const chrome = {
   runtime: { id: 'test-id', getURL: path => `chrome-extension://test-id${path}`, onMessage: { addListener: listener => { handler = listener; } }, openOptionsPage: async () => {} },
+  i18n: { getMessage: name => name },
   storage: { local: { get: async key => { assert.equal(key, 'ottertap-settings-v1', 'Settings use the ottertap storage key'); return { [key]: settings }; } } },
   tabs: {
     get: async id => ({ id, url: tabUrl }),

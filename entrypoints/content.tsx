@@ -1,3 +1,4 @@
+import { i18n } from '#i18n';
 import { createRoot } from 'react-dom/client';
 import { browser } from 'wxt/browser';
 import { createShadowRootUi } from 'wxt/utils/content-script-ui/shadow-root';
@@ -44,14 +45,14 @@ export default defineContentScript({
       if (message.type === 'highlight') { if (enabled && typeof message.id === 'string') controller.flash(message.id); return { ok: true }; }
       if (message.type === 'command') {
         try {
-          if (!enabled || !isMediaCommand(message.command) || typeof message.id !== 'string') throw new Error('当前页面不可控制。');
+          if (!enabled || !isMediaCommand(message.command) || typeof message.id !== 'string') throw new Error(i18n.t('pageNotControllable'));
           // Refresh the registry when a command arrives before the first snapshot.
           controller.snapshot();
           await controller.command(message.id, message.command);
           return { ok: true };
-        } catch (error) { return { error: error instanceof Error ? error.message : '媒体操作失败。' }; }
+        } catch (error) { return { error: error instanceof Error ? error.message : i18n.t('mediaCommandFailed') }; }
       }
-      })().then(sendResponse, () => sendResponse({ error: '媒体通信失败，请刷新网页后重试。' }));
+      })().then(sendResponse, () => sendResponse({ error: i18n.t('mediaMessageFailed') }));
       return true;
     };
     browser.runtime.onMessage.addListener(listener);
@@ -78,6 +79,7 @@ export default defineContentScript({
       isolateEvents: ['keydown', 'keyup', 'keypress'],
       onMount(container) {
         container.className = 'ottertap-root';
+        container.lang = i18n.t('locale');
         const root = createRoot(container);
         root.render(<ThemeProvider store={extensionStore} target={container}><FloatingController client={client} /></ThemeProvider>);
         return root;

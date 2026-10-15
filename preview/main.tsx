@@ -1,3 +1,4 @@
+import './install-i18n';
 import { createRoot } from 'react-dom/client';
 import { useEffect, useState } from 'react';
 import { ArrowUpRight, AppWindow, Settings, PanelTop, Play, Pause, Plus, Minus } from 'lucide-react';

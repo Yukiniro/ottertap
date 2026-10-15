@@ -1,3 +1,4 @@
+import { i18n } from '#i18n';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { lockedMedia } from '../lib/media';
 import type { MediaClient, MediaCommand, PageState } from '../lib/types';
@@ -13,7 +14,7 @@ export function useMedia(client: MediaClient) {
     if (reading.current) return;
     reading.current = true;
     try { const next = await client.read(); if (alive.current) { setPage(next); setLoading(false); } }
-    catch { if (alive.current) { setError('无法连接此页面。请刷新网页后重试；浏览器内置页面不可控制。'); setLoading(false); } }
+    catch { if (alive.current) { setError(i18n.t('cannotConnect')); setLoading(false); } }
     finally { reading.current = false; }
   }, [client]);
   useEffect(() => {
@@ -34,7 +35,7 @@ export function useMedia(client: MediaClient) {
   const command = async (value: MediaCommand) => {
     if (!selected) return;
     try { await client.command(selected, value); setError(''); await refresh(); }
-    catch (err) { setError(err instanceof Error ? err.message : '操作失败，请重试。'); }
+    catch (err) { setError(err instanceof Error ? err.message : i18n.t('actionFailed')); }
   };
   return { page, selected, selectedId, select, command, refresh, loading, error };
 }

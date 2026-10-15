@@ -1,15 +1,16 @@
+import { i18n } from '#i18n';
 import { defaultSettings, type Settings } from './types';
 
 export function normalizeDomain(input: string): string {
   const text = input.trim().toLowerCase();
-  if (!text) throw new Error('请输入网站域名。');
+  if (!text) throw new Error(i18n.t('domainRequired'));
   const wildcard = text.startsWith('*.');
   const value = wildcard ? text.slice(2) : text;
   let url: URL;
   try { url = new URL(value.includes('://') ? value : `https://${value}`); }
-  catch { throw new Error('请输入有效的域名，例如 bilibili.com。'); }
+  catch { throw new Error(i18n.t('domainInvalid')); }
   if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || !url.hostname || /[\s*]/.test(url.hostname)) {
-    throw new Error('仅支持 HTTP / HTTPS 网站域名。');
+    throw new Error(i18n.t('domainProtocol'));
   }
   return url.hostname.replace(/\.$/, '');
 }
@@ -38,19 +39,19 @@ const matchesSite = (host: string, site: string) => host === site || host.endsWi
 export function disableSite(host: string, settings: Settings): { label: string; settings: Partial<Settings> } {
   if (settings.siteMode === 'allow') {
     const matched = settings.sites.filter(site => matchesSite(host, site));
-    return { label: `停用 ${matched.join('、') || host}`, settings: { siteMode: 'allow', sites: settings.sites.filter(site => !matched.includes(site)) } };
+    return { label: i18n.t('disableSite', { host: matched.join(i18n.t('listSeparator')) || host }), settings: { siteMode: 'allow', sites: settings.sites.filter(site => !matched.includes(site)) } };
   }
   const sites = settings.sites.includes(host) ? settings.sites : [...settings.sites, host];
-  return { label: `停用 ${host}`, settings: { siteMode: 'exclude', sites } };
+  return { label: i18n.t('disableSite', { host }), settings: { siteMode: 'exclude', sites } };
 }
 
 export function enableSite(host: string, settings: Settings): { label: string; settings: Partial<Settings> | null } {
   if (settings.siteMode === 'allow') {
     const sites = settings.sites.includes(host) ? settings.sites : [...settings.sites, host];
-    return { label: `重新启用 ${host}`, settings: { sites } };
+    return { label: i18n.t('enableSite', { host }), settings: { sites } };
   }
-  if (settings.siteMode === 'exclude' && settings.sites.includes(host)) return { label: `重新启用 ${host}`, settings: { sites: settings.sites.filter(site => site !== host) } };
-  return { label: '管理支持的网站', settings: null };
+  if (settings.siteMode === 'exclude' && settings.sites.includes(host)) return { label: i18n.t('enableSite', { host }), settings: { sites: settings.sites.filter(site => site !== host) } };
+  return { label: i18n.t('manageSites'), settings: null };
 }
 
 export function isSiteEnabled(url: string, settings: Settings) {
