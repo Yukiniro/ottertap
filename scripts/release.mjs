@@ -1,0 +1,49 @@
+import { execFileSync } from 'node:child_process';
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+const root = fileURLToPath(new URL('..', import.meta.url));
+
+export function changelogEntry(markdown, version) {
+  const heading = `## ${version}`;
+  const start = markdown.split('\n').findIndex(line => line.trim() === heading);
+  if (start < 0) throw new Error(`CHANGELOG 里没有 ${version}`);
+  const lines = markdown.split('\n').slice(start);
+  const next = lines.findIndex((line, index) => index > 0 && line.startsWith('## '));
+  return lines.slice(0, next < 0 ? undefined : next).join('\n').trim();
+}
+
+function run(command, args) {
+  execFileSync(command, args, { cwd: root, stdio: 'inherit' });
+}
+
+function releaseExists(tag) {
+  try { execFileSync('gh', ['release', 'view', tag], { cwd: root, stdio: 'ignore' }); return true; }
+  catch { return false; }
+}
+
+function tagExists(tag) {
+  try { execFileSync('git', ['rev-parse', '--verify', `refs/tags/${tag}`], { cwd: root, stdio: 'ignore' }); return true; }
+  catch { return false; }
+}
+
+function main() {
+  const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  const tag = `v${version}`;
+  if (releaseExists(tag)) { console.log(`${tag} 已发布`); return; }
+  run('pnpm', ['build']);
+  run('pnpm', ['verify-build']);
+  run('pnpm', ['zip']);
+  const zips = readdirSync(new URL('../.output/', import.meta.url)).filter(name => name.endsWith('.zip'));
+  if (zips.length !== 1) throw new Error(`需要恰好一个 zip，实际是 ${zips.join(', ') || '没有'}`);
+  if (!tagExists(tag)) run('pnpm', ['exec', 'changeset', 'tag']);
+  if (!tagExists(tag)) throw new Error(`没有创建标签 ${tag}`);
+  run('git', ['push', 'origin', `refs/tags/${tag}`]);
+  const notes = join(tmpdir(), `ottertap-${version}.md`);
+  writeFileSync(notes, changelogEntry(readFileSync(new URL('../CHANGELOG.md', import.meta.url), 'utf8'), version));
+  run('gh', ['release', 'create', tag, join(root, '.output', zips[0]), '--title', tag, '--notes-file', notes]);
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) main();
