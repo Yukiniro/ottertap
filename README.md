@@ -1,6 +1,6 @@
 # 小獭 OtterTap
 
-水獭意象的浏览器媒体控制扩展，品牌为小獭 OtterTap，标志为水獭抱着播放键。popup 沿用初始方案 3，浮动工具按方案 2、设置页按本轮方案 1 实现。WXT + React + TypeScript + Tailwind CSS，使用 shadcn/ui 的 **base-nova / Base UI** 组件，图标来自 Lucide。
+水獭意象的浏览器媒体控制扩展，品牌为小獭 OtterTap，标志为水獭抱着播放键。WXT + React + TypeScript + Tailwind CSS，使用 shadcn/ui 的 **base-nova / Base UI** 组件，图标来自 Lucide。界面语言跟随浏览器：中文使用中文，其他语言使用英文。
 
 ## 安装构建包
 
@@ -32,14 +32,14 @@
 
 ## 开发
 
-本次验证环境：Node 24.14.0、pnpm 11.7.0。
+命令和包管理器版本以 `package.json` 为准。
 
 ```powershell
 pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-生产构建与验证：
+检查与构建：
 
 ```powershell
 pnpm typecheck
@@ -71,17 +71,11 @@ pnpm preview
 
 扩展需要 `storage`，以及 HTTP / HTTPS 主机权限和内容脚本匹配规则，以支持自动浮动控制器和读取当前标签页 URL。**网站规则控制扩展行为，不会撤销浏览器授予的主机 / 注入权限**。没有申请 microphone、camera、downloads、tabs 或历史记录权限。
 
-## 已执行验证
+选定方案的源图和当前界面截图在 `docs/design/`。
 
-- TypeScript 类型检查通过。
-- 8 项测试通过：6 项核心测试、浮动药丸组件测试，以及本轮设置分类切换、保留其他分类数据、保存失败反馈的组件测试。
-- Chrome MV3 生产构建通过。
-- 构建包自检通过：清单、资源、设置页独立打开、iframe 指令路由、消息来源校验、网站停用及非法指令拦截。
-- 浏览器交互预览验证：真实媒体播放、暂停、静音、倍速；键盘调节进度和音量；多个媒体切换时只修改所选目标；主题、域名添加与去重、停用规则及刷新后持久化；浮动入口的拖动、边缘换侧、药丸拖动、静音及音量恢复、Escape / 页面点击收起、浅色 / 深色主题。
+## 发布
 
-本轮设置页检查：分类按钮与键盘操作、主题切换、浮动开关、三种网站范围、域名增删与重复 / 无效输入、刷新后配置保留；1080px 桌面和约 390px 窄窗口无横向溢出。保存失败由组件测试覆盖。
-
-品牌更新保留原有本地设置键和内部通信标识，因此不会重置主题、网站规则及浮动开关。扩展目录名称保留旧路径以兼容已有开发预览；新交付包采用 ottertap 命名。选定方案的源图和当前界面截图在 `docs/design/`。
+用户可见的变更在 `.changeset/` 加一条记录。合并到 `main` 后，GitHub Action 汇总记录并打开版本 PR，更新 `package.json` 里的版本和 `CHANGELOG.md`。版本 PR 合并后，先完成构建和校验，再打标签并创建带 zip 的 GitHub Release。不需要发版的改动使用 `pnpm changeset add --empty`。修复用 patch，完整新功能用 minor；major 需要先确认。
 
 ## 未验证与限制
 
