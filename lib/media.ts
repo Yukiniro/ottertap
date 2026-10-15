@@ -1,5 +1,6 @@
 import { canAmplify, createAmplifier, maxGain, splitVolume, type Amplifier } from './amplifier';
 import type { MediaCommand, MediaState } from './types';
+import { formatTime } from './utils';
 
 export function discoverMedia(root: Document | ShadowRoot, onRoot?: (root: Document | ShadowRoot) => void): HTMLMediaElement[] {
   onRoot?.(root);
@@ -12,10 +13,33 @@ export function discoverMedia(root: Document | ShadowRoot, onRoot?: (root: Docum
 
 const maxVolume = (element: HTMLMediaElement, amplifier?: Amplifier) => amplifier && (amplifier.gain(element) > 1 || canAmplify(element, element.ownerDocument)) ? maxGain : 1;
 
+export function pickMedia(media: MediaState[]) {
+  return media.find(item => !item.paused && !item.muted && item.volume > 0) ?? media.find(item => !item.paused) ?? media[0];
+}
+
+export function lockedMedia(media: MediaState[], selectedId: string) {
+  return media.find(item => item.id === selectedId) ?? pickMedia(media);
+}
+
+export function keptSelection(selectedId: string, ids: string[], failedFrames: Set<number>) {
+  if (!selectedId) return '';
+  if (ids.includes(selectedId)) return selectedId;
+  return failedFrames.has(Number(selectedId.split(':')[0])) ? selectedId : '';
+}
+
+export function mediaChoiceLabel(media: MediaState, index: number) {
+  const kind = media.kind === 'video' ? '视频' : '音频';
+  const playback = media.paused ? '已暂停' : '正在播放';
+  const sound = !media.muted && media.volume > 0 ? '有声' : '静音';
+  const text = `${index + 1}. ${kind} · ${playback} · ${sound} · ${formatTime(media.currentTime)}`;
+  return media.label ? `${text} · ${media.label}` : text;
+}
+
 export function mediaSnapshot(element: HTMLMediaElement, id: string, document: Document, amplifier?: Amplifier): MediaState {
   const ranges = element.seekable;
+  const label = element.getAttribute('aria-label')?.trim() || element.getAttribute('title')?.trim() || '';
   return {
-    id, title: element.getAttribute('aria-label') || element.getAttribute('title') || document.title || '未命名媒体',
+    id, label, title: label || document.title || '未命名媒体',
     host: new URL(document.URL).hostname,
     kind: element.localName === 'video' ? 'video' : 'audio',
     paused: element.paused, muted: element.muted, volume: element.volume * (amplifier?.gain(element) ?? 1), maxVolume: maxVolume(element, amplifier), rate: element.playbackRate,
@@ -69,6 +93,8 @@ export function createMediaController(document: Document) {
   let elements: HTMLMediaElement[] = [];
   let dirty = true;
   const amplifier = createAmplifier(document.defaultView!);
+  const flashed = new WeakMap<HTMLMediaElement, { token: number; outline: string; offset: string }>();
+  let flashToken = 0;
   const observers = new Map<Document | ShadowRoot, MutationObserver>();
   const observe = (root: Document | ShadowRoot) => {
     if (observers.has(root)) return;
@@ -93,6 +119,28 @@ export function createMediaController(document: Document) {
       const element = elements.find(media => ids.get(media) === id && media.isConnected);
       if (!element) throw new Error('媒体已移除，请重新选择。');
       await applyMediaCommand(element, command, amplifier);
+    },
+    flash(id: string) {
+      this.snapshot();
+      const element = elements.find(media => ids.get(media) === id && media.isConnected);
+      const view = element?.ownerDocument.defaultView;
+      if (!element || !view) return;
+      let state = flashed.get(element);
+      if (!state) {
+        state = { token: 0, outline: element.style.outline, offset: element.style.outlineOffset };
+        flashed.set(element, state);
+      }
+      const token = ++flashToken;
+      state.token = token;
+      element.style.outline = '3px solid #e4572e';
+      element.style.outlineOffset = '4px';
+      const origin = state;
+      view.setTimeout(() => {
+        if (flashed.get(element)?.token !== token) return;
+        element.style.outline = origin.outline;
+        element.style.outlineOffset = origin.offset;
+        flashed.delete(element);
+      }, 1200);
     },
     destroy() { for (const observer of observers.values()) observer.disconnect(); observers.clear(); }
   };

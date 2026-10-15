@@ -12,6 +12,7 @@ export interface SettingsStore {
 export interface MediaState {
   id: string;
   title: string;
+  label: string;
   host: string;
   kind: 'audio' | 'video';
   paused: boolean;
@@ -28,8 +29,10 @@ export interface MediaState {
 export type MediaCommand =
   | { type: 'play' | 'pause' | 'mute' }
   | { type: 'seek' | 'skip' | 'volume' | 'rate'; value: number };
-export interface PageState { host: string; enabled: boolean; media: MediaState[] }
+export interface PageState { host: string; enabled: boolean; media: MediaState[]; selectedId: string }
 export interface MediaClient {
   read(): Promise<PageState>;
   command(media: MediaState, command: MediaCommand): Promise<void>;
+  select(id: string): Promise<void>;
+  highlight(media: MediaState): Promise<void>;
 }

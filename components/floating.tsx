@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { CircleAlert, Volume2, VolumeX } from 'lucide-react';
 import otterMark from '../assets/otter-mark';
@@ -8,7 +8,8 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Slider } from './ui/slider';
 import { useMedia } from '../hooks/use-media';
 import { dockedPoint, dockSize, dropPosition, nudgePosition, type Viewport } from '../lib/dock';
-import type { FloatingPosition, MediaClient } from '../lib/types';
+import { commandForHotkey, createHotkeyInput, volumeGestureEvent } from '../lib/hotkey';
+import type { FloatingPosition, MediaClient, MediaCommand, MediaState } from '../lib/types';
 import { useSettingsAtoms } from './theme';
 
 const first = (value: number | readonly number[]) => Array.isArray(value) ? value[0] : value;
@@ -41,6 +42,58 @@ export function FloatingController({ client }: { client: MediaClient }) {
     return () => { window.removeEventListener('resize', resize); window.clearTimeout(hideTimer.current); };
   }, []);
   useEffect(() => { setDraft(null); }, [selected?.id]);
+  const floatingRef = useRef(floating);
+  const mediaRef = useRef(selected);
+  const clientRef = useRef(client);
+  const optimistic = useRef<MediaState | null>(null);
+  const pendingCommand = useRef<MediaCommand | null>(null);
+  const sending = useRef(false);
+  floatingRef.current = floating;
+  mediaRef.current = selected;
+  clientRef.current = client;
+  const hotkeys = useMemo(() => createHotkeyInput(action => {
+    const current = mediaRef.current;
+    if (!current) return;
+    const base = optimistic.current?.id === current.id ? optimistic.current : current;
+    const next = commandForHotkey(action, base);
+    if (!next) return;
+    if (next.type === 'volume') {
+      optimistic.current = { ...base, volume: next.value, muted: next.value <= 0 };
+      setDraft(Math.round(next.value * 100));
+      pendingCommand.current = next;
+      if (sending.current) return;
+      const flush = () => {
+        const command = pendingCommand.current;
+        const media = mediaRef.current;
+        pendingCommand.current = null;
+        if (!command || !media) { sending.current = false; return; }
+        sending.current = true;
+        void clientRef.current.command(media, command).finally(flush);
+      };
+      flush();
+    }
+  }), []);
+  useEffect(() => {
+    const onVolume = (event: Event) => {
+      const percent = (event as CustomEvent<number>).detail;
+      const current = mediaRef.current;
+      if (!current || !Number.isFinite(percent)) return;
+      optimistic.current = { ...current, volume: percent / 100, muted: percent <= 0 };
+      setDraft(Math.round(percent));
+    };
+    const open = () => { if (floatingRef.current) setExpanded(true); };
+    window.addEventListener(volumeGestureEvent, open);
+    window.addEventListener('ottertap-volume', onVolume);
+    return () => { hotkeys.dispose(); window.removeEventListener(volumeGestureEvent, open); window.removeEventListener('ottertap-volume', onVolume); };
+  }, [hotkeys]);
+  useEffect(() => {
+    const live = optimistic.current;
+    if (!selected || !live || live.id !== selected.id) return;
+    const shown = Math.round((selected.muted ? 0 : selected.volume) * 100);
+    if (shown !== Math.round(live.volume * 100)) return;
+    optimistic.current = null;
+    setDraft(value => value === shown ? null : value);
+  }, [selected]);
 
   if (loading || !floating || !page.enabled || !selected) return null;
   const position = moved ?? floatingPosition;
@@ -56,11 +109,12 @@ export function FloatingController({ client }: { client: MediaClient }) {
   const setVolume = (value: number | readonly number[], commit: boolean) => {
     const next = first(value);
     if (next === undefined) return;
+    optimistic.current = null;
     if (!commit) setDraft(next);
     const done = command({ type: 'volume', value: next / 100 });
     if (commit) void done.finally(() => setDraft(null));
   };
-  return <aside ref={container} className="fixed z-2147483647 size-12 transition-[left,top] duration-150 ease-out data-dragging:transition-none" aria-label="浮动控制器" data-side={position.side} data-revealed={revealed} data-dragging={dragPoint ? '' : undefined} style={{ left: point.x, top: point.y }} onPointerEnter={() => { window.clearTimeout(hideTimer.current); setHovered(true); }} onPointerLeave={() => { window.clearTimeout(hideTimer.current); hideTimer.current = window.setTimeout(() => setHovered(false), 300); }}>
+  return <aside ref={container} className="fixed z-2147483647 size-12 transition-[left,top] duration-150 ease-out data-dragging:transition-none" aria-label="浮动控制器" data-side={position.side} data-revealed={revealed} data-dragging={dragPoint ? '' : undefined} style={{ left: point.x, top: point.y }} onPointerEnter={() => { window.clearTimeout(hideTimer.current); setHovered(true); }} onPointerLeave={() => { window.clearTimeout(hideTimer.current); hideTimer.current = window.setTimeout(() => setHovered(false), 300); }} onKeyDownCapture={event => { hotkeys.key(event); }} onWheelCapture={event => { hotkeys.wheel(event); }}>
     <Popover open={expanded} onOpenChange={setExpanded}>
       <PopoverTrigger render={<Button variant="outline" size="icon" />} className="size-12 cursor-grab touch-none rounded-full bg-background text-primary shadow-[0_5px_18px_#15112914] hover:border-2 hover:border-primary hover:bg-background active:cursor-grabbing aria-expanded:border-2 aria-expanded:border-primary aria-expanded:bg-background dark:bg-background dark:hover:bg-background" aria-label={expanded ? '收起音量药丸，方向键可移动浮动入口' : '打开音量药丸，方向键可移动浮动入口'} title={selected.title + ' · 点击调节音量，拖动移动'} onFocus={event => setFocused(event.currentTarget.matches(':focus-visible'))} onBlur={() => setFocused(false)} onClick={event => {
         if (!dragged.current) return;
@@ -83,6 +137,7 @@ export function FloatingController({ client }: { client: MediaClient }) {
         if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
         if (dragPoint) { move(dropPosition(dragPoint, viewport)); setDragPoint(null); }
       }} onPointerCancel={() => { drag.current = null; dragged.current = false; setDragPoint(null); }} onKeyDown={event => {
+        if (event.altKey || event.shiftKey || event.ctrlKey || event.metaKey) return;
         const next = nudgePosition(position, event.key, viewport);
         if (next) { event.preventDefault(); move(next); }
       }}><img src={otterMark} alt="" aria-hidden="true" className="pointer-events-none size-[34px] object-contain" /></PopoverTrigger>

@@ -33,10 +33,30 @@ export function normalizeSettings(value: unknown): Settings {
   };
 }
 
+const matchesSite = (host: string, site: string) => host === site || host.endsWith(`.${site}`);
+
+export function disableSite(host: string, settings: Settings): { label: string; settings: Partial<Settings> } {
+  if (settings.siteMode === 'allow') {
+    const matched = settings.sites.filter(site => matchesSite(host, site));
+    return { label: `停用 ${matched.join('、') || host}`, settings: { siteMode: 'allow', sites: settings.sites.filter(site => !matched.includes(site)) } };
+  }
+  const sites = settings.sites.includes(host) ? settings.sites : [...settings.sites, host];
+  return { label: `停用 ${host}`, settings: { siteMode: 'exclude', sites } };
+}
+
+export function enableSite(host: string, settings: Settings): { label: string; settings: Partial<Settings> | null } {
+  if (settings.siteMode === 'allow') {
+    const sites = settings.sites.includes(host) ? settings.sites : [...settings.sites, host];
+    return { label: `重新启用 ${host}`, settings: { sites } };
+  }
+  if (settings.siteMode === 'exclude' && settings.sites.includes(host)) return { label: `重新启用 ${host}`, settings: { sites: settings.sites.filter(site => site !== host) } };
+  return { label: '管理支持的网站', settings: null };
+}
+
 export function isSiteEnabled(url: string, settings: Settings) {
   let host: string;
   try { const parsed = new URL(url); if (!['https:', 'http:'].includes(parsed.protocol)) return false; host = parsed.hostname.toLowerCase().replace(/\.$/, ''); }
   catch { return false; }
-  const matches = settings.sites.some(site => host === site || host.endsWith(`.${site}`));
+  const matches = settings.sites.some(site => matchesSite(host, site));
   return settings.siteMode === 'all' || (settings.siteMode === 'allow' ? matches : !matches);
 }

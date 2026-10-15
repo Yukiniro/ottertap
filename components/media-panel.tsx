@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { ChevronDown, Settings2, Settings as SettingsIcon, Volume2, VolumeX, AppWindow, Pause, Play, RotateCcw, RotateCw, Keyboard, CircleAlert, Search, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
@@ -11,20 +11,29 @@ import { Switch } from './ui/switch';
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 import { Brand } from './brand';
 import { useMedia } from '../hooks/use-media';
+import { mediaChoiceLabel } from '../lib/media';
+import { disableSite, enableSite, isSiteEnabled } from '../lib/settings';
+import { defaultSettings, type MediaClient } from '../lib/types';
 import { formatTime } from '../lib/utils';
-import type { MediaClient } from '../lib/types';
 import { useSettingsAtoms } from './theme';
 
 const speeds = [0.75, 1, 1.25, 1.5, 2];
-const mediaLabel = (kind: 'audio' | 'video', title: string, index: number) => `${index + 1}. ${kind === 'video' ? '视频' : '音频'} · ${title}`;
 const first = (value: number | readonly number[]) => Array.isArray(value) ? value[0] : value;
 export function MediaPanel({ client, openSettings }: { client: MediaClient; openSettings: () => void }) {
   const { page, selected, select, command, refresh, loading, error } = useMedia(client);
-  const { floatingAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { floatingAtom, siteModeAtom, sitesAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const floating = useAtomValue(floatingAtom);
+  const siteMode = useAtomValue(siteModeAtom);
+  const sites = useAtomValue(sitesAtom);
   const settingsLoading = useAtomValue(loadingAtom);
   const settingsError = useAtomValue(errorAtom);
   const write = useSetAtom(writeSettingsAtom);
+  const rules = { ...defaultSettings, siteMode, sites };
+  const rulesEnabled = page.host ? isSiteEnabled(`https://${page.host}/`, rules) : page.enabled;
+  const outOfSync = !settingsLoading && rulesEnabled !== page.enabled;
+  const siteAction = !settingsLoading && page.host && !outOfSync ? (page.enabled ? disableSite(page.host, rules) : enableSite(page.host, rules)) : null;
+  useEffect(() => { if (outOfSync) void refresh(); }, [outOfSync, refresh]);
+  const showMedia = (id: string) => { const media = page.media.find(item => item.id === id); if (media) void client.highlight(media).catch(() => {}); };
   const [seekDraft, setSeekDraft] = useState<number | null>(null);
   const ranges = selected?.seekable ?? [];
   const seekMin = ranges[0]?.start ?? 0;
@@ -35,14 +44,14 @@ export function MediaPanel({ client, openSettings }: { client: MediaClient; open
     <header className="flex h-[51px] items-center justify-between border-b"><Brand /><Button variant="ghost" size="icon" aria-label="打开设置" onClick={openSettings}><SettingsIcon className="size-[23px]" /></Button></header>
     {page.media.length > 1 && <Field orientation="horizontal" className="border-b py-2.5">
       <FieldLabel htmlFor="popup-media" className="flex-none! text-xs font-normal text-muted-foreground">控制目标</FieldLabel>
-      <DropdownMenu>
+      <DropdownMenu onOpenChange={open => { if (open && selected) showMedia(selected.id); }}>
         <DropdownMenuTrigger id="popup-media" render={<Button variant="outline" size="sm" />} className="min-w-0 flex-1 shrink justify-between font-normal">
-          <span className="truncate">{selected ? mediaLabel(selected.kind, selected.title, page.media.findIndex(media => media.id === selected.id)) : '选择媒体'}</span>
+          <span className="truncate">{selected ? mediaChoiceLabel(selected, page.media.findIndex(media => media.id === selected.id)) : '选择媒体'}</span>
           <ChevronDown data-icon="inline-end" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuRadioGroup value={selected?.id ?? ''} onValueChange={id => { select(id); setSeekDraft(null); }}>
-            {page.media.map((media, index) => <DropdownMenuRadioItem key={media.id} value={media.id}><span className="truncate">{mediaLabel(media.kind, media.title, index)}</span></DropdownMenuRadioItem>)}
+        <DropdownMenuContent align="end" className="w-72">
+          <DropdownMenuRadioGroup value={selected?.id ?? ''} onValueChange={id => { select(id); setSeekDraft(null); showMedia(id); }}>
+            {page.media.map((media, index) => <DropdownMenuRadioItem key={media.id} value={media.id}><span className="truncate">{mediaChoiceLabel(media, index)}</span></DropdownMenuRadioItem>)}
           </DropdownMenuRadioGroup>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -50,7 +59,7 @@ export function MediaPanel({ client, openSettings }: { client: MediaClient; open
     {selected ? <>
       <div className="pt-3.5 text-center">
         <p className="text-sm text-muted-foreground">{page.host || selected.host}</p>
-        <h1 title={selected.title} className="mt-2 line-clamp-2 min-h-7 text-[22px] leading-7 font-bold tracking-tight">{selected.title}</h1>
+        <h1 title={selected.label || undefined} className="mt-2 line-clamp-2 min-h-7 text-[22px] leading-7 font-bold tracking-tight">{selected.label || '未命名媒体'}</h1>
         <p className="mt-0.5 text-sm text-muted-foreground">{selected.kind === 'video' ? '视频' : '音频'} · {selected.paused ? '已暂停' : '正在播放'}</p>
       </div>
       <div className="mt-5 flex items-center justify-center gap-7.5">
@@ -85,7 +94,7 @@ export function MediaPanel({ client, openSettings }: { client: MediaClient; open
         <EmptyTitle className="text-lg font-semibold">{loading ? '正在寻找媒体…' : page.enabled ? '此页面还没有媒体' : '此网站已停用'}</EmptyTitle>
         <EmptyDescription className="text-[13px]/[1.8] whitespace-pre-line">{page.enabled ? '打开含有视频或音频的网页，\n开始播放后即可在这里控制。' : '在网站设置中启用当前网站，\n即可恢复媒体控制。'}</EmptyDescription>
       </EmptyHeader>
-      <EmptyContent><Button variant="outline" onClick={() => page.enabled ? void refresh() : openSettings()}>{page.enabled ? <><RefreshCw />重新检测</> : '管理支持的网站'}</Button></EmptyContent>
+      <EmptyContent><Button variant="outline" disabled={settingsLoading || outOfSync} onClick={() => { if (page.enabled || outOfSync) { void refresh(); return; } if (siteAction?.settings) void write(siteAction.settings).then(ok => { if (ok) void refresh(); }); else openSettings(); }}>{page.enabled ? <><RefreshCw />重新检测</> : outOfSync ? '正在恢复…' : siteAction?.label ?? '管理支持的网站'}</Button></EmptyContent>
     </Empty>}
     {(error || settingsError) && <Alert variant="destructive" className="my-2.5"><CircleAlert /><AlertDescription>{error || settingsError}</AlertDescription></Alert>}
     <Field orientation="horizontal" className="min-h-14 gap-4 border-t">
@@ -93,6 +102,7 @@ export function MediaPanel({ client, openSettings }: { client: MediaClient; open
       <FieldLabel htmlFor="floating-toggle" className="flex-1 font-normal">浮动控制器</FieldLabel>
       <Switch id="floating-toggle" aria-label="浮动控制器" checked={floating} disabled={settingsLoading} onCheckedChange={checked => void write({ floating: checked })} />
     </Field>
-    <footer className="flex min-h-[42px] items-center justify-center gap-2.5 border-t text-xs text-muted-foreground"><Keyboard aria-hidden="true" className="size-[18px]" /><span>随时调整，继续专注</span></footer>
+    {page.enabled && !outOfSync && siteAction?.settings && <div className="border-t py-1"><Button variant="ghost" className="w-full text-muted-foreground" disabled={settingsLoading} onClick={() => void write(siteAction.settings!).then(ok => { if (ok) void refresh(); })}>{siteAction.label}</Button></div>}
+    <footer className="flex min-h-[42px] items-center justify-center gap-2.5 border-t text-xs text-muted-foreground"><Keyboard aria-hidden="true" className="size-[18px]" /><span>Alt+Shift 调节音量</span></footer>
   </section>;
 }

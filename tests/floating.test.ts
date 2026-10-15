@@ -13,10 +13,13 @@ test('浮动入口贴边半隐藏、可切换侧边；药丸可调到 150%、静
   const { createRoot } = await import('react-dom/client');
   const { ThemeProvider } = await import('../components/theme');
   const { FloatingController } = await import('../components/floating');
-  let media: MediaState = { id: '1', title: '测试媒体', host: 'example.com', kind: 'video', paused: false, muted: false, volume: .75, maxVolume: 1.5, rate: 1, currentTime: 10, duration: 100, live: false, seekable: [{ start: 0, end: 100 }] };
+  let media: MediaState = { id: '1', title: '测试媒体', label: '测试媒体', host: 'example.com', kind: 'video', paused: false, muted: false, volume: .75, maxVolume: 1.5, rate: 1, currentTime: 10, duration: 100, live: false, seekable: [{ start: 0, end: 100 }] };
+  let selectedId = '';
   const client: MediaClient = {
-    async read() { return { enabled: true, host: 'example.com', media: [{ ...media }] }; },
-    async command(_, value) { if (value.type === 'mute') media = { ...media, muted: !media.muted }; else if (value.type === 'volume') media = { ...media, volume: value.value, muted: false }; }
+    async read() { return { enabled: true, host: 'example.com', selectedId, media: [{ ...media }] }; },
+    async command(_, value) { if (value.type === 'mute') media = { ...media, muted: !media.muted }; else if (value.type === 'volume') media = { ...media, volume: value.value, muted: false }; },
+    async select(id) { selectedId = id; },
+    async highlight() {}
   };
   let settings: Settings = defaultSettings;
   const store: SettingsStore = { async load() { return settings; }, async save(next) { settings = next; }, watch() { return () => {}; } };
@@ -67,6 +70,13 @@ test('浮动入口贴边半隐藏、可切换侧边；药丸可调到 150%、静
   await act(async () => { trigger().dispatchEvent(new window.MouseEvent('click', { bubbles: true })); });
   await act(async () => { for (const type of ['pointerdown', 'pointerup', 'click'] as const) window.document.body.dispatchEvent(new (type === 'click' ? window.MouseEvent : window.PointerEvent)(type, { bubbles: true })); });
   assert.equal(!!host.querySelector('[role="dialog"]'), false);
+  await act(async () => {
+    trigger().dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowUp', code: 'ArrowUp', altKey: true, shiftKey: true, bubbles: true, composed: true }));
+    await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)));
+  });
+  assert.equal(trigger().getAttribute('aria-expanded'), 'true');
+  assert.equal(dock().dataset.revealed, 'true');
+  assert.ok(host.querySelector('[role="dialog"]'));
   } finally {
     await act(async () => { root.unmount(); });
     await window.happyDOM.close();

@@ -8,6 +8,7 @@ import { FloatingController } from '../components/floating';
 import { Brand } from '../components/brand';
 import { Button } from '../components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '../components/ui/toggle-group';
+import { createHotkeySession, planHotkey, type HotkeyAction } from '../lib/hotkey';
 import { createMediaController } from '../lib/media';
 import { normalizeSettings, isSiteEnabled } from '../lib/settings';
 import type { SettingsStore, Settings as SettingsValue, MediaClient } from '../lib/types';
@@ -31,9 +32,18 @@ media.playbackRate = 1.25;
 media.addEventListener('loadedmetadata', () => { media.currentTime = 272; });
 document.body.append(media);
 const controller = createMediaController(document);
+let selectedId = '';
+const previewEnabled = async () => isSiteEnabled('https://bilibili.com/video/demo', await store.load());
 const client: MediaClient = {
-  async read() { const settings = await store.load(); const enabled = isSiteEnabled('https://bilibili.com/video/demo', settings); return { host: 'bilibili.com', enabled, media: enabled ? controller.snapshot() : [] }; },
-  async command(item, command) { if (!isSiteEnabled('https://bilibili.com/video/demo', await store.load())) throw new Error('当前网站已停用。'); await controller.command(item.id, command); }
+  async read() {
+    const enabled = await previewEnabled();
+    const media = enabled ? controller.snapshot() : [];
+    if (selectedId && !media.some(item => item.id === selectedId)) selectedId = '';
+    return { host: 'bilibili.com', enabled, media, selectedId };
+  },
+  async command(item, command) { if (!await previewEnabled()) throw new Error('当前网站已停用。'); await controller.command(item.id, command); },
+  async select(id) { selectedId = id; },
+  async highlight(item) { controller.flash(item.id); }
 };
 
 function Preview() {
@@ -44,6 +54,24 @@ function Preview() {
     const sync = () => setPlaying(!media.paused);
     media.addEventListener('play', sync); media.addEventListener('pause', sync);
     return () => { media.removeEventListener('play', sync); media.removeEventListener('pause', sync); };
+  }, []);
+  useEffect(() => {
+    let enabled = true;
+    void store.load().then(settings => { enabled = isSiteEnabled('https://bilibili.com/video/demo', settings); });
+    const unwatch = store.watch(settings => { enabled = isSiteEnabled('https://bilibili.com/video/demo', settings); });
+    const hotkeys = createHotkeySession(async (action: HotkeyAction) => {
+      const page = await client.read();
+      const plan = planHotkey(page, action);
+      if (!plan) return;
+      if (plan.media.id !== page.selectedId) await client.select(plan.media.id);
+      await client.command(plan.media, plan.command);
+    });
+    const allow = () => enabled && controller.snapshot().length > 0;
+    const onKey = (event: KeyboardEvent) => { if (allow()) hotkeys.key(event); };
+    const onWheel = (event: WheelEvent) => { if (allow()) hotkeys.wheel(event); };
+    window.addEventListener('keydown', onKey, true);
+    window.addEventListener('wheel', onWheel, { capture: true, passive: false });
+    return () => { unwatch(); hotkeys.dispose(); window.removeEventListener('keydown', onKey, true); window.removeEventListener('wheel', onWheel, true); };
   }, []);
   const focusOnly = new URLSearchParams(location.search).has('panel');
   if (new URLSearchParams(location.search).has('settings')) return <div className={new URLSearchParams(location.search).has('capture') ? 'settings-capture' : ''}><SettingsPage /></div>;
