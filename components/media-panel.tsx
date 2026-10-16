@@ -95,7 +95,7 @@ export function MediaPanel({ client, openSettings }: { client: MediaClient; open
           <Slider size="bar" aria-label={i18n.t('volume')} className="flex-1" min={0} max={Math.round(selected.maxVolume * 100)} step={1} value={[volume]} onValueChange={value => void adjust({ type: 'volume', value: (first(value) ?? 0) / 100 })} />
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span id="speed-label" className="w-8 shrink-0 text-sm">{i18n.t('speed')}</span>
+          <span id="speed-label" className="min-w-8 shrink-0 text-sm">{i18n.t('speed')}</span>
           <ToggleGroup aria-labelledby="speed-label" spacing={1} className="h-9 min-w-0 flex-1 rounded-lg bg-background/80 p-1" value={speeds.includes(selected.rate) ? [String(selected.rate)] : []} onValueChange={value => { if (value[0]) void adjust({ type: 'rate', value: Number(value[0]) }); }}>
             {speeds.map(speed => <ToggleGroupItem key={speed} value={String(speed)} aria-label={i18n.t('speedOption', { speed })} className="h-7 flex-1 rounded-md border-0 text-xs text-muted-foreground shadow-none aria-pressed:bg-card aria-pressed:font-semibold aria-pressed:text-foreground aria-pressed:shadow-sm">{speed}×</ToggleGroupItem>)}
           </ToggleGroup>

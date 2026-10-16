@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readdirSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 
@@ -7,10 +8,13 @@ const manifest = JSON.parse(await readFile(new URL('manifest.json', directory), 
 assert.equal(manifest.manifest_version, 3);
 assert.equal(manifest.name, '__MSG_extName__');
 assert.equal(manifest.default_locale, 'en');
-for (const locale of ['en', 'zh_CN']) {
+const locales = readdirSync(new URL('../locales/', import.meta.url)).filter(name => name.endsWith('.yml')).map(name => name.slice(0, -4));
+for (const required of ['en', 'zh_CN', 'zh_TW', 'ja', 'ko', 'de', 'es', 'fr']) assert.ok(locales.includes(required), required);
+for (const locale of locales) {
   const messages = JSON.parse(await readFile(new URL(`_locales/${locale}/messages.json`, directory), 'utf8'));
   assert.equal(typeof messages.extName.message, 'string');
   assert.ok(messages.extName.message.length > 0, `${locale} extName must be present`);
+  assert.equal(messages.locale.message, locale.replace('_', '-'));
 }
 assert.equal(manifest.options_ui.open_in_tab, true);
 assert.equal(manifest.action.default_popup, 'popup.html');

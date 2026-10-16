@@ -18,7 +18,7 @@ Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/age
 
 编写或修改 WXT 后台脚本、内容脚本、扩展消息通信或 manifest 权限时，参考 wxt-browser-extensions；与本文件的工程原则冲突时，以本文件为准。
 
-新增或修改界面文案时，同时更新 `locales/en.yml` 和 `locales/zh_CN.yml`。
+新增或修改界面文案时，同步更新 `locales/` 下的全部语言文件，包括 `en.yml` 和 `zh_CN.yml`。
 
 用户可见的变更附带 changeset。修复类为 patch，完整新功能为 minor，major 需要先确认。不需要发版时使用 `pnpm changeset add --empty`。
 
