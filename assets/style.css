@@ -31,15 +31,17 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  --shadow-card: var(--shadow-card-color);
 }
 :root, .ottertap-root {
   --radius: 10px;
   --background: #faf9f6; --foreground: #10131b;
-  --card: #faf9f6; --card-foreground: #10131b;
+  --card: #ffffff; --card-foreground: #10131b;
   --popover: #faf9f6; --popover-foreground: #10131b;
   --primary: #655de9; --primary-foreground: #fff;
   --secondary: #ebe9e5; --secondary-foreground: #10131b;
-  --muted: #ebe9e5; --muted-foreground: #717580;
+  --muted: #e7e4dd; --muted-foreground: #717580;
+  --shadow-card-color: 0 1px 2px rgb(16 19 27 / .06), 0 1px 3px rgb(16 19 27 / .08);
   --accent: #ece8ff; --accent-foreground: #5144cf;
   --destructive: #ae3345;
   --border: #e2e2e5; --input: #8e919b; --ring: #655de9;
@@ -47,11 +49,12 @@
 }
 .dark, .ottertap-root.dark {
   --background: #191a21; --foreground: #f2f1f7;
-  --card: #191a21; --card-foreground: #f2f1f7;
+  --card: #20212a; --card-foreground: #f2f1f7;
   --popover: #191a21; --popover-foreground: #f2f1f7;
   --primary: #a69cff; --primary-foreground: #19152d;
   --secondary: #30313b; --secondary-foreground: #f2f1f7;
-  --muted: #30313b; --muted-foreground: #ababb8;
+  --muted: #2c2d38; --muted-foreground: #ababb8;
+  --shadow-card-color: 0 1px 2px rgb(0 0 0 / .35), 0 8px 24px rgb(0 0 0 / .28);
   --accent: #34304c; --accent-foreground: #beb6ff;
   --destructive: #f07a8a;
   --border: #363742; --input: #6e6f7c; --ring: #a69cff;
