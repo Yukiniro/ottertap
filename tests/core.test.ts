@@ -6,7 +6,7 @@ import { defaultSettings } from '../lib/types';
 import { applyMediaCommand, createMediaController, isMediaCommand, keptSelection, lockedMedia, mediaChoiceLabel, mediaSnapshot } from '../lib/media';
 import { commandForHotkey, hotkeyFromKeyboard, wheelVolumeDelta } from '../lib/hotkey';
 import { formatTime } from '../lib/utils';
-import { canAmplify, splitVolume } from '../lib/amplifier';
+import { canAmplify, maxGain, splitVolume, type Amplifier } from '../lib/amplifier';
 import { dockedPoint, dropPosition, nudgePosition } from '../lib/dock';
 
 test('网站规则匹配域名及子域名，并拒绝内置页和后缀伪装', () => {
@@ -46,8 +46,10 @@ test('浮动入口松手吸附到较近一侧，贴边时半隐藏，方向键�
   assert.equal(nudgePosition({ side: 'left', y: .5 }, 'Enter', viewport), null);
 });
 test('音量拆分为元素音量与增益，跨域且无 CORS 的媒体不可放大', () => {
+  assert.equal(maxGain, 2);
   assert.deepEqual(splitVolume(.4), { volume: .4, gain: 1 });
   assert.deepEqual(splitVolume(1.5), { volume: 1, gain: 1.5 });
+  assert.deepEqual(splitVolume(maxGain), { volume: 1, gain: maxGain });
   assert.deepEqual(splitVolume(0), { volume: 0, gain: 1 });
   const { media, document } = fixture();
   const source = (value: string) => Object.defineProperty(media, 'currentSrc', { value, configurable: true });
@@ -81,12 +83,33 @@ test('静音保留音量，调高音量取消静音，非法值不触碰媒体',
   await applyMediaCommand(media, { type: 'volume', value: .4 }); assert.equal(media.volume, .4); assert.equal(media.muted, false);
   await applyMediaCommand(media, { type: 'rate', value: 1.5 }); assert.equal(media.playbackRate, 1.5);
   await assert.rejects(applyMediaCommand(media, { type: 'volume', value: 1.2 }), /无法放大/);
-  assert.equal(isMediaCommand({ type: 'volume', value: 1.5 }), true);
-  for (const command of [{ type: 'volume', value: -1 }, { type: 'volume', value: 1.51 }, { type: 'rate', value: NaN }, { type: 'seek', value: Infinity }, { type: 'evil', value: 1 }]) {
+  assert.equal(isMediaCommand({ type: 'volume', value: maxGain }), true);
+  for (const command of [{ type: 'volume', value: -1 }, { type: 'volume', value: maxGain + 0.01 }, { type: 'rate', value: NaN }, { type: 'seek', value: Infinity }, { type: 'evil', value: 1 }]) {
     assert.equal(isMediaCommand(command), false);
     await assert.rejects(applyMediaCommand(media, command as never));
   }
   assert.equal(media.volume, .4);
+});
+test('可放大媒体能调到增益上限，跨域媒体仍停在 100%', async () => {
+  const { media, document } = fixture();
+  Object.defineProperty(media, 'currentSrc', { value: 'https://example.com/a.mp4', configurable: true });
+  let gain = 1;
+  const amplifier: Amplifier = {
+    gain: () => gain,
+    async set(element, value) { assert.equal(element, media); gain = value; }
+  };
+  assert.equal(mediaSnapshot(media, '1', document, amplifier).maxVolume, maxGain);
+  await applyMediaCommand(media, { type: 'volume', value: maxGain }, amplifier);
+  assert.equal(media.volume, 1);
+  assert.equal(gain, maxGain);
+  assert.equal(mediaSnapshot(media, '1', document, amplifier).volume, maxGain);
+  const blocked = fixture();
+  Object.defineProperty(blocked.media, 'currentSrc', { value: 'https://cdn.test/a.mp4', configurable: true });
+  const blockedGain: Amplifier = { gain: () => 1, async set() { throw new Error('should not connect'); } };
+  assert.equal(mediaSnapshot(blocked.media, '1', blocked.document, blockedGain).maxVolume, 1);
+  const before = blocked.media.volume;
+  await assert.rejects(applyMediaCommand(blocked.media, { type: 'volume', value: 1.2 }, blockedGain), /无法放大/);
+  assert.equal(blocked.media.volume, before);
 });
 test('媒体发现支持开放 Shadow DOM、动态移除和稳定 ID', async () => {
   const { media, document, window } = fixture();
@@ -118,7 +141,7 @@ test('播放失败向上传递；未知时长正确序列化为直播', async ()
   assert.match(mediaChoiceLabel(mediaSnapshot(media, '1', document), 0), /正片/);
 });
 test('多个媒体优先锁定在播且有声的一个，快捷键按锁定目标调节', () => {
-  const base = { host: 'example.com', kind: 'video' as const, label: '', title: '页面', maxVolume: 1.5, rate: 1, currentTime: 10, duration: 100, live: false, seekable: [{ start: 0, end: 100 }] };
+  const base = { host: 'example.com', kind: 'video' as const, label: '', title: '页面', maxVolume: maxGain, rate: 1, currentTime: 10, duration: 100, live: false, seekable: [{ start: 0, end: 100 }] };
   const muted = { ...base, id: '1', paused: false, muted: true, volume: .8 };
   const audible = { ...base, id: '2', paused: false, muted: false, volume: .4 };
   const paused = { ...base, id: '3', paused: true, muted: false, volume: .4 };
@@ -139,7 +162,7 @@ test('多个媒体优先锁定在播且有声的一个，快捷键按锁定目�
   assert.equal(wheelVolumeDelta(1, 1), -10);
   assert.deepEqual(commandForHotkey({ type: 'volume', delta: 10 }, { ...audible, muted: true }), { type: 'volume', value: .1 });
   assert.deepEqual(commandForHotkey({ type: 'volume', delta: 10 }, audible), { type: 'volume', value: .5 });
-  assert.deepEqual(commandForHotkey({ type: 'volume', delta: 20 }, { ...audible, volume: 1.45 }), { type: 'volume', value: 1.5 });
+  assert.deepEqual(commandForHotkey({ type: 'volume', delta: 20 }, { ...audible, volume: 1.9 }), { type: 'volume', value: maxGain });
 });
 test('停用当前网站保留原列表，重新启用不恢复父域名', () => {
   const all = disableSite('www.bilibili.com', { ...defaultSettings, sites: ['old.com'] });

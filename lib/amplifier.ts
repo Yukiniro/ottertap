@@ -1,6 +1,6 @@
 import { i18n } from '#i18n';
 
-export const maxGain = 1.5;
+export const maxGain = 2;
 
 export function splitVolume(value: number) {
   return { volume: Math.min(value, 1), gain: Math.max(value, 1) };
