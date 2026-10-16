@@ -1,4 +1,3 @@
-import { notFound } from 'next/navigation';
 import { Faq } from '~/components/faq';
 import { Features } from '~/components/features';
 import { FloatingSection } from '~/components/floating-section';
@@ -9,11 +8,9 @@ import { Privacy } from '~/components/privacy';
 import { Providers } from '~/components/providers';
 import { SiteFooter } from '~/components/site-footer';
 import { SiteNav } from '~/components/site-nav';
-import { isLang, loadMessages } from '~/lib/locale';
+import { loadMessages, type Lang } from '~/lib/locale';
 
-export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
-  const { lang } = await params;
-  if (!isLang(lang)) notFound();
+export function Home({ lang }: { lang: Lang }) {
   const { site, extension } = loadMessages(lang);
   const t = (key: string) => site[key] ?? key;
   return <Providers extension={extension}>

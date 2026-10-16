@@ -57,7 +57,7 @@ pnpm site:dev
 pnpm site:build
 ```
 
-开发地址为 [http://localhost:4187/](http://localhost:4187/)，提供 `/zh/` 和 `/en/` 页面，静态构建输出到 `site/out/`。
+开发地址为 [http://localhost:4187/](http://localhost:4187/)，根路径 `/` 为英语首页，`/zh/` 为中文首页，静态构建输出到 `site/out/`。
 
 ## 官网访问统计
 
