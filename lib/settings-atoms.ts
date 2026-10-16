@@ -2,20 +2,26 @@ import { i18n } from '#i18n';
 import { atom, createStore, type Atom, type WritableAtom } from 'jotai';
 import { selectAtom } from 'jotai/utils';
 import { normalizeSettings } from './settings';
-import { defaultSettings, type FloatingPosition, type Settings, type SettingsStore, type SiteMode, type Theme } from './types';
+import { defaultSettings, type FloatingPosition, type Settings, type SettingsStore, type SiteMode, type SitePref, type Theme } from './types';
 
 const readError = () => i18n.t('settingsReadError');
 const writeError = () => i18n.t('settingsWriteError');
 const samePosition = (a: FloatingPosition, b: FloatingPosition) => a.side === b.side && a.y === b.y;
 const sameSites = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((site, index) => site === b[index]);
-const sameSettings = (a: Settings, b: Settings) => a.theme === b.theme && a.floating === b.floating && a.siteMode === b.siteMode && samePosition(a.floatingPosition, b.floatingPosition) && sameSites(a.sites, b.sites);
+const sameSitePref = (a: SitePref, b: SitePref) => a.volume === b.volume && a.rate === b.rate;
+const sameSitePrefs = (a: Record<string, SitePref>, b: Record<string, SitePref>) => {
+  const keys = Object.keys(a);
+  return keys.length === Object.keys(b).length && keys.every(key => !!b[key] && sameSitePref(a[key]!, b[key]!));
+};
+const sameSettings = (a: Settings, b: Settings) => a.theme === b.theme && a.floating === b.floating && a.siteMode === b.siteMode && samePosition(a.floatingPosition, b.floatingPosition) && sameSites(a.sites, b.sites) && sameSitePrefs(a.sitePrefs, b.sitePrefs);
 
 function mergeSettings(current: Settings, update: Partial<Settings>): Settings {
   const next = normalizeSettings({ ...current, ...update });
   return {
     ...next,
     floatingPosition: samePosition(current.floatingPosition, next.floatingPosition) ? current.floatingPosition : next.floatingPosition,
-    sites: sameSites(current.sites, next.sites) ? current.sites : next.sites
+    sites: sameSites(current.sites, next.sites) ? current.sites : next.sites,
+    sitePrefs: sameSitePrefs(current.sitePrefs, next.sitePrefs) ? current.sitePrefs : next.sitePrefs
   };
 }
 
@@ -27,6 +33,7 @@ export interface SettingsAtoms {
   floatingPositionAtom: Atom<FloatingPosition>;
   siteModeAtom: Atom<SiteMode>;
   sitesAtom: Atom<string[]>;
+  sitePrefsAtom: Atom<Record<string, SitePref>>;
   loadingAtom: Atom<boolean>;
   errorAtom: Atom<string>;
   writeSettingsAtom: WritableAtom<null, [Partial<Settings>], Promise<boolean>>;
@@ -45,6 +52,7 @@ export function createSettingsAtoms(source: SettingsStore): SettingsAtoms {
   const floatingPositionAtom = selectAtom(settingsAtom, settings => settings.floatingPosition);
   const siteModeAtom = selectAtom(settingsAtom, settings => settings.siteMode);
   const sitesAtom = selectAtom(settingsAtom, settings => settings.sites);
+  const sitePrefsAtom = selectAtom(settingsAtom, settings => settings.sitePrefs);
   let writeQueue = Promise.resolve();
   let writeVersion = 0;
   let pendingWrites = 0;
@@ -133,7 +141,7 @@ export function createSettingsAtoms(source: SettingsStore): SettingsAtoms {
   }
 
   return {
-    store, settingsAtom, themeAtom, floatingAtom, floatingPositionAtom, siteModeAtom, sitesAtom, loadingAtom, errorAtom, writeSettingsAtom, mount, ready,
+    store, settingsAtom, themeAtom, floatingAtom, floatingPositionAtom, siteModeAtom, sitesAtom, sitePrefsAtom, loadingAtom, errorAtom, writeSettingsAtom, mount, ready,
     settled: () => idle
   };
 }

@@ -6,14 +6,14 @@ import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from './ui/empty';
-import { Item, ItemActions, ItemContent, ItemGroup, ItemMedia, ItemTitle } from './ui/item';
+import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from './ui/item';
 import { Slider } from './ui/slider';
 import { Switch } from './ui/switch';
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 import { Brand } from './brand';
 import { useMedia } from '../hooks/use-media';
 import { mediaChoiceLabel } from '../lib/media';
-import { disableSite, enableSite, isSiteEnabled } from '../lib/settings';
+import { disableSite, enableSite, forgetMatchingSites, isSiteEnabled, rememberSite, sitePrefFor } from '../lib/settings';
 import { defaultSettings, type MediaClient } from '../lib/types';
 import { formatTime } from '../lib/utils';
 import { useSettingsAtoms } from './theme';
@@ -22,10 +22,11 @@ const speeds = [0.75, 1, 1.25, 1.5, 2];
 const first = (value: number | readonly number[]) => Array.isArray(value) ? value[0] : value;
 export function MediaPanel({ client, openSettings }: { client: MediaClient; openSettings: () => void }) {
   const { page, selected, select, command, refresh, loading, error } = useMedia(client);
-  const { floatingAtom, siteModeAtom, sitesAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { floatingAtom, siteModeAtom, sitesAtom, sitePrefsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const floating = useAtomValue(floatingAtom);
   const siteMode = useAtomValue(siteModeAtom);
   const sites = useAtomValue(sitesAtom);
+  const sitePrefs = useAtomValue(sitePrefsAtom);
   const settingsLoading = useAtomValue(loadingAtom);
   const settingsError = useAtomValue(errorAtom);
   const write = useSetAtom(writeSettingsAtom);
@@ -36,6 +37,17 @@ export function MediaPanel({ client, openSettings }: { client: MediaClient; open
   useEffect(() => { if (outOfSync) void refresh(); }, [outOfSync, refresh]);
   const showMedia = (id: string) => { const media = page.media.find(item => item.id === id); if (media) void client.highlight(media).catch(() => {}); };
   const [seekDraft, setSeekDraft] = useState<number | null>(null);
+  const [offerRemember, setOfferRemember] = useState(false);
+  const remembered = page.host ? sitePrefFor(page.host, sitePrefs) : null;
+  const storePreference = () => {
+    if (!selected || !page.host || settingsLoading) return;
+    void write({ sitePrefs: rememberSite(sitePrefs, page.host, { volume: selected.volume, rate: selected.rate }) });
+  };
+  const adjust = (value: Parameters<typeof command>[0]) => {
+    if ((value.type === 'volume' || value.type === 'rate') && !remembered) setOfferRemember(true);
+    return command(value);
+  };
+  useEffect(() => { setOfferRemember(false); }, [page.host, selected?.id]);
   const ranges = selected?.seekable ?? [];
   const seekMin = ranges[0]?.start ?? 0;
   const seekMax = ranges[ranges.length - 1]?.end ?? 0;
@@ -80,14 +92,15 @@ export function MediaPanel({ client, openSettings }: { client: MediaClient; open
         </div>
         <div className="mt-1.5 flex items-center gap-2">
           <Button variant="ghost" size="icon" className="[&_svg:not([class*='size-'])]:size-5" aria-label={selected.muted ? i18n.t('unmute') : i18n.t('mute')} aria-pressed={selected.muted} onClick={() => void command({ type: 'mute' })}>{selected.muted || selected.volume === 0 ? <VolumeX /> : <Volume2 />}</Button>
-          <Slider size="bar" aria-label={i18n.t('volume')} className="flex-1" min={0} max={Math.round(selected.maxVolume * 100)} step={1} value={[volume]} onValueChange={value => void command({ type: 'volume', value: (first(value) ?? 0) / 100 })} />
+          <Slider size="bar" aria-label={i18n.t('volume')} className="flex-1" min={0} max={Math.round(selected.maxVolume * 100)} step={1} value={[volume]} onValueChange={value => void adjust({ type: 'volume', value: (first(value) ?? 0) / 100 })} />
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
           <span id="speed-label" className="w-8 shrink-0 text-sm">{i18n.t('speed')}</span>
-          <ToggleGroup aria-labelledby="speed-label" spacing={1} className="h-9 min-w-0 flex-1 rounded-lg bg-background/80 p-1" value={speeds.includes(selected.rate) ? [String(selected.rate)] : []} onValueChange={value => { if (value[0]) void command({ type: 'rate', value: Number(value[0]) }); }}>
+          <ToggleGroup aria-labelledby="speed-label" spacing={1} className="h-9 min-w-0 flex-1 rounded-lg bg-background/80 p-1" value={speeds.includes(selected.rate) ? [String(selected.rate)] : []} onValueChange={value => { if (value[0]) void adjust({ type: 'rate', value: Number(value[0]) }); }}>
             {speeds.map(speed => <ToggleGroupItem key={speed} value={String(speed)} aria-label={i18n.t('speedOption', { speed })} className="h-7 flex-1 rounded-md border-0 text-xs text-muted-foreground shadow-none aria-pressed:bg-card aria-pressed:font-semibold aria-pressed:text-foreground aria-pressed:shadow-sm">{speed}×</ToggleGroupItem>)}
           </ToggleGroup>
           {!speeds.includes(selected.rate) && <span className="w-full text-xs text-muted-foreground">{i18n.t('currentSpeed', { rate: selected.rate })}</span>}
+          {offerRemember && !remembered && <Button variant="ghost" size="sm" className="h-7 w-full justify-start px-1 text-xs text-primary" disabled={settingsLoading} onClick={storePreference}>{i18n.t('rememberSite')}</Button>}
         </div>
       </div>
     </> : <div className="flex min-h-[26.25rem] flex-col justify-center rounded-2xl bg-card shadow-card">
@@ -102,6 +115,13 @@ export function MediaPanel({ client, openSettings }: { client: MediaClient; open
     </div>}
     {(error || settingsError) && <Alert variant="destructive"><CircleAlert /><AlertDescription>{error || settingsError}</AlertDescription></Alert>}
     <ItemGroup className="gap-0 divide-y overflow-hidden rounded-xl bg-card shadow-card">
+      {selected && page.host && <Item role="listitem" className="rounded-none px-3 py-2.5">
+        <ItemContent>
+          <ItemTitle className="font-normal"><label htmlFor="remember-site">{i18n.t('rememberSite')}</label></ItemTitle>
+          <ItemDescription className="text-xs">{i18n.t('rememberSiteDescription')}</ItemDescription>
+        </ItemContent>
+        <ItemActions><Switch id="remember-site" aria-label={i18n.t('rememberSite')} checked={!!remembered} disabled={settingsLoading} onCheckedChange={checked => { if (!page.host) return; void write({ sitePrefs: checked ? rememberSite(sitePrefs, page.host, selected ? { volume: selected.volume, rate: selected.rate } : {}) : forgetMatchingSites(sitePrefs, page.host) }); }} /></ItemActions>
+      </Item>}
       <Item role="listitem" className="min-h-12 rounded-none px-3">
         <ItemMedia variant="icon" className="text-muted-foreground"><AppWindow className="size-5" /></ItemMedia>
         <ItemContent><ItemTitle className="font-normal"><label htmlFor="floating-toggle">{i18n.t('floatingController')}</label></ItemTitle></ItemContent>

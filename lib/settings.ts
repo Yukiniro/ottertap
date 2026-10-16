@@ -1,5 +1,10 @@
 import { i18n } from '#i18n';
-import { defaultSettings, type Settings } from './types';
+import { maxGain } from './amplifier';
+import { defaultSettings, type MediaCommand, type Settings, type SitePref } from './types';
+
+const minRate = 0.25;
+const maxRate = 4;
+const matchesSite = (host: string, site: string) => host === site || host.endsWith(`.${site}`);
 
 export function normalizeDomain(input: string): string {
   const text = input.trim().toLowerCase();
@@ -16,7 +21,7 @@ export function normalizeDomain(input: string): string {
 }
 
 export function normalizeSettings(value: unknown): Settings {
-  if (!value || typeof value !== 'object') return { ...defaultSettings, sites: [] };
+  if (!value || typeof value !== 'object') return { ...defaultSettings, sites: [], sitePrefs: {} };
   const source = value as Partial<Settings>;
   const sites: string[] = [];
   if (Array.isArray(source.sites)) for (const site of source.sites) {
@@ -30,11 +35,104 @@ export function normalizeSettings(value: unknown): Settings {
     floating: typeof source.floating === 'boolean' ? source.floating : true,
     floatingPosition: validPosition ? { side: position.side, y: position.y } : { ...defaultSettings.floatingPosition },
     siteMode: ['all', 'allow', 'exclude'].includes(source.siteMode ?? '') ? source.siteMode! : 'all',
-    sites: [...new Set(sites)]
+    sites: [...new Set(sites)],
+    sitePrefs: normalizeSitePrefs(source.sitePrefs)
   };
 }
 
-const matchesSite = (host: string, site: string) => host === site || host.endsWith(`.${site}`);
+export function hostKey(host: string) {
+  return host.trim().toLowerCase().replace(/\.$/, '');
+}
+
+function sanitizeSitePref(value: unknown): SitePref {
+  if (!value || typeof value !== 'object') return {};
+  const source = value as { volume?: unknown; rate?: unknown };
+  const pref: SitePref = {};
+  if (typeof source.volume === 'number' && Number.isFinite(source.volume) && source.volume >= 0 && source.volume <= maxGain) pref.volume = source.volume;
+  if (typeof source.rate === 'number' && Number.isFinite(source.rate) && source.rate >= minRate && source.rate <= maxRate) pref.rate = source.rate;
+  return pref;
+}
+
+function normalizeSitePrefs(value: unknown): Record<string, SitePref> {
+  if (!value || typeof value !== 'object') return {};
+  const prefs: Record<string, SitePref> = {};
+  for (const [key, raw] of Object.entries(value)) {
+    let host: string;
+    try { host = normalizeDomain(key); } catch { continue; }
+    const pref = sanitizeSitePref(raw);
+    if (pref.volume === undefined && pref.rate === undefined) continue;
+    prefs[host] = pref;
+  }
+  return prefs;
+}
+
+export function sitePrefFor(host: string, prefs: Record<string, SitePref>): { host: string; pref: SitePref } | null {
+  const name = hostKey(host);
+  if (!name) return null;
+  let best: { host: string; pref: SitePref } | null = null;
+  for (const [site, pref] of Object.entries(prefs)) {
+    if (!matchesSite(name, site)) continue;
+    if (!best || site.length > best.host.length) best = { host: site, pref };
+  }
+  return best;
+}
+
+export function rememberSite(prefs: Record<string, SitePref>, host: string, pref: SitePref): Record<string, SitePref> {
+  let key: string;
+  try { key = normalizeDomain(hostKey(host)); } catch { return prefs; }
+  const stored = sanitizeSitePref(pref);
+  if (stored.volume === undefined && stored.rate === undefined) return prefs;
+  return { ...prefs, [key]: stored };
+}
+
+export function forgetMatchingSites(prefs: Record<string, SitePref>, host: string): Record<string, SitePref> {
+  const name = hostKey(host);
+  if (!name) return prefs;
+  let changed = false;
+  const next: Record<string, SitePref> = {};
+  for (const [site, pref] of Object.entries(prefs)) {
+    if (matchesSite(name, site)) { changed = true; continue; }
+    next[site] = pref;
+  }
+  return changed ? next : prefs;
+}
+
+export function forgetSitePref(prefs: Record<string, SitePref>, site: string): Record<string, SitePref> {
+  if (!(site in prefs)) return prefs;
+  const next = { ...prefs };
+  delete next[site];
+  return next;
+}
+
+export function withRememberedCommand(prefs: Record<string, SitePref>, host: string, command: MediaCommand): Record<string, SitePref> | null {
+  if (command.type !== 'volume' && command.type !== 'rate') return null;
+  const match = sitePrefFor(host, prefs);
+  if (!match) return null;
+  const stored = sanitizeSitePref(command.type === 'volume' ? { volume: command.value } : { rate: command.value });
+  const value = command.type === 'volume' ? stored.volume : stored.rate;
+  if (value === undefined || match.pref[command.type] === value) return null;
+  return { ...prefs, [match.host]: { ...match.pref, [command.type]: value } };
+}
+
+export function createSitePrefSession() {
+  const applied = new Set<string>();
+  return {
+    reset() { applied.clear(); },
+    plan(host: string, mediaId: string, prefs: Record<string, SitePref>): MediaCommand[] {
+      const name = hostKey(host);
+      if (!name || !mediaId) return [];
+      const key = `${name}\0${mediaId}`;
+      if (applied.has(key)) return [];
+      applied.add(key);
+      const match = sitePrefFor(name, prefs);
+      if (!match) return [];
+      const commands: MediaCommand[] = [];
+      if (match.pref.volume !== undefined) commands.push({ type: 'volume', value: match.pref.volume });
+      if (match.pref.rate !== undefined) commands.push({ type: 'rate', value: match.pref.rate });
+      return commands;
+    }
+  };
+}
 
 export function disableSite(host: string, settings: Settings): { label: string; settings: Partial<Settings> } {
   if (settings.siteMode === 'allow') {

@@ -1,11 +1,11 @@
 import { i18n } from '#i18n';
 import { browser } from 'wxt/browser';
 import { extensionStore } from '../lib/extension-store';
-import { isSiteEnabled } from '../lib/settings';
+import { createSitePrefSession, isSiteEnabled, withRememberedCommand } from '../lib/settings';
 import { isMediaCommand } from '../lib/media';
 import { isHotkeyAction, shownPercent } from '../lib/hotkey';
 import { keptSelection, lockedMedia } from '../lib/media';
-import type { MediaState } from '../lib/types';
+import type { MediaCommand, MediaState, SitePref } from '../lib/types';
 
 export default defineBackground(() => {
   const frames = new Map<number, Map<number, number>>();
@@ -21,7 +21,33 @@ export default defineBackground(() => {
     done.then(() => { if (commandTails.get(tabId) === done) commandTails.delete(tabId); });
     return run;
   };
-  const forget = (tabId: number) => { frames.delete(tabId); selectedIds.delete(tabId); gestures.delete(tabId); pendingVolume.delete(tabId); };
+  const sitePrefSessions = new Map<number, ReturnType<typeof createSitePrefSession>>();
+  const sitePrefSession = (tabId: number) => {
+    let session = sitePrefSessions.get(tabId);
+    if (!session) sitePrefSessions.set(tabId, session = createSitePrefSession());
+    return session;
+  };
+  const forget = (tabId: number) => { frames.delete(tabId); selectedIds.delete(tabId); gestures.delete(tabId); pendingVolume.delete(tabId); sitePrefSessions.delete(tabId); };
+  async function rememberCommand(host: string, command: MediaCommand) {
+    if (command.type !== 'volume' && command.type !== 'rate') return;
+    try {
+      const latest = await extensionStore.load();
+      const sitePrefs = withRememberedCommand(latest.sitePrefs, host, command);
+      if (sitePrefs) await extensionStore.save({ ...latest, sitePrefs });
+    } catch { /* The control already applied; the next adjustment can store it. */ }
+  }
+  async function applySitePref(tabId: number, host: string, mediaId: string, prefs: Record<string, SitePref>) {
+    const commands = sitePrefSession(tabId).plan(host, mediaId, prefs);
+    if (!commands.length) return false;
+    let applied = false;
+    await enqueueCommand(tabId, async () => {
+      for (const command of commands) {
+        try { await deliver(tabId, mediaId, 'command', command); applied = true; }
+        catch { /* Once per visit. A rejected value is not written again. */ }
+      }
+    });
+    return applied;
+  }
   browser.tabs.onRemoved.addListener(tabId => { forget(tabId); commandTails.delete(tabId); });
   browser.tabs.onUpdated.addListener((tabId, change) => { if (change.status === 'loading') forget(tabId); });
   const frameIds = (tabId: number) => {
@@ -70,6 +96,7 @@ export default defineBackground(() => {
     gesture.at = Date.now();
     try { await deliver(tabId, gesture.id, 'command', { type: 'volume', value: gesture.percent / 100 }); }
     catch (error) { gesture.percent = previous; throw error; }
+    await rememberCommand(host, { type: 'volume', value: gesture.percent / 100 });
     return gesture.percent;
   }
   async function deliver(tabId: number, id: string, type: 'command' | 'highlight', command?: unknown) {
@@ -103,13 +130,20 @@ export default defineBackground(() => {
         if (message.type === 'read') {
           if (!enabled) return { host, enabled, media: [], selectedId: '' };
           const { media, failed } = await collect(tabId, host);
-          return { host, enabled, media, selectedId: lockedId(tabId, media, failed) };
+          const selectedId = lockedId(tabId, media, failed);
+          const target = lockedMedia(media, selectedId);
+          if (target && await applySitePref(tabId, host, target.id, settings.sitePrefs)) {
+            const refreshed = await collect(tabId, host);
+            return { host, enabled, media: refreshed.media, selectedId: lockedId(tabId, refreshed.media, refreshed.failed) };
+          }
+          return { host, enabled, media, selectedId };
         }
         if (!enabled) { pendingVolume.delete(tabId); throw new Error(i18n.t('siteDisabled')); }
         if (message.type === 'select') {
           if (!mediaId) throw new Error(i18n.t('invalidCommand'));
           if (gestures.get(tabId)?.id !== mediaId) gestures.delete(tabId);
           selectedIds.set(tabId, mediaId);
+          await applySitePref(tabId, host, mediaId, settings.sitePrefs);
           return { ok: true };
         }
         if (message.type === 'highlight') {
@@ -135,6 +169,7 @@ export default defineBackground(() => {
           if (!isMediaCommand(message.command) || !mediaId) throw new Error(i18n.t('invalidCommand'));
           if (message.command.type === 'volume' || message.command.type === 'mute') gestures.delete(tabId);
           await deliver(tabId, mediaId, 'command', message.command);
+          await rememberCommand(host, message.command);
           return { ok: true };
         }
       } catch (error) { return { error: error instanceof Error ? error.message : i18n.t('pageUnavailable') }; }
