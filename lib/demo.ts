@@ -1,7 +1,7 @@
 import { i18n } from '#i18n';
 import { createHotkeySession, planHotkey, type HotkeyAction } from './hotkey';
-import { createMediaController } from './media';
-import { isSiteEnabled, normalizeSettings } from './settings';
+import { createMediaController, lockedMedia } from './media';
+import { createSitePrefSession, isSiteEnabled, normalizeSettings, withRememberedCommand } from './settings';
 import type { MediaClient, Settings, SettingsStore } from './types';
 
 export function createDemoStore(key: string): SettingsStore {
@@ -33,17 +33,35 @@ export function createDemo(document: Document, { src, title, store }: { src: str
   media.addEventListener('loadedmetadata', () => { media.currentTime = startAt; });
   let second: HTMLAudioElement | null = null;
   const controller = createMediaController(document);
+  const remembered = createSitePrefSession();
+  const demoHost = new URL(demoUrl).host;
   let selectedId = '';
   const enabled = async () => isSiteEnabled(demoUrl, await store.load());
+  const applyRemembered = async (id: string) => {
+    const settings = await store.load();
+    const commands = remembered.plan(demoHost, id, settings.sitePrefs);
+    for (const command of commands) {
+      try { await controller.command(id, command); } catch { /* Once per visit. */ }
+    }
+    return commands.length > 0;
+  };
   const client: MediaClient = {
     async read() {
       const on = await enabled();
-      const items = on ? controller.snapshot() : [];
+      let items = on ? controller.snapshot() : [];
       if (selectedId && !items.some(item => item.id === selectedId)) selectedId = '';
-      return { host: new URL(demoUrl).host, enabled: on, media: items, selectedId };
+      const target = on ? lockedMedia(items, selectedId) : undefined;
+      if (target && await applyRemembered(target.id)) items = controller.snapshot();
+      return { host: demoHost, enabled: on, media: items, selectedId };
     },
-    async command(item, command) { if (!await enabled()) throw new Error(i18n.t('siteDisabled')); await controller.command(item.id, command); },
-    async select(id) { selectedId = id; },
+    async command(item, command) {
+      if (!await enabled()) throw new Error(i18n.t('siteDisabled'));
+      await controller.command(item.id, command);
+      const settings = await store.load();
+      const sitePrefs = withRememberedCommand(settings.sitePrefs, demoHost, command);
+      if (sitePrefs) await store.save({ ...settings, sitePrefs });
+    },
+    async select(id) { selectedId = id; await applyRemembered(id); },
     async highlight(item) { controller.flash(item.id); }
   };
   const listenHotkeys = (window: Window) => {

@@ -1,7 +1,7 @@
 import { i18n } from '#i18n';
 import { useEffect, useState } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { Sun, AppWindow, Globe, X, CircleCheck, ArrowLeft, CircleAlert } from 'lucide-react';
+import { Sun, AppWindow, Globe, Bookmark, X, CircleCheck, ArrowLeft, CircleAlert } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -13,13 +13,14 @@ import { Switch } from './ui/switch';
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 import { Brand } from './brand';
 import { cn } from '../lib/utils';
-import { normalizeDomain } from '../lib/settings';
-import type { Settings } from '../lib/types';
+import { forgetSitePref, normalizeDomain } from '../lib/settings';
+import type { Settings, SitePref } from '../lib/types';
 import { useSettingsAtoms } from './theme';
 
 const themes = [{ value: 'light', label: () => i18n.t('themeLight') }, { value: 'dark', label: () => i18n.t('themeDark') }, { value: 'system', label: () => i18n.t('themeSystem') }] as const;
 const siteModes = [{ value: 'all', label: () => i18n.t('modeAll'), description: () => i18n.t('modeAllDescription') }, { value: 'allow', label: () => i18n.t('modeAllow'), description: () => i18n.t('modeAllowDescription') }, { value: 'exclude', label: () => i18n.t('modeExclude'), description: () => i18n.t('modeExcludeDescription') }] as const;
-const nav = [{ id: 'appearance', label: () => i18n.t('appearance'), icon: Sun }, { id: 'floating', label: () => i18n.t('floatingController'), icon: AppWindow }, { id: 'sites', label: () => i18n.t('siteRules'), icon: Globe }] as const;
+const nav = [{ id: 'appearance', label: () => i18n.t('appearance'), icon: Sun }, { id: 'floating', label: () => i18n.t('floatingController'), icon: AppWindow }, { id: 'sites', label: () => i18n.t('siteRules'), icon: Globe }, { id: 'memory', label: () => i18n.t('rememberedSites'), icon: Bookmark }] as const;
+const prefSummary = (pref: SitePref) => [pref.volume === undefined ? '' : i18n.t('rememberedVolume', { volume: Math.round(pref.volume * 100) }), pref.rate === undefined ? '' : i18n.t('rememberedRate', { rate: pref.rate })].filter(Boolean).join(' · ');
 
 function ThemeThumb({ value }: { value: 'light' | 'dark' | 'system' }) {
   const frame = 'mb-2 block h-11 w-16 overflow-hidden rounded-md border';
@@ -55,11 +56,12 @@ function Row({ title, description, titleId, children }: { title: string; descrip
 }
 
 export function SettingsPage({ back }: { back?: () => void }) {
-  const { themeAtom, floatingAtom, siteModeAtom, sitesAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { themeAtom, floatingAtom, siteModeAtom, sitesAtom, sitePrefsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const theme = useAtomValue(themeAtom);
   const floating = useAtomValue(floatingAtom);
   const siteMode = useAtomValue(siteModeAtom);
   const sites = useAtomValue(sitesAtom);
+  const sitePrefs = useAtomValue(sitePrefsAtom);
   const loading = useAtomValue(loadingAtom);
   const error = useAtomValue(errorAtom);
   const write = useSetAtom(writeSettingsAtom);
@@ -184,6 +186,21 @@ export function SettingsPage({ back }: { back?: () => void }) {
             </Item>)}</ItemGroup>
             : <p className="mt-3 rounded-lg bg-muted/50 px-3 py-5 text-sm text-muted-foreground">{siteMode === 'allow' ? i18n.t('allowEmpty') : siteMode === 'exclude' ? i18n.t('excludeEmpty') : i18n.t('allEmpty')}</p>}
         </Row>
+      </section>
+      <section id="memory" aria-labelledby="memory-label" className="scroll-mt-32 rounded-xl bg-card shadow-card md:scroll-mt-8">
+        <div className="px-5 py-5 sm:px-6">
+          <h2 id="memory-label" className="text-sm font-semibold">{i18n.t('rememberedSites')}</h2>
+          <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('rememberedSitesDescription')}</p>
+        </div>
+        <div className="px-5 pb-5 sm:px-6">
+          {Object.keys(sitePrefs).length
+            ? <ItemGroup aria-label={i18n.t('rememberedSites')} className="gap-0 overflow-hidden rounded-lg bg-muted/50">{Object.entries(sitePrefs).sort(([a], [b]) => a.localeCompare(b)).map(([site, pref]) => <Item key={site} role="listitem" className="rounded-none border-b-border px-3 not-last:border-b">
+              <ItemMedia variant="icon" className="text-muted-foreground"><Bookmark className="size-4" /></ItemMedia>
+              <ItemContent><ItemTitle className="line-clamp-none font-normal break-all">{site}</ItemTitle><p className="text-xs text-muted-foreground">{prefSummary(pref)}</p></ItemContent>
+              <ItemActions><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={i18n.t('forgetSite', { site })} disabled={disabled} onClick={() => void save({ sitePrefs: forgetSitePref(sitePrefs, site) })}><X /></Button></ItemActions>
+            </Item>)}</ItemGroup>
+            : <p className="rounded-lg bg-muted/50 px-3 py-5 text-sm text-muted-foreground">{i18n.t('rememberedEmpty')}</p>}
+        </div>
       </section>
       {error && <Alert variant="destructive"><CircleAlert /><AlertDescription>{error}</AlertDescription></Alert>}
       <p className="px-1 text-xs leading-5 text-muted-foreground md:hidden">{i18n.t('localOnly')}</p>
