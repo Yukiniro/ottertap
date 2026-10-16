@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { notFound } from 'next/navigation';
+import { Analytics } from '~/components/analytics';
 import { isLang, langs, loadMessages } from '~/lib/locale';
 import { themeScript } from '~/lib/theme-script';
 import '../globals.css';
@@ -26,6 +27,6 @@ export default async function LangLayout({ children, params }: { children: React
   if (!isLang(lang)) notFound();
   return <html lang={lang === 'zh' ? 'zh-CN' : 'en'} suppressHydrationWarning>
     <head><script dangerouslySetInnerHTML={{ __html: themeScript }} /></head>
-    <body>{children}</body>
+    <body>{children}<Analytics /></body>
   </html>;
 }
