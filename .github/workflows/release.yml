@@ -1,7 +1,9 @@
 name: Release
 
 on:
-  push:
+  workflow_dispatch:
+  pull_request:
+    types: [closed]
     branches: [main]
 
 concurrency:
@@ -10,6 +12,11 @@ concurrency:
 
 jobs:
   release:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true &&
+       github.event.pull_request.head.ref == 'changeset-release/main' &&
+       github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -25,10 +32,15 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - uses: changesets/action@v2
+        if: github.event_name == 'workflow_dispatch'
         with:
           version-script: pnpm changeset version
-          publish-script: pnpm release
           commit-message: "chore: 发布版本"
           pr-title: "chore: 发布版本"
           create-github-releases: false
           push-git-tags: false
+      - name: Publish release
+        if: github.event_name == 'pull_request'
+        run: pnpm release
+        env:
+          GH_TOKEN: ${{ github.token }}

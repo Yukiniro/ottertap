@@ -69,7 +69,9 @@ pnpm site:build
 
 问题与建议请提交到 [GitHub Issues](https://github.com/Yukiniro/ottertap/issues)。参与开发前请阅读 [工程约定](AGENTS.md) 和 [领域术语](CONTEXT.md)。
 
-用户可见的变更需附带 changeset；仅文档等不需要发版的改动使用 `pnpm changeset add --empty`。版本发布由 GitHub Actions 和 Changesets 管理，更新记录见 [CHANGELOG.md](CHANGELOG.md)。
+用户可见的变更需附带 changeset；仅文档等不需要发版的改动使用 `pnpm changeset add --empty`。更新记录见 [CHANGELOG.md](CHANGELOG.md)。
+
+发版由维护者主动启动：在 GitHub Actions 中选择 Release，使用 main 分支点击 Run workflow，Changesets 会汇总已合入的变更并创建或更新 `chore: 发布版本` PR。检查版本号和更新记录后合并该 PR，工作流自动构建、校验并上传 Chrome ZIP，创建 `v版本号` 标签和 GitHub Release。普通提交不会自动创建版本 PR 或发布；没有待发布的 changeset 时，手动运行也不会发布。版本 PR 打开后新增的 changeset，需要再次手动运行才能纳入该 PR。发布失败后重跑对应的合并事件工作流；本流程不提交浏览器扩展商店。
 
 ## 致谢与许可
 
