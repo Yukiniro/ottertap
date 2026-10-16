@@ -1,5 +1,6 @@
 import { Gauge, Globe, Layers, Play, SunMoon, Volume2, type LucideIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { maxGain } from '@/lib/amplifier';
 import { cn } from '@/lib/utils';
 import type { T } from '~/lib/locale';
 
@@ -13,9 +14,12 @@ const tiles: { key: string; icon: LucideIcon; wide?: boolean; visual?: 'boost' |
 ];
 
 function BoostVisual() {
+  const maxPercent = Math.round(maxGain * 100);
+  const mark = `${(100 / maxPercent) * 100}%`;
+  const boosted = `${((100 + maxPercent) / 2 / maxPercent) * 100}%`;
   return <div aria-hidden="true" className="w-full max-w-sm">
-    <div className="relative h-2.5 rounded-full bg-muted"><div className="h-full w-[83%] rounded-full bg-primary" /><span className="absolute top-1/2 left-[66.6%] h-5 w-px -translate-y-1/2 bg-foreground/30" /></div>
-    <div className="relative mt-2 h-4 text-[11px] text-muted-foreground"><span className="absolute left-0">0%</span><span className="absolute left-[66.6%] -translate-x-1/2">100%</span><span className="absolute right-0 font-semibold text-primary">150%</span></div>
+    <div className="relative h-2.5 rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: boosted }} /><span className="absolute top-1/2 h-5 w-px -translate-y-1/2 bg-foreground/30" style={{ left: mark }} /></div>
+    <div className="relative mt-2 h-4 text-[11px] text-muted-foreground"><span className="absolute left-0">0%</span><span className="absolute -translate-x-1/2" style={{ left: mark }}>100%</span><span className="absolute right-0 font-semibold text-primary">{maxPercent}%</span></div>
   </div>;
 }
 
