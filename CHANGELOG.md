@@ -1,5 +1,11 @@
 # ottertap-extension
 
+## 1.3.0
+
+### Minor Changes
+
+- [#15](https://github.com/Yukiniro/ottertap/pull/15) [`985bd81`](https://github.com/Yukiniro/ottertap/commit/985bd81fc5c08b9c9da697c9f7dd9567842790c9) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 界面跟随浏览器语言，新增繁体中文、日语、韩语、西班牙语、法语和德语。
+
 ## 1.2.0
 
 ### Minor Changes
