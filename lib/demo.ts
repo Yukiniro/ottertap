@@ -1,0 +1,78 @@
+import { i18n } from '#i18n';
+import { createHotkeySession, planHotkey, type HotkeyAction } from './hotkey';
+import { createMediaController } from './media';
+import { isSiteEnabled, normalizeSettings } from './settings';
+import type { MediaClient, Settings, SettingsStore } from './types';
+
+export function createDemoStore(key: string): SettingsStore {
+  const listeners = new Set<(settings: Settings) => void>();
+  return {
+    async load() { try { return normalizeSettings(JSON.parse(localStorage.getItem(key) ?? 'null')); } catch { return normalizeSettings(null); } },
+    async save(settings) { localStorage.setItem(key, JSON.stringify(settings)); for (const listener of listeners) listener(settings); },
+    watch(callback) { listeners.add(callback); return () => { listeners.delete(callback); }; }
+  };
+}
+
+const demoUrl = 'https://bilibili.com/video/demo';
+const startAt = 272;
+
+/** Silent local media driven by the real media controller, standing in for a page the extension controls. */
+export function createDemo(document: Document, { src, title, store }: { src: string; title: string; store: SettingsStore }) {
+  const create = (tag: 'video' | 'audio', label: string) => {
+    const element = document.createElement(tag);
+    element.src = src;
+    element.preload = 'metadata';
+    element.setAttribute('aria-label', label);
+    element.hidden = true;
+    document.body.append(element);
+    return element;
+  };
+  const media = create('video', title);
+  media.volume = .75;
+  media.playbackRate = 1.25;
+  media.addEventListener('loadedmetadata', () => { media.currentTime = startAt; });
+  let second: HTMLAudioElement | null = null;
+  const controller = createMediaController(document);
+  let selectedId = '';
+  const enabled = async () => isSiteEnabled(demoUrl, await store.load());
+  const client: MediaClient = {
+    async read() {
+      const on = await enabled();
+      const items = on ? controller.snapshot() : [];
+      if (selectedId && !items.some(item => item.id === selectedId)) selectedId = '';
+      return { host: new URL(demoUrl).host, enabled: on, media: items, selectedId };
+    },
+    async command(item, command) { if (!await enabled()) throw new Error(i18n.t('siteDisabled')); await controller.command(item.id, command); },
+    async select(id) { selectedId = id; },
+    async highlight(item) { controller.flash(item.id); }
+  };
+  const listenHotkeys = (window: Window) => {
+    let on = true;
+    void store.load().then(settings => { on = isSiteEnabled(demoUrl, settings); });
+    const unwatch = store.watch(settings => { on = isSiteEnabled(demoUrl, settings); });
+    const hotkeys = createHotkeySession(async (action: HotkeyAction) => {
+      const page = await client.read();
+      const plan = planHotkey(page, action);
+      if (!plan) return;
+      if (plan.media.id !== page.selectedId) await client.select(plan.media.id);
+      await client.command(plan.media, plan.command);
+    });
+    const allow = () => on && controller.snapshot().length > 0;
+    const onKey = (event: KeyboardEvent) => { if (allow()) hotkeys.key(event); };
+    const onWheel = (event: WheelEvent) => { if (allow()) hotkeys.wheel(event); };
+    window.addEventListener('keydown', onKey, true);
+    window.addEventListener('wheel', onWheel, { capture: true, passive: false });
+    return () => { unwatch(); hotkeys.dispose(); window.removeEventListener('keydown', onKey, true); window.removeEventListener('wheel', onWheel, true); };
+  };
+  return {
+    media,
+    client,
+    listenHotkeys,
+    async reset() { media.currentTime = startAt; media.volume = .75; media.playbackRate = 1.25; media.muted = false; await media.play(); },
+    setSecond(label: string | null) {
+      second?.remove();
+      second = label === null ? null : create('audio', label);
+    },
+    destroy() { controller.destroy(); media.remove(); second?.remove(); }
+  };
+}

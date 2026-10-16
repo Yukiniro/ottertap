@@ -1,0 +1,47 @@
+import { Gauge, Globe, Layers, Play, SunMoon, Volume2, type LucideIcon } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import type { T } from '~/lib/locale';
+
+const tiles: { key: string; icon: LucideIcon; wide?: boolean; visual?: 'boost' | 'speed' }[] = [
+  { key: 'Boost', icon: Volume2, wide: true, visual: 'boost' },
+  { key: 'Playback', icon: Play },
+  { key: 'Speed', icon: Gauge, visual: 'speed' },
+  { key: 'Multi', icon: Layers, wide: true },
+  { key: 'Sites', icon: Globe, wide: true },
+  { key: 'Theme', icon: SunMoon }
+];
+
+function BoostVisual() {
+  return <div aria-hidden="true" className="w-full max-w-sm">
+    <div className="relative h-2.5 rounded-full bg-muted"><div className="h-full w-[83%] rounded-full bg-primary" /><span className="absolute top-1/2 left-[66.6%] h-5 w-px -translate-y-1/2 bg-foreground/30" /></div>
+    <div className="relative mt-2 h-4 text-[11px] text-muted-foreground"><span className="absolute left-0">0%</span><span className="absolute left-[66.6%] -translate-x-1/2">100%</span><span className="absolute right-0 font-semibold text-primary">150%</span></div>
+  </div>;
+}
+
+function SpeedVisual() {
+  return <div aria-hidden="true" className="flex gap-1 rounded-lg bg-muted p-1 text-xs">{['0.75', '1', '1.25', '1.5', '2'].map(speed => <span key={speed} className={cn('flex-1 rounded-md py-1 text-center text-muted-foreground', speed === '1.25' && 'bg-card font-semibold text-foreground shadow-sm')}>{speed}×</span>)}</div>;
+}
+
+export function Features({ t }: { t: T }) {
+  return <section id="features" className="px-5 py-20 md:py-28">
+    <div className="mx-auto flex max-w-6xl flex-col gap-10">
+      <div className="flex flex-col items-start gap-4">
+        <Badge variant="secondary">{t('featuresEyebrow')}</Badge>
+        <h2 className="max-w-xl text-3xl font-bold tracking-tight md:text-5xl">{t('featuresTitle')}</h2>
+        <p className="max-w-xl text-lg leading-relaxed text-muted-foreground">{t('featuresSubtitle')}</p>
+      </div>
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {tiles.map(({ key, icon: Icon, wide, visual }) => <article key={key} className={cn('flex min-h-64 flex-col justify-between gap-8 rounded-2xl border bg-card p-6 shadow-card', wide && 'lg:col-span-2')}>
+          <span className="grid size-10 place-items-center rounded-xl bg-accent text-accent-foreground"><Icon className="size-5" /></span>
+          {visual === 'boost' && <BoostVisual />}
+          {visual === 'speed' && <SpeedVisual />}
+          <div className="flex flex-col gap-1.5">
+            <h3 className="text-xl font-semibold tracking-tight">{t(`feature${key}Title`)}</h3>
+            <p className="max-w-md text-sm leading-relaxed text-muted-foreground">{t(`feature${key}Body`)}</p>
+          </div>
+        </article>)}
+      </div>
+    </div>
+  </section>;
+}

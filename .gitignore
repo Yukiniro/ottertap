@@ -2,4 +2,9 @@ node_modules/
 .wxt/
 .output/
 .preview/
+site/.next/
+site/out/
+site/next-env.d.ts
+site/public/
 *.log
+site/*.tsbuildinfo

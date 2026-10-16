@@ -1,0 +1,4 @@
+@import "../../assets/style.css";
+@source "..";
+
+html { scroll-behavior: smooth; scroll-padding-top: 80px; }

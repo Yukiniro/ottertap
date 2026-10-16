@@ -9,6 +9,8 @@
     "build": "wxt build",
     "zip": "wxt zip",
     "preview": "vite --config vite.preview.config.ts --host 127.0.0.1 --port 4186 --strictPort",
+    "site:dev": "pnpm --filter ottertap-site dev",
+    "site:build": "pnpm --filter ottertap-site typecheck && pnpm --filter ottertap-site build",
     "typecheck": "tsc --noEmit",
     "test": "tsx --import ./tests/register-i18n.ts --test tests/*.test.ts",
     "verify-build": "node scripts/verify-build.mjs",

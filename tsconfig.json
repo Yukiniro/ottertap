@@ -6,5 +6,6 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "paths": { "@/*": ["./*"], "#i18n": ["./.wxt/i18n/index.ts"] }
-  }
+  },
+  "exclude": ["node_modules", ".output", "site"]
 }
