@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Window } from 'happy-dom';
 import { createElement, act } from 'react';
+import { maxGain } from '../lib/amplifier';
 import { createSitePrefSession, forgetMatchingSites, forgetSitePref, normalizeSettings, rememberSite, sitePrefFor, withRememberedCommand } from '../lib/settings';
 import { defaultSettings, type MediaClient, type MediaState, type Settings, type SettingsStore } from '../lib/types';
 
@@ -9,20 +10,20 @@ test('站点记忆只保留合法音量和倍速，并按最具体的域名匹�
   const settings = normalizeSettings({
     sitePrefs: {
       'https://Bilibili.com/video/1': { volume: .4, rate: 9 },
-      '*.www.bilibili.com': { volume: 1.5, rate: 1.25 },
+      '*.www.bilibili.com': { volume: maxGain, rate: 1.25 },
       'not a host': { volume: .2 },
       'evil.test': { volume: -1, rate: .2 },
       'ok.com': { rate: 4 },
-      'drop.com': { volume: 1.51 }
+      'drop.com': { volume: maxGain + 0.01 }
     }
   });
   assert.deepEqual(settings.sitePrefs, {
     'bilibili.com': { volume: .4 },
-    'www.bilibili.com': { volume: 1.5, rate: 1.25 },
+    'www.bilibili.com': { volume: maxGain, rate: 1.25 },
     'ok.com': { rate: 4 }
   });
   assert.deepEqual(normalizeSettings(null).sitePrefs, {});
-  assert.deepEqual(sitePrefFor('www.bilibili.com', settings.sitePrefs), { host: 'www.bilibili.com', pref: { volume: 1.5, rate: 1.25 } });
+  assert.deepEqual(sitePrefFor('www.bilibili.com', settings.sitePrefs), { host: 'www.bilibili.com', pref: { volume: maxGain, rate: 1.25 } });
   assert.deepEqual(sitePrefFor('m.bilibili.com', settings.sitePrefs)?.pref, { volume: .4 });
   assert.equal(sitePrefFor('bilibili.com.evil.test', settings.sitePrefs), null);
   assert.equal(sitePrefFor('notbilibili.com', settings.sitePrefs), null);
