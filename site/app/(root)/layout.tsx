@@ -1,8 +1,11 @@
 ﻿import type { ReactNode } from 'react';
+import { siteMetadata } from '~/lib/metadata';
 import { themeScript } from '~/lib/theme-script';
 import '../globals.css';
 
-export const metadata = { title: 'OtterTap', icons: { icon: '/icon.png' } };
+export function generateMetadata() {
+  return siteMetadata('en', '/');
+}
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return <html lang="en" suppressHydrationWarning>

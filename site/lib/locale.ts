@@ -11,6 +11,9 @@ const read = (...path: string[]) => readFlatMessages(readFileSync(join(process.c
 
 export type T = (key: string) => string;
 
+export const siteUrl = 'https://ottertap.vercel.app';
+export const languageAlternates = { 'zh-CN': `${siteUrl}/zh/`, en: `${siteUrl}/en/`, 'x-default': `${siteUrl}/` };
+
 export const links = {
   repo: 'https://github.com/Yukiniro/ottertap',
   releases: 'https://github.com/Yukiniro/ottertap/releases',

@@ -1,5 +1,7 @@
 # 小獭 OtterTap
 
+![小獭 OtterTap — Chrome / Edge 网页媒体控制扩展](site/assets/og.jpg)
+
 水獭意象的浏览器媒体控制扩展，品牌为小獭 OtterTap，标志为水獭抱着播放键。WXT + React + TypeScript + Tailwind CSS，使用 shadcn/ui 的 **base-nova / Base UI** 组件，图标来自 Lucide。界面语言跟随浏览器：中文使用中文，其他语言使用英文。
 
 ## 安装构建包
