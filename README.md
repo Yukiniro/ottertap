@@ -57,6 +57,12 @@ pnpm site:build
 
 开发地址为 [http://localhost:4187/](http://localhost:4187/)，提供 `/zh/` 和 `/en/` 页面，静态构建输出到 `site/out/`。
 
+## 官网访问统计
+
+官网在 `site` 包中，使用 `@vercel/analytics` 统计页面访问，不包含自定义交互事件。浏览器扩展不接入统计。
+
+在对应 Vercel 项目的 Web Analytics 页面点击 Enable，然后重新部署官网。部署后访问官网，在浏览器网络面板确认统计脚本和上报请求成功，并在 Vercel Analytics 面板确认收到访问数据。详见 [Vercel 接入说明](https://vercel.com/docs/analytics/quickstart)。
+
 ## 参与开发
 
 问题与建议请提交到 [GitHub Issues](https://github.com/Yukiniro/ottertap/issues)。参与开发前请阅读 [工程约定](AGENTS.md) 和 [领域术语](CONTEXT.md)。
