@@ -38,8 +38,7 @@ function main() {
   run('pnpm', ['zip']);
   const zips = readdirSync(new URL('../.output/', import.meta.url)).filter(name => name.endsWith('.zip'));
   if (zips.length !== 1) throw new Error(`需要恰好一个 zip，实际是 ${zips.join(', ') || '没有'}`);
-  if (!tagExists(tag)) run('pnpm', ['exec', 'changeset', 'tag']);
-  if (!tagExists(tag)) throw new Error(`没有创建标签 ${tag}`);
+  if (!tagExists(tag)) run('git', ['tag', tag]);
   try { execFileSync('git', ['push', 'origin', `refs/tags/${tag}`], { cwd: root, stdio: 'inherit' }); }
   catch { execFileSync('git', ['ls-remote', '--exit-code', 'origin', `refs/tags/${tag}`], { cwd: root, stdio: 'ignore' }); }
   const notes = join(tmpdir(), `ottertap-${version}.md`);
