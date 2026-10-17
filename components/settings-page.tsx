@@ -159,15 +159,19 @@ export function SettingsPage({ back }: { back?: () => void }) {
         <div className="px-5 pb-5 sm:px-6">
           <dl className="divide-y rounded-lg bg-muted/50 px-3">
             {[
-              { key: '↑', description: i18n.t('shortcutVolumeUp') },
-              { key: '↓', description: i18n.t('shortcutVolumeDown') },
-              { key: i18n.t('shortcutWheel'), description: i18n.t('shortcutVolumeWheel') },
-            ].map(shortcut => <div key={shortcut.key} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 text-sm">
+              { id: 'volume-up', key: '↑', description: i18n.t('shortcutVolumeUp') },
+              { id: 'volume-down', key: '↓', description: i18n.t('shortcutVolumeDown') },
+              { id: 'volume-wheel', key: i18n.t('shortcutWheel'), description: i18n.t('shortcutVolumeWheel') },
+              { id: 'speed-up', key: '.', description: i18n.t('shortcutSpeedUp') },
+              { id: 'speed-down', key: ',', description: i18n.t('shortcutSpeedDown') },
+              { id: 'speed-reset', key: '0', description: i18n.t('shortcutSpeedReset') },
+            ].map(shortcut => <div key={shortcut.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 text-sm">
               <dt><kbd className="inline-block rounded-md border bg-background px-2 py-1 font-mono text-xs whitespace-nowrap">Alt + Shift + {shortcut.key}</kbd></dt>
               <dd className="text-muted-foreground">{shortcut.description}</dd>
             </div>)}
           </dl>
           <p className="mt-3 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsMac')}</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsRateKeys')}</p>
         </div>
       </section>
       <section id="sites" aria-labelledby="sites-label" className="scroll-mt-32 divide-y rounded-xl bg-card shadow-card md:scroll-mt-8">

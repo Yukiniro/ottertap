@@ -1,18 +1,32 @@
 import { lockedMedia } from './media';
+import { nextRate } from './rate';
 import { steppedVolume } from './volume';
 import type { MediaCommand, MediaState, PageState } from './types';
 
-export type HotkeyAction = { type: 'volume'; delta: number };
+export type HotkeyAction = { type: 'volume'; delta: number } | { type: 'rate'; direction: 1 | -1 | 0 };
 
 export const volumeGestureEvent = 'ottertap-volume-gesture';
+export const rateHintEvent = 'ottertap-rate';
 
-interface KeyInput { key: string; altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }
+interface KeyInput { key: string; code?: string; altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }
+
+function rateDirection(event: KeyInput): 1 | -1 | 0 | null {
+  // Characters follow the typed glyph, including AZERTY. code stays stable when macOS Option rewrites key.
+  if (event.key === '.' || event.key === '>') return 1;
+  if (event.key === ',' || event.key === '<') return -1;
+  if (event.key === '0' || event.key === ')') return 0;
+  if (event.code === 'Period') return 1;
+  if (event.code === 'Comma') return -1;
+  if (event.code === 'Digit0') return 0;
+  return null;
+}
 
 export function hotkeyFromKeyboard(event: KeyInput): HotkeyAction | null {
   if (!event.altKey || !event.shiftKey || event.ctrlKey || event.metaKey) return null;
   if (event.key === 'ArrowUp') return { type: 'volume', delta: 10 };
   if (event.key === 'ArrowDown') return { type: 'volume', delta: -10 };
-  return null;
+  const direction = rateDirection(event);
+  return direction === null ? null : { type: 'rate', direction };
 }
 
 export function wheelVolumeDelta(deltaY: number, deltaMode: number) {
@@ -24,7 +38,8 @@ export function wheelVolumeDelta(deltaY: number, deltaMode: number) {
 export function isHotkeyAction(value: unknown): value is HotkeyAction {
   if (!value || typeof value !== 'object') return false;
   const action = value as HotkeyAction;
-  return action.type === 'volume' && Number.isFinite(action.delta) && Math.abs(action.delta) <= 150;
+  if (action.type === 'volume') return Number.isFinite(action.delta) && Math.abs(action.delta) <= 150;
+  return action.type === 'rate' && (action.direction === 1 || action.direction === -1 || action.direction === 0);
 }
 
 export function shownPercent(media: MediaState) {
@@ -32,6 +47,10 @@ export function shownPercent(media: MediaState) {
 }
 
 export function commandForHotkey(action: HotkeyAction, media: MediaState): MediaCommand | null {
+  if (action.type === 'rate') {
+    const value = nextRate(media.rate, action.direction);
+    return value === media.rate ? null : { type: 'rate', value };
+  }
   if (!action.delta) return null;
   const max = media.maxVolume * 100;
   return { type: 'volume', value: steppedVolume(shownPercent(media), action.delta, max) / 100 };
@@ -50,27 +69,33 @@ export function planHotkey(page: PageState, action: HotkeyAction) {
 }
 
 export function createHotkeyInput(send: (action: HotkeyAction) => void) {
-  let pending: number[] = [];
+  let pending: HotkeyAction[] = [];
   let frame = 0;
   const flush = () => {
     frame = 0;
     const steps = pending;
     pending = [];
-    window.dispatchEvent(new window.CustomEvent(volumeGestureEvent));
+    if (steps.some(action => action.type === 'volume')) window.dispatchEvent(new window.CustomEvent(volumeGestureEvent));
     // Keep event boundaries so the input after landing on 100% can leave it.
-    for (const delta of steps) send({ type: 'volume', delta: Math.max(-150, Math.min(150, delta)) });
+    for (const action of steps) {
+      if (action.type === 'volume') send({ type: 'volume', delta: Math.max(-150, Math.min(150, action.delta)) });
+      else send(action);
+    }
   };
-  const queueVolume = (delta: number) => {
-    pending.push(delta);
+  const queue = (action: HotkeyAction) => {
+    pending.push(action);
     if (!frame) frame = window.requestAnimationFrame(flush);
   };
   return {
-    key(event: KeyInput & { preventDefault(): void; stopPropagation(): void }) {
+    key(event: KeyInput & { type?: string; preventDefault(): void; stopPropagation(): void; stopImmediatePropagation?(): void }) {
       const action = hotkeyFromKeyboard(event);
       if (!action) return false;
+      // Capture-phase stop keeps Shift+, / Shift+. on the page from also stepping speed.
       event.preventDefault();
       event.stopPropagation();
-      queueVolume(action.delta);
+      event.stopImmediatePropagation?.();
+      if (event.type === 'keyup') return true;
+      queue(action);
       return true;
     },
     wheel(event: { deltaX: number; deltaY: number; deltaMode: number; altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean; preventDefault(): void; stopPropagation(): void }) {
@@ -80,7 +105,7 @@ export function createHotkeyInput(send: (action: HotkeyAction) => void) {
       if (!delta) return false;
       event.preventDefault();
       event.stopPropagation();
-      queueVolume(delta);
+      queue({ type: 'volume', delta });
       return true;
     },
     dispose() { window.cancelAnimationFrame(frame); frame = 0; pending = []; }

@@ -4,6 +4,7 @@ import { extensionStore } from '../lib/extension-store';
 import { createSitePrefSession, isSiteEnabled, withRememberedCommand } from '../lib/settings';
 import { isMediaCommand } from '../lib/media';
 import { isHotkeyAction, shownPercent } from '../lib/hotkey';
+import { nextRate } from '../lib/rate';
 import { steppedVolume } from '../lib/volume';
 import { keptSelection, lockedMedia } from '../lib/media';
 import type { MediaCommand, MediaState, SitePref } from '../lib/types';
@@ -78,6 +79,9 @@ export default defineBackground(() => {
   const reveal = (tabId: number, percent: number) => {
     void browser.tabs.sendMessage(tabId, { namespace: 'ottertap', type: 'reveal', percent }, { frameId: 0 }).catch(() => {});
   };
+  const showRate = (tabId: number, rate: number) => {
+    void browser.tabs.sendMessage(tabId, { namespace: 'ottertap', type: 'rateHint', rate }, { frameId: 0 }).catch(() => {});
+  };
   async function applyVolume(tabId: number, host: string, delta: number) {
     let gesture = gestures.get(tabId);
     const selected = selectedIds.get(tabId);
@@ -99,11 +103,26 @@ export default defineBackground(() => {
     await rememberCommand(host, { type: 'volume', value: gesture.percent / 100 });
     return gesture.percent;
   }
+  async function applyRate(tabId: number, host: string, direction: 1 | -1 | 0) {
+    const { media, failed } = await collect(tabId, host);
+    const saved = lockedId(tabId, media, failed);
+    if (saved && !media.some(item => item.id === saved)) return;
+    const target = lockedMedia(media, saved);
+    if (!target) return;
+    selectedIds.set(tabId, target.id);
+    const next = nextRate(target.rate, direction);
+    if (next === target.rate) return target.rate;
+    const result = await deliver(tabId, target.id, 'command', { type: 'rate', value: next });
+    await rememberCommand(host, { type: 'rate', value: next });
+    const reported = result && typeof result === 'object' && 'rate' in result ? result.rate : undefined;
+    return typeof reported === 'number' && Number.isFinite(reported) ? reported : next;
+  }
   async function deliver(tabId: number, id: string, type: 'command' | 'highlight', command?: unknown) {
     const [frame, localId] = id.split(':');
     const message = type === 'highlight' ? { namespace: 'ottertap', type, id: localId } : { namespace: 'ottertap', type, id: localId, command };
     const result = await browser.tabs.sendMessage(tabId, message, { frameId: Number(frame) });
     if (result?.error) throw new Error(result.error);
+    return result;
   }
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (sender.id !== browser.runtime.id || !message || message.namespace !== 'ottertap') return;
@@ -153,6 +172,12 @@ export default defineBackground(() => {
         }
         if (message.type === 'hotkey') {
           if (!isHotkeyAction(message.action)) throw new Error(i18n.t('invalidCommand'));
+          if (message.action.type === 'rate') {
+            const rate = await applyRate(tabId, host, message.action.direction);
+            if (rate === undefined) return { handled: false };
+            showRate(tabId, rate);
+            return { handled: true, rate };
+          }
           const percent = await applyVolume(tabId, host, message.action.delta);
           if (percent === undefined) return { handled: false };
           reveal(tabId, percent);
