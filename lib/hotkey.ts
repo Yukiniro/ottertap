@@ -72,9 +72,10 @@ export function createHotkeyInput(send: (action: HotkeyAction) => void) {
       queueVolume(action.delta);
       return true;
     },
-    wheel(event: { deltaY: number; deltaMode: number; altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean; preventDefault(): void; stopPropagation(): void }) {
+    wheel(event: { deltaX: number; deltaY: number; deltaMode: number; altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean; preventDefault(): void; stopPropagation(): void }) {
       if (!event.altKey || !event.shiftKey || event.ctrlKey || event.metaKey) return false;
-      const delta = wheelVolumeDelta(event.deltaY, event.deltaMode);
+      // macOS can map Shift+wheel to the horizontal axis.
+      const delta = wheelVolumeDelta(event.deltaY || event.deltaX, event.deltaMode);
       if (!delta) return false;
       event.preventDefault();
       event.stopPropagation();
