@@ -6,6 +6,7 @@ import { isMediaCommand } from '../lib/media';
 import { isHotkeyAction, shownPercent } from '../lib/hotkey';
 import { nextRate } from '../lib/rate';
 import { steppedVolume } from '../lib/volume';
+import { volumeBadgeColor, volumeBadgeFromReports, volumeBadgeTtlMs } from '../lib/volume-badge';
 import { keptSelection, lockedMedia } from '../lib/media';
 import type { MediaCommand, MediaState, SitePref } from '../lib/types';
 
@@ -22,13 +23,59 @@ export default defineBackground(() => {
     done.then(() => { if (commandTails.get(tabId) === done) commandTails.delete(tabId); });
     return run;
   };
+  const volumes = new Map<number, Map<number, { volume: number; at: number }>>();
+  const volumeTimers = new Map<number, ReturnType<typeof setTimeout>>();
+  const clearVolumeTimer = (tabId: number) => {
+    const timer = volumeTimers.get(tabId);
+    if (!timer) return;
+    clearTimeout(timer);
+    volumeTimers.delete(tabId);
+  };
+  const paintBadge = (tabId: number, now: number) => {
+    const badge = volumeBadgeFromReports(volumes.get(tabId)?.values() ?? [], now);
+    const title = badge ? i18n.t('volumeBoosted', { percent: badge.percent }) : '';
+    try {
+      void browser.action.setBadgeText({ text: badge?.text ?? '', tabId }).catch(() => {});
+      void browser.action.setBadgeBackgroundColor({ color: volumeBadgeColor, tabId }).catch(() => {});
+      void browser.action.setTitle({ title, tabId }).catch(() => {});
+    } catch { /* The build verifier does not provide the action API. */ }
+  };
+  const armVolumeTimer = (tabId: number, now: number) => {
+    clearVolumeTimer(tabId);
+    const tab = volumes.get(tabId);
+    if (!tab?.size) return;
+    let expiry = Infinity;
+    for (const sample of tab.values()) expiry = Math.min(expiry, sample.at + volumeBadgeTtlMs);
+    volumeTimers.set(tabId, setTimeout(() => {
+      volumeTimers.delete(tabId);
+      const current = volumes.get(tabId);
+      const time = Date.now();
+      if (current) {
+        for (const [frameId, sample] of current) if (time - sample.at >= volumeBadgeTtlMs) current.delete(frameId);
+        if (!current.size) volumes.delete(tabId);
+      }
+      paintBadge(tabId, time);
+      armVolumeTimer(tabId, time);
+    }, Math.max(0, expiry - now)));
+  };
+  const rememberVolume = (tabId: number, frameId: number, volume: number) => {
+    const now = Date.now();
+    const tab = volumes.get(tabId) ?? new Map();
+    for (const [id, sample] of tab) if (now - sample.at >= volumeBadgeTtlMs) tab.delete(id);
+    if (volume > 1) tab.set(frameId, { volume, at: now });
+    else tab.delete(frameId);
+    if (tab.size) volumes.set(tabId, tab);
+    else volumes.delete(tabId);
+    armVolumeTimer(tabId, now);
+    paintBadge(tabId, now);
+  };
   const sitePrefSessions = new Map<number, ReturnType<typeof createSitePrefSession>>();
   const sitePrefSession = (tabId: number) => {
     let session = sitePrefSessions.get(tabId);
     if (!session) sitePrefSessions.set(tabId, session = createSitePrefSession());
     return session;
   };
-  const forget = (tabId: number) => { frames.delete(tabId); selectedIds.delete(tabId); gestures.delete(tabId); sitePrefSessions.delete(tabId); };
+  const forget = (tabId: number) => { frames.delete(tabId); selectedIds.delete(tabId); gestures.delete(tabId); sitePrefSessions.delete(tabId); volumes.delete(tabId); clearVolumeTimer(tabId); paintBadge(tabId, Date.now()); };
   async function rememberCommand(host: string, command: MediaCommand) {
     if (command.type !== 'volume' && command.type !== 'rate') return;
     try {
@@ -138,9 +185,12 @@ export default defineBackground(() => {
         const host = tab.url ? new URL(tab.url).hostname : '';
         if (message.type === 'context') return { enabled, host, hasMedia: hasMedia(tabId) };
         if (message.type === 'register' && sender.tab) {
-          if (!enabled) return;
+          const frameId = sender.frameId ?? 0;
+          if (!enabled) { volumes.delete(tabId); clearVolumeTimer(tabId); paintBadge(tabId, Date.now()); return; }
+          if (message.present === false) { rememberVolume(tabId, frameId, 0); return; }
           if (!frames.has(tabId)) frames.set(tabId, new Map());
-          frames.get(tabId)!.set(sender.frameId ?? 0, Date.now());
+          frames.get(tabId)!.set(frameId, Date.now());
+          if (typeof message.volume === 'number' && Number.isFinite(message.volume)) rememberVolume(tabId, frameId, message.volume);
           return;
         }
         // Only extension pages and this tab's content scripts can request controls.

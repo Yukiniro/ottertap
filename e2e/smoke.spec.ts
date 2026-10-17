@@ -17,11 +17,19 @@ type Settings = {
 type WheelSnapshot = { deltaX: number; deltaY: number; deltaMode: number; altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean };
 type ExtensionGlobal = {
   chrome: {
+    action: {
+      getBadgeBackgroundColor: (details: { tabId: number }) => Promise<number[]>;
+      getBadgeText: (details: { tabId: number }) => Promise<string>;
+      getTitle: (details: { tabId: number }) => Promise<string>;
+    };
     storage: {
       local: {
         get: (key: string) => Promise<Record<string, Settings | undefined>>;
         set: (items: Record<string, Settings>) => Promise<void>;
       };
+    };
+    tabs: {
+      query: (query: { url: string }) => Promise<Array<{ id?: number; url?: string }>>;
     };
   };
 };
@@ -88,6 +96,22 @@ async function saveSettings(worker: Worker, settings: Settings) {
   await worker.evaluate(async ({ key, settings }) => {
     await (globalThis as unknown as ExtensionGlobal).chrome.storage.local.set({ [key]: settings });
   }, { key: settingsKey, settings });
+}
+
+async function toolbarBadge(page: Page) {
+  if (!browser) throw new Error('浏览器还没有启动');
+  const worker = await serviceWorker(browser);
+  return worker.evaluate(async url => {
+    const chrome = (globalThis as unknown as ExtensionGlobal).chrome;
+    const tabId = (await chrome.tabs.query({ url })).find(tab => tab.url === url)?.id;
+    if (tabId == null) return null;
+    const [text, title, color] = await Promise.all([
+      chrome.action.getBadgeText({ tabId }),
+      chrome.action.getTitle({ tabId }),
+      chrome.action.getBadgeBackgroundColor({ tabId }),
+    ]);
+    return { text, title, color: [...color] };
+  }, page.url());
 }
 
 async function rememberedVolume(worker: Worker) {
@@ -267,6 +291,42 @@ test('Alt+Shift+↑ 从 95% 先停在 100%，再按一次到 110%，且媒体音
       } finally { void context.close(); }
     });
     expect(amplified).toBe('connected');
+  });
+});
+
+test('音量超过 100% 时工具栏角标显示，回到 100% 或来源 frame 消失后清除', async () => {
+  await withPage(async page => {
+    await openFixture(page, '/');
+    await ready(page);
+    await page.locator('#media').evaluate((element: HTMLMediaElement) => { element.volume = 0.95; });
+    await focusPage(page);
+    await page.keyboard.press('Alt+Shift+ArrowUp');
+    await expect.poll(() => mediaVolume(page)).toBeCloseTo(1, 2);
+    await page.keyboard.press('Alt+Shift+ArrowUp');
+    await expect.poll(async () => (await toolbarBadge(page))?.text).toBe('110');
+    const boosted = await toolbarBadge(page);
+    expect(boosted?.title).toBe('Volume is boosted to 110%');
+    expect(boosted?.color).toEqual([0xe4, 0x57, 0x2e, 255]);
+    await page.keyboard.press('Alt+Shift+ArrowDown');
+    await expect.poll(async () => (await toolbarBadge(page))?.text).toBe('');
+  });
+  await withPage(async page => {
+    await openFixture(page, '/frame');
+    if (!browser) throw new Error('浏览器还没有启动');
+    const settings = defaultSettings();
+    settings.floatingPosition = { side: 'right', y: 0.51 };
+    await saveSettings(await serviceWorker(browser), settings);
+    const read = () => mediaVolume(page, true);
+    await expect.poll(read).toBeCloseTo(1, 2);
+    await focusPage(page, 420);
+    await expect(async () => {
+      if ((await read()) > 1.05) return;
+      await page.keyboard.press('Alt+Shift+ArrowUp');
+      await expect.poll(read, { timeout: 1_500 }).toBeGreaterThan(1.05);
+    }).toPass({ timeout: 9_000 });
+    await expect.poll(async () => (await toolbarBadge(page))?.text).toBe('110');
+    await page.locator('iframe').evaluate(frame => frame.remove());
+    await expect.poll(async () => (await toolbarBadge(page))?.text, { timeout: 6_000 }).toBe('');
   });
 });
 
