@@ -42,6 +42,15 @@ pnpm zip
 
 构建目录为 `.output/chrome-mv3`，压缩包输出到 `.output/`。`pnpm verify-build` 需要先执行构建。
 
+端到端冒烟会用 Playwright 自带的 Chromium 加载这份构建产物。测试页由请求拦截伪装成 https 站点，不访问外网：
+
+```powershell
+pnpm build
+pnpm e2e
+```
+
+`pnpm e2e` 会先安装 Chromium（已经安装时不会重新下载），再运行 `e2e/` 里的冒烟测试。
+
 交互预览：
 
 ```powershell
