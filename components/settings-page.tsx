@@ -1,7 +1,7 @@
 import { i18n } from '#i18n';
 import { useEffect, useState } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { Sun, AppWindow, Globe, Bookmark, X, CircleCheck, ArrowLeft, CircleAlert } from 'lucide-react';
+import { Sun, AppWindow, Keyboard, Globe, Bookmark, X, CircleCheck, ArrowLeft, CircleAlert } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -19,7 +19,7 @@ import { useSettingsAtoms } from './theme';
 
 const themes = [{ value: 'light', label: () => i18n.t('themeLight') }, { value: 'dark', label: () => i18n.t('themeDark') }, { value: 'system', label: () => i18n.t('themeSystem') }] as const;
 const siteModes = [{ value: 'all', label: () => i18n.t('modeAll'), description: () => i18n.t('modeAllDescription') }, { value: 'allow', label: () => i18n.t('modeAllow'), description: () => i18n.t('modeAllowDescription') }, { value: 'exclude', label: () => i18n.t('modeExclude'), description: () => i18n.t('modeExcludeDescription') }] as const;
-const nav = [{ id: 'appearance', label: () => i18n.t('appearance'), icon: Sun }, { id: 'floating', label: () => i18n.t('floatingController'), icon: AppWindow }, { id: 'sites', label: () => i18n.t('siteRules'), icon: Globe }, { id: 'memory', label: () => i18n.t('rememberedSites'), icon: Bookmark }] as const;
+const nav = [{ id: 'appearance', label: () => i18n.t('appearance'), icon: Sun }, { id: 'floating', label: () => i18n.t('floatingController'), icon: AppWindow }, { id: 'shortcuts', label: () => i18n.t('shortcuts'), icon: Keyboard }, { id: 'sites', label: () => i18n.t('siteRules'), icon: Globe }, { id: 'memory', label: () => i18n.t('rememberedSites'), icon: Bookmark }] as const;
 const prefSummary = (pref: SitePref) => [pref.volume === undefined ? '' : i18n.t('rememberedVolume', { volume: Math.round(pref.volume * 100) }), pref.rate === undefined ? '' : i18n.t('rememberedRate', { rate: pref.rate })].filter(Boolean).join(' · ');
 
 function ThemeThumb({ value }: { value: 'light' | 'dark' | 'system' }) {
@@ -149,6 +149,25 @@ export function SettingsPage({ back }: { back?: () => void }) {
             <FieldLabel htmlFor="settings-floating" className="text-sm font-normal">{i18n.t('showFloating')}</FieldLabel>
             <Switch id="settings-floating" aria-label={i18n.t('floatingController')} checked={floating} disabled={disabled} onCheckedChange={checked => void save({ floating: checked })} />
           </Field>
+        </div>
+      </section>
+      <section id="shortcuts" aria-labelledby="shortcuts-heading" className="scroll-mt-32 rounded-xl bg-card shadow-card md:scroll-mt-8">
+        <div className="px-5 py-5 sm:px-6">
+          <h2 id="shortcuts-heading" className="text-sm font-semibold">{i18n.t('shortcuts')}</h2>
+          <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('shortcutsDescription')}</p>
+        </div>
+        <div className="px-5 pb-5 sm:px-6">
+          <dl className="divide-y rounded-lg bg-muted/50 px-3">
+            {[
+              { key: '↑', description: i18n.t('shortcutVolumeUp') },
+              { key: '↓', description: i18n.t('shortcutVolumeDown') },
+              { key: i18n.t('shortcutWheel'), description: i18n.t('shortcutVolumeWheel') },
+            ].map(shortcut => <div key={shortcut.key} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 text-sm">
+              <dt><kbd className="inline-block rounded-md border bg-background px-2 py-1 font-mono text-xs whitespace-nowrap">Alt + Shift + {shortcut.key}</kbd></dt>
+              <dd className="text-muted-foreground">{shortcut.description}</dd>
+            </div>)}
+          </dl>
+          <p className="mt-3 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsMac')}</p>
         </div>
       </section>
       <section id="sites" aria-labelledby="sites-label" className="scroll-mt-32 divide-y rounded-xl bg-card shadow-card md:scroll-mt-8">
