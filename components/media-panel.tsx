@@ -8,6 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenu
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from './ui/empty';
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from './ui/item';
 import { Slider } from './ui/slider';
+import { VolumeSlider } from './volume-slider';
 import { Switch } from './ui/switch';
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 import { Brand } from './brand';
@@ -92,7 +93,7 @@ export function MediaPanel({ client, openSettings }: { client: MediaClient; open
         </div>
         <div className="mt-1.5 flex items-center gap-2">
           <Button variant="ghost" size="icon" className="[&_svg:not([class*='size-'])]:size-5" aria-label={selected.muted ? i18n.t('unmute') : i18n.t('mute')} aria-pressed={selected.muted} onClick={() => void command({ type: 'mute' })}>{selected.muted || selected.volume === 0 ? <VolumeX /> : <Volume2 />}</Button>
-          <Slider size="bar" aria-label={i18n.t('volume')} className="flex-1" min={0} max={Math.round(selected.maxVolume * 100)} step={1} value={[volume]} onValueChange={value => void adjust({ type: 'volume', value: (first(value) ?? 0) / 100 })} />
+          <VolumeSlider size="bar" aria-label={i18n.t('volume')} className="flex-1" max={Math.round(selected.maxVolume * 100)} value={volume} onValueChange={value => void adjust({ type: 'volume', value: value / 100 })} />
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
           <span id="speed-label" className="min-w-8 shrink-0 text-sm">{i18n.t('speed')}</span>

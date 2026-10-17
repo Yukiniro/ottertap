@@ -6,14 +6,13 @@ import otterMark from '../assets/otter-mark';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Slider } from './ui/slider';
+import { VolumeSlider } from './volume-slider';
 import { useMedia } from '../hooks/use-media';
 import { dockedPoint, dockSize, dropPosition, nudgePosition, type Viewport } from '../lib/dock';
-import { commandForHotkey, createHotkeyInput, volumeGestureEvent } from '../lib/hotkey';
-import type { FloatingPosition, MediaClient, MediaCommand, MediaState } from '../lib/types';
+import { commandForHotkey, createHotkeySession, volumeGestureEvent } from '../lib/hotkey';
+import type { FloatingPosition, MediaClient, MediaState } from '../lib/types';
 import { useSettingsAtoms } from './theme';
 
-const first = (value: number | readonly number[]) => Array.isArray(value) ? value[0] : value;
 const readViewport = (): Viewport => ({ width: document.documentElement.clientWidth || window.innerWidth, height: document.documentElement.clientHeight || window.innerHeight });
 const thumbHeight = 10;
 const boostColor = (volume: number, max: number) => `color-mix(in oklch, oklch(0.577 0.245 27.325) ${Math.max(0, Math.min(1, (volume - 100) / (max - 100))) * 100}%, oklch(0.705 0.213 47.604))`;
@@ -47,12 +46,10 @@ export function FloatingController({ client }: { client: MediaClient }) {
   const mediaRef = useRef(selected);
   const clientRef = useRef(client);
   const optimistic = useRef<MediaState | null>(null);
-  const pendingCommand = useRef<MediaCommand | null>(null);
-  const sending = useRef(false);
   floatingRef.current = floating;
   mediaRef.current = selected;
   clientRef.current = client;
-  const hotkeys = useMemo(() => createHotkeyInput(action => {
+  const hotkeys = useMemo(() => createHotkeySession(async action => {
     const current = mediaRef.current;
     if (!current) return;
     const base = optimistic.current?.id === current.id ? optimistic.current : current;
@@ -61,17 +58,7 @@ export function FloatingController({ client }: { client: MediaClient }) {
     if (next.type === 'volume') {
       optimistic.current = { ...base, volume: next.value, muted: next.value <= 0 };
       setDraft(Math.round(next.value * 100));
-      pendingCommand.current = next;
-      if (sending.current) return;
-      const flush = () => {
-        const command = pendingCommand.current;
-        const media = mediaRef.current;
-        pendingCommand.current = null;
-        if (!command || !media) { sending.current = false; return; }
-        sending.current = true;
-        void clientRef.current.command(media, command).finally(flush);
-      };
-      flush();
+      await clientRef.current.command(current, next);
     }
   }), []);
   useEffect(() => {
@@ -107,9 +94,7 @@ export function FloatingController({ client }: { client: MediaClient }) {
     setMoved(next);
     void write({ floatingPosition: next }).then(saved => { if (saved) setMoved(null); });
   };
-  const setVolume = (value: number | readonly number[], commit: boolean) => {
-    const next = first(value);
-    if (next === undefined) return;
+  const setVolume = (next: number, commit: boolean) => {
     optimistic.current = null;
     if (!commit) setDraft(next);
     const done = command({ type: 'volume', value: next / 100 });
@@ -144,7 +129,7 @@ export function FloatingController({ client }: { client: MediaClient }) {
         if (next) { event.preventDefault(); move(next); }
       }}><img src={otterMark} alt="" aria-hidden="true" className="pointer-events-none size-[34px] object-contain" /></PopoverTrigger>
       <PopoverContent container={container} side={position.side === 'right' ? 'left' : 'right'} sideOffset={8} aria-label={i18n.t('volumePill')} title={boostLimit} className="group/pill relative w-[60px] gap-0 rounded-full p-0 shadow-[0_12px_28px_#15112924] ring-0" style={{ height: pillHeight, '--volume-boost': max > 100 ? boostColor(volume, max) : undefined } as CSSProperties}>
-        <Slider size="pill" orientation="vertical" aria-label={i18n.t('volume')} aria-description={boostLimit} data-boost={volume > 100} format={{ style: 'unit', unit: 'percent' }} className="size-full rounded-[inherit]" min={0} max={max} step={1} value={[volume]} onValueChange={value => setVolume(value, false)} onValueCommitted={value => setVolume(value, true)} />
+        <VolumeSlider size="pill" orientation="vertical" aria-label={i18n.t('volume')} aria-description={boostLimit} data-boost={volume > 100} format={{ style: 'unit', unit: 'percent' }} className="size-full rounded-[inherit]" max={max} value={volume} onValueChange={value => setVolume(value, false)} onValueCommitted={value => setVolume(value, true)} />
         {max > 100 && <span aria-hidden="true" data-slot="volume-limit-mark" className="pointer-events-none absolute inset-x-2 h-px bg-foreground/35" style={{ bottom: `calc(${thumbHeight / 2}px + (100% - ${thumbHeight}px) * ${100 / max})` }} />}
         <span aria-hidden="true" className="pointer-events-none absolute top-6 left-1/2 -translate-x-1/2 rounded-lg bg-background px-1 text-sm font-semibold tabular-nums transition-colors group-has-data-dragging/pill:text-primary data-[boost=true]:text-(--volume-boost)" data-boost={volume > 100}>{volume}%</span>
         <Button variant="ghost" size="icon" className="absolute bottom-2 left-1/2 size-11 -translate-x-1/2 rounded-full text-primary-foreground hover:bg-transparent hover:text-primary-foreground data-[low-volume=true]:text-foreground data-[low-volume=true]:hover:text-foreground dark:hover:bg-transparent [&_svg:not([class*='size-'])]:size-[23px]" data-low-volume={volume / max * pillHeight < 40} aria-label={selected.muted ? i18n.t('unmute') : i18n.t('mute')} aria-pressed={selected.muted} onClick={() => { setDraft(null); void command({ type: 'mute' }); }}>{selected.muted || volume === 0 ? <VolumeX /> : <Volume2 />}</Button>

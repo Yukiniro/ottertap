@@ -4,6 +4,7 @@ import { extensionStore } from '../lib/extension-store';
 import { createSitePrefSession, isSiteEnabled, withRememberedCommand } from '../lib/settings';
 import { isMediaCommand } from '../lib/media';
 import { isHotkeyAction, shownPercent } from '../lib/hotkey';
+import { steppedVolume } from '../lib/volume';
 import { keptSelection, lockedMedia } from '../lib/media';
 import type { MediaCommand, MediaState, SitePref } from '../lib/types';
 
@@ -11,7 +12,6 @@ export default defineBackground(() => {
   const frames = new Map<number, Map<number, number>>();
   const selectedIds = new Map<number, string>();
   const gestures = new Map<number, { id: string; percent: number; max: number; at: number }>();
-  const pendingVolume = new Map<number, number>();
   const commandTails = new Map<number, Promise<void>>();
   const enqueueCommand = (tabId: number, task: () => Promise<unknown>) => {
     const prev = commandTails.get(tabId) ?? Promise.resolve();
@@ -27,7 +27,7 @@ export default defineBackground(() => {
     if (!session) sitePrefSessions.set(tabId, session = createSitePrefSession());
     return session;
   };
-  const forget = (tabId: number) => { frames.delete(tabId); selectedIds.delete(tabId); gestures.delete(tabId); pendingVolume.delete(tabId); sitePrefSessions.delete(tabId); };
+  const forget = (tabId: number) => { frames.delete(tabId); selectedIds.delete(tabId); gestures.delete(tabId); sitePrefSessions.delete(tabId); };
   async function rememberCommand(host: string, command: MediaCommand) {
     if (command.type !== 'volume' && command.type !== 'rate') return;
     try {
@@ -92,7 +92,7 @@ export default defineBackground(() => {
       gestures.set(tabId, gesture);
     }
     const previous = gesture.percent;
-    gesture.percent = Math.max(0, Math.min(gesture.max, previous + delta));
+    gesture.percent = steppedVolume(previous, delta, gesture.max);
     gesture.at = Date.now();
     try { await deliver(tabId, gesture.id, 'command', { type: 'volume', value: gesture.percent / 100 }); }
     catch (error) { gesture.percent = previous; throw error; }
@@ -138,7 +138,7 @@ export default defineBackground(() => {
           }
           return { host, enabled, media, selectedId };
         }
-        if (!enabled) { pendingVolume.delete(tabId); throw new Error(i18n.t('siteDisabled')); }
+        if (!enabled) throw new Error(i18n.t('siteDisabled'));
         if (message.type === 'select') {
           if (!mediaId) throw new Error(i18n.t('invalidCommand'));
           if (gestures.get(tabId)?.id !== mediaId) gestures.delete(tabId);
@@ -153,14 +153,7 @@ export default defineBackground(() => {
         }
         if (message.type === 'hotkey') {
           if (!isHotkeyAction(message.action)) throw new Error(i18n.t('invalidCommand'));
-          let percent: number | undefined;
-          while (pendingVolume.get(tabId)) {
-            const delta = pendingVolume.get(tabId)!;
-            pendingVolume.set(tabId, 0);
-            const next = await applyVolume(tabId, host, delta);
-            if (next === undefined) { pendingVolume.delete(tabId); return { handled: false }; }
-            percent = next;
-          }
+          const percent = await applyVolume(tabId, host, message.action.delta);
           if (percent === undefined) return { handled: false };
           reveal(tabId, percent);
           return { handled: true, percent };
@@ -175,9 +168,6 @@ export default defineBackground(() => {
       } catch (error) { return { error: error instanceof Error ? error.message : i18n.t('pageUnavailable') }; }
     }
     // Chain before the first await so a later command cannot pass an earlier one.
-    if (message.type === 'hotkey' && message.action?.type === 'volume' && Number.isInteger(tabId) && isHotkeyAction(message.action)) {
-      pendingVolume.set(tabId, (pendingVolume.get(tabId) ?? 0) + message.action.delta);
-    }
     const run = (message.type === 'command' || message.type === 'hotkey') && Number.isInteger(tabId) ? enqueueCommand(tabId, () => handle()) : handle();
     // Keep the channel open on Chromium versions without Promise listener support.
     void run.then(sendResponse, () => sendResponse({ error: i18n.t('extensionMessageFailed') }));

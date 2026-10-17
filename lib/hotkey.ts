@@ -1,4 +1,5 @@
 import { lockedMedia } from './media';
+import { steppedVolume } from './volume';
 import type { MediaCommand, MediaState, PageState } from './types';
 
 export type HotkeyAction = { type: 'volume'; delta: number };
@@ -33,7 +34,7 @@ export function shownPercent(media: MediaState) {
 export function commandForHotkey(action: HotkeyAction, media: MediaState): MediaCommand | null {
   if (!action.delta) return null;
   const max = media.maxVolume * 100;
-  return { type: 'volume', value: Math.max(0, Math.min(max, shownPercent(media) + action.delta)) / 100 };
+  return { type: 'volume', value: steppedVolume(shownPercent(media), action.delta, max) / 100 };
 }
 
 export function isFloatingEvent(event: Event) {
@@ -49,18 +50,18 @@ export function planHotkey(page: PageState, action: HotkeyAction) {
 }
 
 export function createHotkeyInput(send: (action: HotkeyAction) => void) {
-  let pending = 0;
+  let pending: number[] = [];
   let frame = 0;
   const flush = () => {
     frame = 0;
-    const step = Math.max(-150, Math.min(150, pending));
-    pending = 0;
-    if (!step) return;
+    const steps = pending;
+    pending = [];
     window.dispatchEvent(new window.CustomEvent(volumeGestureEvent));
-    send({ type: 'volume', delta: step });
+    // Keep event boundaries so the input after landing on 100% can leave it.
+    for (const delta of steps) send({ type: 'volume', delta: Math.max(-150, Math.min(150, delta)) });
   };
   const queueVolume = (delta: number) => {
-    pending += delta;
+    pending.push(delta);
     if (!frame) frame = window.requestAnimationFrame(flush);
   };
   return {
@@ -82,11 +83,11 @@ export function createHotkeyInput(send: (action: HotkeyAction) => void) {
       queueVolume(delta);
       return true;
     },
-    dispose() { window.cancelAnimationFrame(frame); frame = 0; pending = 0; }
+    dispose() { window.cancelAnimationFrame(frame); frame = 0; pending = []; }
   };
 }
 
 export function createHotkeySession(perform: (action: HotkeyAction) => Promise<void>) {
   let tail = Promise.resolve();
-  return createHotkeyInput(action => { tail = tail.then(() => perform(action), () => perform(action)); });
+  return createHotkeyInput(action => { tail = tail.then(() => perform(action)).catch(() => {}); });
 }
