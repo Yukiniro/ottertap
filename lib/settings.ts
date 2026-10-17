@@ -1,9 +1,7 @@
 import { i18n } from '#i18n';
 import { maxGain } from './amplifier';
+import { maxRate, minRate } from './rate';
 import { defaultSettings, type MediaCommand, type Settings, type SitePref } from './types';
-
-const minRate = 0.25;
-const maxRate = 4;
 const matchesSite = (host: string, site: string) => host === site || host.endsWith(`.${site}`);
 
 export function normalizeDomain(input: string): string {

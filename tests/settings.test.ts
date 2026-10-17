@@ -47,6 +47,13 @@ test('设置同页展示全部项，保存只改对应字段，失败时不误�
     assert.equal(value.theme, 'dark');
     assert.deepEqual(value.sites, ['bilibili.com']);
     assert.match(host.querySelector('[role="list"][aria-label="网站列表"]')!.textContent!, /bilibili.com/);
+    assert.match(host.textContent!, /Alt \+ Shift \+ \./);
+    assert.match(host.textContent!, /Alt \+ Shift \+ ,/);
+    assert.match(host.textContent!, /Alt \+ Shift \+ 0/);
+    assert.match(host.textContent!, /加快 0\.25×/);
+    assert.match(host.textContent!, /减慢 0\.25×/);
+    assert.match(host.textContent!, /回到 1×/);
+    assert.match(host.textContent!, /, \. 0/);
     assert.equal(listeners.size, 1);
   } finally {
     await act(async () => { root.unmount(); });

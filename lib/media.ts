@@ -1,5 +1,6 @@
 import { i18n } from '#i18n';
 import { canAmplify, createAmplifier, maxGain, splitVolume, type Amplifier } from './amplifier';
+import { maxRate, minRate, readSettledRate } from './rate';
 import type { MediaCommand, MediaState } from './types';
 import { formatTime } from './utils';
 
@@ -57,7 +58,7 @@ export function isMediaCommand(value: unknown): value is MediaCommand {
   if (['play', 'pause', 'mute'].includes(command.type)) return true;
   if (!('value' in command) || !Number.isFinite(command.value)) return false;
   if (command.type === 'volume') return command.value >= 0 && command.value <= maxGain;
-  if (command.type === 'rate') return command.value >= 0.25 && command.value <= 4;
+  if (command.type === 'rate') return command.value >= minRate && command.value <= maxRate;
   return ['seek', 'skip'].includes(command.type);
 }
 
@@ -120,6 +121,7 @@ export function createMediaController(document: Document) {
       const element = elements.find(media => ids.get(media) === id && media.isConnected);
       if (!element) throw new Error(i18n.t('mediaRemoved'));
       await applyMediaCommand(element, command, amplifier);
+      if (command.type === 'rate') return readSettledRate(element);
     },
     flash(id: string) {
       this.snapshot();
