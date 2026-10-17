@@ -4,6 +4,7 @@ import { browser } from 'wxt/browser';
 import { createShadowRootUi } from 'wxt/utils/content-script-ui/shadow-root';
 import { createHotkeyInput, hotkeyFromKeyboard, isFloatingEvent, rateHintEvent, volumeGestureEvent } from '../lib/hotkey';
 import { createMediaController, isMediaCommand } from '../lib/media';
+import { maxEffectiveVolume, volumeReportIntervalMs } from '../lib/volume-badge';
 import { extensionStore } from '../lib/extension-store';
 import { createExtensionClient } from '../lib/extension-client';
 import { FloatingController } from '../components/floating';
@@ -27,12 +28,23 @@ export default defineContentScript({
       } catch { enabled = false; tabHasMedia = false; }
     };
     await refreshContext();
-    const unwatch = extensionStore.watch(() => { void refreshContext(); });
-    const register = () => {
-      void refreshContext();
-      if (enabled && ctx.isValid && controller.snapshot().length) void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'register' }).catch(() => {});
+    let reported = false;
+    const reportVolume = () => {
+      if (!ctx.isValid) return;
+      const media = enabled ? controller.snapshot() : [];
+      if (!media.length) {
+        if (!reported) return;
+        reported = false;
+        void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'register', present: false }).catch(() => {});
+        return;
+      }
+      reported = true;
+      void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'register', volume: maxEffectiveVolume(media) }).catch(() => {});
     };
-    register(); ctx.setInterval(register, 2000);
+    const unwatch = extensionStore.watch(() => { void refreshContext().then(reportVolume); });
+    const register = () => { void refreshContext(); reportVolume(); };
+    register();
+    ctx.setInterval(register, volumeReportIntervalMs);
     const listener: Parameters<typeof browser.runtime.onMessage.addListener>[0] = (message, sender, sendResponse) => {
       if (sender.id !== browser.runtime.id || message?.namespace !== 'ottertap') return;
       if (!['snapshot', 'command', 'highlight', 'reveal', 'rateHint'].includes(message.type)) return;
@@ -54,6 +66,7 @@ export default defineContentScript({
           // Refresh the registry when a command arrives before the first snapshot.
           controller.snapshot();
           const applied = await controller.command(message.id, message.command);
+          if (message.command.type === 'volume' || message.command.type === 'mute') reportVolume();
           return message.command.type === 'rate' ? { ok: true, rate: applied } : { ok: true };
         } catch (error) { return { error: error instanceof Error ? error.message : i18n.t('mediaCommandFailed') }; }
       }
