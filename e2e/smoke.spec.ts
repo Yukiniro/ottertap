@@ -320,10 +320,16 @@ test('音量超过 100% 时工具栏角标显示，回到 100% 或来源 frame �
     await expect.poll(read).toBeCloseTo(1, 2);
     await focusPage(page, 420);
     await expect(async () => {
-      if ((await read()) > 1.05) return;
-      await page.keyboard.press('Alt+Shift+ArrowUp');
-      await expect.poll(read, { timeout: 1_500 }).toBeGreaterThan(1.05);
+      const current = await read();
+      if (Math.abs(current - 0.9) <= 0.02) return;
+      expect(current).toBeCloseTo(1, 2);
+      await page.keyboard.press('Alt+Shift+ArrowDown');
+      await expect.poll(read, { timeout: 1_500 }).toBeCloseTo(0.9, 2);
     }).toPass({ timeout: 9_000 });
+    await focusPage(page, 420);
+    await page.keyboard.press('Alt+Shift+ArrowUp');
+    await expect.poll(read).toBeCloseTo(1, 2);
+    await page.keyboard.press('Alt+Shift+ArrowUp');
     await expect.poll(async () => (await toolbarBadge(page))?.text).toBe('110');
     await page.locator('iframe').evaluate(frame => frame.remove());
     await expect.poll(async () => (await toolbarBadge(page))?.text, { timeout: 6_000 }).toBe('');
