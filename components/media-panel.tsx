@@ -74,7 +74,7 @@ export function MediaPanel({ client, openSettings }: { client: MediaClient; open
       <div className="rounded-2xl bg-card px-4 pt-4 pb-3 shadow-card">
         <div className="text-center">
           <p className="text-xs text-muted-foreground">{page.host || selected.host}</p>
-          <h1 title={selected.label || undefined} className="mt-1.5 line-clamp-2 min-h-7 text-[22px] leading-7 font-bold tracking-tight">{selected.label || i18n.t('unnamedMedia')}</h1>
+          <h1 title={selected.title} className="mt-1.5 line-clamp-2 min-h-7 text-[22px] leading-7 font-bold tracking-tight">{selected.title}</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">{selected.kind === 'video' ? i18n.t('video') : i18n.t('audio')} · {selected.paused ? i18n.t('paused') : i18n.t('playing')}</p>
         </div>
         <div className="mt-4 flex items-center justify-center gap-7">
