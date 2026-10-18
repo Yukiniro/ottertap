@@ -1,5 +1,5 @@
 import { i18n } from '#i18n';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { ChevronDown, Settings2, Settings as SettingsIcon, Volume2, VolumeX, AppWindow, Pause, Play, RotateCcw, RotateCw, Keyboard, CircleAlert, Search, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
@@ -14,6 +14,7 @@ import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 import { Brand } from './brand';
 import { useMedia } from '../hooks/use-media';
 import { mediaChoiceLabel } from '../lib/media';
+import type { SoundingTab, SoundingTabsClient } from '../lib/tabs';
 import { disableSite, enableSite, forgetMatchingSites, isSiteEnabled, rememberSite, sitePrefFor } from '../lib/settings';
 import { defaultSettings, type MediaClient } from '../lib/types';
 import { formatTime } from '../lib/utils';
@@ -21,7 +22,58 @@ import { useSettingsAtoms } from './theme';
 
 const speeds = [0.75, 1, 1.25, 1.5, 2];
 const first = (value: number | readonly number[]) => Array.isArray(value) ? value[0] : value;
-export function MediaPanel({ client, openSettings }: { client: MediaClient; openSettings: () => void }) {
+function TabIcon({ src }: { src: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) return <AppWindow aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />;
+  return <img src={src} alt="" className="size-4 shrink-0 rounded-sm" onError={() => setFailed(true)} />;
+}
+function useSoundingTabs(client?: SoundingTabsClient) {
+  const [tabs, setTabs] = useState<SoundingTab[]>([]);
+  const [ready, setReady] = useState(false);
+  const loadRef = useRef<() => Promise<void>>(async () => {});
+  useEffect(() => {
+    if (!client) return;
+    let alive = true;
+    let ticket = 0;
+    const load = async () => {
+      const current = ++ticket;
+      try {
+        const next = await client.list();
+        if (alive && current === ticket) { setTabs(next); setReady(true); }
+      } catch { /* A later tab event retries. */ }
+    };
+    loadRef.current = load;
+    void load();
+    const stop = client.watch(() => { void load(); });
+    return () => { alive = false; stop(); };
+  }, [client]);
+  const focus = (tabId: number) => { void client?.focus(tabId).catch(() => {}); };
+  const mute = (tab: SoundingTab) => {
+    if (!client) return;
+    const muted = !tab.muted;
+    setTabs(current => current.map(item => item.id === tab.id ? { ...item, muted } : item));
+    void client.mute(tab.id, muted).catch(() => {}).finally(() => { void loadRef.current(); });
+  };
+  return { tabs: client && ready ? tabs : [], ready: !!client && ready, focus, mute };
+}
+function OtherPlaying({ client }: { client?: SoundingTabsClient }) {
+  const { tabs, ready, focus, mute } = useSoundingTabs(client);
+  if (!ready) return null;
+  if (!tabs.length) return <p className="pb-1 text-center text-xs text-muted-foreground">{i18n.t('otherPlayingEmpty')}</p>;
+  return <section aria-labelledby="other-playing-tabs" className="shrink-0">
+    <h2 id="other-playing-tabs" className="px-1 pb-1 text-xs font-medium text-muted-foreground">{i18n.t('otherPlayingTabs')}</h2>
+    <div role="list" className="max-h-28 overflow-y-auto overscroll-contain rounded-xl bg-card shadow-card">
+      {tabs.map(tab => <div role="listitem" key={tab.id} className="flex items-center gap-1 border-b border-border/70 px-1.5 py-1 last:border-b-0">
+        <button type="button" className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1.5 py-1 text-left hover:bg-muted" aria-label={i18n.t('switchToTab', { title: tab.title || '—' })} onClick={() => focus(tab.id)}>
+          <TabIcon src={tab.favIconUrl} />
+          <span title={tab.title} className="truncate text-sm">{tab.title || '—'}</span>
+        </button>
+        <Button type="button" variant="ghost" size="icon-sm" aria-label={tab.muted ? i18n.t('unmute') : i18n.t('mute')} aria-pressed={tab.muted} onClick={() => mute(tab)}>{tab.muted ? <VolumeX /> : <Volume2 />}</Button>
+      </div>)}
+    </div>
+  </section>;
+}
+export function MediaPanel({ client, openSettings, sounding }: { client: MediaClient; openSettings: () => void; sounding?: SoundingTabsClient }) {
   const { page, selected, select, command, refresh, loading, error } = useMedia(client);
   const { floatingAtom, siteModeAtom, sitesAtom, sitePrefsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const floating = useAtomValue(floatingAtom);
@@ -133,5 +185,6 @@ export function MediaPanel({ client, openSettings }: { client: MediaClient; open
       </Item>}
     </ItemGroup>
     <footer className="flex min-h-9 items-center justify-center gap-2 pb-1 text-xs text-muted-foreground"><Keyboard aria-hidden="true" className="size-4" /><span>{i18n.t('volumeShortcut')}</span></footer>
+    <OtherPlaying client={sounding} />
   </section>;
 }
