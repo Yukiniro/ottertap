@@ -29,7 +29,9 @@ type ExtensionGlobal = {
       };
     };
     tabs: {
-      query: (query: { url: string }) => Promise<Array<{ id?: number; url?: string }>>;
+      get: (id: number) => Promise<{ id?: number; title?: string; mutedInfo?: { muted?: boolean } }>;
+      query: (query: { url?: string }) => Promise<Array<{ id?: number; url?: string; title?: string }>>;
+      update: (id: number, properties: { muted?: boolean }) => Promise<unknown>;
     };
   };
 };
@@ -76,8 +78,8 @@ function base64(bytes: Uint8Array) {
 
 const wav = `data:audio/wav;base64,${base64(silentWav())}`;
 
-function documentHtml(body: string) {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh">${body}</body></html>`;
+function documentHtml(body: string, title = 'OtterTap fixture') {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${title}</title></head><body style="min-height:100vh">${body}</body></html>`;
 }
 
 const pages: Record<string, string> = {
@@ -85,6 +87,7 @@ const pages: Record<string, string> = {
   '/empty': documentHtml('<p>empty</p>'),
   '/frame': documentHtml('<iframe title="embedded media" src="/embed" style="width:320px;height:180px;border:0"></iframe>'),
   '/embed': documentHtml(`<video id="media" src="${wav}" preload="auto" playsinline></video>`),
+  '/other': documentHtml(`<audio id="media" src="${wav}" preload="auto"></audio>`, 'Other tab'),
 };
 
 let browser: BrowserContext | undefined;
@@ -449,5 +452,38 @@ test('英文设置页的快捷键一节不写死中文', async () => {
     await expect(shortcuts).toContainText('Alt + Shift + ↓');
     await expect(shortcuts).toContainText('Alt + Shift + Mouse wheel');
     for (const chinese of ['快捷键', '滚轮', '提高音量', '降低音量']) await expect(shortcuts).not.toContainText(chinese);
+  });
+});
+
+test('已静音的其他标签会列在弹出面板，取消静音后不再列出', async () => {
+  // Headless Chromium does not reliably mark a tab audible, so this covers mutedInfo only.
+  await withPage(async page => {
+    if (!browser) throw new Error('浏览器还没有启动');
+    await openFixture(page, '/other');
+    const worker = await serviceWorker(browser);
+    const muted = await worker.evaluate(async url => {
+      const chrome = (globalThis as unknown as ExtensionGlobal).chrome;
+      const tab = (await chrome.tabs.query({ url })).find(item => item.url === url);
+      if (tab?.id == null) return null;
+      await chrome.tabs.update(tab.id, { muted: true });
+      const next = await chrome.tabs.get(tab.id);
+      return { id: tab.id, muted: next.mutedInfo?.muted === true, title: next.title ?? '' };
+    }, page.url());
+    expect(muted?.title).toBe('Other tab');
+    expect(muted?.muted, '标签静音应与浏览器喇叭状态一致').toBe(true);
+    const extensionId = new URL(worker.url()).host;
+    const popup = await browser.newPage();
+    try {
+      await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+      const row = popup.getByRole('button', { name: 'Switch to Other tab' });
+      await expect(row).toBeVisible();
+      await popup.getByRole('button', { name: 'Unmute' }).click();
+      await expect.poll(() => worker.evaluate(async id => {
+        const next = await (globalThis as unknown as ExtensionGlobal).chrome.tabs.get(id);
+        return next.mutedInfo?.muted === true;
+      }, muted!.id)).toBe(false);
+      await expect(row).toHaveCount(0);
+      await expect(popup.getByText('No other tabs are playing audio.')).toBeVisible();
+    } finally { await popup.close(); }
   });
 });

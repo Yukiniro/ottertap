@@ -8,6 +8,7 @@ import { nextRate } from '../lib/rate';
 import { steppedVolume } from '../lib/volume';
 import { volumeBadgeColor, volumeBadgeFromReports, volumeBadgeTtlMs } from '../lib/volume-badge';
 import { keptSelection, lockedMedia } from '../lib/media';
+import { soundingTabs } from '../lib/tabs';
 import type { MediaCommand, MediaState, Settings, SitePref } from '../lib/types';
 
 export default defineBackground(() => {
@@ -200,6 +201,21 @@ export default defineBackground(() => {
     const reported = result && typeof result === 'object' && 'rate' in result ? result.rate : undefined;
     return typeof reported === 'number' && Number.isFinite(reported) ? reported : next;
   }
+  const extensionPage = (url?: string) => typeof url === 'string' && url.startsWith(browser.runtime.getURL('/'));
+  async function listSounding(currentTabId?: number) {
+    const [audible, muted] = await Promise.all([browser.tabs.query({ audible: true }), browser.tabs.query({ muted: true })]);
+    return { tabs: soundingTabs([...audible, ...muted], currentTabId) };
+  }
+  async function focusTab(tabId: number) {
+    const updated = await browser.tabs.update(tabId, { active: true });
+    const windowId = updated?.windowId ?? (await browser.tabs.get(tabId)).windowId;
+    if (typeof windowId === 'number' && windowId >= 0) await browser.windows.update(windowId, { focused: true });
+    return { ok: true };
+  }
+  async function muteTab(tabId: number, muted: boolean) {
+    const updated = await browser.tabs.update(tabId, { muted });
+    return { ok: true, muted: updated?.mutedInfo?.muted === true };
+  }
   async function deliver(tabId: number, id: string, type: 'command' | 'highlight', command?: unknown) {
     const [frame, localId] = id.split(':');
     const message = type === 'highlight' ? { namespace: 'ottertap', type, id: localId } : { namespace: 'ottertap', type, id: localId, command };
@@ -209,10 +225,21 @@ export default defineBackground(() => {
   }
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (sender.id !== browser.runtime.id || !message || message.namespace !== 'ottertap') return;
-    if (!['options', 'context', 'register', 'read', 'command', 'select', 'highlight', 'hotkey'].includes(message.type)) return;
+    if (!['options', 'context', 'register', 'read', 'command', 'select', 'highlight', 'hotkey', 'soundingTabs', 'focusTab', 'muteTab'].includes(message.type)) return;
     const tabId = sender.tab?.id ?? message.tabId;
     async function handle() {
       if (message.type === 'options') { await browser.runtime.openOptionsPage(); return { ok: true }; }
+      if (message.type === 'soundingTabs' || message.type === 'focusTab' || message.type === 'muteTab') {
+        if (!extensionPage(sender.url)) return { error: i18n.t('extensionMessageFailed') };
+        try {
+          const targetId = message.tabId;
+          if (message.type === 'soundingTabs') return await listSounding(Number.isInteger(targetId) ? targetId : undefined);
+          if (!Number.isInteger(targetId) || targetId < 0) return { error: i18n.t('invalidCommand') };
+          if (message.type === 'focusTab') return await focusTab(targetId);
+          if (typeof message.muted !== 'boolean') return { error: i18n.t('invalidCommand') };
+          return await muteTab(targetId, message.muted);
+        } catch (error) { return { error: error instanceof Error ? error.message : i18n.t('pageUnavailable') }; }
+      }
       if (!Number.isInteger(tabId)) return { error: i18n.t('noTab') };
       try {
         await framesReady;
