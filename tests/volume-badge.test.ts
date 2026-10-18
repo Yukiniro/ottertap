@@ -140,3 +140,32 @@ test('register 复用内存里的设置，有标签地址时不再读存储或 t
     fakeBrowser.reset();
   }
 });
+
+test('service worker 重启后仍记得 iframe，快捷键找得到它', async () => {
+  Object.defineProperty(globalThis, 'browser', { value: fakeBrowser, configurable: true });
+  Object.defineProperty(globalThis, 'defineBackground', { value: defineBackground, configurable: true });
+  const tab = await fakeBrowser.tabs.create({ url: 'https://example.com/watch' });
+  await fakeBrowser.storage.session.set({ 'ottertap-frames-v1': { [String(tab.id)]: [4] } });
+  const seen: number[] = [];
+  const sendMessage = mock.method(fakeBrowser.tabs, 'sendMessage', async (_tabId: number, _message: { type: string }, options?: { frameId?: number }) => {
+    seen.push(options?.frameId ?? 0);
+    return { media: [{ id: '7', volume: 1, maxVolume: 1, muted: false, paused: false, rate: 1 }] };
+  });
+  try {
+    const background = await import('../entrypoints/background');
+    background.default.main();
+    const result = await new Promise<{ media?: Array<{ id: string }> }>(resolve => {
+      void fakeBrowser.runtime.onMessage.trigger(
+        { namespace: 'ottertap', type: 'read', tabId: tab.id },
+        { id: fakeBrowser.runtime.id, url: fakeBrowser.runtime.getURL('/popup.html') },
+        resolve
+      );
+    });
+    assert.deepEqual(seen.filter(id => id === 4), [4]);
+    assert.ok(result.media?.some(item => item.id === '4:7'));
+  } finally {
+    sendMessage.mock.restore();
+    await fakeBrowser.tabs.onRemoved.trigger(tab.id!, { isWindowClosing: false, windowId: tab.windowId });
+    fakeBrowser.reset();
+  }
+});

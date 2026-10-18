@@ -13,6 +13,27 @@ import type { MediaCommand, MediaState, Settings, SitePref } from '../lib/types'
 export default defineBackground(() => {
   const frames = new Map<number, Set<number>>();
   const mediaKnown = new Map<number, boolean>();
+  const framesKey = 'ottertap-frames-v1';
+  const persistFrames = () => {
+    const area = browser.storage.session;
+    if (!area) return;
+    const stored: Record<string, number[]> = {};
+    for (const [tabId, ids] of frames) if (ids.size) stored[String(tabId)] = [...ids];
+    void area.set({ [framesKey]: stored }).catch(() => {});
+  };
+  const framesReady: Promise<void> = browser.storage.session ? browser.storage.session.get(framesKey).then(data => {
+    if (frames.size) return;
+    const stored = data[framesKey];
+    if (!stored || typeof stored !== 'object') return;
+    for (const [id, raw] of Object.entries(stored as Record<string, unknown>)) {
+      if (!Array.isArray(raw)) continue;
+      const ids = raw.filter((value): value is number => Number.isInteger(value));
+      if (!ids.length) continue;
+      const tabId = Number(id);
+      frames.set(tabId, new Set(ids));
+      mediaKnown.set(tabId, true);
+    }
+  }).catch(() => undefined) : Promise.resolve();
   let settingsCache: Settings | undefined;
   let settingsLoad: Promise<Settings> | undefined;
   const currentSettings = () => {
@@ -84,7 +105,7 @@ export default defineBackground(() => {
     if (!session) sitePrefSessions.set(tabId, session = createSitePrefSession());
     return session;
   };
-  const forget = (tabId: number) => { frames.delete(tabId); mediaKnown.delete(tabId); selectedIds.delete(tabId); gestures.delete(tabId); sitePrefSessions.delete(tabId); volumes.delete(tabId); clearVolumeTimer(tabId); paintBadge(tabId, Date.now()); };
+  const forget = (tabId: number) => { frames.delete(tabId); mediaKnown.delete(tabId); selectedIds.delete(tabId); gestures.delete(tabId); sitePrefSessions.delete(tabId); volumes.delete(tabId); clearVolumeTimer(tabId); paintBadge(tabId, Date.now()); persistFrames(); };
   async function rememberCommand(host: string, command: MediaCommand) {
     if (command.type !== 'volume' && command.type !== 'rate') return;
     try {
@@ -105,8 +126,8 @@ export default defineBackground(() => {
     });
     return applied;
   }
-  browser.tabs.onRemoved.addListener(tabId => { forget(tabId); commandTails.delete(tabId); });
-  browser.tabs.onUpdated.addListener((tabId, change) => { if (change.status === 'loading') forget(tabId); });
+  browser.tabs.onRemoved.addListener(tabId => framesReady.then(() => { forget(tabId); commandTails.delete(tabId); }));
+  browser.tabs.onUpdated.addListener((tabId, change) => change.status === 'loading' ? framesReady.then(() => forget(tabId)) : undefined);
   const frameIds = (tabId: number) => new Set([0, ...(frames.get(tabId) ?? [])]);
   const hasMedia = (tabId: number) => (frames.get(tabId)?.size ?? 0) > 0;
   const publishMedia = (tabId: number) => {
@@ -194,6 +215,7 @@ export default defineBackground(() => {
       if (message.type === 'options') { await browser.runtime.openOptionsPage(); return { ok: true }; }
       if (!Number.isInteger(tabId)) return { error: i18n.t('noTab') };
       try {
+        await framesReady;
         const url = sender.tab?.url || (await browser.tabs.get(tabId))?.url;
         if (!url || !/^https?:\/\//.test(url)) throw new Error(i18n.t('pageNotAllowed'));
         const settings = await currentSettings();
@@ -202,19 +224,23 @@ export default defineBackground(() => {
         if (message.type === 'context') return { enabled, host, url, hasMedia: hasMedia(tabId) };
         if (message.type === 'register' && sender.tab) {
           const frameId = sender.frameId ?? 0;
-          if (!enabled) { frames.delete(tabId); volumes.delete(tabId); clearVolumeTimer(tabId); paintBadge(tabId, Date.now()); publishMedia(tabId); return; }
+          if (!enabled) { frames.delete(tabId); volumes.delete(tabId); clearVolumeTimer(tabId); paintBadge(tabId, Date.now()); publishMedia(tabId); persistFrames(); return; }
           if (message.present === false) {
-            frames.get(tabId)?.delete(frameId);
-            if (!frames.get(tabId)?.size) frames.delete(tabId);
+            const known = frames.get(tabId);
+            const removed = known?.delete(frameId) === true;
+            if (known && !known.size) frames.delete(tabId);
             rememberVolume(tabId, frameId, 0);
             publishMedia(tabId);
+            if (removed) persistFrames();
             return;
           }
           const known = frames.get(tabId) ?? new Set<number>();
+          const added = !known.has(frameId);
           known.add(frameId);
           frames.set(tabId, known);
           if (typeof message.volume === 'number' && Number.isFinite(message.volume)) rememberVolume(tabId, frameId, message.volume);
           publishMedia(tabId);
+          if (added) persistFrames();
           return;
         }
         // Only extension pages and this tab's content scripts can request controls.
