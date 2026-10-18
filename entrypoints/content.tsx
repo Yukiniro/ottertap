@@ -3,10 +3,12 @@ import { createRoot } from 'react-dom/client';
 import { browser } from 'wxt/browser';
 import { createShadowRootUi } from 'wxt/utils/content-script-ui/shadow-root';
 import { createHotkeyInput, hotkeyFromKeyboard, isFloatingEvent, rateHintEvent, volumeGestureEvent } from '../lib/hotkey';
-import { createMediaController, isMediaCommand } from '../lib/media';
-import { maxEffectiveVolume, volumeReportIntervalMs } from '../lib/volume-badge';
+import { createMediaController, isMediaCommand, mediaPresenceEvent } from '../lib/media';
+import { maxEffectiveVolume, shouldReportVolume, volumeReportIntervalMs } from '../lib/volume-badge';
+import { isSiteEnabled } from '../lib/settings';
 import { extensionStore } from '../lib/extension-store';
 import { createExtensionClient } from '../lib/extension-client';
+import type { Settings } from '../lib/types';
 import { FloatingController } from '../components/floating';
 import { RateHint } from '../components/rate-hint';
 import { ThemeProvider } from '../components/theme';
@@ -17,36 +19,61 @@ export default defineContentScript({
   allFrames: true,
   cssInjectionMode: 'ui',
   async main(ctx) {
-    const controller = createMediaController(document);
     let enabled = false;
     let tabHasMedia = false;
-    const refreshContext = async () => {
-      try {
-        const result = await browser.runtime.sendMessage({ namespace: 'ottertap', type: 'context' });
-        enabled = result?.enabled === true;
-        tabHasMedia = result?.hasMedia === true;
-      } catch { enabled = false; tabHasMedia = false; }
+    let localPresent = false;
+    let pageMedia = false;
+    let reported: number | null = null;
+    let pageUrl = '';
+    let watched: Settings | undefined;
+    let presenceEpoch = 0;
+    let heartbeat = 0;
+    const announce = () => {
+      const present = localPresent || tabHasMedia;
+      if (present === pageMedia) return;
+      pageMedia = present;
+      if (window.top !== window) return;
+      window.dispatchEvent(new CustomEvent(mediaPresenceEvent));
     };
-    await refreshContext();
-    let reported = false;
+    const syncHeartbeat = (volume: number | null) => {
+      const amplified = volume != null && volume > 1;
+      if (amplified && !heartbeat) heartbeat = ctx.setInterval(reportVolume, volumeReportIntervalMs);
+      if (!amplified && heartbeat) { clearInterval(heartbeat); heartbeat = 0; }
+    };
     const reportVolume = () => {
       if (!ctx.isValid) return;
       const media = enabled ? controller.snapshot() : [];
-      if (!media.length) {
-        if (!reported) return;
-        reported = false;
+      const volume = media.length ? maxEffectiveVolume(media) : null;
+      localPresent = volume != null;
+      announce();
+      syncHeartbeat(volume);
+      const decision = shouldReportVolume(volume, reported);
+      if (!decision) return;
+      if ('present' in decision) {
+        reported = null;
         void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'register', present: false }).catch(() => {});
         return;
       }
-      reported = true;
-      void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'register', volume: maxEffectiveVolume(media) }).catch(() => {});
+      reported = decision.volume;
+      void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'register', volume: decision.volume }).catch(() => {});
     };
-    const unwatch = extensionStore.watch(() => { void refreshContext().then(reportVolume); });
-    const register = () => { void refreshContext(); reportVolume(); };
-    register();
-    ctx.setInterval(register, volumeReportIntervalMs);
+    const controller = createMediaController(document, reportVolume);
+    const applyWatched = () => {
+      if (!pageUrl || !watched) return;
+      const next = isSiteEnabled(pageUrl, watched);
+      if (next === enabled) return;
+      enabled = next;
+      reportVolume();
+    };
     const listener: Parameters<typeof browser.runtime.onMessage.addListener>[0] = (message, sender, sendResponse) => {
       if (sender.id !== browser.runtime.id || message?.namespace !== 'ottertap') return;
+      if (message.type === 'tabMedia') {
+        if (window.top !== window) return;
+        presenceEpoch += 1;
+        tabHasMedia = message.hasMedia === true;
+        announce();
+        return;
+      }
       if (!['snapshot', 'command', 'highlight', 'reveal', 'rateHint'].includes(message.type)) return;
       void (async () => {
       if (message.type === 'rateHint') {
@@ -90,13 +117,35 @@ export default defineContentScript({
       hotkeys.key(event);
     };
     const onWheel = (event: WheelEvent) => { if (shortcutActive()) hotkeys.wheel(event); };
+    const onPageHide = () => {
+      if (reported == null) return;
+      reported = null;
+      localPresent = false;
+      syncHeartbeat(null);
+      announce();
+      void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'register', present: false }).catch(() => {});
+    };
     window.addEventListener('keydown', onKey, true);
     window.addEventListener('keyup', onKey, true);
     window.addEventListener('wheel', onWheel, { capture: true, passive: false });
+    document.addEventListener('volumechange', reportVolume, true);
+    window.addEventListener('pagehide', onPageHide);
+    const unwatch = extensionStore.watch(settings => { watched = settings; applyWatched(); });
     ctx.onInvalidated(() => {
-      unwatch(); controller.destroy(); browser.runtime.onMessage.removeListener(listener); hotkeys.dispose();
+      unwatch(); controller.destroy(); if (heartbeat) clearInterval(heartbeat); browser.runtime.onMessage.removeListener(listener); hotkeys.dispose();
+      document.removeEventListener('volumechange', reportVolume, true); window.removeEventListener('pagehide', onPageHide);
       window.removeEventListener('keydown', onKey, true); window.removeEventListener('keyup', onKey, true); window.removeEventListener('wheel', onWheel, true);
     });
+    const epoch = presenceEpoch;
+    try {
+      const result = await browser.runtime.sendMessage({ namespace: 'ottertap', type: 'context' });
+      enabled = result?.enabled === true;
+      pageUrl = typeof result?.url === 'string' ? result.url : '';
+      // A push that arrives while this request is in flight is newer than the response.
+      if (window.top === window && presenceEpoch === epoch) tabHasMedia = result?.hasMedia === true;
+    } catch { enabled = false; pageUrl = ''; }
+    if (watched && pageUrl) enabled = isSiteEnabled(pageUrl, watched);
+    reportVolume();
     if (window.top !== window) return;
     const client = createExtensionClient();
     const ui = await createShadowRootUi(ctx, {

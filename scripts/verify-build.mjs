@@ -33,6 +33,12 @@ for (const [size, file] of Object.entries(manifest.icons)) {
 assert.match(await readFile(new URL('content-scripts/content.js', directory), 'utf8'), /data:image\/png;base64,/);
 let handler;
 let settings = { siteMode: 'all', sites: [], floating: true, theme: 'light' };
+const storageListeners = new Set();
+function applySettings(next) {
+  settings = next;
+  const changes = { 'ottertap-settings-v1': { newValue: settings } };
+  for (const listener of storageListeners) listener(changes, 'local');
+}
 let tabUrl = 'https://www.bilibili.com/video/example';
 let removed;
 let updated;
@@ -42,7 +48,10 @@ let failCommands = 0;
 const chrome = {
   runtime: { id: 'test-id', getURL: path => `chrome-extension://test-id${path}`, onMessage: { addListener: listener => { handler = listener; } }, openOptionsPage: async () => {} },
   i18n: { getMessage: name => name },
-  storage: { local: { get: async key => { assert.equal(key, 'ottertap-settings-v1', 'Settings use the ottertap storage key'); return { [key]: settings }; } } },
+  storage: {
+    local: { get: async key => { assert.equal(key, 'ottertap-settings-v1', 'Settings use the ottertap storage key'); return { [key]: settings }; } },
+    onChanged: { addListener(listener) { storageListeners.add(listener); }, removeListener(listener) { storageListeners.delete(listener); } }
+  },
   tabs: {
     get: async id => ({ id, url: tabUrl }),
     onRemoved: { addListener: listener => { removed = listener; } },
@@ -73,13 +82,13 @@ assert.equal(result.media[1].id, '4:1');
 await request({ type: 'command', id: '4:1', command: { type: 'rate', value: 1.5 } });
 assert.equal(commands.at(-1).options.frameId, 4);
 assert.equal(commands.at(-1).message.id, '1');
-settings = { ...settings, siteMode: 'exclude', sites: ['bilibili.com'] };
+applySettings({ ...settings, siteMode: 'exclude', sites: ['bilibili.com'] });
 assert.equal((await request({ type: 'read' })).enabled, false);
 assert.equal((await request({ type: 'read' })).media.length, 0);
 const count = commands.length;
 assert.ok((await request({ type: 'command', id: '4:1', command: { type: 'play' } })).error);
 assert.equal(commands.length, count);
-settings = { ...settings, siteMode: 'all' };
+applySettings({ ...settings, siteMode: 'all' });
 assert.equal((await request({ type: 'command', id: '4:1', command: { type: 'volume', value: 2 } })).ok, true);
 assert.equal(commands.at(-1).message.command.value, 2);
 assert.ok((await request({ type: 'command', id: '4:1', command: { type: 'volume', value: 2.01 } })).error);
