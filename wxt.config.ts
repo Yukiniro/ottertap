@@ -1,9 +1,15 @@
+import { resolve } from 'node:path';
 import { defineConfig } from 'wxt';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   modules: ['@wxt-dev/module-react', '@wxt-dev/i18n/module'],
   vite: () => ({ plugins: [tailwindcss()] }),
+  hooks: {
+    'build:publicAssets'(wxt, files) {
+      files.push({ absoluteSrc: resolve(wxt.config.root, 'LICENSE'), relativeDest: 'LICENSE' });
+    }
+  },
   manifest: {
     name: '__MSG_extName__',
     description: '__MSG_extDescription__',

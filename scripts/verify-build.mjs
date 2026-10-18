@@ -21,7 +21,7 @@ assert.equal(manifest.action.default_popup, 'popup.html');
 assert.equal(manifest.content_scripts[0].all_frames, true);
 assert.deepEqual(manifest.permissions, ['storage']);
 assert.deepEqual(manifest.host_permissions.sort(), ['http://*/*', 'https://*/*']);
-for (const file of ['popup.html', 'options.html', 'background.js', 'content-scripts/content.js', 'content-scripts/content.css', ...Object.values(manifest.icons)]) {
+for (const file of ['popup.html', 'options.html', 'background.js', 'content-scripts/content.js', 'content-scripts/content.css', 'LICENSE', ...Object.values(manifest.icons)]) {
   assert.ok((await readFile(new URL(file, directory))).length > 0, `${file} must exist`);
 }
 for (const [size, file] of Object.entries(manifest.icons)) {
