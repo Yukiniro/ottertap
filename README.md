@@ -86,4 +86,8 @@ pnpm site:build
 
 感谢 WXT、React、Tailwind CSS、shadcn/ui、Base UI、Lucide 和 Next.js 等项目。第三方库与组件遵循各自的开源许可。
 
-水獭标志由 imagegen 生成，设计说明见 [品牌生成记录](docs/design/brand-generation.md)。仓库目前未提供项目级 `LICENSE` 文件。
+水獭标志由 imagegen 生成，设计说明见 [品牌生成记录](docs/design/brand-generation.md)。
+
+## 许可证
+
+本项目以 GPL-3.0 授权，见 [LICENSE](LICENSE)。
