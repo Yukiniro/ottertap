@@ -23,7 +23,7 @@ export function FloatingController({ client }: { client: MediaClient }) {
   const floatingPosition = useAtomValue(floatingPositionAtom);
   const loading = useAtomValue(loadingAtom);
   const write = useSetAtom(writeSettingsAtom);
-  const { page, selected, command, error } = useMedia(client);
+  const { page, selected, command, error } = useMedia(client, { pauseWhenEmpty: true });
   const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState<number | null>(null);
   const [viewport, setViewport] = useState(readViewport);

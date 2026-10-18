@@ -4,6 +4,8 @@ import { maxRate, minRate, readSettledRate } from './rate';
 import type { MediaCommand, MediaState } from './types';
 import { formatTime } from './utils';
 
+export const mediaPresenceEvent = 'ottertap-media';
+
 export function discoverMedia(root: Document | ShadowRoot, onRoot?: (root: Document | ShadowRoot) => void): HTMLMediaElement[] {
   onRoot?.(root);
   const media = [...root.querySelectorAll<HTMLMediaElement>('audio,video')].filter(element => element.namespaceURI === 'http://www.w3.org/1999/xhtml');
@@ -89,7 +91,7 @@ export async function applyMediaCommand(element: HTMLMediaElement, command: Medi
   element.currentTime = closest;
 }
 
-export function createMediaController(document: Document) {
+export function createMediaController(document: Document, onChange?: () => void) {
   let nextId = 0;
   const ids = new WeakMap<HTMLMediaElement, string>();
   let elements: HTMLMediaElement[] = [];
@@ -100,7 +102,7 @@ export function createMediaController(document: Document) {
   const observers = new Map<Document | ShadowRoot, MutationObserver>();
   const observe = (root: Document | ShadowRoot) => {
     if (observers.has(root)) return;
-    const observer = new document.defaultView!.MutationObserver(() => { dirty = true; });
+    const observer = new document.defaultView!.MutationObserver(() => { dirty = true; onChange?.(); });
     observer.observe(root, { childList: true, subtree: true });
     observers.set(root, observer);
   };

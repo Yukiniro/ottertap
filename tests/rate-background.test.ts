@@ -25,16 +25,25 @@ test('倍速快捷键按顺序生效，提示实际倍速，未记住的站点�
     set(items: Record<string, unknown>): Promise<void>;
     remove(keys: string | string[]): Promise<void>;
   };
+  const originalStorage = { get: storage.get, set: storage.set, remove: storage.remove };
+  const notify = async (changes: Record<string, { newValue?: unknown }>) => { await fakeBrowser.storage.onChanged.trigger(changes, 'local'); };
   storage.get = async keys => {
     const names = keys == null ? [...memory.keys()] : Array.isArray(keys) ? keys : [keys];
     return Object.fromEntries(names.map(name => [name, memory.get(name)]));
   };
   storage.set = async items => {
     writes.push(structuredClone(items));
-    for (const [key, value] of Object.entries(items)) memory.set(key, structuredClone(value));
+    const changes: Record<string, { newValue?: unknown }> = {};
+    for (const [key, value] of Object.entries(items)) {
+      memory.set(key, structuredClone(value));
+      changes[key] = { newValue: structuredClone(value) };
+    }
+    await notify(changes);
   };
   storage.remove = async keys => {
-    for (const key of Array.isArray(keys) ? keys : [keys]) memory.delete(key);
+    const changes: Record<string, { newValue?: unknown }> = {};
+    for (const key of Array.isArray(keys) ? keys : [keys]) { memory.delete(key); changes[key] = {}; }
+    await notify(changes);
   };
   const sendMessage = mock.method(fakeBrowser.tabs, 'sendMessage', async (_tabId: number, message: { type: string; command?: MediaCommand; id?: string; rate?: number }, options?: { frameId?: number }) => {
     if (message.type === 'snapshot') {
@@ -121,5 +130,11 @@ test('倍速快捷键按顺序生效，提示实际倍速，未记住的站点�
     await hotkey(1);
     assert.equal(writes.length, cleared);
     assert.equal((await fakeBrowser.storage.local.get(storageKey))[storageKey], undefined);
-  } finally { sendMessage.mock.restore(); fakeBrowser.reset(); }
+  } finally {
+    storage.get = originalStorage.get;
+    storage.set = originalStorage.set;
+    storage.remove = originalStorage.remove;
+    sendMessage.mock.restore();
+    fakeBrowser.reset();
+  }
 });

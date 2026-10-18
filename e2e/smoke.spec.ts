@@ -82,6 +82,7 @@ function documentHtml(body: string) {
 
 const pages: Record<string, string> = {
   '/': documentHtml(`<audio id="media" src="${wav}" preload="auto"></audio>`),
+  '/empty': documentHtml('<p>empty</p>'),
   '/frame': documentHtml('<iframe title="embedded media" src="/embed" style="width:320px;height:180px;border:0"></iframe>'),
   '/embed': documentHtml(`<video id="media" src="${wav}" preload="auto" playsinline></video>`),
 };
@@ -312,10 +313,6 @@ test('音量超过 100% 时工具栏角标显示，回到 100% 或来源 frame �
   });
   await withPage(async page => {
     await openFixture(page, '/frame');
-    if (!browser) throw new Error('浏览器还没有启动');
-    const settings = defaultSettings();
-    settings.floatingPosition = { side: 'right', y: 0.51 };
-    await saveSettings(await serviceWorker(browser), settings);
     const read = () => mediaVolume(page, true);
     await expect.poll(read).toBeCloseTo(1, 2);
     await focusPage(page, 420);
@@ -363,11 +360,6 @@ test('按住 Alt+Shift 时只有横向滚轮也能调节音量', async () => {
 test('顶层页面的快捷键能控制 iframe 里的视频', async () => {
   await withPage(async page => {
     await openFixture(page, '/frame');
-    if (!browser) throw new Error('浏览器还没有启动');
-    // Identical storage writes do not notify the top frame. Nudge the saved position so it refreshes tabHasMedia.
-    const settings = defaultSettings();
-    settings.floatingPosition = { side: 'right', y: 0.51 };
-    await saveSettings(await serviceWorker(browser), settings);
     const read = () => mediaVolume(page, true);
     await expect.poll(read).toBeCloseTo(1, 2);
     await focusPage(page, 420);
@@ -394,6 +386,48 @@ test('打开按站点记住后，刷新页面能恢复音量', async () => {
     await expect.poll(() => rememberedVolume(worker)).toBeCloseTo(0.4, 2);
     await page.reload({ waitUntil: 'domcontentloaded' });
     await expect.poll(() => mediaVolume(page)).toBeCloseTo(0.4, 2);
+  });
+});
+
+test('没有媒体的页面加载后不再定时上报', async () => {
+  await withPage(async page => {
+    if (!browser) throw new Error('浏览器还没有启动');
+    const worker = await serviceWorker(browser);
+    await worker.evaluate(() => {
+      const root = globalThis as unknown as {
+        __ottertapLog?: Array<{ type: string }>;
+        __ottertapListening?: boolean;
+        chrome: { runtime: { onMessage: { addListener: (listener: (message: { namespace?: string; type?: string }) => void) => void } } };
+      };
+      root.__ottertapLog = [];
+      if (root.__ottertapListening) return;
+      root.__ottertapListening = true;
+      root.chrome.runtime.onMessage.addListener(message => {
+        if (message?.namespace !== 'ottertap') return;
+        root.__ottertapLog?.push({ type: message.type ?? '' });
+      });
+    });
+    await page.goto(`${origin}/empty`, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(500);
+    const startup = await worker.evaluate(() => {
+      const root = globalThis as unknown as { __ottertapLog?: Array<{ type: string }> };
+      const log = root.__ottertapLog ?? [];
+      const counts: Record<string, number> = {};
+      for (const item of log) counts[item.type] = (counts[item.type] ?? 0) + 1;
+      root.__ottertapLog = [];
+      return counts;
+    });
+    expect(startup.context ?? 0, '启动时应询问一次是否启用').toBeGreaterThan(0);
+    await page.waitForTimeout(10_000);
+    const tally = await worker.evaluate(() => {
+      const log = (globalThis as unknown as { __ottertapLog?: Array<{ type: string }> }).__ottertapLog ?? [];
+      const counts: Record<string, number> = {};
+      for (const item of log) counts[item.type] = (counts[item.type] ?? 0) + 1;
+      return counts;
+    });
+    expect(tally.context ?? 0, '加载完成后不应再定时询问 context').toBe(0);
+    expect(tally.register ?? 0, '没有媒体时不应定时 register').toBe(0);
+    expect(tally.read ?? 0, '没有媒体时浮动入口不应持续读取').toBeLessThan(3);
   });
 });
 

@@ -8,10 +8,19 @@ import { nextRate } from '../lib/rate';
 import { steppedVolume } from '../lib/volume';
 import { volumeBadgeColor, volumeBadgeFromReports, volumeBadgeTtlMs } from '../lib/volume-badge';
 import { keptSelection, lockedMedia } from '../lib/media';
-import type { MediaCommand, MediaState, SitePref } from '../lib/types';
+import type { MediaCommand, MediaState, Settings, SitePref } from '../lib/types';
 
 export default defineBackground(() => {
-  const frames = new Map<number, Map<number, number>>();
+  const frames = new Map<number, Set<number>>();
+  const mediaKnown = new Map<number, boolean>();
+  let settingsCache: Settings | undefined;
+  let settingsLoad: Promise<Settings> | undefined;
+  const currentSettings = () => {
+    if (settingsCache) return Promise.resolve(settingsCache);
+    settingsLoad ??= extensionStore.load().then(value => (settingsCache ??= value)).catch(error => { settingsLoad = undefined; throw error; });
+    return settingsLoad;
+  };
+  extensionStore.watch(value => { settingsCache = value; });
   const selectedIds = new Map<number, string>();
   const gestures = new Map<number, { id: string; percent: number; max: number; at: number }>();
   const commandTails = new Map<number, Promise<void>>();
@@ -75,13 +84,13 @@ export default defineBackground(() => {
     if (!session) sitePrefSessions.set(tabId, session = createSitePrefSession());
     return session;
   };
-  const forget = (tabId: number) => { frames.delete(tabId); selectedIds.delete(tabId); gestures.delete(tabId); sitePrefSessions.delete(tabId); volumes.delete(tabId); clearVolumeTimer(tabId); paintBadge(tabId, Date.now()); };
+  const forget = (tabId: number) => { frames.delete(tabId); mediaKnown.delete(tabId); selectedIds.delete(tabId); gestures.delete(tabId); sitePrefSessions.delete(tabId); volumes.delete(tabId); clearVolumeTimer(tabId); paintBadge(tabId, Date.now()); };
   async function rememberCommand(host: string, command: MediaCommand) {
     if (command.type !== 'volume' && command.type !== 'rate') return;
     try {
-      const latest = await extensionStore.load();
+      const latest = await currentSettings();
       const sitePrefs = withRememberedCommand(latest.sitePrefs, host, command);
-      if (sitePrefs) await extensionStore.save({ ...latest, sitePrefs });
+      if (sitePrefs) { const next = { ...latest, sitePrefs }; await extensionStore.save(next); settingsCache = next; }
     } catch { /* The control already applied; the next adjustment can store it. */ }
   }
   async function applySitePref(tabId: number, host: string, mediaId: string, prefs: Record<string, SitePref>) {
@@ -98,11 +107,17 @@ export default defineBackground(() => {
   }
   browser.tabs.onRemoved.addListener(tabId => { forget(tabId); commandTails.delete(tabId); });
   browser.tabs.onUpdated.addListener((tabId, change) => { if (change.status === 'loading') forget(tabId); });
-  const frameIds = (tabId: number) => {
-    const known = frames.get(tabId) ?? new Map();
-    return new Set([0, ...[...known].filter(([, time]) => Date.now() - time < 5000).map(([id]) => id)]);
+  const frameIds = (tabId: number) => new Set([0, ...(frames.get(tabId) ?? [])]);
+  const hasMedia = (tabId: number) => (frames.get(tabId)?.size ?? 0) > 0;
+  const publishMedia = (tabId: number) => {
+    const present = hasMedia(tabId);
+    if (mediaKnown.get(tabId) === present) return;
+    if (present) mediaKnown.set(tabId, true);
+    else mediaKnown.delete(tabId);
+    const send = browser.tabs.sendMessage;
+    if (typeof send !== 'function') return;
+    void send(tabId, { namespace: 'ottertap', type: 'tabMedia', hasMedia: present }, { frameId: 0 }).catch(() => {});
   };
-  const hasMedia = (tabId: number) => [...(frames.get(tabId)?.values() ?? [])].some(time => Date.now() - time < 5000);
   async function collect(tabId: number, host: string) {
     const frames = [...frameIds(tabId)];
     const results = await Promise.allSettled(frames.map(async frameId => {
@@ -179,18 +194,27 @@ export default defineBackground(() => {
       if (message.type === 'options') { await browser.runtime.openOptionsPage(); return { ok: true }; }
       if (!Number.isInteger(tabId)) return { error: i18n.t('noTab') };
       try {
-        const [tab, settings] = await Promise.all([browser.tabs.get(tabId), extensionStore.load()]);
-        if (!tab.url || !/^https?:\/\//.test(tab.url)) throw new Error(i18n.t('pageNotAllowed'));
-        const enabled = isSiteEnabled(tab.url ?? '', settings);
-        const host = tab.url ? new URL(tab.url).hostname : '';
-        if (message.type === 'context') return { enabled, host, hasMedia: hasMedia(tabId) };
+        const url = sender.tab?.url || (await browser.tabs.get(tabId))?.url;
+        if (!url || !/^https?:\/\//.test(url)) throw new Error(i18n.t('pageNotAllowed'));
+        const settings = await currentSettings();
+        const enabled = isSiteEnabled(url, settings);
+        const host = new URL(url).hostname;
+        if (message.type === 'context') return { enabled, host, url, hasMedia: hasMedia(tabId) };
         if (message.type === 'register' && sender.tab) {
           const frameId = sender.frameId ?? 0;
-          if (!enabled) { volumes.delete(tabId); clearVolumeTimer(tabId); paintBadge(tabId, Date.now()); return; }
-          if (message.present === false) { rememberVolume(tabId, frameId, 0); return; }
-          if (!frames.has(tabId)) frames.set(tabId, new Map());
-          frames.get(tabId)!.set(frameId, Date.now());
+          if (!enabled) { frames.delete(tabId); volumes.delete(tabId); clearVolumeTimer(tabId); paintBadge(tabId, Date.now()); publishMedia(tabId); return; }
+          if (message.present === false) {
+            frames.get(tabId)?.delete(frameId);
+            if (!frames.get(tabId)?.size) frames.delete(tabId);
+            rememberVolume(tabId, frameId, 0);
+            publishMedia(tabId);
+            return;
+          }
+          const known = frames.get(tabId) ?? new Set<number>();
+          known.add(frameId);
+          frames.set(tabId, known);
           if (typeof message.volume === 'number' && Number.isFinite(message.volume)) rememberVolume(tabId, frameId, message.volume);
+          publishMedia(tabId);
           return;
         }
         // Only extension pages and this tab's content scripts can request controls.
