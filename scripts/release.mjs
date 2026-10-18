@@ -29,6 +29,14 @@ function tagExists(tag) {
   catch { return false; }
 }
 
+export function assertZipHasLicense(entries) {
+  if (!entries.includes('LICENSE')) throw new Error('ZIP 缺少 LICENSE');
+}
+
+function zipEntries(zipPath) {
+  return execFileSync('unzip', ['-Z1', zipPath], { encoding: 'utf8' }).split(/\r?\n/).filter(Boolean);
+}
+
 function main() {
   const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
   const tag = `v${version}`;
@@ -38,6 +46,7 @@ function main() {
   run('pnpm', ['zip']);
   const zips = readdirSync(new URL('../.output/', import.meta.url)).filter(name => name.endsWith('.zip'));
   if (zips.length !== 1) throw new Error(`需要恰好一个 zip，实际是 ${zips.join(', ') || '没有'}`);
+  assertZipHasLicense(zipEntries(join(root, '.output', zips[0])));
   if (!tagExists(tag)) run('git', ['tag', tag]);
   try { execFileSync('git', ['push', 'origin', `refs/tags/${tag}`], { cwd: root, stdio: 'inherit' }); }
   catch { execFileSync('git', ['ls-remote', '--exit-code', 'origin', `refs/tags/${tag}`], { cwd: root, stdio: 'ignore' }); }
