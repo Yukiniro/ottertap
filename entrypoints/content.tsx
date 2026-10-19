@@ -4,13 +4,14 @@ import { browser } from 'wxt/browser';
 import { createShadowRootUi } from 'wxt/utils/content-script-ui/shadow-root';
 import { actionHintEvent, createHotkeyInput, hotkeyFromKeyboard, isFloatingEvent, rateHintEvent, volumeGestureEvent } from '../lib/hotkey';
 import { createMediaController, isMediaCommand, mediaPresenceEvent } from '../lib/media';
+import { rateLockEvent } from '../lib/rate-lock';
 import { maxEffectiveVolume, shouldReportVolume, volumeReportIntervalMs } from '../lib/volume-badge';
 import { isSiteEnabled } from '../lib/settings';
 import { extensionStore } from '../lib/extension-store';
 import { createExtensionClient } from '../lib/extension-client';
 import type { Settings } from '../lib/types';
 import { FloatingController } from '../components/floating';
-import { RateHint } from '../components/rate-hint';
+import { RateHint, RateLockNotice } from '../components/rate-hint';
 import { ThemeProvider } from '../components/theme';
 import '../assets/style.css';
 
@@ -57,13 +58,16 @@ export default defineContentScript({
       reported = decision.volume;
       void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'register', volume: decision.volume }).catch(() => {});
     };
-    const controller = createMediaController(document, reportVolume);
+    const controller = createMediaController(document, reportVolume, () => {
+      void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'rateLock' }).catch(() => {});
+    });
     const applyWatched = () => {
       if (!pageUrl || !watched) return;
       const next = isSiteEnabled(pageUrl, watched);
-      if (next === enabled) return;
+      const changed = next !== enabled;
       enabled = next;
-      reportVolume();
+      controller.setLockRate(enabled && watched.lockRate);
+      if (changed) reportVolume();
     };
     const listener: Parameters<typeof browser.runtime.onMessage.addListener>[0] = (message, sender, sendResponse) => {
       if (sender.id !== browser.runtime.id || message?.namespace !== 'ottertap') return;
@@ -74,7 +78,7 @@ export default defineContentScript({
         announce();
         return;
       }
-      if (!['snapshot', 'command', 'highlight', 'reveal', 'rateHint', 'actionHint'].includes(message.type)) return;
+      if (!['snapshot', 'command', 'highlight', 'reveal', 'rateHint', 'actionHint', 'rateLockHint'].includes(message.type)) return;
       void (async () => {
       if (message.type === 'actionHint') {
         const key = message.key;
@@ -84,6 +88,10 @@ export default defineContentScript({
       }
       if (message.type === 'rateHint') {
         if (typeof message.rate === 'number' && Number.isFinite(message.rate)) window.dispatchEvent(new window.CustomEvent(rateHintEvent, { detail: message.rate }));
+        return { ok: true };
+      }
+      if (message.type === 'rateLockHint') {
+        window.dispatchEvent(new window.CustomEvent(rateLockEvent));
         return { ok: true };
       }
       if (message.type === 'reveal') {
@@ -143,14 +151,17 @@ export default defineContentScript({
       window.removeEventListener('keydown', onKey, true); window.removeEventListener('keyup', onKey, true); window.removeEventListener('wheel', onWheel, true);
     });
     const epoch = presenceEpoch;
+    let contextLock = false;
     try {
       const result = await browser.runtime.sendMessage({ namespace: 'ottertap', type: 'context' });
       enabled = result?.enabled === true;
       pageUrl = typeof result?.url === 'string' ? result.url : '';
+      contextLock = result?.lockRate === true;
       // A push that arrives while this request is in flight is newer than the response.
       if (window.top === window && presenceEpoch === epoch) tabHasMedia = result?.hasMedia === true;
     } catch { enabled = false; pageUrl = ''; }
     if (watched && pageUrl) enabled = isSiteEnabled(pageUrl, watched);
+    controller.setLockRate(enabled && (watched ? watched.lockRate : contextLock));
     reportVolume();
     if (window.top !== window) return;
     const client = createExtensionClient();
@@ -163,7 +174,7 @@ export default defineContentScript({
         container.className = 'ottertap-root';
         container.lang = i18n.t('locale');
         const root = createRoot(container);
-        root.render(<ThemeProvider store={extensionStore} target={container}><FloatingController client={client} /><RateHint /></ThemeProvider>);
+        root.render(<ThemeProvider store={extensionStore} target={container}><FloatingController client={client} /><RateHint /><RateLockNotice /></ThemeProvider>);
         return root;
       },
       onRemove(root) { root?.unmount(); }

@@ -162,6 +162,7 @@ export function MediaPanel({ client, openSettings, sounding }: { client: MediaCl
             </ToggleGroup>
           </div>
           {activePreset === undefined && <p className="mt-1 text-xs text-muted-foreground">{i18n.t('currentSpeed', { rate: formatRate(selected.rate) })}</p>}
+          {selected.rateLock === 'given-up' && <p className="mt-1 text-xs leading-5 text-destructive">{i18n.t('rateLockGaveUp')}</p>}
           {offerRemember && !remembered && <Button variant="ghost" size="sm" className="mt-1 h-7 w-full justify-start px-1 text-xs text-primary" disabled={settingsLoading} onClick={storePreference}>{i18n.t('rememberSite')}</Button>}
         </div>
       </div>

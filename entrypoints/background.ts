@@ -170,6 +170,9 @@ export default defineBackground(() => {
   const showAction = (tabId: number, key: string) => {
     void browser.tabs.sendMessage(tabId, { namespace: 'ottertap', type: 'actionHint', key }, { frameId: 0 }).catch(() => {});
   };
+  const showRateLock = (tabId: number) => {
+    void browser.tabs.sendMessage(tabId, { namespace: 'ottertap', type: 'rateLockHint' }, { frameId: 0 }).catch(() => {});
+  };
   async function applyVolume(tabId: number, host: string, delta: number) {
     let gesture = gestures.get(tabId);
     const selected = selectedIds.get(tabId);
@@ -281,7 +284,7 @@ export default defineBackground(() => {
   } catch { /* The build verifier does not provide the commands API. */ }
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (sender.id !== browser.runtime.id || !message || message.namespace !== 'ottertap') return;
-    if (!['options', 'context', 'register', 'read', 'command', 'select', 'highlight', 'hotkey', 'soundingTabs', 'focusTab', 'muteTab'].includes(message.type)) return;
+    if (!['options', 'context', 'register', 'read', 'command', 'select', 'highlight', 'hotkey', 'soundingTabs', 'focusTab', 'muteTab', 'rateLock'].includes(message.type)) return;
     const tabId = sender.tab?.id ?? message.tabId;
     async function handle() {
       if (message.type === 'options') { await browser.runtime.openOptionsPage(); return { ok: true }; }
@@ -304,7 +307,8 @@ export default defineBackground(() => {
         const settings = await currentSettings();
         const enabled = isSiteEnabled(url, settings);
         const host = new URL(url).hostname;
-        if (message.type === 'context') return { enabled, host, url, hasMedia: hasMedia(tabId) };
+        if (message.type === 'context') return { enabled, host, url, hasMedia: hasMedia(tabId), lockRate: settings.lockRate };
+        if (message.type === 'rateLock') { showRateLock(tabId); return { ok: true }; }
         if (message.type === 'register' && sender.tab) {
           const frameId = sender.frameId ?? 0;
           if (!enabled) { frames.delete(tabId); volumes.delete(tabId); clearVolumeTimer(tabId); paintBadge(tabId, Date.now()); publishMedia(tabId); persistFrames(); return; }

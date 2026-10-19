@@ -14,7 +14,7 @@ const sameSitePrefs = (a: Record<string, SitePref>, b: Record<string, SitePref>)
   const keys = Object.keys(a);
   return keys.length === Object.keys(b).length && keys.every(key => !!b[key] && sameSitePref(a[key]!, b[key]!));
 };
-const sameSettings = (a: Settings, b: Settings) => a.theme === b.theme && a.floating === b.floating && a.siteMode === b.siteMode && samePosition(a.floatingPosition, b.floatingPosition) && sameSites(a.sites, b.sites) && sameSitePrefs(a.sitePrefs, b.sitePrefs) && samePresets(a.ratePresets, b.ratePresets);
+const sameSettings = (a: Settings, b: Settings) => a.theme === b.theme && a.floating === b.floating && a.lockRate === b.lockRate && a.siteMode === b.siteMode && samePosition(a.floatingPosition, b.floatingPosition) && sameSites(a.sites, b.sites) && sameSitePrefs(a.sitePrefs, b.sitePrefs) && samePresets(a.ratePresets, b.ratePresets);
 
 function mergeSettings(current: Settings, update: Partial<Settings>): Settings {
   const next = normalizeSettings({ ...current, ...update });
@@ -32,6 +32,7 @@ export interface SettingsAtoms {
   settingsAtom: Atom<Settings>;
   themeAtom: Atom<Theme>;
   floatingAtom: Atom<boolean>;
+  lockRateAtom: Atom<boolean>;
   floatingPositionAtom: Atom<FloatingPosition>;
   siteModeAtom: Atom<SiteMode>;
   sitesAtom: Atom<string[]>;
@@ -52,6 +53,7 @@ export function createSettingsAtoms(source: SettingsStore): SettingsAtoms {
   const errorAtom = atom('');
   const themeAtom = selectAtom(settingsAtom, settings => settings.theme);
   const floatingAtom = selectAtom(settingsAtom, settings => settings.floating);
+  const lockRateAtom = selectAtom(settingsAtom, settings => settings.lockRate);
   const floatingPositionAtom = selectAtom(settingsAtom, settings => settings.floatingPosition);
   const siteModeAtom = selectAtom(settingsAtom, settings => settings.siteMode);
   const sitesAtom = selectAtom(settingsAtom, settings => settings.sites);
@@ -145,7 +147,7 @@ export function createSettingsAtoms(source: SettingsStore): SettingsAtoms {
   }
 
   return {
-    store, settingsAtom, themeAtom, floatingAtom, floatingPositionAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom, mount, ready,
+    store, settingsAtom, themeAtom, floatingAtom, lockRateAtom, floatingPositionAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom, mount, ready,
     settled: () => idle
   };
 }

@@ -35,7 +35,8 @@ export function normalizeSettings(value: unknown): Settings {
     siteMode: ['all', 'allow', 'exclude'].includes(source.siteMode ?? '') ? source.siteMode! : 'all',
     sites: [...new Set(sites)],
     sitePrefs: normalizeSitePrefs(source.sitePrefs),
-    ratePresets: normalizeRatePresets(source.ratePresets)
+    ratePresets: normalizeRatePresets(source.ratePresets),
+    lockRate: source.lockRate === true
   };
 }
 
