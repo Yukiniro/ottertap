@@ -1,6 +1,7 @@
 import { i18n } from '#i18n';
 import { useEffect, useRef, useState } from 'react';
 import { actionHintEvent, rateHintEvent } from '../lib/hotkey';
+import { rateLockEvent } from '../lib/rate-lock';
 import { formatRate } from '../lib/rate';
 import { cn } from '../lib/utils';
 
@@ -50,4 +51,19 @@ export function RateHint() {
     };
   }, []);
   return <p role="status" aria-live="polite" aria-atomic="true" className={cn('pointer-events-none fixed top-6 left-1/2 z-2147483647 -translate-x-1/2 rounded-full border bg-card px-3.5 py-2 text-sm font-medium text-card-foreground tabular-nums shadow-card transition-opacity duration-200', shown && text ? 'opacity-100' : 'opacity-0')}>{text}</p>;
+}
+
+export function RateLockNotice() {
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    let hide = 0;
+    const onGiveUp = () => {
+      window.clearTimeout(hide);
+      setShown(true);
+      hide = window.setTimeout(() => setShown(false), 4200);
+    };
+    window.addEventListener(rateLockEvent, onGiveUp);
+    return () => { window.clearTimeout(hide); window.removeEventListener(rateLockEvent, onGiveUp); };
+  }, []);
+  return <p role="status" aria-live="polite" className={cn('pointer-events-none fixed top-16 left-1/2 z-2147483647 max-w-sm -translate-x-1/2 rounded-full border bg-card px-3.5 py-2 text-center text-sm text-card-foreground shadow-card transition-opacity duration-200', shown ? 'opacity-100' : 'opacity-0')}>{shown ? i18n.t('rateLockGaveUp') : ''}</p>;
 }

@@ -54,6 +54,13 @@ test('设置同页展示全部项，保存只改对应字段，失败时不误�
     assert.match(host.textContent!, /减慢 0\.25×/);
     assert.match(host.textContent!, /回到 1×/);
     assert.match(host.textContent!, /, \. 0/);
+    assert.match(host.textContent!, /锁定倍速/);
+    const lock = host.querySelector('[role="switch"][aria-label="锁定倍速"]');
+    assert.ok(lock);
+    assert.equal(lock.getAttribute('aria-checked'), 'false');
+    await click(lock as unknown as Element);
+    assert.equal(value.lockRate, true);
+    assert.equal(value.floating, false);
     assert.equal(listeners.size, 1);
   } finally {
     await act(async () => { root.unmount(); });

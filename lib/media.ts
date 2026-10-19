@@ -1,5 +1,6 @@
 import { i18n } from '#i18n';
 import { canAmplify, createAmplifier, maxGain, splitVolume, type Amplifier } from './amplifier';
+import { armRateEcho, createRateLockState, noteDesiredRate, observePlaybackRate, rateLockEpsilon, type RateLockState } from './rate-lock';
 import { maxRate, minRate, readSettledRate } from './rate';
 import type { MediaCommand, MediaState } from './types';
 import { formatTime } from './utils';
@@ -134,11 +135,15 @@ export async function applyMediaCommand(element: HTMLMediaElement, command: Medi
   element.currentTime = closest;
 }
 
-export function createMediaController(document: Document, onChange?: () => void) {
+interface RateSlot { state: RateLockState; timer: number; listening: boolean; onEvent: () => void }
+
+export function createMediaController(document: Document, onChange?: () => void, onRateLockGiveUp?: () => void) {
   let nextId = 0;
   const ids = new WeakMap<HTMLMediaElement, string>();
   let elements: HTMLMediaElement[] = [];
   let dirty = true;
+  let lockOn = false;
+  const slots = new Map<HTMLMediaElement, RateSlot>();
   const amplifier = createAmplifier(document.defaultView!);
   const flashed = new WeakMap<HTMLMediaElement, { token: number; outline: string; offset: string }>();
   let flashToken = 0;
@@ -152,6 +157,75 @@ export function createMediaController(document: Document, onChange?: () => void)
     observer.observe(root, { childList: true, subtree: true });
     observers.set(root, observer);
   };
+  const clearTimer = (element: HTMLMediaElement, slot: RateSlot) => {
+    if (!slot.timer) return;
+    element.ownerDocument.defaultView?.clearTimeout(slot.timer);
+    slot.timer = 0;
+  };
+  const release = (element: HTMLMediaElement) => {
+    const slot = slots.get(element);
+    if (!slot) return;
+    clearTimer(element, slot);
+    if (slot.listening) {
+      element.removeEventListener('ratechange', slot.onEvent);
+      element.removeEventListener('play', slot.onEvent);
+      element.removeEventListener('seeked', slot.onEvent);
+    }
+    slots.delete(element);
+  };
+  const consider = (element: HTMLMediaElement) => {
+    const slot = slots.get(element);
+    if (!slot || !lockOn || !element.isConnected) return;
+    const result = observePlaybackRate(slot.state, element.playbackRate, Date.now(), true);
+    slot.state = result.state;
+    if (result.decision.type === 'give-up') { onRateLockGiveUp?.(); return; }
+    if (result.decision.type !== 'rewrite') return;
+    const view = element.ownerDocument.defaultView;
+    if (!view) { slot.state = { ...slot.state, pending: false }; return; }
+    clearTimer(element, slot);
+    const rate = result.decision.rate;
+    slot.timer = view.setTimeout(() => {
+      const current = slots.get(element);
+      if (!current) return;
+      current.timer = 0;
+      if (!lockOn || !element.isConnected || current.state.givenUp || current.state.desired == null) return;
+      if (Math.abs(element.playbackRate - rate) <= rateLockEpsilon) { current.state = { ...current.state, pending: false }; return; }
+      current.state = armRateEcho(current.state);
+      void applyMediaCommand(element, { type: 'rate', value: rate });
+    }, result.decision.delayMs);
+  };
+  const listen = (element: HTMLMediaElement) => {
+    let slot = slots.get(element);
+    if (!slot) {
+      slot = { state: createRateLockState(), timer: 0, listening: false, onEvent: () => consider(element) };
+      slots.set(element, slot);
+    }
+    if (slot.listening) return;
+    slot.listening = true;
+    element.addEventListener('ratechange', slot.onEvent);
+    element.addEventListener('play', slot.onEvent);
+    element.addEventListener('seeked', slot.onEvent);
+  };
+  const unlisten = (element: HTMLMediaElement) => {
+    const slot = slots.get(element);
+    if (!slot?.listening) return;
+    clearTimer(element, slot);
+    slot.listening = false;
+    slot.state = { ...slot.state, pending: false };
+    element.removeEventListener('ratechange', slot.onEvent);
+    element.removeEventListener('play', slot.onEvent);
+    element.removeEventListener('seeked', slot.onEvent);
+  };
+  const rememberRate = (element: HTMLMediaElement, rate: number) => {
+    let slot = slots.get(element);
+    if (!slot) {
+      slot = { state: createRateLockState(), timer: 0, listening: false, onEvent: () => consider(element) };
+      slots.set(element, slot);
+    }
+    clearTimer(element, slot);
+    slot.state = noteDesiredRate(slot.state, rate);
+    if (lockOn) listen(element);
+  };
   return {
     snapshot() {
       // shortcut: late Shadow Roots need an outer DOM mutation; add attachShadow tracking if target sites require it.
@@ -159,15 +233,27 @@ export function createMediaController(document: Document, onChange?: () => void)
         elements = discoverMedia(document, observe);
         dirty = false;
         for (const [root, observer] of observers) if ('host' in root && !root.host.isConnected) { observer.disconnect(); observers.delete(root); }
+        for (const element of slots.keys()) if (!element.isConnected) release(element);
       }
+      if (lockOn) for (const element of elements) listen(element);
       return elements.map(element => {
         if (!ids.has(element)) ids.set(element, String(++nextId));
-        return mediaSnapshot(element, ids.get(element)!, document, amplifier);
+        const snap = mediaSnapshot(element, ids.get(element)!, document, amplifier);
+        return slots.get(element)?.state.givenUp ? { ...snap, rateLock: 'given-up' as const } : snap;
       });
+    },
+    setLockRate(enabled: boolean) {
+      if (lockOn === enabled) return;
+      lockOn = enabled;
+      if (!enabled) { for (const element of slots.keys()) unlisten(element); return; }
+      for (const slot of slots.values()) slot.state = { ...slot.state, fights: 0, lastFightAt: 0, pending: false, givenUp: false };
+      this.snapshot();
+      for (const element of slots.keys()) if (element.isConnected) consider(element);
     },
     async command(id: string, command: MediaCommand) {
       const element = elements.find(media => ids.get(media) === id && media.isConnected);
       if (!element) throw new Error(i18n.t('mediaRemoved'));
+      if (command.type === 'rate') rememberRate(element, command.value);
       await applyMediaCommand(element, command, amplifier);
       if (command.type === 'rate') return readSettledRate(element);
     },
@@ -198,6 +284,7 @@ export function createMediaController(document: Document, onChange?: () => void)
       document.removeEventListener('leavepictureinpicture', onPip, true);
       for (const observer of observers.values()) observer.disconnect();
       observers.clear();
+      for (const element of [...slots.keys()]) release(element);
     }
   };
 }

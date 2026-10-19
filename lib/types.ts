@@ -5,8 +5,8 @@ export type SiteMode = 'all' | 'allow' | 'exclude';
 export type DockSide = 'left' | 'right';
 export interface FloatingPosition { side: DockSide; y: number }
 export interface SitePref { volume?: number; rate?: number }
-export interface Settings { theme: Theme; floating: boolean; floatingPosition: FloatingPosition; siteMode: SiteMode; sites: string[]; sitePrefs: Record<string, SitePref>; ratePresets: number[] }
-export const defaultSettings: Settings = { theme: 'system', floating: true, floatingPosition: { side: 'right', y: .8 }, siteMode: 'all', sites: [], sitePrefs: {}, ratePresets: [...defaultRatePresets] };
+export interface Settings { theme: Theme; floating: boolean; floatingPosition: FloatingPosition; siteMode: SiteMode; sites: string[]; sitePrefs: Record<string, SitePref>; ratePresets: number[]; lockRate: boolean }
+export const defaultSettings: Settings = { theme: 'system', floating: true, floatingPosition: { side: 'right', y: .8 }, siteMode: 'all', sites: [], sitePrefs: {}, ratePresets: [...defaultRatePresets], lockRate: false };
 export interface SettingsStore {
   load(): Promise<Settings>;
   save(settings: Settings): Promise<void>;
@@ -31,6 +31,8 @@ export interface MediaState {
   pip: boolean;
   pipAvailable: boolean;
   pipBlock: PipBlock;
+  /** Set when rate lock has surrendered on this element. */
+  rateLock?: 'given-up';
   frameId?: number;
 }
 export type MediaCommand =

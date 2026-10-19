@@ -21,7 +21,7 @@ import { useSettingsAtoms } from './theme';
 
 const themes = [{ value: 'light', label: () => i18n.t('themeLight') }, { value: 'dark', label: () => i18n.t('themeDark') }, { value: 'system', label: () => i18n.t('themeSystem') }] as const;
 const siteModes = [{ value: 'all', label: () => i18n.t('modeAll'), description: () => i18n.t('modeAllDescription') }, { value: 'allow', label: () => i18n.t('modeAllow'), description: () => i18n.t('modeAllowDescription') }, { value: 'exclude', label: () => i18n.t('modeExclude'), description: () => i18n.t('modeExcludeDescription') }] as const;
-const nav = [{ id: 'appearance', label: () => i18n.t('appearance'), icon: Sun }, { id: 'floating', label: () => i18n.t('floatingController'), icon: AppWindow }, { id: 'shortcuts', label: () => i18n.t('shortcuts'), icon: Keyboard }, { id: 'presets', label: () => i18n.t('ratePresets'), icon: Gauge }, { id: 'sites', label: () => i18n.t('siteRules'), icon: Globe }, { id: 'memory', label: () => i18n.t('rememberedSites'), icon: Bookmark }] as const;
+const nav = [{ id: 'appearance', label: () => i18n.t('appearance'), icon: Sun }, { id: 'floating', label: () => i18n.t('floatingController'), icon: AppWindow }, { id: 'playback', label: () => i18n.t('playback'), icon: Gauge }, { id: 'shortcuts', label: () => i18n.t('shortcuts'), icon: Keyboard }, { id: 'presets', label: () => i18n.t('ratePresets'), icon: Gauge }, { id: 'sites', label: () => i18n.t('siteRules'), icon: Globe }, { id: 'memory', label: () => i18n.t('rememberedSites'), icon: Bookmark }] as const;
 const presetsMatch = (a: readonly number[], b: readonly number[]) => a.length === b.length && a.every((rate, index) => rate === b[index]);
 function reorderPresets(presets: readonly number[], index: number, direction: -1 | 1) {
   const target = index + direction;
@@ -133,9 +133,10 @@ function Row({ title, description, titleId, children }: { title: string; descrip
 }
 
 export function SettingsPage({ back }: { back?: () => void }) {
-  const { themeAtom, floatingAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { themeAtom, floatingAtom, lockRateAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const theme = useAtomValue(themeAtom);
   const floating = useAtomValue(floatingAtom);
+  const lockRate = useAtomValue(lockRateAtom);
   const siteMode = useAtomValue(siteModeAtom);
   const sites = useAtomValue(sitesAtom);
   const sitePrefs = useAtomValue(sitePrefsAtom);
@@ -227,6 +228,16 @@ export function SettingsPage({ back }: { back?: () => void }) {
           <Field orientation="horizontal" className="justify-between gap-4 rounded-lg bg-muted/50 px-3 py-3">
             <FieldLabel htmlFor="settings-floating" className="text-sm font-normal">{i18n.t('showFloating')}</FieldLabel>
             <Switch id="settings-floating" aria-label={i18n.t('floatingController')} checked={floating} disabled={disabled} onCheckedChange={checked => void save({ floating: checked })} />
+          </Field>
+        </div>
+      </section>
+      <section id="playback" aria-labelledby="playback-heading" className="scroll-mt-32 rounded-xl bg-card shadow-card md:scroll-mt-8">
+        <div className="px-5 py-5 sm:px-6">
+          <h2 id="playback-heading" className="text-sm font-semibold">{i18n.t('playback')}</h2>
+          <p className="mt-1 max-w-xl text-sm leading-5 text-muted-foreground">{i18n.t('lockRateDescription')}</p>
+          <Field orientation="horizontal" className="mt-4 justify-between gap-4 rounded-lg bg-muted/50 px-3 py-3">
+            <FieldLabel htmlFor="settings-lock-rate" className="text-sm font-normal">{i18n.t('lockRate')}</FieldLabel>
+            <Switch id="settings-lock-rate" aria-label={i18n.t('lockRate')} checked={lockRate} disabled={disabled} onCheckedChange={checked => void save({ lockRate: checked })} />
           </Field>
         </div>
       </section>

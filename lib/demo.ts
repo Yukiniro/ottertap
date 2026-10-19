@@ -33,6 +33,8 @@ export function createDemo(document: Document, { src, title, store }: { src: str
   media.addEventListener('loadedmetadata', () => { media.currentTime = startAt; });
   let second: HTMLAudioElement | null = null;
   const controller = createMediaController(document);
+  const unwatchLock = store.watch(settings => controller.setLockRate(isSiteEnabled(demoUrl, settings) && settings.lockRate));
+  void store.load().then(settings => controller.setLockRate(isSiteEnabled(demoUrl, settings) && settings.lockRate)).catch(() => {});
   const remembered = createSitePrefSession();
   const demoHost = new URL(demoUrl).host;
   let selectedId = '';
@@ -91,6 +93,6 @@ export function createDemo(document: Document, { src, title, store }: { src: str
       second?.remove();
       second = label === null ? null : create('audio', label);
     },
-    destroy() { controller.destroy(); media.remove(); second?.remove(); }
+    destroy() { unwatchLock(); controller.destroy(); media.remove(); second?.remove(); }
   };
 }
