@@ -1,5 +1,29 @@
 # ottertap-extension
 
+## 1.5.0
+
+### Minor Changes
+
+- [#23](https://github.com/Yukiniro/ottertap/pull/23) [`5bf37b0`](https://github.com/Yukiniro/ottertap/commit/5bf37b0c91768bb631330c8e7b456acfbf6491bb) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 当前标签页的媒体音量超过 100% 时，在工具栏图标上显示角标和悬停提示。
+
+- [#37](https://github.com/Yukiniro/ottertap/pull/37) [`aed85fa`](https://github.com/Yukiniro/ottertap/commit/aed85fa95ae98bdc1d6e0289c0a432953b6f3d11) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 用浏览器扩展命令补齐播放、快进快退和静音，并在设置页显示当前快捷键。
+
+- [#35](https://github.com/Yukiniro/ottertap/pull/35) [`bc76da3`](https://github.com/Yukiniro/ottertap/commit/bc76da3e67ea3aa4bd6e88744eac4b9c15c95fb7) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 可选锁定倍速：站点把播放速度改回去时写回你设定的倍速，默认关闭。反复拉锯会在有限次数后停止。
+
+- [#28](https://github.com/Yukiniro/ottertap/pull/28) [`cb1c46d`](https://github.com/Yukiniro/ottertap/commit/cb1c46dd11157ba3d2ac49274b168d1feabeb687) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 弹出面板底部列出其他正在发声或已静音的标签页，可以切换过去，也可以与浏览器标签喇叭一致地静音或取消静音。
+
+- [#36](https://github.com/Yukiniro/ottertap/pull/36) [`035e2d6`](https://github.com/Yukiniro/ottertap/commit/035e2d6153986a1ce356adb3239a488d16f75e6d) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 弹出面板可以一键让选中的视频进入或退出画中画。
+
+- [#34](https://github.com/Yukiniro/ottertap/pull/34) [`1714e51`](https://github.com/Yukiniro/ottertap/commit/1714e51f933a8918cfc9fd70ae6f469e832bddbc) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 弹出面板的倍速预设默认覆盖到 4×，并可在设置中增删和排序。
+
+- [#24](https://github.com/Yukiniro/ottertap/pull/24) [`4900607`](https://github.com/Yukiniro/ottertap/commit/49006072a0fbc81b2dda79da5012dcf0ab2fd496) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 用 Alt+Shift 搭配 , . 0 调节倍速，并在页面上短暂显示实际生效的倍速。
+
+### Patch Changes
+
+- [#27](https://github.com/Yukiniro/ottertap/pull/27) [`b97bdbb`](https://github.com/Yukiniro/ottertap/commit/b97bdbbe4aec916e1e62fa0f323ee9c2ea210f3a) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 没有媒体的网页不再持续向后台报告状态。音量变化、音量放大和网站开关仍然会立刻同步。
+
+- [#26](https://github.com/Yukiniro/ottertap/pull/26) [`a15ba20`](https://github.com/Yukiniro/ottertap/commit/a15ba207ca9f5efc751befbf2ae5d9dd4b3035fd) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 音量放大超过 100% 时用限幅器压住响段，避免硬削波破音。
+
 ## 1.4.0
 
 ### Minor Changes
