@@ -443,6 +443,11 @@ test('英文设置页的快捷键一节不写死中文', async () => {
     const shortcuts = page.locator('#shortcuts');
     await expect(shortcuts).toBeVisible();
     await expect(shortcuts).toContainText('Keyboard shortcuts');
+    await expect(shortcuts).toContainText('Play or pause');
+    await expect(shortcuts).toContainText('Edit shortcuts');
+    await expect(shortcuts).toContainText('Not set');
+    await expect(shortcuts).toContainText('On-page shortcuts');
+    await expect(shortcuts).toContainText('Extension shortcuts work only while the browser window is focused.');
     await expect(shortcuts).toContainText('Mouse wheel');
     await expect(shortcuts).toContainText('Increase volume by 10 percentage points');
     await expect(shortcuts).toContainText('Decrease volume by 10 percentage points');

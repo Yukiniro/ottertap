@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Window } from 'happy-dom';
 import { createElement, act, Fragment } from 'react';
-import { rateHintEvent } from '../lib/hotkey';
+import { actionHintEvent, rateHintEvent } from '../lib/hotkey';
 import { defaultSettings, type MediaClient, type Settings, type SettingsStore } from '../lib/types';
 
 test('倍速提示在浮动控制器隐藏时仍显示，并对读屏可读', async () => {
@@ -43,6 +43,10 @@ test('倍速提示在浮动控制器隐藏时仍显示，并对读屏可读', as
     assert.equal(status.className.includes('opacity-100'), true);
     await show(1.1);
     assert.equal(status.textContent, '倍速 1.1×');
+    await act(async () => { window.dispatchEvent(new window.CustomEvent(actionHintEvent, { detail: '已暂停' as unknown as object })); });
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 30)); });
+    assert.equal(status.textContent, '已暂停');
+    assert.equal(status.className.includes('opacity-100'), true);
   } finally {
     await act(async () => { root.unmount(); });
     await window.happyDOM.close();

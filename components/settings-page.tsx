@@ -1,5 +1,6 @@
 import { i18n } from '#i18n';
 import { useEffect, useState } from 'react';
+import { commandBindings, extensionShortcutApis, shortcutsSettingsUrl } from '../lib/commands';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { Sun, AppWindow, Keyboard, Globe, Bookmark, X, CircleCheck, ArrowLeft, CircleAlert } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
@@ -45,6 +46,29 @@ function SaveStatus({ loading, saving, error, saved }: { loading: boolean; savin
   return <Badge variant={error ? 'destructive' : 'secondary'} role="status" className="h-auto min-h-6 px-2.5 py-1 text-sm whitespace-normal">{error ? <CircleAlert /> : <CircleCheck />}{loading ? i18n.t('reading') : saving ? i18n.t('saving') : error ? i18n.t('unsaved') : saved ? i18n.t('saved') : i18n.t('autoSave')}</Badge>;
 }
 
+function ShortcutKey({ shortcut }: { shortcut: string }) {
+  if (!shortcut) return <span className="rounded-md border border-dashed px-2 py-1 text-xs text-muted-foreground">{i18n.t('shortcutUnbound')}</span>;
+  return <kbd className="inline-block rounded-md border bg-background px-2 py-1 font-mono text-xs whitespace-nowrap">{shortcut}</kbd>;
+}
+
+function useCommandBindings() {
+  const [rows, setRows] = useState(() => commandBindings([]));
+  useEffect(() => {
+    const { commands } = extensionShortcutApis();
+    let cancelled = false;
+    const load = () => {
+      if (!commands?.getAll) { setRows(commandBindings([])); return; }
+      void Promise.resolve(commands.getAll()).then(list => {
+        if (!cancelled) setRows(commandBindings(Array.isArray(list) ? list : []));
+      }).catch(() => { if (!cancelled) setRows(commandBindings([])); });
+    };
+    load();
+    window.addEventListener('focus', load);
+    return () => { cancelled = true; window.removeEventListener('focus', load); };
+  }, []);
+  return rows;
+}
+
 function Row({ title, description, titleId, children }: { title: string; description?: string; titleId?: string; children: React.ReactNode }) {
   return <div className="grid gap-4 px-5 py-5 sm:grid-cols-[160px_1fr] sm:items-start sm:gap-8 sm:px-6">
     <div className="min-w-0 sm:pt-0.5">
@@ -70,6 +94,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [active, setActive] = useState<(typeof nav)[number]['id']>('appearance');
+  const commandRows = useCommandBindings();
   useEffect(() => {
     if (typeof IntersectionObserver === 'undefined') return;
     const nodes = nav.map(item => document.getElementById(item.id)).filter((node): node is HTMLElement => !!node);
@@ -152,11 +177,25 @@ export function SettingsPage({ back }: { back?: () => void }) {
         </div>
       </section>
       <section id="shortcuts" aria-labelledby="shortcuts-heading" className="scroll-mt-32 rounded-xl bg-card shadow-card md:scroll-mt-8">
-        <div className="px-5 py-5 sm:px-6">
-          <h2 id="shortcuts-heading" className="text-sm font-semibold">{i18n.t('shortcuts')}</h2>
-          <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('shortcutsDescription')}</p>
+        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3 px-5 py-5 sm:px-6">
+          <div className="min-w-0 flex-1">
+            <h2 id="shortcuts-heading" className="text-sm font-semibold">{i18n.t('shortcuts')}</h2>
+            <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('shortcutsDescription')}</p>
+          </div>
+          <Button type="button" variant="outline" className="shrink-0" onClick={() => {
+            const tabs = extensionShortcutApis().tabs;
+            if (tabs?.create) void Promise.resolve(tabs.create({ url: shortcutsSettingsUrl(navigator.userAgent) })).catch(() => {});
+          }}>{i18n.t('editShortcuts')}</Button>
         </div>
         <div className="px-5 pb-5 sm:px-6">
+          <h3 className="mb-2 text-sm font-medium">{i18n.t('extensionShortcuts')}</h3>
+          <dl className="divide-y rounded-lg bg-muted/50 px-3">
+            {commandRows.map(command => <div key={command.name} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 text-sm">
+              <dt><ShortcutKey shortcut={command.shortcut} /></dt>
+              <dd className="text-muted-foreground">{i18n.t(command.message)}</dd>
+            </div>)}
+          </dl>
+          <h3 className="mt-6 mb-2 text-sm font-medium">{i18n.t('pageShortcuts')}</h3>
           <dl className="divide-y rounded-lg bg-muted/50 px-3">
             {[
               { id: 'volume-up', key: '↑', description: i18n.t('shortcutVolumeUp') },

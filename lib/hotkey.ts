@@ -3,10 +3,18 @@ import { nextRate } from './rate';
 import { steppedVolume } from './volume';
 import type { MediaCommand, MediaState, PageState } from './types';
 
-export type HotkeyAction = { type: 'volume'; delta: number } | { type: 'rate'; direction: 1 | -1 | 0 };
+export type HotkeyAction =
+  | { type: 'volume'; delta: number }
+  | { type: 'rate'; direction: 1 | -1 | 0 }
+  | { type: 'toggle' }
+  | { type: 'mute' }
+  | { type: 'skip'; delta: number };
+
+export type ActionHintKey = 'play' | 'paused' | 'skipBack' | 'skipForward' | 'mute' | 'unmute';
 
 export const volumeGestureEvent = 'ottertap-volume-gesture';
 export const rateHintEvent = 'ottertap-rate';
+export const actionHintEvent = 'ottertap-action-hint';
 
 interface KeyInput { key: string; code?: string; altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }
 
@@ -39,7 +47,9 @@ export function isHotkeyAction(value: unknown): value is HotkeyAction {
   if (!value || typeof value !== 'object') return false;
   const action = value as HotkeyAction;
   if (action.type === 'volume') return Number.isFinite(action.delta) && Math.abs(action.delta) <= 150;
-  return action.type === 'rate' && (action.direction === 1 || action.direction === -1 || action.direction === 0);
+  if (action.type === 'rate') return action.direction === 1 || action.direction === -1 || action.direction === 0;
+  if (action.type === 'toggle' || action.type === 'mute') return true;
+  return action.type === 'skip' && (action.delta === 10 || action.delta === -10);
 }
 
 export function shownPercent(media: MediaState) {
@@ -51,9 +61,19 @@ export function commandForHotkey(action: HotkeyAction, media: MediaState): Media
     const value = nextRate(media.rate, action.direction);
     return value === media.rate ? null : { type: 'rate', value };
   }
+  if (action.type === 'toggle') return { type: media.paused ? 'play' : 'pause' };
+  if (action.type === 'mute') return { type: 'mute' };
+  if (action.type === 'skip') return action.delta === 10 || action.delta === -10 ? { type: 'skip', value: action.delta } : null;
   if (!action.delta) return null;
   const max = media.maxVolume * 100;
   return { type: 'volume', value: steppedVolume(shownPercent(media), action.delta, max) / 100 };
+}
+
+export function actionHintKey(action: HotkeyAction, media: MediaState): ActionHintKey | '' {
+  if (action.type === 'toggle') return media.paused ? 'play' : 'paused';
+  if (action.type === 'skip') return action.delta < 0 ? 'skipBack' : 'skipForward';
+  if (action.type === 'mute') return media.muted ? 'unmute' : 'mute';
+  return '';
 }
 
 export function isFloatingEvent(event: Event) {
