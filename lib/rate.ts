@@ -1,6 +1,8 @@
 export const minRate = 0.25;
 export const maxRate = 4;
 export const rateStep = 0.25;
+export const maxRatePresets = 10;
+export const defaultRatePresets = [0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4];
 
 export function clampRate(rate: number) {
   if (!Number.isFinite(rate)) return 1;
@@ -24,6 +26,35 @@ export function nextRate(current: number, direction: 1 | -1 | 0) {
 export function formatRate(rate: number) {
   if (!Number.isFinite(rate)) return '1';
   return String(Math.round(rate * 100) / 100);
+}
+
+export function sameRate(a: number, b: number) {
+  return formatRate(a) === formatRate(b);
+}
+
+/** Keep a user-ordered list inside 0.25×–4×. Empty or unusable input falls back to the built-in presets. */
+export function normalizeRatePresets(value: unknown): number[] {
+  if (!Array.isArray(value)) return [...defaultRatePresets];
+  const presets: number[] = [];
+  const seen = new Set<number>();
+  for (const item of value) {
+    if (typeof item !== 'number' || !Number.isFinite(item)) continue;
+    const rate = Number(formatRate(clampRate(item)));
+    if (seen.has(rate)) continue;
+    seen.add(rate);
+    presets.push(rate);
+    if (presets.length === maxRatePresets) break;
+  }
+  return presets.length ? presets : [...defaultRatePresets];
+}
+
+/** Accept a typed preset. Out-of-range and non-numeric input is rejected so the form can explain it. */
+export function parseRatePreset(input: string): number | null {
+  const text = input.trim().replace(',', '.');
+  if (!/^\d+(\.\d+)?$/.test(text)) return null;
+  const rate = Number(formatRate(Number(text)));
+  if (rate < minRate || rate > maxRate) return null;
+  return rate;
 }
 
 /** Read after the page's own timers, so a player that restores the old rate is what we report. */

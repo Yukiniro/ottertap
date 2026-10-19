@@ -14,13 +14,13 @@ import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 import { Brand } from './brand';
 import { useMedia } from '../hooks/use-media';
 import { mediaChoiceLabel, pipHint } from '../lib/media';
+import { formatRate, sameRate } from '../lib/rate';
 import type { SoundingTab, SoundingTabsClient } from '../lib/tabs';
 import { disableSite, enableSite, forgetMatchingSites, isSiteEnabled, rememberSite, sitePrefFor } from '../lib/settings';
 import { defaultSettings, type MediaClient } from '../lib/types';
 import { formatTime } from '../lib/utils';
 import { useSettingsAtoms } from './theme';
 
-const speeds = [0.75, 1, 1.25, 1.5, 2];
 const first = (value: number | readonly number[]) => Array.isArray(value) ? value[0] : value;
 function TabIcon({ src }: { src: string }) {
   const [failed, setFailed] = useState(false);
@@ -75,11 +75,12 @@ function OtherPlaying({ client }: { client?: SoundingTabsClient }) {
 }
 export function MediaPanel({ client, openSettings, sounding }: { client: MediaClient; openSettings: () => void; sounding?: SoundingTabsClient }) {
   const { page, selected, select, command, refresh, loading, error } = useMedia(client);
-  const { floatingAtom, siteModeAtom, sitesAtom, sitePrefsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { floatingAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const floating = useAtomValue(floatingAtom);
   const siteMode = useAtomValue(siteModeAtom);
   const sites = useAtomValue(sitesAtom);
   const sitePrefs = useAtomValue(sitePrefsAtom);
+  const ratePresets = useAtomValue(ratePresetsAtom);
   const settingsLoading = useAtomValue(loadingAtom);
   const settingsError = useAtomValue(errorAtom);
   const write = useSetAtom(writeSettingsAtom);
@@ -107,6 +108,7 @@ export function MediaPanel({ client, openSettings, sounding }: { client: MediaCl
   const canSeek = seekMax > seekMin;
   const volume = selected ? Math.round((selected.muted ? 0 : selected.volume) * 100) : 0;
   const hint = selected ? pipHint(selected) : '';
+  const activePreset = selected ? ratePresets.find(speed => sameRate(speed, selected.rate)) : undefined;
   const showSiteAction = page.enabled && !outOfSync && !!siteAction?.settings;
   return <section className="flex w-[400px] max-w-full flex-col gap-2.5 bg-background px-3.5 pt-1 pb-2" aria-label={i18n.t('mediaPanel')}>
     <header className="flex h-12 items-center justify-between">
@@ -152,13 +154,15 @@ export function MediaPanel({ client, openSettings, sounding }: { client: MediaCl
           <Button variant="ghost" size="icon" className="[&_svg:not([class*='size-'])]:size-5" aria-label={selected.muted ? i18n.t('unmute') : i18n.t('mute')} aria-pressed={selected.muted} onClick={() => void command({ type: 'mute' })}>{selected.muted || selected.volume === 0 ? <VolumeX /> : <Volume2 />}</Button>
           <VolumeSlider size="bar" aria-label={i18n.t('volume')} className="flex-1" max={Math.round(selected.maxVolume * 100)} value={volume} onValueChange={value => void adjust({ type: 'volume', value: value / 100 })} />
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span id="speed-label" className="min-w-8 shrink-0 text-sm">{i18n.t('speed')}</span>
-          <ToggleGroup aria-labelledby="speed-label" spacing={1} className="h-9 min-w-0 flex-1 rounded-lg bg-background/80 p-1" value={speeds.includes(selected.rate) ? [String(selected.rate)] : []} onValueChange={value => { if (value[0]) void adjust({ type: 'rate', value: Number(value[0]) }); }}>
-            {speeds.map(speed => <ToggleGroupItem key={speed} value={String(speed)} aria-label={i18n.t('speedOption', { speed })} className="h-7 flex-1 rounded-md border-0 text-xs text-muted-foreground shadow-none aria-pressed:bg-card aria-pressed:font-semibold aria-pressed:text-foreground aria-pressed:shadow-sm">{speed}×</ToggleGroupItem>)}
-          </ToggleGroup>
-          {!speeds.includes(selected.rate) && <span className="w-full text-xs text-muted-foreground">{i18n.t('currentSpeed', { rate: selected.rate })}</span>}
-          {offerRemember && !remembered && <Button variant="ghost" size="sm" className="h-7 w-full justify-start px-1 text-xs text-primary" disabled={settingsLoading} onClick={storePreference}>{i18n.t('rememberSite')}</Button>}
+        <div className="mt-3">
+          <div className="flex items-start gap-3">
+            <span id="speed-label" className="mt-2 min-w-8 shrink-0 text-sm">{i18n.t('speed')}</span>
+            <ToggleGroup aria-labelledby="speed-label" spacing={1} className="grid h-auto min-w-0 flex-1 grid-cols-4 rounded-lg bg-background/80 p-1" value={activePreset === undefined ? [] : [String(activePreset)]} onValueChange={value => { if (value[0]) void adjust({ type: 'rate', value: Number(value[0]) }); }}>
+              {ratePresets.map(speed => <ToggleGroupItem key={speed} value={String(speed)} aria-label={i18n.t('speedOption', { speed: formatRate(speed) })} className="h-7 w-full min-w-0 rounded-md border-0 px-0.5 text-xs text-muted-foreground shadow-none aria-pressed:bg-card aria-pressed:font-semibold aria-pressed:text-foreground aria-pressed:shadow-sm">{formatRate(speed)}×</ToggleGroupItem>)}
+            </ToggleGroup>
+          </div>
+          {activePreset === undefined && <p className="mt-1 text-xs text-muted-foreground">{i18n.t('currentSpeed', { rate: formatRate(selected.rate) })}</p>}
+          {offerRemember && !remembered && <Button variant="ghost" size="sm" className="mt-1 h-7 w-full justify-start px-1 text-xs text-primary" disabled={settingsLoading} onClick={storePreference}>{i18n.t('rememberSite')}</Button>}
         </div>
       </div>
     </> : <div className="flex min-h-[26.25rem] flex-col justify-center rounded-2xl bg-card shadow-card">

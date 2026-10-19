@@ -5,7 +5,7 @@ import { Window } from 'happy-dom';
 import { commandForHotkey, createHotkeySession, hotkeyFromKeyboard, isHotkeyAction } from '../lib/hotkey';
 import { readFlatMessages } from '../lib/message-catalog';
 import { isMediaCommand } from '../lib/media';
-import { formatRate, maxRate, minRate, nextRate, readSettledRate } from '../lib/rate';
+import { defaultRatePresets, formatRate, maxRate, maxRatePresets, minRate, nextRate, normalizeRatePresets, parseRatePreset, readSettledRate } from '../lib/rate';
 import type { MediaState } from '../lib/types';
 
 const mods = { altKey: true, shiftKey: true, ctrlKey: false, metaKey: false };
@@ -39,6 +39,27 @@ test('倍速对齐到 0.25 网格，并停在 0.25× 与 4×', () => {
   assert.equal(isMediaCommand({ type: 'rate', value: maxRate + 0.01 }), false);
 });
 
+test('倍速预设夹紧、去重、保留顺序，空列表回退默认', () => {
+  assert.deepEqual(defaultRatePresets, [0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4]);
+  assert.equal(defaultRatePresets.includes(4), true);
+  assert.equal(minRate, 0.25);
+  assert.equal(maxRate, 4);
+  assert.deepEqual(normalizeRatePresets([2, 0.1, 4, 2, 9, 1.25]), [2, 0.25, 4, 1.25]);
+  assert.deepEqual(normalizeRatePresets([4, 1, 2]), [4, 1, 2]);
+  assert.deepEqual(normalizeRatePresets([1, 1.001, 1.256]), [1, 1.26]);
+  assert.deepEqual(normalizeRatePresets([]), [...defaultRatePresets]);
+  assert.deepEqual(normalizeRatePresets(['2', null, Number.NaN, Number.POSITIVE_INFINITY]), [...defaultRatePresets]);
+  assert.deepEqual(normalizeRatePresets(undefined), [...defaultRatePresets]);
+  const dense = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3];
+  assert.equal(normalizeRatePresets(dense).length, maxRatePresets);
+  assert.deepEqual(normalizeRatePresets(dense), dense.slice(0, maxRatePresets));
+  assert.equal(parseRatePreset('4'), 4);
+  assert.equal(parseRatePreset(' 1,5 '), 1.5);
+  assert.equal(parseRatePreset('4.5'), null);
+  assert.equal(parseRatePreset('0.2'), null);
+  assert.equal(parseRatePreset('nope'), null);
+  assert.equal(nextRate(1, 1), 1.25);
+});
 test('倍速按键认字符，也认 Mac Option 改写后的 code', () => {
   const rate = (event: { key: string; code?: string; altKey?: boolean; shiftKey?: boolean; ctrlKey?: boolean; metaKey?: boolean }) => hotkeyFromKeyboard({ ...mods, ...event });
   for (const event of [
