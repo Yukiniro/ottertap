@@ -1,6 +1,6 @@
 import { i18n } from '#i18n';
 import { useEffect, useRef, useState } from 'react';
-import { rateHintEvent } from '../lib/hotkey';
+import { actionHintEvent, rateHintEvent } from '../lib/hotkey';
 import { formatRate } from '../lib/rate';
 import { cn } from '../lib/utils';
 
@@ -12,10 +12,7 @@ export function RateHint() {
     let show = 0;
     let hide = 0;
     let clear = 0;
-    const onRate = (event: Event) => {
-      const rate = (event as CustomEvent<number>).detail;
-      if (typeof rate !== 'number' || !Number.isFinite(rate)) return;
-      const label = i18n.t('speedHint', { rate: formatRate(rate) });
+    const onLabel = (label: string) => {
       window.clearTimeout(show);
       window.clearTimeout(hide);
       window.clearTimeout(clear);
@@ -32,12 +29,24 @@ export function RateHint() {
         show = window.setTimeout(reveal, 20);
       } else reveal();
     };
+    const onRate = (event: Event) => {
+      const rate = (event as CustomEvent<number>).detail;
+      if (typeof rate !== 'number' || !Number.isFinite(rate)) return;
+      onLabel(i18n.t('speedHint', { rate: formatRate(rate) }));
+    };
+    const onAction = (event: Event) => {
+      const text = (event as CustomEvent<string>).detail;
+      if (typeof text !== 'string' || !text) return;
+      onLabel(text);
+    };
     window.addEventListener(rateHintEvent, onRate);
+    window.addEventListener(actionHintEvent, onAction);
     return () => {
       window.clearTimeout(show);
       window.clearTimeout(hide);
       window.clearTimeout(clear);
       window.removeEventListener(rateHintEvent, onRate);
+      window.removeEventListener(actionHintEvent, onAction);
     };
   }, []);
   return <p role="status" aria-live="polite" aria-atomic="true" className={cn('pointer-events-none fixed top-6 left-1/2 z-2147483647 -translate-x-1/2 rounded-full border bg-card px-3.5 py-2 text-sm font-medium text-card-foreground tabular-nums shadow-card transition-opacity duration-200', shown && text ? 'opacity-100' : 'opacity-0')}>{text}</p>;

@@ -3,7 +3,8 @@ import { browser } from 'wxt/browser';
 import { extensionStore } from '../lib/extension-store';
 import { createSitePrefSession, isSiteEnabled, withRememberedCommand } from '../lib/settings';
 import { isMediaCommand } from '../lib/media';
-import { isHotkeyAction, shownPercent } from '../lib/hotkey';
+import { actionForCommand } from '../lib/commands';
+import { actionHintKey, isHotkeyAction, planHotkey, shownPercent, type HotkeyAction } from '../lib/hotkey';
 import { nextRate } from '../lib/rate';
 import { steppedVolume } from '../lib/volume';
 import { volumeBadgeColor, volumeBadgeFromReports, volumeBadgeTtlMs } from '../lib/volume-badge';
@@ -166,6 +167,9 @@ export default defineBackground(() => {
   const showRate = (tabId: number, rate: number) => {
     void browser.tabs.sendMessage(tabId, { namespace: 'ottertap', type: 'rateHint', rate }, { frameId: 0 }).catch(() => {});
   };
+  const showAction = (tabId: number, key: string) => {
+    void browser.tabs.sendMessage(tabId, { namespace: 'ottertap', type: 'actionHint', key }, { frameId: 0 }).catch(() => {});
+  };
   async function applyVolume(tabId: number, host: string, delta: number) {
     let gesture = gestures.get(tabId);
     const selected = selectedIds.get(tabId);
@@ -201,6 +205,55 @@ export default defineBackground(() => {
     const reported = result && typeof result === 'object' && 'rate' in result ? result.rate : undefined;
     return typeof reported === 'number' && Number.isFinite(reported) ? reported : next;
   }
+  async function applyTransport(tabId: number, host: string, action: HotkeyAction) {
+    const { media, failed } = await collect(tabId, host);
+    const saved = lockedId(tabId, media, failed);
+    if (saved && !media.some(item => item.id === saved)) return false;
+    const plan = planHotkey({ host, enabled: true, media, selectedId: saved }, action);
+    if (!plan) return false;
+    selectedIds.set(tabId, plan.media.id);
+    if (plan.command.type === 'mute') gestures.delete(tabId);
+    await deliver(tabId, plan.media.id, 'command', plan.command);
+    const key = actionHintKey(action, plan.media);
+    if (key) showAction(tabId, key);
+    return true;
+  }
+  async function performHotkey(tabId: number, host: string, action: HotkeyAction) {
+    if (action.type === 'rate') {
+      const rate = await applyRate(tabId, host, action.direction);
+      if (rate === undefined) return { handled: false as const };
+      showRate(tabId, rate);
+      return { handled: true as const, rate };
+    }
+    if (action.type === 'volume') {
+      const percent = await applyVolume(tabId, host, action.delta);
+      if (percent === undefined) return { handled: false as const };
+      reveal(tabId, percent);
+      return { handled: true as const, percent };
+    }
+    return { handled: await applyTransport(tabId, host, action) };
+  }
+  async function runExtensionCommand(name: string, source?: { id?: number; url?: string }) {
+    const action = actionForCommand(name);
+    if (!action) return;
+    try {
+      let tabId = source?.id;
+      let url = source?.url;
+      if (typeof tabId !== 'number') {
+        const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+        tabId = tab?.id;
+        url = tab?.url;
+      }
+      if (typeof tabId !== 'number' || !Number.isInteger(tabId) || tabId < 0) return;
+      if (!url) url = (await browser.tabs.get(tabId))?.url;
+      if (!url || !/^https?:\/\//.test(url)) return;
+      const pageUrl = url;
+      await framesReady;
+      const settings = await currentSettings();
+      if (!isSiteEnabled(pageUrl, settings)) return;
+      await enqueueCommand(tabId, () => performHotkey(tabId, new URL(pageUrl).hostname, action));
+    } catch { /* The active page has no controllable media. */ }
+  }
   const extensionPage = (url?: string) => typeof url === 'string' && url.startsWith(browser.runtime.getURL('/'));
   async function listSounding(currentTabId?: number) {
     const [audible, muted] = await Promise.all([browser.tabs.query({ audible: true }), browser.tabs.query({ muted: true })]);
@@ -223,6 +276,9 @@ export default defineBackground(() => {
     if (result?.error) throw new Error(result.error);
     return result;
   }
+  try {
+    browser.commands?.onCommand?.addListener((command, tab) => runExtensionCommand(command, tab));
+  } catch { /* The build verifier does not provide the commands API. */ }
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (sender.id !== browser.runtime.id || !message || message.namespace !== 'ottertap') return;
     if (!['options', 'context', 'register', 'read', 'command', 'select', 'highlight', 'hotkey', 'soundingTabs', 'focusTab', 'muteTab'].includes(message.type)) return;
@@ -299,16 +355,7 @@ export default defineBackground(() => {
         }
         if (message.type === 'hotkey') {
           if (!isHotkeyAction(message.action)) throw new Error(i18n.t('invalidCommand'));
-          if (message.action.type === 'rate') {
-            const rate = await applyRate(tabId, host, message.action.direction);
-            if (rate === undefined) return { handled: false };
-            showRate(tabId, rate);
-            return { handled: true, rate };
-          }
-          const percent = await applyVolume(tabId, host, message.action.delta);
-          if (percent === undefined) return { handled: false };
-          reveal(tabId, percent);
-          return { handled: true, percent };
+          return await performHotkey(tabId, host, message.action);
         }
         if (message.type === 'command') {
           if (!isMediaCommand(message.command) || !mediaId) throw new Error(i18n.t('invalidCommand'));

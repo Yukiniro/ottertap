@@ -2,7 +2,7 @@ import { i18n } from '#i18n';
 import { createRoot } from 'react-dom/client';
 import { browser } from 'wxt/browser';
 import { createShadowRootUi } from 'wxt/utils/content-script-ui/shadow-root';
-import { createHotkeyInput, hotkeyFromKeyboard, isFloatingEvent, rateHintEvent, volumeGestureEvent } from '../lib/hotkey';
+import { actionHintEvent, createHotkeyInput, hotkeyFromKeyboard, isFloatingEvent, rateHintEvent, volumeGestureEvent } from '../lib/hotkey';
 import { createMediaController, isMediaCommand, mediaPresenceEvent } from '../lib/media';
 import { maxEffectiveVolume, shouldReportVolume, volumeReportIntervalMs } from '../lib/volume-badge';
 import { isSiteEnabled } from '../lib/settings';
@@ -74,8 +74,14 @@ export default defineContentScript({
         announce();
         return;
       }
-      if (!['snapshot', 'command', 'highlight', 'reveal', 'rateHint'].includes(message.type)) return;
+      if (!['snapshot', 'command', 'highlight', 'reveal', 'rateHint', 'actionHint'].includes(message.type)) return;
       void (async () => {
+      if (message.type === 'actionHint') {
+        const key = message.key;
+        const label = key === 'play' || key === 'paused' || key === 'skipBack' || key === 'skipForward' || key === 'mute' || key === 'unmute' ? i18n.t(key) : '';
+        if (label) window.dispatchEvent(new window.CustomEvent(actionHintEvent, { detail: label }));
+        return { ok: true };
+      }
       if (message.type === 'rateHint') {
         if (typeof message.rate === 'number' && Number.isFinite(message.rate)) window.dispatchEvent(new window.CustomEvent(rateHintEvent, { detail: message.rate }));
         return { ok: true };
