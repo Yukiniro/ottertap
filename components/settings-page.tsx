@@ -2,7 +2,7 @@ import { i18n } from '#i18n';
 import { useEffect, useState } from 'react';
 import { commandBindings, extensionShortcutApis, shortcutsSettingsUrl } from '../lib/commands';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { Sun, AppWindow, Keyboard, Globe, Bookmark, X, CircleCheck, ArrowLeft, CircleAlert } from 'lucide-react';
+import { Sun, AppWindow, Keyboard, Gauge, Globe, Bookmark, X, CircleCheck, ArrowLeft, CircleAlert, ChevronUp, ChevronDown } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -14,13 +14,66 @@ import { Switch } from './ui/switch';
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 import { Brand } from './brand';
 import { cn } from '../lib/utils';
+import { defaultRatePresets, formatRate, maxRatePresets, parseRatePreset } from '../lib/rate';
 import { forgetSitePref, normalizeDomain } from '../lib/settings';
 import type { Settings, SitePref } from '../lib/types';
 import { useSettingsAtoms } from './theme';
 
 const themes = [{ value: 'light', label: () => i18n.t('themeLight') }, { value: 'dark', label: () => i18n.t('themeDark') }, { value: 'system', label: () => i18n.t('themeSystem') }] as const;
 const siteModes = [{ value: 'all', label: () => i18n.t('modeAll'), description: () => i18n.t('modeAllDescription') }, { value: 'allow', label: () => i18n.t('modeAllow'), description: () => i18n.t('modeAllowDescription') }, { value: 'exclude', label: () => i18n.t('modeExclude'), description: () => i18n.t('modeExcludeDescription') }] as const;
-const nav = [{ id: 'appearance', label: () => i18n.t('appearance'), icon: Sun }, { id: 'floating', label: () => i18n.t('floatingController'), icon: AppWindow }, { id: 'shortcuts', label: () => i18n.t('shortcuts'), icon: Keyboard }, { id: 'sites', label: () => i18n.t('siteRules'), icon: Globe }, { id: 'memory', label: () => i18n.t('rememberedSites'), icon: Bookmark }] as const;
+const nav = [{ id: 'appearance', label: () => i18n.t('appearance'), icon: Sun }, { id: 'floating', label: () => i18n.t('floatingController'), icon: AppWindow }, { id: 'shortcuts', label: () => i18n.t('shortcuts'), icon: Keyboard }, { id: 'presets', label: () => i18n.t('ratePresets'), icon: Gauge }, { id: 'sites', label: () => i18n.t('siteRules'), icon: Globe }, { id: 'memory', label: () => i18n.t('rememberedSites'), icon: Bookmark }] as const;
+const presetsMatch = (a: readonly number[], b: readonly number[]) => a.length === b.length && a.every((rate, index) => rate === b[index]);
+function reorderPresets(presets: readonly number[], index: number, direction: -1 | 1) {
+  const target = index + direction;
+  if (target < 0 || target >= presets.length) return [...presets];
+  const next = [...presets];
+  const [item] = next.splice(index, 1);
+  next.splice(target, 0, item!);
+  return next;
+}
+
+function RatePresetsSection({ presets, disabled, save }: { presets: number[]; disabled: boolean; save: (next: number[]) => Promise<boolean> }) {
+  const [input, setInput] = useState('');
+  const [error, setError] = useState('');
+  const add = async () => {
+    const rate = parseRatePreset(input);
+    if (rate === null) { setError(i18n.t('ratePresetInvalid')); return; }
+    if (presets.includes(rate)) { setError(i18n.t('ratePresetDuplicate')); return; }
+    if (presets.length >= maxRatePresets) { setError(i18n.t('ratePresetLimit')); return; }
+    if (await save([...presets, rate])) { setInput(''); setError(''); }
+  };
+  return <section id="presets" aria-labelledby="presets-heading" className="scroll-mt-32 rounded-xl bg-card shadow-card md:scroll-mt-8">
+    <div className="px-5 py-5 sm:px-6">
+      <h2 id="presets-heading" className="text-sm font-semibold">{i18n.t('ratePresets')}</h2>
+      <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('ratePresetsDescription')}</p>
+    </div>
+    <div className="px-5 pb-5 sm:px-6">
+      <ItemGroup aria-label={i18n.t('ratePresets')} className="gap-0 overflow-hidden rounded-lg bg-muted/50">
+        {presets.map((rate, index) => <Item key={rate} role="listitem" className="rounded-none border-b-border px-3 not-last:border-b">
+          <ItemContent><ItemTitle className="font-normal tabular-nums">{formatRate(rate)}×</ItemTitle></ItemContent>
+          <ItemActions>
+            <Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={i18n.t('moveRatePresetUp', { rate: formatRate(rate) })} disabled={disabled || index === 0} onClick={() => void save(reorderPresets(presets, index, -1))}><ChevronUp /></Button>
+            <Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={i18n.t('moveRatePresetDown', { rate: formatRate(rate) })} disabled={disabled || index === presets.length - 1} onClick={() => void save(reorderPresets(presets, index, 1))}><ChevronDown /></Button>
+            <Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={i18n.t('removeRatePreset', { rate: formatRate(rate) })} disabled={disabled} onClick={() => void save(presets.filter(item => item !== rate))}><X /></Button>
+          </ItemActions>
+        </Item>)}
+      </ItemGroup>
+      <form className="mt-3" onSubmit={event => { event.preventDefault(); void add(); }}>
+        <Field data-invalid={!!error}>
+          <FieldLabel htmlFor="rate-preset" className="sr-only">{i18n.t('addRatePreset')}</FieldLabel>
+          <div className="flex gap-2 max-sm:flex-col">
+            <Input id="rate-preset" inputMode="decimal" className="h-10 flex-1 px-3" value={input} disabled={disabled || presets.length >= maxRatePresets} placeholder={i18n.t('ratePresetPlaceholder')} aria-invalid={!!error} aria-describedby={error ? 'rate-preset-error' : presets.length >= maxRatePresets ? 'rate-preset-tip' : undefined} onChange={event => { setInput(event.target.value); setError(''); }} />
+            <Button type="submit" className="h-10 px-5" disabled={disabled || !input.trim() || presets.length >= maxRatePresets}>{i18n.t('addRatePreset')}</Button>
+          </div>
+          <FieldError id="rate-preset-error">{error}</FieldError>
+          {presets.length >= maxRatePresets && <FieldDescription id="rate-preset-tip">{i18n.t('ratePresetLimit')}</FieldDescription>}
+        </Field>
+      </form>
+      <Button variant="outline" className="mt-3" disabled={disabled || presetsMatch(presets, defaultRatePresets)} onClick={() => void save([...defaultRatePresets])}>{i18n.t('resetRatePresets')}</Button>
+    </div>
+  </section>;
+}
+
 const prefSummary = (pref: SitePref) => [pref.volume === undefined ? '' : i18n.t('rememberedVolume', { volume: Math.round(pref.volume * 100) }), pref.rate === undefined ? '' : i18n.t('rememberedRate', { rate: pref.rate })].filter(Boolean).join(' · ');
 
 function ThemeThumb({ value }: { value: 'light' | 'dark' | 'system' }) {
@@ -80,12 +133,13 @@ function Row({ title, description, titleId, children }: { title: string; descrip
 }
 
 export function SettingsPage({ back }: { back?: () => void }) {
-  const { themeAtom, floatingAtom, siteModeAtom, sitesAtom, sitePrefsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { themeAtom, floatingAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const theme = useAtomValue(themeAtom);
   const floating = useAtomValue(floatingAtom);
   const siteMode = useAtomValue(siteModeAtom);
   const sites = useAtomValue(sitesAtom);
   const sitePrefs = useAtomValue(sitePrefsAtom);
+  const ratePresets = useAtomValue(ratePresetsAtom);
   const loading = useAtomValue(loadingAtom);
   const error = useAtomValue(errorAtom);
   const write = useSetAtom(writeSettingsAtom);
@@ -213,6 +267,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
           <p className="mt-1 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsRateKeys')}</p>
         </div>
       </section>
+      <RatePresetsSection presets={ratePresets} disabled={disabled} save={async next => save({ ratePresets: next })} />
       <section id="sites" aria-labelledby="sites-label" className="scroll-mt-32 divide-y rounded-xl bg-card shadow-card md:scroll-mt-8">
         <div className="px-5 py-5 sm:px-6">
           <h2 id="sites-label" className="text-sm font-semibold">{i18n.t('siteRules')}</h2>

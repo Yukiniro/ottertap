@@ -1,6 +1,6 @@
 import { i18n } from '#i18n';
 import { maxGain } from './amplifier';
-import { maxRate, minRate } from './rate';
+import { maxRate, minRate, normalizeRatePresets } from './rate';
 import { defaultSettings, type MediaCommand, type Settings, type SitePref } from './types';
 const matchesSite = (host: string, site: string) => host === site || host.endsWith(`.${site}`);
 
@@ -19,7 +19,7 @@ export function normalizeDomain(input: string): string {
 }
 
 export function normalizeSettings(value: unknown): Settings {
-  if (!value || typeof value !== 'object') return { ...defaultSettings, sites: [], sitePrefs: {} };
+  if (!value || typeof value !== 'object') return { ...defaultSettings, sites: [], sitePrefs: {}, ratePresets: [...defaultSettings.ratePresets] };
   const source = value as Partial<Settings>;
   const sites: string[] = [];
   if (Array.isArray(source.sites)) for (const site of source.sites) {
@@ -34,7 +34,8 @@ export function normalizeSettings(value: unknown): Settings {
     floatingPosition: validPosition ? { side: position.side, y: position.y } : { ...defaultSettings.floatingPosition },
     siteMode: ['all', 'allow', 'exclude'].includes(source.siteMode ?? '') ? source.siteMode! : 'all',
     sites: [...new Set(sites)],
-    sitePrefs: normalizeSitePrefs(source.sitePrefs)
+    sitePrefs: normalizeSitePrefs(source.sitePrefs),
+    ratePresets: normalizeRatePresets(source.ratePresets)
   };
 }
 
