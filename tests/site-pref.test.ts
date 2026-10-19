@@ -72,7 +72,7 @@ test('控制面板可以记住当前站点，设置页可以忘记', async () =>
   const { ThemeProvider } = await import('../components/theme');
   const { MediaPanel } = await import('../components/media-panel');
   const { SettingsPage } = await import('../components/settings-page');
-  const media: MediaState = { id: '0:1', title: '正片', label: '正片', host: 'www.bilibili.com', kind: 'video', paused: false, muted: false, volume: .8, maxVolume: 1.5, rate: 1.25, currentTime: 10, duration: 100, live: false, seekable: [{ start: 0, end: 100 }] };
+  const media: MediaState = { id: '0:1', title: '正片', label: '正片', host: 'www.bilibili.com', kind: 'video', paused: false, muted: false, volume: .8, maxVolume: 1.5, rate: 1.25, currentTime: 10, duration: 100, live: false, seekable: [{ start: 0, end: 100 }], pip: false, pipAvailable: true, pipBlock: '' };
   const client: MediaClient = {
     async read() { return { enabled: true, host: 'www.bilibili.com', selectedId: media.id, media: [{ ...media }] }; },
     async command() {},

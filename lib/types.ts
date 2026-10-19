@@ -10,6 +10,7 @@ export interface SettingsStore {
   save(settings: Settings): Promise<void>;
   watch(callback: (settings: Settings) => void): () => void;
 }
+export type PipBlock = '' | 'audio' | 'unsupported' | 'disabled';
 export interface MediaState {
   id: string;
   title: string;
@@ -25,10 +26,13 @@ export interface MediaState {
   duration: number | null;
   live: boolean;
   seekable: { start: number; end: number }[];
+  pip: boolean;
+  pipAvailable: boolean;
+  pipBlock: PipBlock;
   frameId?: number;
 }
 export type MediaCommand =
-  | { type: 'play' | 'pause' | 'mute' }
+  | { type: 'play' | 'pause' | 'mute' | 'pip' }
   | { type: 'seek' | 'skip' | 'volume' | 'rate'; value: number };
 export interface PageState { host: string; enabled: boolean; media: MediaState[]; selectedId: string }
 export interface MediaClient {

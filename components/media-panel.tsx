@@ -1,7 +1,7 @@
 import { i18n } from '#i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { ChevronDown, Settings2, Settings as SettingsIcon, Volume2, VolumeX, AppWindow, Pause, Play, RotateCcw, RotateCw, Keyboard, CircleAlert, Search, RefreshCw } from 'lucide-react';
+import { ChevronDown, Settings2, Settings as SettingsIcon, Volume2, VolumeX, AppWindow, Pause, Play, RotateCcw, RotateCw, Keyboard, CircleAlert, Search, RefreshCw, PictureInPicture2 } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from './ui/dropdown-menu';
@@ -13,7 +13,7 @@ import { Switch } from './ui/switch';
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 import { Brand } from './brand';
 import { useMedia } from '../hooks/use-media';
-import { mediaChoiceLabel } from '../lib/media';
+import { mediaChoiceLabel, pipHint } from '../lib/media';
 import type { SoundingTab, SoundingTabsClient } from '../lib/tabs';
 import { disableSite, enableSite, forgetMatchingSites, isSiteEnabled, rememberSite, sitePrefFor } from '../lib/settings';
 import { defaultSettings, type MediaClient } from '../lib/types';
@@ -106,6 +106,7 @@ export function MediaPanel({ client, openSettings, sounding }: { client: MediaCl
   const seekMax = ranges[ranges.length - 1]?.end ?? 0;
   const canSeek = seekMax > seekMin;
   const volume = selected ? Math.round((selected.muted ? 0 : selected.volume) * 100) : 0;
+  const hint = selected ? pipHint(selected) : '';
   const showSiteAction = page.enabled && !outOfSync && !!siteAction?.settings;
   return <section className="flex w-[400px] max-w-full flex-col gap-2.5 bg-background px-3.5 pt-1 pb-2" aria-label={i18n.t('mediaPanel')}>
     <header className="flex h-12 items-center justify-between">
@@ -137,6 +138,10 @@ export function MediaPanel({ client, openSettings, sounding }: { client: MediaCl
         </div>
         <Slider aria-label={i18n.t('seek')} className="mt-3 py-2" min={seekMin} max={Math.max(seekMin + 1, seekMax)} step={1} value={[seekDraft ?? selected.currentTime]} disabled={!canSeek} onValueChange={value => setSeekDraft(first(value) ?? null)} onValueCommitted={value => { void command({ type: 'seek', value: first(value) ?? seekMin }).finally(() => setSeekDraft(null)); }} />
         <div className="mt-0.5 flex justify-between text-sm text-muted-foreground tabular-nums"><span>{formatTime(seekDraft ?? selected.currentTime)}</span><span>{selected.duration === null ? selected.live ? i18n.t('live') : '--:--' : formatTime(selected.duration)}</span></div>
+        <div className="mt-3 flex flex-col items-center gap-1">
+          <Button type="button" variant="ghost" size="sm" className="h-8 rounded-full bg-muted px-3 hover:bg-muted/80 aria-pressed:bg-primary/15 aria-pressed:text-primary" aria-pressed={selected.pip} aria-label={selected.pip ? i18n.t('exitPictureInPicture') : i18n.t('pictureInPicture')} aria-describedby={hint ? 'pip-hint' : undefined} disabled={!!hint} onClick={() => void command({ type: 'pip' })}><PictureInPicture2 />{selected.pip ? i18n.t('exitPictureInPicture') : i18n.t('pictureInPicture')}</Button>
+          {hint ? <p id="pip-hint" className="text-center text-xs text-muted-foreground">{hint}</p> : null}
+        </div>
       </div>
       <div className="rounded-xl bg-muted/60 px-3 py-3">
         <div className="flex items-center justify-between">

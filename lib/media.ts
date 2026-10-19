@@ -50,14 +50,56 @@ export function mediaSnapshot(element: HTMLMediaElement, id: string, document: D
     currentTime: Number.isFinite(element.currentTime) ? element.currentTime : 0,
     duration: Number.isFinite(element.duration) ? element.duration : null,
     live: element.duration === Infinity,
-    seekable: Array.from({ length: ranges.length }, (_, index) => ({ start: ranges.start(index), end: ranges.end(index) }))
+    seekable: Array.from({ length: ranges.length }, (_, index) => ({ start: ranges.start(index), end: ranges.end(index) })),
+    ...pipFields(element, document)
   };
+}
+
+export function pipFields(element: HTMLMediaElement, document: Document): Pick<MediaState, 'pip' | 'pipAvailable' | 'pipBlock'> {
+  if (element.localName !== 'video') return { pip: false, pipAvailable: false, pipBlock: 'audio' };
+  const video = element as HTMLVideoElement;
+  const pip = document.pictureInPictureElement === video;
+  const supported = typeof video.requestPictureInPicture === 'function' && document.pictureInPictureEnabled === true;
+  if (!supported) return { pip, pipAvailable: pip, pipBlock: pip ? '' : 'unsupported' };
+  if (video.disablePictureInPicture && !pip) return { pip: false, pipAvailable: false, pipBlock: 'disabled' };
+  return { pip, pipAvailable: true, pipBlock: '' };
+}
+
+export function pipHint(media: Pick<MediaState, 'pip' | 'pipAvailable' | 'pipBlock'>) {
+  if (media.pip || media.pipAvailable) return '';
+  if (media.pipBlock === 'audio') return i18n.t('pipUnavailableAudio');
+  if (media.pipBlock === 'disabled') return i18n.t('pipDisabledBySite');
+  return i18n.t('pipUnsupported');
+}
+
+function pictureInPictureError(error: DOMException, readyState: number) {
+  if (error.name === 'NotAllowedError') return i18n.t('pipNeedsGesture');
+  if (error.name === 'NotSupportedError') return i18n.t('pipUnsupported');
+  if (error.name === 'SecurityError') return i18n.t('pipDisabledBySite');
+  if (error.name === 'InvalidStateError') return readyState < 1 ? i18n.t('pipNotReady') : i18n.t('pipFailed');
+  return i18n.t('pipFailed');
+}
+
+export async function togglePictureInPicture(element: HTMLMediaElement) {
+  if (element.localName !== 'video') throw new Error(i18n.t('pipUnavailableAudio'));
+  const video = element as HTMLVideoElement;
+  const doc = video.ownerDocument;
+  if (typeof video.requestPictureInPicture !== 'function' || doc.pictureInPictureEnabled !== true) throw new Error(i18n.t('pipUnsupported'));
+  if (video.disablePictureInPicture && doc.pictureInPictureElement !== video) throw new Error(i18n.t('pipDisabledBySite'));
+  if (video.readyState < 1) throw new Error(i18n.t('pipNotReady'));
+  try {
+    if (doc.pictureInPictureElement === video) { await doc.exitPictureInPicture(); return; }
+    await video.requestPictureInPicture();
+  } catch (error) {
+    if (error instanceof DOMException) throw new Error(pictureInPictureError(error, video.readyState));
+    throw error instanceof Error ? error : new Error(i18n.t('pipFailed'));
+  }
 }
 
 export function isMediaCommand(value: unknown): value is MediaCommand {
   if (!value || typeof value !== 'object') return false;
   const command = value as MediaCommand;
-  if (['play', 'pause', 'mute'].includes(command.type)) return true;
+  if (command.type === 'play' || command.type === 'pause' || command.type === 'mute' || command.type === 'pip') return true;
   if (!('value' in command) || !Number.isFinite(command.value)) return false;
   if (command.type === 'volume') return command.value >= 0 && command.value <= maxGain;
   if (command.type === 'rate') return command.value >= minRate && command.value <= maxRate;
@@ -67,6 +109,7 @@ export function isMediaCommand(value: unknown): value is MediaCommand {
 export async function applyMediaCommand(element: HTMLMediaElement, command: MediaCommand, amplifier?: Amplifier) {
   if (!isMediaCommand(command)) throw new Error(i18n.t('invalidMediaCommand'));
   if (command.type === 'play') { await element.play(); return; }
+  if (command.type === 'pip') { await togglePictureInPicture(element); return; }
   if (command.type === 'pause') { element.pause(); return; }
   if (command.type === 'mute') { element.muted = !element.muted; return; }
   if (command.type === 'volume') {
@@ -99,6 +142,9 @@ export function createMediaController(document: Document, onChange?: () => void)
   const amplifier = createAmplifier(document.defaultView!);
   const flashed = new WeakMap<HTMLMediaElement, { token: number; outline: string; offset: string }>();
   let flashToken = 0;
+  const onPip = () => onChange?.();
+  document.addEventListener('enterpictureinpicture', onPip, true);
+  document.addEventListener('leavepictureinpicture', onPip, true);
   const observers = new Map<Document | ShadowRoot, MutationObserver>();
   const observe = (root: Document | ShadowRoot) => {
     if (observers.has(root)) return;
@@ -147,6 +193,11 @@ export function createMediaController(document: Document, onChange?: () => void)
         flashed.delete(element);
       }, 1200);
     },
-    destroy() { for (const observer of observers.values()) observer.disconnect(); observers.clear(); }
+    destroy() {
+      document.removeEventListener('enterpictureinpicture', onPip, true);
+      document.removeEventListener('leavepictureinpicture', onPip, true);
+      for (const observer of observers.values()) observer.disconnect();
+      observers.clear();
+    }
   };
 }

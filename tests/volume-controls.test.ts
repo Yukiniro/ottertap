@@ -18,7 +18,7 @@ test('面板和音量药丸的真实滑块：双向拖动吸附、松手保留�
   const store: SettingsStore = { async load() { return defaultSettings; }, async save() {}, watch() { return () => {}; } };
   try {
     for (const vertical of [false, true]) {
-      let media: MediaState = { id: '1', host: 'example.com', label: '', title: '媒体', kind: 'video', volume: .75, maxVolume: 2, muted: false, paused: false, rate: 1, currentTime: 0, duration: 100, live: false, seekable: [] };
+      let media: MediaState = { id: '1', host: 'example.com', label: '', title: '媒体', kind: 'video', volume: .75, maxVolume: 2, muted: false, paused: false, rate: 1, currentTime: 0, duration: 100, live: false, seekable: [], pip: false, pipAvailable: true, pipBlock: '' };
       const commands: number[] = [];
       const client: MediaClient = {
         async read() { return { enabled: true, host: 'example.com', selectedId: '1', media: [{ ...media }] }; },
