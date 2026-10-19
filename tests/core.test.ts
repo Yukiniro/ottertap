@@ -141,7 +141,7 @@ test('播放失败向上传递；未知时长正确序列化为直播', async ()
   assert.match(mediaChoiceLabel(mediaSnapshot(media, '1', document), 0), /正片/);
 });
 test('多个媒体优先锁定在播且有声的一个，快捷键按锁定目标调节', () => {
-  const base = { host: 'example.com', kind: 'video' as const, label: '', title: '页面', maxVolume: maxGain, rate: 1, currentTime: 10, duration: 100, live: false, seekable: [{ start: 0, end: 100 }] };
+  const base = { host: 'example.com', kind: 'video' as const, label: '', title: '页面', maxVolume: maxGain, rate: 1, currentTime: 10, duration: 100, live: false, seekable: [{ start: 0, end: 100 }], pip: false, pipAvailable: true, pipBlock: '' as const };
   const muted = { ...base, id: '1', paused: false, muted: true, volume: .8 };
   const audible = { ...base, id: '2', paused: false, muted: false, volume: .4 };
   const paused = { ...base, id: '3', paused: true, muted: false, volume: .4 };

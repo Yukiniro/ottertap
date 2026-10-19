@@ -87,6 +87,8 @@ const pages: Record<string, string> = {
   '/empty': documentHtml('<p>empty</p>'),
   '/frame': documentHtml('<iframe title="embedded media" src="/embed" style="width:320px;height:180px;border:0"></iframe>'),
   '/embed': documentHtml(`<video id="media" src="${wav}" preload="auto" playsinline></video>`),
+  '/video': documentHtml(`<video id="media" src="${wav}" preload="auto" playsinline></video>`),
+  '/pip-off': documentHtml(`<video id="media" src="${wav}" preload="auto" playsinline disablepictureinpicture></video>`),
   '/other': documentHtml(`<audio id="media" src="${wav}" preload="auto"></audio>`, 'Other tab'),
 };
 
@@ -457,6 +459,79 @@ test('英文设置页的快捷键一节不写死中文', async () => {
     await expect(shortcuts).toContainText('Alt + Shift + ↓');
     await expect(shortcuts).toContainText('Alt + Shift + Mouse wheel');
     for (const chinese of ['快捷键', '滚轮', '提高音量', '降低音量']) await expect(shortcuts).not.toContainText(chinese);
+  });
+});
+
+async function readActionPopup(fixture: Page) {
+  if (!browser) throw new Error('浏览器还没有启动');
+  await fixture.bringToFront();
+  const worker = await serviceWorker(browser);
+  await worker.evaluate(async () => {
+    await (globalThis as unknown as { chrome: { action: { openPopup: () => Promise<void> } } }).chrome.action.openPopup();
+  });
+  const session = await fixture.context().newCDPSession(fixture);
+  let targetId = '';
+  await expect.poll(async () => {
+    const { targetInfos } = await session.send('Target.getTargets');
+    targetId = targetInfos.find(item => item.type === 'page' && item.url.endsWith('/popup.html'))?.targetId ?? '';
+    return targetId;
+  }).not.toBe('');
+  const { sessionId } = await session.send('Target.attachToTarget', { targetId, flatten: false });
+  let next = 1;
+  const read = (expression: string) => new Promise<unknown>((resolve, reject) => {
+    const id = next++;
+    const timer = setTimeout(() => {
+      session.off('Target.receivedMessageFromTarget', onMessage);
+      reject(new Error('弹出面板没有响应'));
+    }, 4_000);
+    const onMessage = (event: { sessionId?: string; message: string }) => {
+      if (event.sessionId !== sessionId) return;
+      const message = JSON.parse(event.message) as { id?: number; error?: unknown; result?: { result?: { value?: unknown } } };
+      if (message.id !== id) return;
+      clearTimeout(timer);
+      session.off('Target.receivedMessageFromTarget', onMessage);
+      if (message.error) reject(new Error(JSON.stringify(message.error)));
+      else resolve(message.result?.result?.value);
+    };
+    session.on('Target.receivedMessageFromTarget', onMessage);
+    void session.send('Target.sendMessageToTarget', {
+      sessionId,
+      message: JSON.stringify({ id, method: 'Runtime.evaluate', params: { expression, returnByValue: true, awaitPromise: true } }),
+    });
+  });
+  return read;
+}
+
+const pipButtonState = `(() => {
+  const button = [...document.querySelectorAll('button')].find(item => item.getAttribute('aria-label') === 'Picture-in-picture' || item.getAttribute('aria-label') === 'Exit picture-in-picture');
+  if (!button) return null;
+  return { label: button.getAttribute('aria-label'), disabled: button.disabled, hint: document.getElementById('pip-hint')?.textContent ?? '' };
+})()`;
+
+test('画中画按钮在视频上可点，音频和站点禁用时说明原因', async () => {
+  await withPage(async page => {
+    await openFixture(page, '/');
+    const read = await readActionPopup(page);
+    try {
+      await expect.poll(() => read(pipButtonState)).toEqual({ label: 'Picture-in-picture', disabled: true, hint: "Audio can't use picture-in-picture." });
+    } finally { await page.keyboard.press('Escape'); }
+  });
+  await withPage(async page => {
+    await openFixture(page, '/pip-off');
+    const read = await readActionPopup(page);
+    try {
+      await expect.poll(() => read(pipButtonState)).toEqual({ label: 'Picture-in-picture', disabled: true, hint: 'This site has turned off picture-in-picture.' });
+    } finally { await page.keyboard.press('Escape'); }
+  });
+  await withPage(async page => {
+    await openFixture(page, '/video');
+    const available = await page.locator('#media').evaluate((element: HTMLVideoElement) => document.pictureInPictureEnabled === true && typeof element.requestPictureInPicture === 'function' && !element.disablePictureInPicture);
+    const read = await readActionPopup(page);
+    try {
+      await expect.poll(() => read(pipButtonState)).toEqual(available
+        ? { label: 'Picture-in-picture', disabled: false, hint: '' }
+        : { label: 'Picture-in-picture', disabled: true, hint: "This browser can't use picture-in-picture." });
+    } finally { await page.keyboard.press('Escape'); }
   });
 });
 
