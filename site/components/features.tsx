@@ -24,7 +24,8 @@ function BoostVisual() {
 }
 
 function SpeedVisual() {
-  return <div aria-hidden="true" className="flex gap-1 rounded-lg bg-muted p-1 text-xs">{['0.75', '1', '1.25', '1.5', '2'].map(speed => <span key={speed} className={cn('flex-1 rounded-md py-1 text-center text-muted-foreground', speed === '1.25' && 'bg-card font-semibold text-foreground shadow-sm')}>{speed}×</span>)}</div>;
+  const presets = ['0.75', '1', '1.25', '1.5', '2', '2.5', '3', '4'];
+  return <div aria-hidden="true" className="grid grid-cols-4 gap-1 rounded-lg bg-muted p-1 text-xs">{presets.map(speed => <span key={speed} className={cn('rounded-md py-1 text-center text-muted-foreground tabular-nums', speed === '3' && 'bg-card font-semibold text-foreground shadow-sm')}>{speed}×</span>)}</div>;
 }
 
 export function Features({ t }: { t: T }) {
