@@ -1,7 +1,6 @@
 ﻿import type { ReactNode } from 'react';
+import { SiteDocument } from '~/components/document';
 import { siteMetadata } from '~/lib/metadata';
-import { themeScript } from '~/lib/theme-script';
-import { Analytics } from '~/components/analytics';
 import '../globals.css';
 
 export function generateMetadata() {
@@ -9,8 +8,5 @@ export function generateMetadata() {
 }
 
 export default function RootLayout({ children }: { children: ReactNode }) {
-  return <html lang="en" suppressHydrationWarning>
-    <head><script dangerouslySetInnerHTML={{ __html: themeScript }} /></head>
-    <body>{children}<Analytics /></body>
-  </html>;
+  return <SiteDocument lang="en">{children}</SiteDocument>;
 }

@@ -29,13 +29,17 @@ test('扩展文案键、占位符和语言标记一致', () => {
   assert.equal(read('../locales/zh_TW.yml').brandName, '小獺');
 });
 
-test('官网中英文文案键和占位符一致', () => {
+test('官网文案键和占位符一致', () => {
+  const files = readdirSync(new URL('../site/locales/', import.meta.url)).filter(name => name.endsWith('.yml')).sort();
+  assert.deepEqual(files, ['de.yml', 'en.yml', 'es.yml', 'fr.yml', 'ja.yml', 'ko.yml', 'zh_CN.yml', 'zh_TW.yml']);
   const en = read('../site/locales/en.yml');
-  const zh = read('../site/locales/zh_CN.yml');
-  assert.deepEqual(Object.keys(en).sort(), Object.keys(zh).sort());
-  for (const [key, value] of Object.entries(zh)) {
-    assert.notEqual(value, '', key);
-    assert.notEqual(en[key], '', key);
-    assert.deepEqual(names(en[key] ?? ''), names(value), key);
+  for (const file of files) {
+    const messages = read(`../site/locales/${file}`);
+    assert.deepEqual(Object.keys(messages).sort(), Object.keys(en).sort(), file);
+    for (const [key, value] of Object.entries(messages)) {
+      assert.notEqual(value, '', `${file} ${key}`);
+      assert.deepEqual(names(en[key] ?? ''), names(value), `${file} ${key}`);
+    }
+    if (file !== 'en.yml') assert.notEqual(messages.metaDescription, en.metaDescription, file);
   }
 });
