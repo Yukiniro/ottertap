@@ -7,8 +7,8 @@ export interface FloatingPosition { side: DockSide; y: number }
 export type ChannelMode = 'stereo' | 'mono' | 'left' | 'right';
 /** Stereo is the default and is never stored. */
 export interface SitePref { volume?: number; rate?: number; channel?: Exclude<ChannelMode, 'stereo'> }
-export interface Settings { theme: Theme; floating: boolean; floatingPosition: FloatingPosition; siteMode: SiteMode; sites: string[]; sitePrefs: Record<string, SitePref>; ratePresets: number[]; lockRate: boolean }
-export const defaultSettings: Settings = { theme: 'system', floating: true, floatingPosition: { side: 'right', y: .8 }, siteMode: 'all', sites: [], sitePrefs: {}, ratePresets: [...defaultRatePresets], lockRate: false };
+export interface Settings { theme: Theme; floating: boolean; floatingPosition: FloatingPosition; siteMode: SiteMode; sites: string[]; sitePrefs: Record<string, SitePref>; ratePresets: number[]; lockRate: boolean; hoverWheel: boolean; singleKey: boolean }
+export const defaultSettings: Settings = { theme: 'system', floating: true, floatingPosition: { side: 'right', y: .8 }, siteMode: 'all', sites: [], sitePrefs: {}, ratePresets: [...defaultRatePresets], lockRate: false, hoverWheel: true, singleKey: false };
 export interface SettingsStore {
   load(): Promise<Settings>;
   save(settings: Settings): Promise<void>;

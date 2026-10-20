@@ -17,24 +17,60 @@ export const rateHintEvent = 'ottertap-rate';
 export const actionHintEvent = 'ottertap-action-hint';
 
 interface KeyInput { key: string; code?: string; altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }
+/** `onMedia`: the pointer is over a media element or one has focus. Single-key ↑/↓ need it so page scrolling keeps the arrows. */
+export interface KeyContext { singleKey?: boolean; onMedia?: boolean }
 
-function rateDirection(event: KeyInput): 1 | -1 | 0 | null {
-  // Characters follow the typed glyph, including AZERTY. code stays stable when macOS Option rewrites key.
-  if (event.key === '.' || event.key === '>') return 1;
-  if (event.key === ',' || event.key === '<') return -1;
-  if (event.key === '0' || event.key === ')') return 0;
-  if (event.code === 'Period') return 1;
-  if (event.code === 'Comma') return -1;
-  if (event.code === 'Digit0') return 0;
+const typedKeys = new Set([',', '.', '0', '<', '>', ')', 'm', 'k', 'j', 'l']);
+const physicalKeys: Record<string, string> = { Comma: ',', Period: '.', Digit0: '0', KeyM: 'm', KeyK: 'k', KeyJ: 'j', KeyL: 'l' };
+
+function keyName(event: KeyInput) {
+  // The typed glyph wins, so AZERTY keeps its printed keys. macOS Option rewrites key (Option+M types µ), so fall back to code.
+  const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+  if (typedKeys.has(key) || key.startsWith('Arrow')) return key;
+  return physicalKeys[event.code ?? ''] ?? key;
+}
+
+const rate = (direction: 1 | -1 | 0): HotkeyAction => ({ type: 'rate', direction });
+
+export function hotkeyFromKeyboard(event: KeyInput, { singleKey = false, onMedia = false }: KeyContext = {}): HotkeyAction | null {
+  if (event.ctrlKey || event.metaKey) return null;
+  const name = keyName(event);
+  if (event.altKey) {
+    if (name === '.' || name === '>') return rate(1);
+    if (name === ',' || name === '<') return rate(-1);
+    if (name === '0' || name === ')') return rate(0);
+    return name === 'm' ? { type: 'mute' } : null;
+  }
+  if (!singleKey) return null;
+  if (event.shiftKey) {
+    if (name === '>' || name === '.') return rate(1);
+    if (name === '<' || name === ',') return rate(-1);
+    return null;
+  }
+  if (name === '>') return rate(1);
+  if (name === '<') return rate(-1);
+  if (name === 'k') return { type: 'toggle' };
+  if (name === 'm') return { type: 'mute' };
+  if (name === 'j' || name === 'ArrowLeft') return { type: 'skip', delta: -10 };
+  if (name === 'l' || name === 'ArrowRight') return { type: 'skip', delta: 10 };
+  if (!onMedia) return null;
+  if (name === 'ArrowUp') return { type: 'volume', delta: 10 };
+  if (name === 'ArrowDown') return { type: 'volume', delta: -10 };
   return null;
 }
 
-export function hotkeyFromKeyboard(event: KeyInput): HotkeyAction | null {
-  if (!event.altKey || !event.shiftKey || event.ctrlKey || event.metaKey) return null;
-  if (event.key === 'ArrowUp') return { type: 'volume', delta: 10 };
-  if (event.key === 'ArrowDown') return { type: 'volume', delta: -10 };
-  const direction = rateDirection(event);
-  return direction === null ? null : { type: 'rate', direction };
+const nonTextInputs = new Set(['button', 'checkbox', 'color', 'file', 'hidden', 'image', 'radio', 'range', 'reset', 'submit']);
+
+export function isTypingTarget(node: unknown) {
+  const element = node as Partial<HTMLInputElement> | null | undefined;
+  if (!element || typeof element !== 'object' || element.nodeType !== 1) return false;
+  if (element.isContentEditable) return true;
+  if (element.localName === 'textarea' || element.localName === 'select') return true;
+  return element.localName === 'input' && !nonTextInputs.has(element.type ?? 'text');
+}
+
+export function isTypingEvent(event: Event) {
+  return isTypingTarget(event.composedPath()[0]);
 }
 
 export function wheelVolumeDelta(deltaY: number, deltaMode: number) {
@@ -88,51 +124,77 @@ export function planHotkey(page: PageState, action: HotkeyAction) {
   return command ? { media, command } : null;
 }
 
-export function createHotkeyInput(send: (action: HotkeyAction) => void) {
-  let pending: HotkeyAction[] = [];
+/**
+ * `target` names the hovered or focused media for gestures that only fire over media.
+ * `onAltUse` runs once per Alt press that drove a gesture, so frames without the keyboard can be told to `arm`.
+ */
+export function createHotkeyInput(send: (action: HotkeyAction, target?: string) => void, onAltUse?: () => void) {
+  let pending: { action: HotkeyAction; target?: string }[] = [];
   let frame = 0;
+  let altUsed = false;
+  const useAlt = () => {
+    if (altUsed) return;
+    altUsed = true;
+    onAltUse?.();
+  };
   const flush = () => {
     frame = 0;
     const steps = pending;
     pending = [];
-    if (steps.some(action => action.type === 'volume')) window.dispatchEvent(new window.CustomEvent(volumeGestureEvent));
+    if (steps.some(step => step.action.type === 'volume')) window.dispatchEvent(new window.CustomEvent(volumeGestureEvent));
     // Keep event boundaries so the input after landing on 100% can leave it.
-    for (const action of steps) {
-      if (action.type === 'volume') send({ type: 'volume', delta: Math.max(-150, Math.min(150, action.delta)) });
-      else send(action);
+    for (const { action, target } of steps) {
+      if (action.type === 'volume') send({ type: 'volume', delta: Math.max(-150, Math.min(150, action.delta)) }, target);
+      else send(action, target);
     }
   };
-  const queue = (action: HotkeyAction) => {
-    pending.push(action);
+  const queue = (action: HotkeyAction, target?: string) => {
+    pending.push({ action, target });
     if (!frame) frame = window.requestAnimationFrame(flush);
   };
   return {
-    key(event: KeyInput & { type?: string; preventDefault(): void; stopPropagation(): void; stopImmediatePropagation?(): void }) {
-      const action = hotkeyFromKeyboard(event);
+    key(event: KeyInput & { type?: string; repeat?: boolean; preventDefault(): void; stopPropagation(): void; stopImmediatePropagation?(): void }, { singleKey = false, target }: { singleKey?: boolean; target?: string } = {}) {
+      if (event.key === 'Alt') {
+        // Windows Chrome focuses its menu on an Alt release the page leaves unhandled, even after the page used Alt+wheel or Alt+key.
+        if (event.type !== 'keyup') {
+          if (!event.repeat) altUsed = false;
+          return false;
+        }
+        const swallow = altUsed;
+        altUsed = false;
+        if (swallow) event.preventDefault();
+        return swallow;
+      }
+      const action = hotkeyFromKeyboard(event, { singleKey, onMedia: target !== undefined });
       if (!action) return false;
-      // Capture-phase stop keeps Shift+, / Shift+. on the page from also stepping speed.
+      // Capture-phase stop keeps the site's own shortcut on the same key from also running.
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation?.();
       if (event.type === 'keyup') return true;
-      queue(action);
+      if (event.altKey) useAlt();
+      queue(action, action.type === 'volume' ? target : undefined);
       return true;
     },
-    wheel(event: { deltaX: number; deltaY: number; deltaMode: number; altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean; preventDefault(): void; stopPropagation(): void }) {
-      if (!event.altKey || !event.shiftKey || event.ctrlKey || event.metaKey) return false;
-      // macOS can map Shift+wheel to the horizontal axis.
-      const delta = wheelVolumeDelta(event.deltaY || event.deltaX, event.deltaMode);
+    wheel(event: { deltaX: number; deltaY: number; deltaMode: number; altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean; preventDefault(): void; stopPropagation(): void }, target?: string) {
+      if (event.ctrlKey || event.metaKey) return false;
+      if (!event.altKey && (target === undefined || event.shiftKey)) return false;
+      // Alt+wheel keeps the horizontal axis for macOS. A bare hover wheel leaves sideways swipes to the page.
+      const delta = wheelVolumeDelta(event.altKey ? event.deltaY || event.deltaX : event.deltaY, event.deltaMode);
       if (!delta) return false;
       event.preventDefault();
       event.stopPropagation();
-      queue({ type: 'volume', delta });
+      if (event.altKey) useAlt();
+      queue({ type: 'volume', delta }, target);
       return true;
     },
+    /** Another frame used the current Alt press; this frame may be the one that receives its release. */
+    arm() { altUsed = true; },
     dispose() { window.cancelAnimationFrame(frame); frame = 0; pending = []; }
   };
 }
 
-export function createHotkeySession(perform: (action: HotkeyAction) => Promise<void>) {
+export function createHotkeySession(perform: (action: HotkeyAction, target?: string) => Promise<void>) {
   let tail = Promise.resolve();
-  return createHotkeyInput(action => { tail = tail.then(() => perform(action)).catch(() => {}); });
+  return createHotkeyInput((action, target) => { tail = tail.then(() => perform(action, target)).catch(() => {}); });
 }

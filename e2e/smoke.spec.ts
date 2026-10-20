@@ -13,6 +13,8 @@ type Settings = {
   siteMode: 'all';
   sites: string[];
   sitePrefs: Record<string, SitePref>;
+  hoverWheel?: boolean;
+  singleKey?: boolean;
 };
 type WheelSnapshot = { deltaX: number; deltaY: number; deltaMode: number; altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean };
 type ExtensionGlobal = {
@@ -129,6 +131,7 @@ const pages: Record<string, string> = {
   '/frame': documentHtml('<iframe title="embedded media" src="/embed" style="width:320px;height:180px;border:0"></iframe>'),
   '/embed': documentHtml(`<video id="media" src="${wav}" preload="auto" playsinline></video>`),
   '/video': documentHtml(`<video id="media" src="${wav}" preload="auto" playsinline></video>`),
+  '/keys': documentHtml(`<video id="media" src="${wav}" preload="auto" playsinline style="display:block;width:320px;height:180px"></video><input id="field" aria-label="Field" style="margin-top:1200px">`),
   '/pip-off': documentHtml(`<video id="media" src="${wav}" preload="auto" playsinline disablepictureinpicture></video>`),
   '/other': documentHtml(`<audio id="media" src="${wav}" preload="auto"></audio>`, 'Other tab'),
   '/stereo': documentHtml(`<audio id="media" src="${tone}" preload="auto" loop></audio>`),
@@ -210,8 +213,32 @@ async function openPill(page: Page) {
   await expect(slider).toBeVisible();
 }
 
-async function pressVolume(page: Page, key: 'ArrowUp' | 'ArrowDown', expected: number, read: () => Promise<number> = () => mediaVolume(page)) {
-  await page.keyboard.press(`Alt+Shift+${key}`);
+async function altWheel(page: Page, deltaY: number) {
+  await page.keyboard.down('Alt');
+  try { await page.mouse.wheel(0, deltaY); }
+  finally { await page.keyboard.up('Alt'); }
+}
+
+async function volumeUp(page: Page) { await altWheel(page, -100); }
+async function volumeDown(page: Page) { await altWheel(page, 100); }
+
+/** Reads whether the extension's capture listener prevented each Alt release, the event Windows Chrome turns into menu focus. */
+async function watchAltReleases(page: Page) {
+  await page.evaluate(() => {
+    const seen: boolean[] = [];
+    (window as unknown as { __altReleases: boolean[] }).__altReleases = seen;
+    // Capture, registered after the extension's: the floater isolates key events that reach its shadow root.
+    window.addEventListener('keyup', event => { if (event.key === 'Alt') seen.push(event.defaultPrevented); }, true);
+  });
+  return async () => {
+    const seen = await page.evaluate(() => (window as unknown as { __altReleases: boolean[] }).__altReleases.splice(0));
+    expect(seen, '应收到一次 Alt 松开').toHaveLength(1);
+    return seen[0];
+  };
+}
+
+async function stepVolume(page: Page, step: (page: Page) => Promise<void>, expected: number, read: () => Promise<number> = () => mediaVolume(page)) {
+  await step(page);
   await expect.poll(read).toBeCloseTo(expected, 2);
 }
 
@@ -279,7 +306,7 @@ test('拖动音量到 98% 附近会吸附到 100%', async () => {
     await openFixture(page, '/');
     await ready(page);
     await focusPage(page);
-    for (const expected of [0.9, 0.8, 0.7, 0.6, 0.5]) await pressVolume(page, 'ArrowDown', expected);
+    for (const expected of [0.9, 0.8, 0.7, 0.6, 0.5]) await stepVolume(page, volumeDown, expected);
     await openPill(page);
     const slider = page.locator('[data-slot="slider-thumb"]');
     await expect(slider.locator('input')).toHaveAttribute('max', '200');
@@ -312,18 +339,18 @@ test('拖动音量到 98% 附近会吸附到 100%', async () => {
   });
 });
 
-test('Alt+Shift+↑ 从 95% 先停在 100%，再按一次到 110%，且媒体音量不超过 1', async () => {
+test('Alt+滚轮向上从 95% 先停在 100%，再按一次到 110%，且媒体音量不超过 1', async () => {
   await withPage(async page => {
     await openFixture(page, '/');
     await ready(page);
     await page.locator('#media').evaluate((element: HTMLMediaElement) => { element.volume = 0.95; });
     await focusPage(page);
-    await page.keyboard.press('Alt+Shift+ArrowUp');
+    await volumeUp(page);
     await expect.poll(() => mediaVolume(page)).toBeCloseTo(1, 2);
     await openPill(page);
     await expect.poll(() => shownPercent(page)).toBe(100);
     await focusPage(page);
-    await page.keyboard.press('Alt+Shift+ArrowUp');
+    await volumeUp(page);
     await openPill(page);
     await expect.poll(() => shownPercent(page)).toBe(110);
     const volume = await mediaVolume(page);
@@ -351,14 +378,14 @@ test('音量超过 100% 时工具栏角标显示，回到 100% 或来源 frame �
     await ready(page);
     await page.locator('#media').evaluate((element: HTMLMediaElement) => { element.volume = 0.95; });
     await focusPage(page);
-    await page.keyboard.press('Alt+Shift+ArrowUp');
+    await volumeUp(page);
     await expect.poll(() => mediaVolume(page)).toBeCloseTo(1, 2);
-    await page.keyboard.press('Alt+Shift+ArrowUp');
+    await volumeUp(page);
     await expect.poll(async () => (await toolbarBadge(page))?.text).toBe('110');
     const boosted = await toolbarBadge(page);
     expect(boosted?.title).toBe('Volume is boosted to 110%');
     expect(boosted?.color).toEqual([0xe4, 0x57, 0x2e, 255]);
-    await page.keyboard.press('Alt+Shift+ArrowDown');
+    await volumeDown(page);
     await expect.poll(async () => (await toolbarBadge(page))?.text).toBe('');
   });
   await withPage(async page => {
@@ -370,20 +397,20 @@ test('音量超过 100% 时工具栏角标显示，回到 100% 或来源 frame �
       const current = await read();
       if (Math.abs(current - 0.9) <= 0.02) return;
       expect(current).toBeCloseTo(1, 2);
-      await page.keyboard.press('Alt+Shift+ArrowDown');
+      await volumeDown(page);
       await expect.poll(read, { timeout: 1_500 }).toBeCloseTo(0.9, 2);
     }).toPass({ timeout: 9_000 });
     await focusPage(page, 420);
-    await page.keyboard.press('Alt+Shift+ArrowUp');
+    await volumeUp(page);
     await expect.poll(read).toBeCloseTo(1, 2);
-    await page.keyboard.press('Alt+Shift+ArrowUp');
+    await volumeUp(page);
     await expect.poll(async () => (await toolbarBadge(page))?.text).toBe('110');
     await page.locator('iframe').evaluate(frame => frame.remove());
     await expect.poll(async () => (await toolbarBadge(page))?.text, { timeout: 6_000 }).toBe('');
   });
 });
 
-test('按住 Alt+Shift 时只有横向滚轮也能调节音量', async () => {
+test('按住 Alt 时只有横向滚轮也能调节音量', async () => {
   await withPage(async page => {
     await openFixture(page, '/');
     await ready(page);
@@ -391,19 +418,175 @@ test('按住 Alt+Shift 时只有横向滚轮也能调节音量', async () => {
     await focusPage(page);
     await page.mouse.move(200, 320);
     await page.keyboard.down('Alt');
-    await page.keyboard.down('Shift');
     await page.mouse.wheel(100, 0);
-    await page.keyboard.up('Shift');
     await page.keyboard.up('Alt');
     const wheel = await page.evaluate(() => (window as unknown as { __ottertapWheel?: WheelSnapshot }).__ottertapWheel);
     expect(wheel, '页面应收到滚轮事件').toBeTruthy();
     expect(wheel?.deltaY ?? -1, `应只有横向滚动量 ${JSON.stringify(wheel)}`).toBe(0);
     expect(wheel?.deltaX).not.toBe(0);
     expect(wheel?.altKey).toBe(true);
-    expect(wheel?.shiftKey).toBe(true);
+    expect(wheel?.shiftKey).toBe(false);
     const expected = volumeAfterWheel(50, wheel!);
     expect(expected).not.toBe(50);
     await expect.poll(() => mediaVolume(page)).toBeCloseTo(Math.min(expected, 100) / 100, 2);
+  });
+});
+
+test('Alt + , . 0 调倍速、Alt + M 静音，在输入框里不触发', async () => {
+  await withPage(async page => {
+    await openFixture(page, '/keys');
+    await ready(page);
+    const state = () => page.locator('#media').evaluate((element: HTMLMediaElement) => ({ rate: element.playbackRate, muted: element.muted }));
+    await focusPage(page, 300);
+    await page.keyboard.press('Alt+Period');
+    await expect.poll(state).toEqual({ rate: 1.25, muted: false });
+    await page.keyboard.press('Alt+Period');
+    await page.keyboard.press('Alt+Comma');
+    await expect.poll(state).toEqual({ rate: 1.25, muted: false });
+    await page.keyboard.press('Alt+Digit0');
+    await expect.poll(state).toEqual({ rate: 1, muted: false });
+    await page.keyboard.press('Alt+KeyM');
+    await expect.poll(state).toEqual({ rate: 1, muted: true });
+    await page.keyboard.press('Alt+KeyM');
+    await expect.poll(state).toEqual({ rate: 1, muted: false });
+    await page.locator('#field').focus();
+    await page.keyboard.press('Alt+Period');
+    await page.keyboard.press('Alt+KeyM');
+    await page.waitForTimeout(300);
+    expect(await state()).toEqual({ rate: 1, muted: false });
+  });
+});
+
+test('用过 Alt+滚轮或 Alt+键后松开 Alt 被拦下，普通 Alt 按松与未匹配组合不拦', async () => {
+  await withPage(async page => {
+    await openFixture(page, '/keys');
+    await ready(page);
+    const media = page.locator('#media');
+    await media.evaluate((element: HTMLMediaElement) => { element.volume = 0.5; });
+    const released = await watchAltReleases(page);
+    const overMedia = async () => {
+      await page.evaluate(() => window.scrollTo(0, 0));
+      const box = await media.boundingBox();
+      if (!box) throw new Error('视频没有位置');
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    };
+    await focusPage(page, 300);
+
+    await page.keyboard.press('Alt');
+    expect(await released(), '单独按松 Alt 不拦截').toBe(false);
+
+    await overMedia();
+    await volumeUp(page);
+    await expect.poll(() => mediaVolume(page)).toBeCloseTo(0.6, 2);
+    expect(await released(), 'Alt+滚轮后松开 Alt 被拦下').toBe(true);
+
+    await page.keyboard.press('Alt+KeyM');
+    await expect.poll(() => media.evaluate((element: HTMLMediaElement) => element.muted)).toBe(true);
+    expect(await released(), 'Alt+M 后松开 Alt 被拦下').toBe(true);
+
+    await page.keyboard.press('Alt+KeyQ');
+    expect(await released(), '没有匹配到我们的组合时不拦').toBe(false);
+
+    await page.keyboard.down('Alt');
+    await page.mouse.wheel(0, -100);
+    await page.keyboard.down('Alt');
+    await page.keyboard.down('Alt');
+    await page.keyboard.up('Alt');
+    expect(await released(), '按住 Alt 自动重复后松开仍被拦下').toBe(true);
+
+    await page.locator('#field').focus();
+    await overMedia();
+    await volumeDown(page);
+    expect(await released(), '焦点在输入框里时 Alt+滚轮后的松开也被拦下').toBe(true);
+    await page.keyboard.press('Alt');
+    expect(await released(), '输入框里普通 Alt 按松不拦').toBe(false);
+  });
+});
+
+test('在 iframe 里的视频上 Alt+滚轮，焦点在顶层页面时松开 Alt 也被拦下', async () => {
+  await withPage(async page => {
+    await openFixture(page, '/frame');
+    const read = () => mediaVolume(page, true);
+    await expect.poll(read).toBeCloseTo(1, 2);
+    const released = await watchAltReleases(page);
+    await focusPage(page, 420);
+    const box = await page.locator('iframe').boundingBox();
+    if (!box) throw new Error('iframe 没有位置');
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.keyboard.down('Alt');
+    await page.mouse.wheel(0, 100);
+    await expect.poll(read).toBeCloseTo(0.9, 2);
+    await page.waitForTimeout(100);
+    await page.keyboard.up('Alt');
+    expect(await released(), '顶层页面收到松开时已被 iframe 的手势标记').toBe(true);
+    await page.keyboard.press('Alt');
+    expect(await released()).toBe(false);
+  });
+});
+
+test('默认悬停在视频上直接滚轮调音量，不在视频上照常滚动；关闭后回落为 Alt+滚轮', async () => {
+  await withPage(async page => {
+    if (!browser) throw new Error('浏览器还没有启动');
+    await openFixture(page, '/keys');
+    await ready(page);
+    const media = page.locator('#media');
+    const hover = async () => {
+      await page.evaluate(() => window.scrollTo(0, 0));
+      const box = await media.boundingBox();
+      if (!box) throw new Error('视频没有位置');
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      return box;
+    };
+    await media.evaluate((element: HTMLMediaElement) => { element.volume = 0.5; });
+    const box = await hover();
+    await page.mouse.wheel(0, -100);
+    await expect.poll(() => mediaVolume(page), '默认开启时裸滚轮调音量').toBeCloseTo(0.6, 2);
+    expect(await page.evaluate(() => window.scrollY), '在视频上滚轮不滚动页面').toBe(0);
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height + 200);
+    await page.mouse.wheel(0, 100);
+    await expect.poll(() => page.evaluate(() => window.scrollY), '不在视频上时页面照常滚动').toBeGreaterThan(0);
+    expect(await mediaVolume(page)).toBeCloseTo(0.6, 2);
+
+    await saveSettings(await serviceWorker(browser), { ...defaultSettings(), hoverWheel: false });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await ready(page);
+    await media.evaluate((element: HTMLMediaElement) => { element.volume = 0.5; });
+    await hover();
+    await page.mouse.wheel(0, -100);
+    await page.waitForTimeout(300);
+    expect(await mediaVolume(page), '关闭后裸滚轮不调音量').toBeCloseTo(0.5, 2);
+    await hover();
+    await volumeUp(page);
+    await expect.poll(() => mediaVolume(page), '关闭后 Alt+滚轮照常调音量').toBeCloseTo(0.6, 2);
+  });
+});
+
+test('单键模式：M 静音、↑ 只在悬停视频时调音量，输入框里不触发', async () => {
+  await withPage(async page => {
+    if (!browser) throw new Error('浏览器还没有启动');
+    await saveSettings(await serviceWorker(browser), { ...defaultSettings(), singleKey: true });
+    await openFixture(page, '/keys');
+    await ready(page);
+    const media = page.locator('#media');
+    await media.evaluate((element: HTMLMediaElement) => { element.volume = 0.5; });
+    const muted = () => media.evaluate((element: HTMLMediaElement) => element.muted);
+    await focusPage(page, 300);
+    await page.keyboard.press('KeyM');
+    await expect.poll(muted).toBe(true);
+    await page.keyboard.press('KeyM');
+    await expect.poll(muted).toBe(false);
+    await page.keyboard.press('ArrowUp');
+    await page.waitForTimeout(300);
+    expect(await mediaVolume(page), '不在视频上时 ↑ 留给页面').toBeCloseTo(0.5, 2);
+    const box = await media.boundingBox();
+    if (!box) throw new Error('视频没有位置');
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.keyboard.press('ArrowUp');
+    await expect.poll(() => mediaVolume(page)).toBeCloseTo(0.6, 2);
+    await page.locator('#field').focus();
+    await page.keyboard.press('KeyM');
+    await expect(page.locator('#field')).toHaveValue('m');
+    expect(await muted()).toBe(false);
   });
 });
 
@@ -417,7 +600,7 @@ test('顶层页面的快捷键能控制 iframe 里的视频', async () => {
       const current = await read();
       if (Math.abs(current - 0.9) <= 0.02) return;
       expect(current).toBeCloseTo(1, 2);
-      await page.keyboard.press('Alt+Shift+ArrowDown');
+      await volumeDown(page);
       await expect.poll(read, { timeout: 1_500 }).toBeCloseTo(0.9, 2);
     }).toPass({ timeout: 9_000 });
   });
@@ -432,7 +615,7 @@ test('打开按站点记住后，刷新页面能恢复音量', async () => {
     await saveSettings(worker, settings);
     await openFixture(page, '/');
     await focusPage(page);
-    for (const expected of [0.9, 0.8, 0.7, 0.6, 0.5, 0.4]) await pressVolume(page, 'ArrowDown', expected);
+    for (const expected of [0.9, 0.8, 0.7, 0.6, 0.5, 0.4]) await stepVolume(page, volumeDown, expected);
     await expect.poll(() => rememberedVolume(worker)).toBeCloseTo(0.4, 2);
     await page.reload({ waitUntil: 'domcontentloaded' });
     await expect.poll(() => mediaVolume(page)).toBeCloseTo(0.4, 2);
@@ -500,9 +683,12 @@ test('英文设置页的快捷键一节不写死中文', async () => {
     await expect(shortcuts).toContainText('Decrease volume by 10 percentage points');
     await expect(shortcuts).toContainText('Adjust volume continuously');
     await expect(shortcuts).toContainText('On Mac, use Option instead of Alt.');
-    await expect(shortcuts).toContainText('Alt + Shift + ↑');
-    await expect(shortcuts).toContainText('Alt + Shift + ↓');
-    await expect(shortcuts).toContainText('Alt + Shift + Mouse wheel');
+    await expect(shortcuts).toContainText('Alt + Mouse wheel');
+    await expect(shortcuts).toContainText('Alt + .');
+    await expect(shortcuts).toContainText('Alt + M');
+    await expect(shortcuts).toContainText('Single-key mode');
+    await expect(shortcuts).toContainText('Scroll over a video to change volume');
+    await expect(shortcuts).not.toContainText('Alt + Shift');
     for (const chinese of ['快捷键', '滚轮', '提高音量', '降低音量']) await expect(shortcuts).not.toContainText(chinese);
   });
 });
@@ -740,7 +926,7 @@ test('默认立体声：打开弹出面板、在 100% 内调音量都不接入 W
     await ready(page);
     const tap = await tapExtensionAudio(page);
     await play(page);
-    for (const expected of [0.9, 0.8]) await pressVolume(page, 'ArrowDown', expected);
+    for (const expected of [0.9, 0.8]) await stepVolume(page, volumeDown, expected);
     const popup = await readActionPopup(page);
     try {
       await expect.poll(() => popup(channelControl)).toEqual({ label: 'Channels: Stereo', disabled: false, hint: '' });
@@ -766,7 +952,7 @@ test('切换声道后两侧电平符合模式，切回立体声恢复原样，�
       }
     } finally { await page.keyboard.press('Escape'); }
     await focusPage(page);
-    for (let step = 0; step < 10; step += 1) { await page.keyboard.press('Alt+Shift+ArrowUp'); await page.waitForTimeout(60); }
+    for (let step = 0; step < 10; step += 1) { await volumeUp(page); await page.waitForTimeout(60); }
     await expect.poll(async () => (await toolbarBadge(page))?.text).toBe('200');
     expect(await mediaVolume(page)).toBeCloseTo(1, 2);
     await expectLevels(tap, 'mono @200%', toneLevels.mono.map(value => value * 2), { tolerance: 0.2, maxPeak: 1 });
