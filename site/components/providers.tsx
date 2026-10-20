@@ -6,5 +6,6 @@ import { store } from './demo-runtime';
 
 export function Providers({ extension, children }: { extension: Record<string, string>; children: ReactNode }) {
   setExtensionMessages(extension);
-  return <ThemeProvider store={store}>{children}</ThemeProvider>;
+  // Defaults are the settled settings, so the hero panel can paint its final rows before localStorage loads.
+  return <ThemeProvider store={store} initialLoading={false}>{children}</ThemeProvider>;
 }

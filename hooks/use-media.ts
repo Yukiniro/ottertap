@@ -3,10 +3,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { lockedMedia, mediaPresenceEvent } from '../lib/media';
 import type { MediaClient, MediaCommand, PageState } from '../lib/types';
 
-export function useMedia(client: MediaClient, options?: { pauseWhenEmpty?: boolean }) {
-  const [page, setPage] = useState<PageState>({ enabled: true, host: '', media: [], selectedId: '' });
+export function useMedia(client: MediaClient, options?: { pauseWhenEmpty?: boolean; initial?: PageState }) {
+  const [page, setPage] = useState<PageState>(options?.initial ?? { enabled: true, host: '', media: [], selectedId: '' });
   const [picked, setPicked] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!options?.initial);
   const [error, setError] = useState('');
   const alive = useRef(true);
   const reading = useRef(false);

@@ -12,8 +12,8 @@ export function useSettingsAtoms() {
   return atoms;
 }
 
-export function ThemeProvider({ store, children, target }: { store: SettingsStore; children: ReactNode; target?: HTMLElement }) {
-  const atoms = useMemo(() => createSettingsAtoms(store), [store]);
+export function ThemeProvider({ store, children, target, initialLoading }: { store: SettingsStore; children: ReactNode; target?: HTMLElement; initialLoading?: boolean }) {
+  const atoms = useMemo(() => createSettingsAtoms(store, { initialLoading }), [store, initialLoading]);
   useEffect(() => atoms.mount(), [atoms]);
   return <SettingsAtomsContext.Provider value={atoms}>
     <Provider store={atoms.store}><ThemeClass target={target}>{children}</ThemeClass></Provider>

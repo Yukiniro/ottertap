@@ -18,7 +18,7 @@ import { channelLabel, mediaChoiceLabel, pipHint } from '../lib/media';
 import { formatRate, sameRate } from '../lib/rate';
 import type { SoundingTab, SoundingTabsClient } from '../lib/tabs';
 import { disableSite, enableSite, forgetMatchingSites, isSiteEnabled, rememberSite, sitePrefFor } from '../lib/settings';
-import { defaultSettings, type MediaClient, type MediaState, type SitePref } from '../lib/types';
+import { defaultSettings, type MediaClient, type MediaState, type PageState, type SitePref } from '../lib/types';
 import { formatTime } from '../lib/utils';
 import { useSettingsAtoms } from './theme';
 
@@ -75,8 +75,8 @@ function OtherPlaying({ client }: { client?: SoundingTabsClient }) {
     </div>
   </section>;
 }
-export function MediaPanel({ client, openSettings, sounding }: { client: MediaClient; openSettings: () => void; sounding?: SoundingTabsClient }) {
-  const { page, selected, select, command, refresh, loading, error } = useMedia(client);
+export function MediaPanel({ client, openSettings, sounding, initial }: { client: MediaClient; openSettings: () => void; sounding?: SoundingTabsClient; initial?: PageState }) {
+  const { page, selected, select, command, refresh, loading, error } = useMedia(client, { initial });
   const { floatingAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const floating = useAtomValue(floatingAtom);
   const siteMode = useAtomValue(siteModeAtom);

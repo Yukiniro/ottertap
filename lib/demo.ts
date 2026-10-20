@@ -13,8 +13,10 @@ export function createDemoStore(key: string): SettingsStore {
   };
 }
 
-const demoUrl = 'https://bilibili.com/video/demo';
-const startAt = 272;
+export const demoUrl = 'https://bilibili.com/video/demo';
+export const demoStartAt = 272;
+export const demoVolume = .75;
+export const demoRate = 1.25;
 
 /** Silent local media driven by the real media controller, standing in for a page the extension controls. */
 export function createDemo(document: Document, { src, title, store }: { src: string; title: string; store: SettingsStore }) {
@@ -28,9 +30,9 @@ export function createDemo(document: Document, { src, title, store }: { src: str
     return element;
   };
   const media = create('video', title);
-  media.volume = .75;
-  media.playbackRate = 1.25;
-  media.addEventListener('loadedmetadata', () => { media.currentTime = startAt; });
+  media.volume = demoVolume;
+  media.playbackRate = demoRate;
+  media.addEventListener('loadedmetadata', () => { media.currentTime = demoStartAt; });
   let second: HTMLAudioElement | null = null;
   const controller = createMediaController(document);
   const unwatchLock = store.watch(settings => controller.setLockRate(isSiteEnabled(demoUrl, settings) && settings.lockRate));
@@ -88,7 +90,7 @@ export function createDemo(document: Document, { src, title, store }: { src: str
     media,
     client,
     listenHotkeys,
-    async reset() { media.currentTime = startAt; media.volume = .75; media.playbackRate = 1.25; media.muted = false; await media.play(); },
+    async reset() { media.currentTime = demoStartAt; media.volume = demoVolume; media.playbackRate = demoRate; media.muted = false; await media.play(); },
     setSecond(label: string | null) {
       second?.remove();
       second = label === null ? null : create('audio', label);
