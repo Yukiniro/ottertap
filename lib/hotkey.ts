@@ -124,11 +124,19 @@ export function planHotkey(page: PageState, action: HotkeyAction) {
   return command ? { media, command } : null;
 }
 
-/** `target` names the hovered or focused media for gestures that only fire over media. */
-export function createHotkeyInput(send: (action: HotkeyAction, target?: string) => void) {
+/**
+ * `target` names the hovered or focused media for gestures that only fire over media.
+ * `onAltUse` runs once per Alt press that drove a gesture, so frames without the keyboard can be told to `arm`.
+ */
+export function createHotkeyInput(send: (action: HotkeyAction, target?: string) => void, onAltUse?: () => void) {
   let pending: { action: HotkeyAction; target?: string }[] = [];
   let frame = 0;
-  let altWheel = false;
+  let altUsed = false;
+  const useAlt = () => {
+    if (altUsed) return;
+    altUsed = true;
+    onAltUse?.();
+  };
   const flush = () => {
     frame = 0;
     const steps = pending;
@@ -145,11 +153,15 @@ export function createHotkeyInput(send: (action: HotkeyAction, target?: string) 
     if (!frame) frame = window.requestAnimationFrame(flush);
   };
   return {
-    key(event: KeyInput & { type?: string; preventDefault(): void; stopPropagation(): void; stopImmediatePropagation?(): void }, { singleKey = false, target }: { singleKey?: boolean; target?: string } = {}) {
+    key(event: KeyInput & { type?: string; repeat?: boolean; preventDefault(): void; stopPropagation(): void; stopImmediatePropagation?(): void }, { singleKey = false, target }: { singleKey?: boolean; target?: string } = {}) {
       if (event.key === 'Alt') {
-        // Windows Chrome focuses its menu when Alt is released on its own, which an Alt+wheel gesture looks like.
-        const swallow = event.type === 'keyup' && altWheel;
-        altWheel = false;
+        // Windows Chrome focuses its menu on an Alt release the page leaves unhandled, even after the page used Alt+wheel or Alt+key.
+        if (event.type !== 'keyup') {
+          if (!event.repeat) altUsed = false;
+          return false;
+        }
+        const swallow = altUsed;
+        altUsed = false;
         if (swallow) event.preventDefault();
         return swallow;
       }
@@ -160,6 +172,7 @@ export function createHotkeyInput(send: (action: HotkeyAction, target?: string) 
       event.stopPropagation();
       event.stopImmediatePropagation?.();
       if (event.type === 'keyup') return true;
+      if (event.altKey) useAlt();
       queue(action, action.type === 'volume' ? target : undefined);
       return true;
     },
@@ -171,10 +184,12 @@ export function createHotkeyInput(send: (action: HotkeyAction, target?: string) 
       if (!delta) return false;
       event.preventDefault();
       event.stopPropagation();
-      if (event.altKey) altWheel = true;
+      if (event.altKey) useAlt();
       queue({ type: 'volume', delta }, target);
       return true;
     },
+    /** Another frame used the current Alt press; this frame may be the one that receives its release. */
+    arm() { altUsed = true; },
     dispose() { window.cancelAnimationFrame(frame); frame = 0; pending = []; }
   };
 }

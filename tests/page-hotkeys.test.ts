@@ -182,13 +182,6 @@ test('悬停滚轮只在视频上拦截，Alt+滚轮随处可用；目标只随�
     flush();
     assert.deepEqual(sent, [[{ type: 'volume', delta: -10 }, '7'], [{ type: 'volume', delta: -10 }, undefined], [{ type: 'volume', delta: 10 }, undefined]]);
 
-    assert.deepEqual(key({ key: 'Alt', type: 'keyup' }), { handled: true, prevented: true }, 'Alt+滚轮后松开 Alt 不打开浏览器菜单');
-    assert.deepEqual(key({ key: 'Alt', type: 'keyup' }), { handled: false, prevented: false }, '单独按 Alt 不拦截');
-    wheel({ altKey: true });
-    key({ key: 'Alt', type: 'keydown', altKey: true });
-    assert.deepEqual(key({ key: 'Alt', type: 'keyup' }), { handled: false, prevented: false }, '重新按下 Alt 后不再吞掉松开');
-    flush();
-
     sent.length = 0;
     assert.equal(key({ key: 'ArrowUp', code: 'ArrowUp' }, { singleKey: true }).handled, false);
     assert.equal(key({ key: 'ArrowUp', code: 'ArrowUp' }, { singleKey: true, target: '3' }).handled, true);
@@ -196,6 +189,58 @@ test('悬停滚轮只在视频上拦截，Alt+滚轮随处可用；目标只随�
     assert.deepEqual(key({ key: 'k', code: 'KeyK', type: 'keyup' }, { singleKey: true }), { handled: true, prevented: true }, '松开也拦下，避免网站同名快捷键再执行');
     flush();
     assert.deepEqual(sent, [[{ type: 'volume', delta: 10 }, '3'], [{ type: 'toggle' }, undefined]]);
+  } finally { input.dispose(); await window.happyDOM.close(); }
+});
+
+test('用过 Alt 手势后松开 Alt 被拦下，普通 Alt 按松照常', async () => {
+  const window = new Window();
+  Object.defineProperty(globalThis, 'window', { value: window, configurable: true });
+  Object.defineProperty(window, 'requestAnimationFrame', { value: () => 1 });
+  let notified = 0;
+  const input = createHotkeyInput(() => {}, () => { notified += 1; });
+  const key = (key: string, type: string, extra: { code?: string; repeat?: boolean; altKey?: boolean } = {}) => {
+    let prevented = false;
+    const handled = input.key({ ...none, altKey: key !== 'Alt', ...extra, key, type, preventDefault() { prevented = true; }, stopPropagation() {} });
+    return { handled, prevented };
+  };
+  const altWheel = () => input.wheel({ ...alt, deltaX: 0, deltaY: -100, deltaMode: 0, preventDefault() {}, stopPropagation() {} });
+  const released = { handled: true, prevented: true };
+  const untouched = { handled: false, prevented: false };
+  try {
+    key('Alt', 'keydown');
+    assert.deepEqual(key('Alt', 'keyup'), untouched, '单独按松 Alt 不拦截');
+
+    key('Alt', 'keydown');
+    altWheel();
+    assert.deepEqual(key('Alt', 'keyup'), released, 'Alt+滚轮后松开 Alt 不打开浏览器菜单');
+    assert.equal(notified, 1);
+
+    key('Alt', 'keydown');
+    assert.equal(key('m', 'keydown', { code: 'KeyM' }).handled, true);
+    key('m', 'keyup', { code: 'KeyM' });
+    assert.deepEqual(key('Alt', 'keyup'), released, 'Alt+M 后松开 Alt 也拦下');
+
+    key('Alt', 'keydown');
+    altWheel();
+    altWheel();
+    key('Alt', 'keydown', { repeat: true });
+    key('Alt', 'keydown', { repeat: true });
+    assert.deepEqual(key('Alt', 'keyup'), released, '按住 Alt 的自动重复不清掉标记');
+    assert.equal(notified, 3, '每次 Alt 按下只通知一次');
+
+    key('Alt', 'keydown');
+    assert.equal(key('ArrowLeft', 'keydown', { code: 'ArrowLeft' }).handled, false);
+    assert.deepEqual(key('Alt', 'keyup'), untouched, 'Alt+方向键等未匹配的组合不拦截');
+
+    altWheel();
+    key('Alt', 'keydown');
+    assert.deepEqual(key('Alt', 'keyup'), untouched, '重新按下 Alt 后不再吞掉松开');
+
+    key('Alt', 'keydown');
+    input.arm();
+    assert.deepEqual(key('Alt', 'keyup'), released, '其他 frame 用过这次 Alt 时，拿着焦点的 frame 拦下松开');
+    assert.equal(notified, 4, 'arm 不再回传通知');
+    assert.deepEqual(key('Alt', 'keyup'), untouched);
   } finally { input.dispose(); await window.happyDOM.close(); }
 });
 

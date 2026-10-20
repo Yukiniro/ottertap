@@ -284,6 +284,10 @@ export default defineBackground(() => {
   } catch { /* The build verifier does not provide the commands API. */ }
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (sender.id !== browser.runtime.id || !message || message.namespace !== 'ottertap') return;
+    if (message.type === 'altUsed') {
+      if (sender.tab?.id !== undefined) void browser.tabs.sendMessage(sender.tab.id, { namespace: 'ottertap', type: 'altUsed' }).catch(() => {});
+      return;
+    }
     if (!['options', 'context', 'register', 'read', 'command', 'select', 'highlight', 'hotkey', 'soundingTabs', 'focusTab', 'muteTab', 'rateLock'].includes(message.type)) return;
     const tabId = sender.tab?.id ?? message.tabId;
     async function handle() {

@@ -80,7 +80,7 @@ export function createDemo(document: Document, { src, title, store }: { src: str
       await client.command(plan.media, plan.command);
     });
     const allow = () => on && controller.snapshot().length > 0;
-    const onKey = (event: KeyboardEvent) => { if (allow() && !isTypingEvent(event)) hotkeys.key(event, { singleKey }); };
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Alt' || (allow() && !isTypingEvent(event))) hotkeys.key(event, { singleKey }); };
     const onWheel = (event: WheelEvent) => { if (allow()) hotkeys.wheel(event); };
     window.addEventListener('keydown', onKey, true);
     window.addEventListener('wheel', onWheel, { capture: true, passive: false });

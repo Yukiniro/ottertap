@@ -222,6 +222,21 @@ async function altWheel(page: Page, deltaY: number) {
 async function volumeUp(page: Page) { await altWheel(page, -100); }
 async function volumeDown(page: Page) { await altWheel(page, 100); }
 
+/** Reads whether the extension's capture listener prevented each Alt release, the event Windows Chrome turns into menu focus. */
+async function watchAltReleases(page: Page) {
+  await page.evaluate(() => {
+    const seen: boolean[] = [];
+    (window as unknown as { __altReleases: boolean[] }).__altReleases = seen;
+    // Capture, registered after the extension's: the floater isolates key events that reach its shadow root.
+    window.addEventListener('keyup', event => { if (event.key === 'Alt') seen.push(event.defaultPrevented); }, true);
+  });
+  return async () => {
+    const seen = await page.evaluate(() => (window as unknown as { __altReleases: boolean[] }).__altReleases.splice(0));
+    expect(seen, '应收到一次 Alt 松开').toHaveLength(1);
+    return seen[0];
+  };
+}
+
 async function stepVolume(page: Page, step: (page: Page) => Promise<void>, expected: number, read: () => Promise<number> = () => mediaVolume(page)) {
   await step(page);
   await expect.poll(read).toBeCloseTo(expected, 2);
@@ -439,6 +454,73 @@ test('Alt + , . 0 调倍速、Alt + M 静音，在输入框里不触发', async 
     await page.keyboard.press('Alt+KeyM');
     await page.waitForTimeout(300);
     expect(await state()).toEqual({ rate: 1, muted: false });
+  });
+});
+
+test('用过 Alt+滚轮或 Alt+键后松开 Alt 被拦下，普通 Alt 按松与未匹配组合不拦', async () => {
+  await withPage(async page => {
+    await openFixture(page, '/keys');
+    await ready(page);
+    const media = page.locator('#media');
+    await media.evaluate((element: HTMLMediaElement) => { element.volume = 0.5; });
+    const released = await watchAltReleases(page);
+    const overMedia = async () => {
+      await page.evaluate(() => window.scrollTo(0, 0));
+      const box = await media.boundingBox();
+      if (!box) throw new Error('视频没有位置');
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    };
+    await focusPage(page, 300);
+
+    await page.keyboard.press('Alt');
+    expect(await released(), '单独按松 Alt 不拦截').toBe(false);
+
+    await overMedia();
+    await volumeUp(page);
+    await expect.poll(() => mediaVolume(page)).toBeCloseTo(0.6, 2);
+    expect(await released(), 'Alt+滚轮后松开 Alt 被拦下').toBe(true);
+
+    await page.keyboard.press('Alt+KeyM');
+    await expect.poll(() => media.evaluate((element: HTMLMediaElement) => element.muted)).toBe(true);
+    expect(await released(), 'Alt+M 后松开 Alt 被拦下').toBe(true);
+
+    await page.keyboard.press('Alt+KeyQ');
+    expect(await released(), '没有匹配到我们的组合时不拦').toBe(false);
+
+    await page.keyboard.down('Alt');
+    await page.mouse.wheel(0, -100);
+    await page.keyboard.down('Alt');
+    await page.keyboard.down('Alt');
+    await page.keyboard.up('Alt');
+    expect(await released(), '按住 Alt 自动重复后松开仍被拦下').toBe(true);
+
+    await page.locator('#field').focus();
+    await overMedia();
+    await volumeDown(page);
+    expect(await released(), '焦点在输入框里时 Alt+滚轮后的松开也被拦下').toBe(true);
+    await page.keyboard.press('Alt');
+    expect(await released(), '输入框里普通 Alt 按松不拦').toBe(false);
+  });
+});
+
+test('在 iframe 里的视频上 Alt+滚轮，焦点在顶层页面时松开 Alt 也被拦下', async () => {
+  await withPage(async page => {
+    await openFixture(page, '/frame');
+    const read = () => mediaVolume(page, true);
+    await expect.poll(read).toBeCloseTo(1, 2);
+    const released = await watchAltReleases(page);
+    await focusPage(page, 420);
+    const box = await page.locator('iframe').boundingBox();
+    if (!box) throw new Error('iframe 没有位置');
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.keyboard.down('Alt');
+    await page.mouse.wheel(0, 100);
+    await expect.poll(read).toBeCloseTo(0.9, 2);
+    await page.waitForTimeout(100);
+    await page.keyboard.up('Alt');
+    expect(await released(), '顶层页面收到松开时已被 iframe 的手势标记').toBe(true);
+    await page.keyboard.press('Alt');
+    expect(await released()).toBe(false);
   });
 });
 

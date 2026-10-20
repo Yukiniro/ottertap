@@ -79,6 +79,7 @@ export default defineContentScript({
         announce();
         return;
       }
+      if (message.type === 'altUsed') { hotkeys.arm(); return; }
       if (!['snapshot', 'command', 'highlight', 'reveal', 'rateHint', 'actionHint', 'rateLockHint'].includes(message.type)) return;
       void (async () => {
       if (message.type === 'actionHint') {
@@ -120,11 +121,16 @@ export default defineContentScript({
       void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'hotkey', action, target }).then(result => {
         if (typeof result?.percent === 'number') window.dispatchEvent(new CustomEvent('ottertap-volume', { detail: result.percent }));
       }).catch(() => {});
+    }, () => {
+      // The Alt release goes to the focused frame, which is not this one when the wheel landed in another frame.
+      if (!document.hasFocus()) void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'altUsed' }).catch(() => {});
     });
     const shortcutActive = () => enabled && (controller.snapshot().length > 0 || tabHasMedia);
     let pointer: { x: number; y: number } | null = null;
     const onPointer = (event: PointerEvent) => { pointer = event.type === 'pointerout' && !event.relatedTarget ? null : { x: event.clientX, y: event.clientY }; };
     const onKey = (event: KeyboardEvent) => {
+      // A frame without media, or focus in a text field, still receives the Alt release of a gesture made elsewhere.
+      if (event.key === 'Alt') { hotkeys.key(event); return; }
       if (!shortcutActive() || isTypingEvent(event)) return;
       // Arrows inside the floater belong to its slider and to docking the otter.
       if (isFloatingEvent(event) && event.key.startsWith('Arrow')) return;
