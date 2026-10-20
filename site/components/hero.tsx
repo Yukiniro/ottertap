@@ -3,7 +3,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { links, listedStores, type T } from '~/lib/site-locales';
 import { GitHubIcon } from './github-icon';
-import { HeroDemo } from './islands';
+import HeroDemo from './hero-demo';
 import { StoreButtons } from './store-buttons';
 
 const appear = 'animate-in fade-in slide-in-from-bottom-3 duration-700 [animation-fill-mode:both] motion-reduce:animate-none';

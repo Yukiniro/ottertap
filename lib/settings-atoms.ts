@@ -48,10 +48,10 @@ export interface SettingsAtoms {
   settled: () => Promise<void>;
 }
 
-export function createSettingsAtoms(source: SettingsStore): SettingsAtoms {
+export function createSettingsAtoms(source: SettingsStore, options?: { initialLoading?: boolean }): SettingsAtoms {
   const store = createStore();
   const settingsAtom = atom(defaultSettings);
-  const loadingAtom = atom(true);
+  const loadingAtom = atom(options?.initialLoading ?? true);
   const errorAtom = atom('');
   const themeAtom = selectAtom(settingsAtom, settings => settings.theme);
   const floatingAtom = selectAtom(settingsAtom, settings => settings.floating);

@@ -1,6 +1,6 @@
 import { translate } from '../../lib/message-catalog';
 
-// Client-only: extension components are rendered with `ssr: false`, so one page holds one locale.
+// One static page render holds one locale. Providers sets this before the hero panel reads it.
 let messages: Record<string, string> = {};
 
 export function setExtensionMessages(next: Record<string, string>) { messages = next; }
