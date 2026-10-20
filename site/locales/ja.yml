@@ -64,7 +64,7 @@ privacyStorage: "設定の保存：テーマ、フローティングコントロ
 privacyHosts: "ページへのアクセス：ページ上の動画と音声を見つけ、フローティングコントローラーを表示するためです。"
 privacyNone: "マイク、カメラ、ダウンロード履歴、閲覧履歴にはアクセスしません。"
 installEyebrow: "インストール"
-installTitle: "Chrome ウェブストアから追加。"
+installTitle: "ウェブストアから追加。"
 installLead: "掲載ページを開いて、ワンクリックで OtterTap を追加します。デベロッパーモードも解凍も不要です。"
 installStep1Title: "Chrome に追加"
 installStep1Body: "Chrome ウェブストアの掲載ページを開き、追加を確認します。OtterTap はそのままブラウザーにインストールされます。"

@@ -64,7 +64,7 @@ privacyStorage: "설정 저장: 테마, 플로팅 컨트롤러, 사이트 규칙
 privacyHosts: "페이지 접근: 페이지의 동영상과 오디오를 찾고 플로팅 컨트롤러를 표시하기 위해서입니다."
 privacyNone: "마이크, 카메라, 다운로드 기록, 방문 기록에는 접근하지 않습니다."
 installEyebrow: "설치"
-installTitle: "Chrome 웹 스토어에서 추가하세요."
+installTitle: "웹 스토어에서 추가하세요."
 installLead: "제품 페이지를 열고 OtterTap을 한 번에 추가합니다. 개발자 모드도, 압축 해제도 필요 없습니다."
 installStep1Title: "Chrome에 추가"
 installStep1Body: "Chrome 웹 스토어 제품 페이지를 열고 추가를 확인합니다. OtterTap이 브라우저에 바로 설치됩니다."

@@ -64,7 +64,7 @@ privacyStorage: "儲存設定：主題、浮動控制器和網站規則只保存
 privacyHosts: "存取網頁：用來找到網頁中的影片和音訊，並顯示浮動控制器。"
 privacyNone: "不會存取麥克風、攝影機、下載紀錄或瀏覽歷史。"
 installEyebrow: "安裝"
-installTitle: "從 Chrome 線上應用程式商店安裝。"
+installTitle: "從 Chrome 線上應用店安裝。"
 installLead: "打開商品頁，一鍵加入小獺。不需要開發人員模式，也不用解壓縮。"
 installStep1Title: "加到 Chrome"
 installStep1Body: "打開 Chrome 線上應用程式商店的商品頁並確認新增。小獺會直接裝進瀏覽器。"
