@@ -12,7 +12,7 @@ const sample = (): Settings => normalizeSettings({
   floatingPosition: { side: 'left', y: 0.25 },
   siteMode: 'allow',
   sites: ['bilibili.com', 'youtube.com'],
-  sitePrefs: { 'bilibili.com': { volume: 1.5, rate: 1.25 }, 'youtube.com': { rate: 1.5 } },
+  sitePrefs: { 'bilibili.com': { volume: 1.5, rate: 1.25 }, 'youtube.com': { rate: 1.5, channel: 'mono' } },
   ratePresets: [1.25, 1.75, 2],
   lockRate: true
 });
@@ -39,7 +39,7 @@ test('坏文件、旧版本、新版本和未知字段不会产生可写入的�
   payload.theme = 'neon';
   payload.futureFlag = true;
   payload.sites = ['not a domain', 'https://www.YouTube.com/watch?v=1', 12, 'bilibili.com'];
-  payload.sitePrefs = { 'bad host': { volume: 0.4 }, 'example.com': { volume: 9, rate: 1.5 }, 'v.qq.com': { volume: 0.8, boost: true } };
+  payload.sitePrefs = { 'bad host': { volume: 0.4 }, 'example.com': { volume: 9, rate: 1.5, channel: 'stereo' }, 'v.qq.com': { volume: 0.8, boost: true, channel: 'surround' } };
   const cleaned = parseSettingsBackup(JSON.stringify(dirty));
   assert.equal(cleaned.ok, true);
   if (!cleaned.ok) return;

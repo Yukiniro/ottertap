@@ -109,7 +109,7 @@ export default defineBackground(() => {
   };
   const forget = (tabId: number) => { frames.delete(tabId); mediaKnown.delete(tabId); selectedIds.delete(tabId); gestures.delete(tabId); sitePrefSessions.delete(tabId); volumes.delete(tabId); clearVolumeTimer(tabId); paintBadge(tabId, Date.now()); persistFrames(); };
   async function rememberCommand(host: string, command: MediaCommand) {
-    if (command.type !== 'volume' && command.type !== 'rate') return;
+    if (command.type !== 'volume' && command.type !== 'rate' && command.type !== 'channel') return;
     try {
       const latest = await currentSettings();
       const sitePrefs = withRememberedCommand(latest.sitePrefs, host, command);

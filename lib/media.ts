@@ -1,8 +1,8 @@
 import { i18n } from '#i18n';
-import { canAmplify, createAmplifier, maxGain, splitVolume, type Amplifier } from './amplifier';
+import { canAmplify, createAmplifier, isChannelMode, maxGain, splitVolume, type Amplifier } from './amplifier';
 import { armRateEcho, createRateLockState, noteDesiredRate, observePlaybackRate, rateLockEpsilon, type RateLockState } from './rate-lock';
 import { maxRate, minRate, readSettledRate } from './rate';
-import type { MediaCommand, MediaState } from './types';
+import type { ChannelMode, MediaCommand, MediaState } from './types';
 import { formatTime } from './utils';
 
 export const mediaPresenceEvent = 'ottertap-media';
@@ -16,7 +16,8 @@ export function discoverMedia(root: Document | ShadowRoot, onRoot?: (root: Docum
   return media;
 }
 
-const maxVolume = (element: HTMLMediaElement, amplifier?: Amplifier) => amplifier && (amplifier.gain(element) > 1 || canAmplify(element, element.ownerDocument)) ? maxGain : 1;
+const routable = (element: HTMLMediaElement, amplifier?: Amplifier) => !!amplifier && (amplifier.gain(element) > 1 || amplifier.channel(element) !== 'stereo' || canAmplify(element, element.ownerDocument));
+const maxVolume = (element: HTMLMediaElement, amplifier?: Amplifier) => routable(element, amplifier) ? maxGain : 1;
 
 export function pickMedia(media: MediaState[]) {
   return media.find(item => !item.paused && !item.muted && item.volume > 0) ?? media.find(item => !item.paused) ?? media[0];
@@ -52,7 +53,9 @@ export function mediaSnapshot(element: HTMLMediaElement, id: string, document: D
     duration: Number.isFinite(element.duration) ? element.duration : null,
     live: element.duration === Infinity,
     seekable: Array.from({ length: ranges.length }, (_, index) => ({ start: ranges.start(index), end: ranges.end(index) })),
-    ...pipFields(element, document)
+    ...pipFields(element, document),
+    channel: amplifier?.channel(element) ?? 'stereo',
+    channelAvailable: routable(element, amplifier)
   };
 }
 
@@ -72,6 +75,9 @@ export function pipHint(media: Pick<MediaState, 'pip' | 'pipAvailable' | 'pipBlo
   if (media.pipBlock === 'disabled') return i18n.t('pipDisabledBySite');
   return i18n.t('pipUnsupported');
 }
+
+const channelMessages = { stereo: 'channelStereo', mono: 'channelMono', left: 'channelLeft', right: 'channelRight' } as const;
+export const channelLabel = (mode: ChannelMode) => i18n.t(channelMessages[mode]);
 
 function pictureInPictureError(error: DOMException, readyState: number) {
   if (error.name === 'NotAllowedError') return i18n.t('pipNeedsGesture');
@@ -101,6 +107,7 @@ export function isMediaCommand(value: unknown): value is MediaCommand {
   if (!value || typeof value !== 'object') return false;
   const command = value as MediaCommand;
   if (command.type === 'play' || command.type === 'pause' || command.type === 'mute' || command.type === 'pip') return true;
+  if (command.type === 'channel') return isChannelMode(command.value);
   if (!('value' in command) || !Number.isFinite(command.value)) return false;
   if (command.type === 'volume') return command.value >= 0 && command.value <= maxGain;
   if (command.type === 'rate') return command.value >= minRate && command.value <= maxRate;
@@ -122,6 +129,11 @@ export async function applyMediaCommand(element: HTMLMediaElement, command: Medi
     return;
   }
   if (command.type === 'rate') { element.playbackRate = command.value; return; }
+  if (command.type === 'channel') {
+    if (command.value !== 'stereo' && !routable(element, amplifier)) throw new Error(i18n.t('channelCrossOrigin'));
+    await amplifier?.setChannel(element, command.value);
+    return;
+  }
   if (!('value' in command)) throw new Error(i18n.t('invalidMediaCommand'));
   const ranges = element.seekable;
   if (!ranges.length) throw new Error(i18n.t('cannotSeek'));
@@ -285,6 +297,7 @@ export function createMediaController(document: Document, onChange?: () => void,
       for (const observer of observers.values()) observer.disconnect();
       observers.clear();
       for (const element of [...slots.keys()]) release(element);
+      amplifier.dispose();
     }
   };
 }

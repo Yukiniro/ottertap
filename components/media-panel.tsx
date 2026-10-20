@@ -1,10 +1,10 @@
 import { i18n } from '#i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { ChevronDown, Settings2, Settings as SettingsIcon, Volume2, VolumeX, AppWindow, Pause, Play, RotateCcw, RotateCw, Keyboard, CircleAlert, Search, RefreshCw, PictureInPicture2 } from 'lucide-react';
+import { ChevronDown, Settings2, Settings as SettingsIcon, Volume2, VolumeX, AppWindow, Pause, Play, RotateCcw, RotateCw, Keyboard, CircleAlert, Search, RefreshCw, PictureInPicture2, Headphones } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from './ui/empty';
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from './ui/item';
 import { Slider } from './ui/slider';
@@ -13,15 +13,17 @@ import { Switch } from './ui/switch';
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 import { Brand } from './brand';
 import { useMedia } from '../hooks/use-media';
-import { mediaChoiceLabel, pipHint } from '../lib/media';
+import { channelModes, isChannelMode } from '../lib/amplifier';
+import { channelLabel, mediaChoiceLabel, pipHint } from '../lib/media';
 import { formatRate, sameRate } from '../lib/rate';
 import type { SoundingTab, SoundingTabsClient } from '../lib/tabs';
 import { disableSite, enableSite, forgetMatchingSites, isSiteEnabled, rememberSite, sitePrefFor } from '../lib/settings';
-import { defaultSettings, type MediaClient } from '../lib/types';
+import { defaultSettings, type MediaClient, type MediaState, type SitePref } from '../lib/types';
 import { formatTime } from '../lib/utils';
 import { useSettingsAtoms } from './theme';
 
 const first = (value: number | readonly number[]) => Array.isArray(value) ? value[0] : value;
+const currentPref = (media: MediaState): SitePref => ({ volume: media.volume, rate: media.rate, ...(media.channel === 'stereo' ? {} : { channel: media.channel }) });
 function TabIcon({ src }: { src: string }) {
   const [failed, setFailed] = useState(false);
   if (!src || failed) return <AppWindow aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />;
@@ -95,10 +97,10 @@ export function MediaPanel({ client, openSettings, sounding }: { client: MediaCl
   const remembered = page.host ? sitePrefFor(page.host, sitePrefs) : null;
   const storePreference = () => {
     if (!selected || !page.host || settingsLoading) return;
-    void write({ sitePrefs: rememberSite(sitePrefs, page.host, { volume: selected.volume, rate: selected.rate }) });
+    void write({ sitePrefs: rememberSite(sitePrefs, page.host, currentPref(selected)) });
   };
   const adjust = (value: Parameters<typeof command>[0]) => {
-    if ((value.type === 'volume' || value.type === 'rate') && !remembered) setOfferRemember(true);
+    if ((value.type === 'volume' || value.type === 'rate' || value.type === 'channel') && !remembered) setOfferRemember(true);
     return command(value);
   };
   useEffect(() => { setOfferRemember(false); }, [page.host, selected?.id]);
@@ -108,6 +110,7 @@ export function MediaPanel({ client, openSettings, sounding }: { client: MediaCl
   const canSeek = seekMax > seekMin;
   const volume = selected ? Math.round((selected.muted ? 0 : selected.volume) * 100) : 0;
   const hint = selected ? pipHint(selected) : '';
+  const channelHint = selected && !selected.channelAvailable ? i18n.t('channelCrossOrigin') : '';
   const activePreset = selected ? ratePresets.find(speed => sameRate(speed, selected.rate)) : undefined;
   const showSiteAction = page.enabled && !outOfSync && !!siteAction?.settings;
   return <section className="flex w-[400px] max-w-full flex-col gap-2.5 bg-background px-3.5 pt-1 pb-2" aria-label={i18n.t('mediaPanel')}>
@@ -146,14 +149,30 @@ export function MediaPanel({ client, openSettings, sounding }: { client: MediaCl
         </div>
       </div>
       <div className="rounded-xl bg-muted/60 px-3 py-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <span className="text-sm font-medium">{i18n.t('volume')}</span>
-          <span className="text-sm tabular-nums text-muted-foreground">{volume}%</span>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button variant="ghost" size="xs" />} disabled={!selected.channelAvailable} aria-label={i18n.t('channelModeLabel', { mode: channelLabel(selected.channel) })} aria-describedby={channelHint ? 'channel-hint' : undefined} data-active={selected.channel !== 'stereo' ? '' : undefined} className="-my-1 min-w-0 rounded-full font-normal text-muted-foreground data-active:bg-primary/10 data-active:text-primary">
+                <Headphones data-icon="inline-start" /><span className="truncate">{channelLabel(selected.channel)}</span><ChevronDown data-icon="inline-end" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-auto">
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>{i18n.t('channelMode')}</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup value={selected.channel} onValueChange={value => { if (isChannelMode(value)) void adjust({ type: 'channel', value }); }}>
+                    {channelModes.map(mode => <DropdownMenuRadioItem key={mode} value={mode}>{channelLabel(mode)}</DropdownMenuRadioItem>)}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <span className="text-sm tabular-nums text-muted-foreground">{volume}%</span>
+          </div>
         </div>
         <div className="mt-1.5 flex items-center gap-2">
           <Button variant="ghost" size="icon" className="[&_svg:not([class*='size-'])]:size-5" aria-label={selected.muted ? i18n.t('unmute') : i18n.t('mute')} aria-pressed={selected.muted} onClick={() => void command({ type: 'mute' })}>{selected.muted || selected.volume === 0 ? <VolumeX /> : <Volume2 />}</Button>
           <VolumeSlider size="bar" aria-label={i18n.t('volume')} className="flex-1" max={Math.round(selected.maxVolume * 100)} value={volume} onValueChange={value => void adjust({ type: 'volume', value: value / 100 })} />
         </div>
+        {channelHint ? <p id="channel-hint" className="mt-1 text-xs text-muted-foreground">{channelHint}</p> : null}
         <div className="mt-3">
           <div className="flex items-start gap-3">
             <span id="speed-label" className="mt-2 min-w-8 shrink-0 text-sm">{i18n.t('speed')}</span>
@@ -183,7 +202,7 @@ export function MediaPanel({ client, openSettings, sounding }: { client: MediaCl
           <ItemTitle className="font-normal"><label htmlFor="remember-site">{i18n.t('rememberSite')}</label></ItemTitle>
           <ItemDescription className="text-xs">{i18n.t('rememberSiteDescription')}</ItemDescription>
         </ItemContent>
-        <ItemActions><Switch id="remember-site" aria-label={i18n.t('rememberSite')} checked={!!remembered} disabled={settingsLoading} onCheckedChange={checked => { if (!page.host) return; void write({ sitePrefs: checked ? rememberSite(sitePrefs, page.host, selected ? { volume: selected.volume, rate: selected.rate } : {}) : forgetMatchingSites(sitePrefs, page.host) }); }} /></ItemActions>
+        <ItemActions><Switch id="remember-site" aria-label={i18n.t('rememberSite')} checked={!!remembered} disabled={settingsLoading} onCheckedChange={checked => { if (!page.host) return; void write({ sitePrefs: checked ? rememberSite(sitePrefs, page.host, selected ? currentPref(selected) : {}) : forgetMatchingSites(sitePrefs, page.host) }); }} /></ItemActions>
       </Item>}
       <Item role="listitem" className="min-h-12 rounded-none px-3">
         <ItemMedia variant="icon" className="text-muted-foreground"><AppWindow className="size-5" /></ItemMedia>

@@ -5,7 +5,7 @@ const origin = `https://${host}`;
 const extensionPath = decodeURIComponent(new URL('../.output/chrome-mv3/', import.meta.url).pathname);
 const settingsKey = 'ottertap-settings-v1';
 
-type SitePref = { volume?: number; rate?: number };
+type SitePref = { volume?: number; rate?: number; channel?: 'mono' | 'left' | 'right' };
 type Settings = {
   theme: 'system';
   floating: boolean;
@@ -78,6 +78,47 @@ function base64(bytes: Uint8Array) {
 
 const wav = `data:audio/wav;base64,${base64(silentWav())}`;
 
+// Left is a 440 Hz sine at 0.5, right a 1000 Hz sine at 0.2. Half a second holds whole cycles of both, so it loops cleanly.
+function stereoWav() {
+  const rate = 8000;
+  const frames = rate / 2;
+  const bytes = new Uint8Array(44 + frames * 4);
+  const view = new DataView(bytes.buffer);
+  const text = (offset: number, value: string) => {
+    for (let index = 0; index < value.length; index += 1) bytes[offset + index] = value.charCodeAt(index);
+  };
+  text(0, 'RIFF');
+  view.setUint32(4, 36 + frames * 4, true);
+  text(8, 'WAVE');
+  text(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 2, true);
+  view.setUint32(24, rate, true);
+  view.setUint32(28, rate * 4, true);
+  view.setUint16(32, 4, true);
+  view.setUint16(34, 16, true);
+  text(36, 'data');
+  view.setUint32(40, frames * 4, true);
+  for (let frame = 0; frame < frames; frame += 1) {
+    const time = frame / rate;
+    view.setInt16(44 + frame * 4, Math.round(0.5 * Math.sin(2 * Math.PI * 440 * time) * 32767), true);
+    view.setInt16(46 + frame * 4, Math.round(0.2 * Math.sin(2 * Math.PI * 1000 * time) * 32767), true);
+  }
+  return bytes;
+}
+
+const toneWav = stereoWav();
+const tone = `data:audio/wav;base64,${base64(toneWav)}`;
+const cdn = 'https://cdn.ottertap.test';
+// RMS of each output channel for the tone above, per channel mode, at 100% volume.
+const toneLevels = {
+  stereo: [0.5 / Math.SQRT2, 0.2 / Math.SQRT2],
+  mono: [Math.hypot(0.25, 0.1) / Math.SQRT2, Math.hypot(0.25, 0.1) / Math.SQRT2],
+  left: [0.5 / Math.SQRT2, 0.5 / Math.SQRT2],
+  right: [0.2 / Math.SQRT2, 0.2 / Math.SQRT2],
+} as const;
+
 function documentHtml(body: string, title = 'OtterTap fixture') {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${title}</title></head><body style="min-height:100vh">${body}</body></html>`;
 }
@@ -90,6 +131,8 @@ const pages: Record<string, string> = {
   '/video': documentHtml(`<video id="media" src="${wav}" preload="auto" playsinline></video>`),
   '/pip-off': documentHtml(`<video id="media" src="${wav}" preload="auto" playsinline disablepictureinpicture></video>`),
   '/other': documentHtml(`<audio id="media" src="${wav}" preload="auto"></audio>`, 'Other tab'),
+  '/stereo': documentHtml(`<audio id="media" src="${tone}" preload="auto" loop></audio>`),
+  '/cross': documentHtml(`<audio id="media" src="${cdn}/tone.wav" preload="auto" loop></audio>`),
 };
 
 let browser: BrowserContext | undefined;
@@ -218,6 +261,8 @@ test.beforeAll(async () => {
     }
     await route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', headers: { 'cache-control': 'no-store' }, body });
   });
+  // No Access-Control-Allow-Origin: routing this through Web Audio would play silence.
+  await browser.route(`${cdn}/**`, route => route.fulfill({ status: 200, contentType: 'audio/wav', body: Buffer.from(toneWav) }));
 });
 
 test.afterAll(async () => {
@@ -565,5 +610,218 @@ test('已静音的其他标签会列在弹出面板，取消静音后不再列�
       await expect(row).toHaveCount(0);
       await expect(popup.getByText('No other tabs are playing audio.')).toBeVisible();
     } finally { await popup.close(); }
+  });
+});
+
+type Levels = { rms: number[]; peak: number };
+
+// Runs in the content script's isolated world: copies whatever the extension sends to its
+// AudioContext destination into two analysers, so the test hears exactly what the user would.
+const tapScript = `(() => {
+  if (globalThis.__ottertapTapInstalled) return true;
+  globalThis.__ottertapTapInstalled = true;
+  const connect = AudioNode.prototype.connect;
+  AudioNode.prototype.connect = function (target, ...rest) {
+    const result = connect.call(this, target, ...rest);
+    if (target instanceof AudioDestinationNode && !globalThis.__ottertapTap) {
+      const split = this.context.createChannelSplitter(2);
+      connect.call(this, split);
+      const analysers = [0, 1].map(index => {
+        const analyser = this.context.createAnalyser();
+        analyser.fftSize = 8192;
+        connect.call(split, analyser, index);
+        return analyser;
+      });
+      globalThis.__ottertapTap = () => {
+        let peak = 0;
+        const rms = analysers.map(analyser => {
+          const data = new Float32Array(analyser.fftSize);
+          analyser.getFloatTimeDomainData(data);
+          let sum = 0;
+          for (const value of data) { sum += value * value; peak = Math.max(peak, Math.abs(value)); }
+          return Math.sqrt(sum / data.length);
+        });
+        return { rms, peak };
+      };
+    }
+    return result;
+  };
+  return true;
+})()`;
+
+// Pass navigate to install the tap as soon as the content script's world exists, ahead of any restore on load.
+async function tapExtensionAudio(page: Page, navigate?: () => Promise<unknown>) {
+  const session = await page.context().newCDPSession(page);
+  let found: (id: number) => void = () => {};
+  const world = new Promise<number>(resolve => { found = resolve; });
+  session.on('Runtime.executionContextCreated', ({ context }) => {
+    if (context.auxData?.type !== 'isolated' || !context.name.startsWith('OtterTap')) return;
+    void session.send('Runtime.evaluate', { expression: tapScript, contextId: context.id }).catch(() => {});
+    found(context.id);
+  });
+  await session.send('Runtime.enable');
+  await navigate?.();
+  const contextId = await Promise.race([world, new Promise<number>((_, reject) => setTimeout(() => reject(new Error('找不到扩展内容脚本的执行环境')), 8_000))]);
+  const evaluate = async (expression: string) => {
+    const { result, exceptionDetails } = await session.send('Runtime.evaluate', { expression, contextId, returnByValue: true, awaitPromise: true });
+    if (exceptionDetails) throw new Error(exceptionDetails.exception?.description ?? exceptionDetails.text);
+    return result.value as unknown;
+  };
+  expect(await evaluate(tapScript)).toBe(true);
+  return { read: () => evaluate('globalThis.__ottertapTap?.() ?? null') as Promise<Levels | null> };
+}
+
+async function expectLevels(tap: Awaited<ReturnType<typeof tapExtensionAudio>>, label: string, expected: readonly number[], options: { tolerance?: number; maxPeak?: number } = {}) {
+  const tolerance = options.tolerance ?? 0.15;
+  const check = (levels: Levels | null) => {
+    expect(levels, `${label}：扩展没有把媒体接到输出`).not.toBeNull();
+    levels!.rms.forEach((value, index) => {
+      expect(Math.abs(value - expected[index]!) <= expected[index]! * tolerance, `${label} 声道 ${index} 电平 ${value.toFixed(3)}，预期约 ${expected[index]!.toFixed(3)}`).toBe(true);
+    });
+    if (options.maxPeak !== undefined) expect(levels!.peak, `${label} 峰值`).toBeLessThanOrEqual(options.maxPeak);
+    return levels!;
+  };
+  await expect(async () => { check(await tap.read()); }).toPass({ timeout: 8_000 });
+  // The first passing window may still hold the glide; read again once it has settled.
+  await new Promise(resolve => setTimeout(resolve, 300));
+  const settled = check(await tap.read());
+  console.log(`[levels] ${label}: L=${settled.rms[0]!.toFixed(3)} R=${settled.rms[1]!.toFixed(3)} peak=${settled.peak.toFixed(3)}`);
+}
+
+async function mediaRouted(page: Page) {
+  return page.evaluate(() => {
+    const media = document.querySelector('#media');
+    if (!(media instanceof HTMLMediaElement)) return 'missing';
+    const context = new AudioContext();
+    try {
+      context.createMediaElementSource(media);
+      return 'not-connected';
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return /already connected/i.test(message) ? 'connected' : message;
+    } finally { void context.close(); }
+  });
+}
+
+async function play(page: Page) {
+  await focusPage(page);
+  await page.locator('#media').evaluate((element: HTMLMediaElement) => element.play());
+}
+
+const channelControl = `(() => {
+  const button = [...document.querySelectorAll('button')].find(item => item.getAttribute('aria-label')?.startsWith('Channels: '));
+  if (!button) return null;
+  return { label: button.getAttribute('aria-label'), disabled: button.disabled, hint: document.getElementById('channel-hint')?.textContent ?? '' };
+})()`;
+
+const chooseChannel = (name: string) => `(async () => {
+  const button = [...document.querySelectorAll('button')].find(item => item.getAttribute('aria-label')?.startsWith('Channels: '));
+  if (!button || button.disabled) return 'no-trigger';
+  button.click();
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const item = [...document.querySelectorAll('[role="menuitemradio"]')].find(node => node.textContent === ${JSON.stringify(name)});
+    if (item) { item.click(); return 'chosen'; }
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  return 'no-item';
+})()`;
+
+const sendChannel = (mode: string) => `(async () => {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const page = await chrome.runtime.sendMessage({ namespace: 'ottertap', type: 'read', tabId: tab.id });
+  return chrome.runtime.sendMessage({ namespace: 'ottertap', type: 'command', tabId: tab.id, id: page.media[0].id, command: { type: 'channel', value: ${JSON.stringify(mode)} } });
+})()`;
+
+const channelNames = { stereo: 'Stereo', mono: 'Mono', left: 'Left channel only', right: 'Right channel only' } as const;
+
+test('默认立体声：打开弹出面板、在 100% 内调音量都不接入 Web Audio', async () => {
+  await withPage(async page => {
+    await openFixture(page, '/stereo');
+    await ready(page);
+    const tap = await tapExtensionAudio(page);
+    await play(page);
+    for (const expected of [0.9, 0.8]) await pressVolume(page, 'ArrowDown', expected);
+    const popup = await readActionPopup(page);
+    try {
+      await expect.poll(() => popup(channelControl)).toEqual({ label: 'Channels: Stereo', disabled: false, hint: '' });
+    } finally { await page.keyboard.press('Escape'); }
+    expect(await tap.read(), '没选非立体声时扩展不应创建输出链路').toBeNull();
+    expect(await mediaRouted(page), '媒体不应被 createMediaElementSource 接管').toBe('not-connected');
+  });
+});
+
+test('切换声道后两侧电平符合模式，切回立体声恢复原样，叠加 200% 放大不破音', async () => {
+  await withPage(async page => {
+    await openFixture(page, '/stereo');
+    await ready(page);
+    const tap = await tapExtensionAudio(page);
+    await play(page);
+    let popup = await readActionPopup(page);
+    try {
+      await expect.poll(() => popup(channelControl)).toEqual({ label: 'Channels: Stereo', disabled: false, hint: '' });
+      for (const mode of ['mono', 'left', 'right', 'stereo', 'mono'] as const) {
+        expect(await popup(chooseChannel(channelNames[mode]))).toBe('chosen');
+        await expect.poll(() => popup(channelControl)).toMatchObject({ label: `Channels: ${channelNames[mode]}`, disabled: false });
+        await expectLevels(tap, `${mode} @100%`, toneLevels[mode], { maxPeak: 1 });
+      }
+    } finally { await page.keyboard.press('Escape'); }
+    await focusPage(page);
+    for (let step = 0; step < 10; step += 1) { await page.keyboard.press('Alt+Shift+ArrowUp'); await page.waitForTimeout(60); }
+    await expect.poll(async () => (await toolbarBadge(page))?.text).toBe('200');
+    expect(await mediaVolume(page)).toBeCloseTo(1, 2);
+    await expectLevels(tap, 'mono @200%', toneLevels.mono.map(value => value * 2), { tolerance: 0.2, maxPeak: 1 });
+    popup = await readActionPopup(page);
+    try {
+      await expect.poll(() => popup(channelControl)).toMatchObject({ label: 'Channels: Mono' });
+      for (const mode of ['left', 'stereo'] as const) {
+        expect(await popup(chooseChannel(channelNames[mode]))).toBe('chosen');
+        await expect.poll(() => popup(channelControl)).toMatchObject({ label: `Channels: ${channelNames[mode]}` });
+      }
+    } finally { await page.keyboard.press('Escape'); }
+    // Left at 200% would peak at 1.0; the limiter holds it under full scale.
+    await expectLevels(tap, 'stereo @200%', toneLevels.stereo.map(value => value * 2), { tolerance: 0.25, maxPeak: 1 });
+    expect(await mediaRouted(page)).toBe('connected');
+  });
+});
+
+test('跨域且无 CORS 的媒体：声道入口置灰并说明原因，强行下发也不接入、不变无声', async () => {
+  await withPage(async page => {
+    await openFixture(page, '/cross');
+    const tap = await tapExtensionAudio(page);
+    await focusPage(page);
+    const popup = await readActionPopup(page);
+    const reason = 'This media is from another site, so its channels cannot be changed.';
+    try {
+      await expect.poll(() => popup(channelControl)).toEqual({ label: 'Channels: Stereo', disabled: true, hint: reason });
+      expect(await popup(sendChannel('mono'))).toEqual({ error: reason });
+      await expect.poll(() => popup(channelControl)).toEqual({ label: 'Channels: Stereo', disabled: true, hint: reason });
+    } finally { await page.keyboard.press('Escape'); }
+    expect(await tap.read()).toBeNull();
+    expect(await mediaRouted(page)).toBe('not-connected');
+  });
+});
+
+test('按站点记住的声道在下次打开时恢复，设置页摘要列出非立体声', async () => {
+  await withPage(async page => {
+    if (!browser) throw new Error('浏览器还没有启动');
+    const worker = await serviceWorker(browser);
+    const settings = defaultSettings();
+    settings.sitePrefs[host] = { volume: 1, rate: 1, channel: 'left' };
+    await saveSettings(worker, settings);
+    const tap = await tapExtensionAudio(page, () => openFixture(page, '/stereo'));
+    await ready(page);
+    await play(page);
+    const popup = await readActionPopup(page);
+    try {
+      await expect.poll(() => popup(channelControl)).toMatchObject({ label: 'Channels: Left channel only' });
+      expect(await popup(`document.querySelector('[role="switch"][aria-label="Remember this site"]')?.getAttribute('aria-checked')`)).toBe('true');
+    } finally { await page.keyboard.press('Escape'); }
+    await expectLevels(tap, 'remembered left', toneLevels.left);
+    const options = await browser.newPage();
+    try {
+      await options.goto(`chrome-extension://${new URL(worker.url()).host}/options.html`);
+      await expect(options.locator('#memory')).toContainText(host);
+      await expect(options.locator('#memory')).toContainText('100% · 1× · Left channel only');
+    } finally { await options.close(); }
   });
 });

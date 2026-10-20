@@ -130,7 +130,7 @@ test('面板按钮跟随画中画是否可用，点击发送切换指令', async
   const { createRoot } = await import('react-dom/client');
   const { ThemeProvider } = await import('../components/theme');
   const { MediaPanel } = await import('../components/media-panel');
-  const base: MediaState = { id: '1', host: 'example.com', label: '', title: '正片', kind: 'video', volume: .5, maxVolume: 1, muted: false, paused: true, rate: 1, currentTime: 0, duration: 10, live: false, seekable: [], pip: false, pipAvailable: true, pipBlock: '' };
+  const base: MediaState = { id: '1', host: 'example.com', label: '', title: '正片', kind: 'video', volume: .5, maxVolume: 1, muted: false, paused: true, rate: 1, currentTime: 0, duration: 10, live: false, seekable: [], pip: false, pipAvailable: true, pipBlock: '', channel: 'stereo', channelAvailable: true };
   let media = base;
   const sent: string[] = [];
   const client: MediaClient = {
