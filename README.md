@@ -8,14 +8,27 @@
 
 ## 安装与使用
 
+推荐从商店安装，一键添加，之后由浏览器自动更新：
+
+1. Chrome 打开 [小獭 OtterTap 的 Chrome 网上应用店页面](https://chromewebstore.google.com/detail/%E5%B0%8F%E7%8D%AD-ottertap-%C2%B7-%E7%BD%91%E9%A1%B5%E5%AA%92%E4%BD%93%E6%8E%A7%E5%88%B6/ipcjiedocfmjiamcjnpmmjckpegannmn)，添加到 Chrome。
+2. 刷新媒体网页，点击工具栏中的“小獭 OtterTap”打开控制面板，或点击网页侧边的浮动入口调节音量。
+
+Edge 商店暂未上架。按照 [微软官方说明](https://support.microsoft.com/en-us/edge/add-turn-off-or-remove-extensions-in-microsoft-edge)，Edge 可以在 Chrome 网上应用店的商品页安装扩展，需要先允许“来自其他应用商店的扩展”；也可以使用下方的手动安装。
+
+点击控制面板右上角的齿轮打开设置，可调整主题、浮动控制器和网站启用范围。
+
+### 备选：手动安装（侧载）
+
+开发调试，或商店暂不可用时，可以下载发布包手动安装：
+
 1. 从 [GitHub Releases](https://github.com/Yukiniro/ottertap/releases) 下载 Chrome 扩展 zip 包，解压到一个固定目录。
 2. Chrome 打开 `chrome://extensions/`，Edge 打开 `edge://extensions/`。
 3. 开启开发者模式，点击“加载已解压的扩展程序”，选择包含 `manifest.json` 的解压目录。
 4. 刷新媒体网页，点击工具栏中的“小獭 OtterTap”打开控制面板，或点击网页侧边的浮动入口调节音量。
 
-点击控制面板右上角的齿轮打开设置，可调整主题、浮动控制器和网站启用范围。
-
 更新时，将新包覆盖原来的解压目录，再点击扩展卡片的“重新加载”，保留原目录以沿用本地设置。
+
+手动安装的版本与商店版是两个独立的扩展，设置互不相通。从一种安装方式换到另一种时，需要在新装的扩展里重新设置。
 
 ## 本地开发
 
