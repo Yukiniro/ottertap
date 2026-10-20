@@ -14,7 +14,7 @@ test('浮动入口贴边半隐藏、可切换侧边；药丸可调到 200%、静
   const { createRoot } = await import('react-dom/client');
   const { ThemeProvider } = await import('../components/theme');
   const { FloatingController } = await import('../components/floating');
-  let media: MediaState = { id: '1', title: '测试媒体', label: '测试媒体', host: 'example.com', kind: 'video', paused: false, muted: false, volume: .75, maxVolume: maxGain, rate: 1, currentTime: 10, duration: 100, live: false, seekable: [{ start: 0, end: 100 }], pip: false, pipAvailable: true, pipBlock: '' };
+  let media: MediaState = { id: '1', title: '测试媒体', label: '测试媒体', host: 'example.com', kind: 'video', paused: false, muted: false, volume: .75, maxVolume: maxGain, rate: 1, currentTime: 10, duration: 100, live: false, seekable: [{ start: 0, end: 100 }], pip: false, pipAvailable: true, pipBlock: '', channel: 'stereo', channelAvailable: true };
   let selectedId = '';
   const client: MediaClient = {
     async read() { return { enabled: true, host: 'example.com', selectedId, media: [{ ...media }] }; },

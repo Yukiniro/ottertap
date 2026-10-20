@@ -1,5 +1,5 @@
 import { i18n } from '#i18n';
-import { maxGain } from './amplifier';
+import { isChannelMode, maxGain } from './amplifier';
 import { maxRate, minRate, normalizeRatePresets } from './rate';
 import { defaultSettings, type MediaCommand, type Settings, type SitePref } from './types';
 const matchesSite = (host: string, site: string) => host === site || host.endsWith(`.${site}`);
@@ -46,12 +46,15 @@ export function hostKey(host: string) {
 
 function sanitizeSitePref(value: unknown): SitePref {
   if (!value || typeof value !== 'object') return {};
-  const source = value as { volume?: unknown; rate?: unknown };
+  const source = value as { volume?: unknown; rate?: unknown; channel?: unknown };
   const pref: SitePref = {};
   if (typeof source.volume === 'number' && Number.isFinite(source.volume) && source.volume >= 0 && source.volume <= maxGain) pref.volume = source.volume;
   if (typeof source.rate === 'number' && Number.isFinite(source.rate) && source.rate >= minRate && source.rate <= maxRate) pref.rate = source.rate;
+  if (isChannelMode(source.channel) && source.channel !== 'stereo') pref.channel = source.channel;
   return pref;
 }
+
+const emptyPref = (pref: SitePref) => pref.volume === undefined && pref.rate === undefined && pref.channel === undefined;
 
 function normalizeSitePrefs(value: unknown): Record<string, SitePref> {
   if (!value || typeof value !== 'object') return {};
@@ -60,7 +63,7 @@ function normalizeSitePrefs(value: unknown): Record<string, SitePref> {
     let host: string;
     try { host = normalizeDomain(key); } catch { continue; }
     const pref = sanitizeSitePref(raw);
-    if (pref.volume === undefined && pref.rate === undefined) continue;
+    if (emptyPref(pref)) continue;
     prefs[host] = pref;
   }
   return prefs;
@@ -81,7 +84,7 @@ export function rememberSite(prefs: Record<string, SitePref>, host: string, pref
   let key: string;
   try { key = normalizeDomain(hostKey(host)); } catch { return prefs; }
   const stored = sanitizeSitePref(pref);
-  if (stored.volume === undefined && stored.rate === undefined) return prefs;
+  if (emptyPref(stored)) return prefs;
   return { ...prefs, [key]: stored };
 }
 
@@ -105,6 +108,14 @@ export function forgetSitePref(prefs: Record<string, SitePref>, site: string): R
 }
 
 export function withRememberedCommand(prefs: Record<string, SitePref>, host: string, command: MediaCommand): Record<string, SitePref> | null {
+  if (command.type === 'channel') {
+    const match = sitePrefFor(host, prefs);
+    if (!match || !isChannelMode(command.value) || (match.pref.channel ?? 'stereo') === command.value) return null;
+    const pref: SitePref = { ...match.pref };
+    if (command.value === 'stereo') delete pref.channel;
+    else pref.channel = command.value;
+    return { ...prefs, [match.host]: pref };
+  }
   if (command.type !== 'volume' && command.type !== 'rate') return null;
   const match = sitePrefFor(host, prefs);
   if (!match) return null;
@@ -129,6 +140,7 @@ export function createSitePrefSession() {
       const commands: MediaCommand[] = [];
       if (match.pref.volume !== undefined) commands.push({ type: 'volume', value: match.pref.volume });
       if (match.pref.rate !== undefined) commands.push({ type: 'rate', value: match.pref.rate });
+      if (match.pref.channel !== undefined) commands.push({ type: 'channel', value: match.pref.channel });
       return commands;
     }
   };

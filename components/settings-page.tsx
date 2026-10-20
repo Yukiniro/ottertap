@@ -15,6 +15,7 @@ import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 import { Brand } from './brand';
 import { cn } from '../lib/utils';
 import { defaultRatePresets, formatRate, maxRatePresets, parseRatePreset } from '../lib/rate';
+import { channelLabel } from '../lib/media';
 import { downloadSettingsBackup, parseSettingsBackup, readExtensionVersion, settingsBackupErrors, type SettingsBackupError } from '../lib/settings-backup';
 import { forgetSitePref, normalizeDomain } from '../lib/settings';
 import type { Settings, SitePref } from '../lib/types';
@@ -131,7 +132,7 @@ function BackupSection({ disabled, save }: { disabled: boolean; save: (next: Set
   </section>;
 }
 
-const prefSummary = (pref: SitePref) => [pref.volume === undefined ? '' : i18n.t('rememberedVolume', { volume: Math.round(pref.volume * 100) }), pref.rate === undefined ? '' : i18n.t('rememberedRate', { rate: pref.rate })].filter(Boolean).join(' · ');
+const prefSummary = (pref: SitePref) => [pref.volume === undefined ? '' : i18n.t('rememberedVolume', { volume: Math.round(pref.volume * 100) }), pref.rate === undefined ? '' : i18n.t('rememberedRate', { rate: pref.rate }), pref.channel === undefined ? '' : channelLabel(pref.channel)].filter(Boolean).join(' · ');
 
 function ThemeThumb({ value }: { value: 'light' | 'dark' | 'system' }) {
   const frame = 'mb-2 block h-11 w-16 overflow-hidden rounded-md border';

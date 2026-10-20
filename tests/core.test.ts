@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { Window } from 'happy-dom';
 import { defaultRatePresets } from '../lib/rate';
 import { normalizeDomain, normalizeSettings, isSiteEnabled, disableSite, enableSite } from '../lib/settings';
-import { defaultSettings } from '../lib/types';
+import { defaultSettings, type ChannelMode } from '../lib/types';
 import { applyMediaCommand, createMediaController, isMediaCommand, keptSelection, lockedMedia, mediaChoiceLabel, mediaSnapshot } from '../lib/media';
 import { commandForHotkey, hotkeyFromKeyboard, wheelVolumeDelta } from '../lib/hotkey';
 import { formatTime } from '../lib/utils';
@@ -101,7 +101,9 @@ test('可放大媒体能调到增益上限，跨域媒体仍停在 100%', async 
   let gain = 1;
   const amplifier: Amplifier = {
     gain: () => gain,
-    async set(element, value) { assert.equal(element, media); gain = value; }
+    channel: () => 'stereo',
+    async set(element, value) { assert.equal(element, media); gain = value; },
+    async setChannel() { throw new Error('should not route'); }
   };
   assert.equal(mediaSnapshot(media, '1', document, amplifier).maxVolume, maxGain);
   await applyMediaCommand(media, { type: 'volume', value: maxGain }, amplifier);
@@ -110,11 +112,33 @@ test('可放大媒体能调到增益上限，跨域媒体仍停在 100%', async 
   assert.equal(mediaSnapshot(media, '1', document, amplifier).volume, maxGain);
   const blocked = fixture();
   Object.defineProperty(blocked.media, 'currentSrc', { value: 'https://cdn.test/a.mp4', configurable: true });
-  const blockedGain: Amplifier = { gain: () => 1, async set() { throw new Error('should not connect'); } };
+  const blockedGain: Amplifier = { gain: () => 1, channel: () => 'stereo', async set() { throw new Error('should not connect'); }, async setChannel() { throw new Error('should not connect'); } };
   assert.equal(mediaSnapshot(blocked.media, '1', blocked.document, blockedGain).maxVolume, 1);
   const before = blocked.media.volume;
   await assert.rejects(applyMediaCommand(blocked.media, { type: 'volume', value: 1.2 }, blockedGain), /无法放大/);
   assert.equal(blocked.media.volume, before);
+});
+test('声道指令沿用放大的跨域判断，跨域媒体置灰且不接入 Web Audio', async () => {
+  const { media, document } = fixture();
+  Object.defineProperty(media, 'currentSrc', { value: 'https://example.com/a.mp4', configurable: true });
+  let channel: ChannelMode = 'stereo';
+  const routed: Amplifier = { gain: () => 1, channel: () => channel, async set() {}, async setChannel(element, mode) { assert.equal(element, media); channel = mode; } };
+  assert.deepEqual([mediaSnapshot(media, '1', document, routed).channel, mediaSnapshot(media, '1', document, routed).channelAvailable], ['stereo', true]);
+  await applyMediaCommand(media, { type: 'channel', value: 'mono' }, routed);
+  assert.equal(mediaSnapshot(media, '1', document, routed).channel, 'mono');
+  await applyMediaCommand(media, { type: 'channel', value: 'stereo' }, routed);
+  assert.equal(channel, 'stereo');
+  assert.equal(isMediaCommand({ type: 'channel', value: 'left' }), true);
+  for (const value of ['surround', 1, undefined, 'toString']) assert.equal(isMediaCommand({ type: 'channel', value }), false);
+
+  const blocked = fixture();
+  Object.defineProperty(blocked.media, 'currentSrc', { value: 'https://cdn.test/a.mp4', configurable: true });
+  const untouched: Amplifier = { gain: () => 1, channel: () => 'stereo', async set() { throw new Error('should not connect'); }, async setChannel() { throw new Error('should not connect'); } };
+  const snap = mediaSnapshot(blocked.media, '1', blocked.document, untouched);
+  assert.deepEqual([snap.channel, snap.channelAvailable, snap.maxVolume], ['stereo', false, 1]);
+  await assert.rejects(applyMediaCommand(blocked.media, { type: 'channel', value: 'mono' }, untouched), /无法切换声道/);
+  await assert.rejects(applyMediaCommand(media, { type: 'channel', value: 'left' }), /无法切换声道/);
+  assert.equal(mediaSnapshot(blocked.media, '1', blocked.document).channelAvailable, false);
 });
 test('媒体发现支持开放 Shadow DOM、动态移除和稳定 ID', async () => {
   const { media, document, window } = fixture();
@@ -146,7 +170,7 @@ test('播放失败向上传递；未知时长正确序列化为直播', async ()
   assert.match(mediaChoiceLabel(mediaSnapshot(media, '1', document), 0), /正片/);
 });
 test('多个媒体优先锁定在播且有声的一个，快捷键按锁定目标调节', () => {
-  const base = { host: 'example.com', kind: 'video' as const, label: '', title: '页面', maxVolume: maxGain, rate: 1, currentTime: 10, duration: 100, live: false, seekable: [{ start: 0, end: 100 }], pip: false, pipAvailable: true, pipBlock: '' as const };
+  const base = { host: 'example.com', kind: 'video' as const, label: '', title: '页面', maxVolume: maxGain, rate: 1, currentTime: 10, duration: 100, live: false, seekable: [{ start: 0, end: 100 }], pip: false, pipAvailable: true, pipBlock: '' as const, channel: 'stereo' as const, channelAvailable: true };
   const muted = { ...base, id: '1', paused: false, muted: true, volume: .8 };
   const audible = { ...base, id: '2', paused: false, muted: false, volume: .4 };
   const paused = { ...base, id: '3', paused: true, muted: false, volume: .4 };
