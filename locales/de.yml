@@ -20,7 +20,7 @@ channelLeft: "Nur linker Kanal"
 channelMode: "Kanäle"
 channelModeLabel: "Kanäle: {mode}"
 channelMono: "Mono"
-channelNeedsGesture: Klicken Sie einmal auf die Seite, dann werden die Kanäle umgestellt.
+channelNeedsGesture: "Klicken Sie einmal auf die Seite, dann werden die Kanäle umgestellt."
 channelRight: "Nur rechter Kanal"
 channelStereo: "Stereo"
 channelTakenOver: "Diese Seite steuert das Medium bereits, daher lassen sich die Kanäle nicht ändern."

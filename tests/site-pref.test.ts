@@ -95,6 +95,13 @@ test('声道模式是 sitePrefs 的可选字段：旧数据原样保留，立体
   assert.equal(withRememberedCommand(saved, 'other.com', { type: 'channel', value: 'mono' }), null);
   assert.equal(withRememberedCommand(saved, 'www.bilibili.com', { type: 'channel', value: 'surround' } as never), null);
 
+  const channelOnly = { 'bilibili.com': { volume: .4, rate: 1.5 }, 'www.bilibili.com': { channel: 'mono' } };
+  const cleared = withRememberedCommand(channelOnly, 'player.www.bilibili.com', { type: 'channel', value: 'stereo' });
+  assert.ok(cleared);
+  assert.equal('www.bilibili.com' in cleared, false);
+  assert.deepEqual(cleared, { 'bilibili.com': { volume: .4, rate: 1.5 } });
+  assert.deepEqual(sitePrefFor('player.www.bilibili.com', cleared), { host: 'bilibili.com', pref: { volume: .4, rate: 1.5 } });
+
   const session = createSitePrefSession();
   assert.deepEqual(session.plan('www.bilibili.com', '0:1', { 'bilibili.com': { volume: .4, channel: 'left' } }), [{ type: 'volume', value: .4 }, { type: 'channel', value: 'left' }]);
   assert.deepEqual(createSitePrefSession().plan('www.bilibili.com', '0:1', saved), [{ type: 'volume', value: .4 }, { type: 'rate', value: 1.5 }], '没有声道字段时不发声道指令');

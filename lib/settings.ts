@@ -114,6 +114,7 @@ export function withRememberedCommand(prefs: Record<string, SitePref>, host: str
     const pref: SitePref = { ...match.pref };
     if (command.value === 'stereo') delete pref.channel;
     else pref.channel = command.value;
+    if (emptyPref(pref)) return forgetSitePref(prefs, match.host);
     return { ...prefs, [match.host]: pref };
   }
   if (command.type !== 'volume' && command.type !== 'rate') return null;
