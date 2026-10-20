@@ -20,7 +20,7 @@ channelLeft: "Left channel only"
 channelMode: "Channels"
 channelModeLabel: "Channels: {mode}"
 channelMono: "Mono"
-channelNeedsGesture: "Click the page once, then change the channels."
+channelNeedsGesture: Click the page once and the channels will switch.
 channelRight: "Right channel only"
 channelStereo: "Stereo"
 channelTakenOver: "This page already controls this media, so its channels cannot be changed."

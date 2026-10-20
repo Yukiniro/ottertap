@@ -20,7 +20,7 @@ channelLeft: "Canal gauche seul"
 channelMode: "Canaux"
 channelModeLabel: "Canaux : {mode}"
 channelMono: "Mono"
-channelNeedsGesture: "Cliquez une fois sur la page, puis changez les canaux."
+channelNeedsGesture: Cliquez une fois sur la page et les canaux changeront.
 channelRight: "Canal droit seul"
 channelStereo: "Stéréo"
 channelTakenOver: "Cette page contrôle déjà ce média : ses canaux ne peuvent pas être modifiés."

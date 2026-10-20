@@ -36,6 +36,8 @@ const limiterAttack = 0.003;
 const limiterRelease = 0.1;
 const passthroughRatio = 1;
 const glideSeconds = 0.02;
+// Events that grant user activation, so an AudioContext may start inside their listeners.
+const gestureEvents = ['pointerdown', 'pointerup', 'keydown'] as const;
 
 function place(param: AudioParam, value: number, time: number) {
   param.setValueAtTime(value, time);
@@ -113,10 +115,32 @@ export function createAmplifier(view: typeof globalThis) {
     tune(graph, mix, graph.gain.context.currentTime, true);
     mixes.set(element, mix);
   };
+  // A remembered mode is restored when the page loads, usually before the autoplay policy lets
+  // the context start. The mode is kept and applied on the next gesture on the page.
+  const deferred = new Map<HTMLMediaElement, ChannelMode>();
+  const listen = (on: boolean) => { for (const type of gestureEvents) (on ? view.addEventListener : view.removeEventListener).call(view, type, retry, true); };
+  const retry = () => {
+    listen(false);
+    const waiting = [...deferred];
+    deferred.clear();
+    for (const [element, mode] of waiting) if (element.isConnected) void setChannel(element, mode).catch(() => {});
+  };
+  const setChannel = async (element: HTMLMediaElement, mode: ChannelMode) => {
+    deferred.delete(element);
+    try { await update(element, { channel: mode }); }
+    catch (error) {
+      if (context?.state !== 'running') {
+        if (!deferred.size) listen(true);
+        deferred.set(element, mode);
+      }
+      throw error;
+    }
+  };
   return {
     gain: (element: HTMLMediaElement) => mixes.get(element)?.gain ?? 1,
     channel: (element: HTMLMediaElement) => mixes.get(element)?.channel ?? 'stereo',
     set: (element: HTMLMediaElement, value: number) => update(element, { gain: value }),
-    setChannel: (element: HTMLMediaElement, mode: ChannelMode) => update(element, { channel: mode })
+    setChannel,
+    dispose() { listen(false); deferred.clear(); }
   };
 }

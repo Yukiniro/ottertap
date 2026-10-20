@@ -20,7 +20,7 @@ channelLeft: "只聽左聲道"
 channelMode: "聲道"
 channelModeLabel: "聲道：{mode}"
 channelMono: "單聲道"
-channelNeedsGesture: "請先點一下網頁，再切換聲道。"
+channelNeedsGesture: 請點一下網頁，聲道會隨即切換。
 channelRight: "只聽右聲道"
 channelStereo: "立體聲"
 channelTakenOver: "此媒體已被網頁接管，無法切換聲道。"

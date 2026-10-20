@@ -20,7 +20,7 @@ channelLeft: "왼쪽 채널만"
 channelMode: "채널"
 channelModeLabel: "채널: {mode}"
 channelMono: "모노"
-channelNeedsGesture: "페이지를 한 번 클릭한 다음 채널을 바꾸세요."
+channelNeedsGesture: 페이지를 한 번 클릭하면 채널이 바뀝니다.
 channelRight: "오른쪽 채널만"
 channelStereo: "스테레오"
 channelTakenOver: "이 페이지가 미디어를 제어하고 있어 채널을 바꿀 수 없습니다."

@@ -297,6 +297,7 @@ export function createMediaController(document: Document, onChange?: () => void,
       for (const observer of observers.values()) observer.disconnect();
       observers.clear();
       for (const element of [...slots.keys()]) release(element);
+      amplifier.dispose();
     }
   };
 }

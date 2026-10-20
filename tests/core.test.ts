@@ -103,7 +103,8 @@ test('可放大媒体能调到增益上限，跨域媒体仍停在 100%', async 
     gain: () => gain,
     channel: () => 'stereo',
     async set(element, value) { assert.equal(element, media); gain = value; },
-    async setChannel() { throw new Error('should not route'); }
+    async setChannel() { throw new Error('should not route'); },
+    dispose() {}
   };
   assert.equal(mediaSnapshot(media, '1', document, amplifier).maxVolume, maxGain);
   await applyMediaCommand(media, { type: 'volume', value: maxGain }, amplifier);
@@ -112,7 +113,7 @@ test('可放大媒体能调到增益上限，跨域媒体仍停在 100%', async 
   assert.equal(mediaSnapshot(media, '1', document, amplifier).volume, maxGain);
   const blocked = fixture();
   Object.defineProperty(blocked.media, 'currentSrc', { value: 'https://cdn.test/a.mp4', configurable: true });
-  const blockedGain: Amplifier = { gain: () => 1, channel: () => 'stereo', async set() { throw new Error('should not connect'); }, async setChannel() { throw new Error('should not connect'); } };
+  const blockedGain: Amplifier = { gain: () => 1, channel: () => 'stereo', async set() { throw new Error('should not connect'); }, async setChannel() { throw new Error('should not connect'); }, dispose() {} };
   assert.equal(mediaSnapshot(blocked.media, '1', blocked.document, blockedGain).maxVolume, 1);
   const before = blocked.media.volume;
   await assert.rejects(applyMediaCommand(blocked.media, { type: 'volume', value: 1.2 }, blockedGain), /无法放大/);
@@ -122,7 +123,7 @@ test('声道指令沿用放大的跨域判断，跨域媒体置灰且不接入 W
   const { media, document } = fixture();
   Object.defineProperty(media, 'currentSrc', { value: 'https://example.com/a.mp4', configurable: true });
   let channel: ChannelMode = 'stereo';
-  const routed: Amplifier = { gain: () => 1, channel: () => channel, async set() {}, async setChannel(element, mode) { assert.equal(element, media); channel = mode; } };
+  const routed: Amplifier = { gain: () => 1, channel: () => channel, async set() {}, async setChannel(element, mode) { assert.equal(element, media); channel = mode; }, dispose() {} };
   assert.deepEqual([mediaSnapshot(media, '1', document, routed).channel, mediaSnapshot(media, '1', document, routed).channelAvailable], ['stereo', true]);
   await applyMediaCommand(media, { type: 'channel', value: 'mono' }, routed);
   assert.equal(mediaSnapshot(media, '1', document, routed).channel, 'mono');
@@ -133,7 +134,7 @@ test('声道指令沿用放大的跨域判断，跨域媒体置灰且不接入 W
 
   const blocked = fixture();
   Object.defineProperty(blocked.media, 'currentSrc', { value: 'https://cdn.test/a.mp4', configurable: true });
-  const untouched: Amplifier = { gain: () => 1, channel: () => 'stereo', async set() { throw new Error('should not connect'); }, async setChannel() { throw new Error('should not connect'); } };
+  const untouched: Amplifier = { gain: () => 1, channel: () => 'stereo', async set() { throw new Error('should not connect'); }, async setChannel() { throw new Error('should not connect'); }, dispose() {} };
   const snap = mediaSnapshot(blocked.media, '1', blocked.document, untouched);
   assert.deepEqual([snap.channel, snap.channelAvailable, snap.maxVolume], ['stereo', false, 1]);
   await assert.rejects(applyMediaCommand(blocked.media, { type: 'channel', value: 'mono' }, untouched), /无法切换声道/);

@@ -86,12 +86,13 @@ class FakeContext {
   readonly splitters: FakeNode[] = [];
   readonly mergers: FakeNode[] = [];
   resumes = 0;
-  constructor(readonly log: LogEvent[], state: AudioContextState, private readonly failSource: boolean) {
+  constructor(readonly log: LogEvent[], state: AudioContextState, private readonly failSource: boolean, private readonly gesture: () => boolean) {
     this.state = state;
     this.destination = new FakeNode('destination', log);
   }
   resume() {
     this.resumes += 1;
+    if (this.gesture()) this.state = 'running';
     return Promise.resolve();
   }
   createMediaElementSource() {
@@ -129,17 +130,29 @@ function installAudio(options: { state?: AudioContextState; failSource?: boolean
   const contexts: FakeContext[] = [];
   const state = options.state ?? 'running';
   const failSource = options.failSource ?? false;
+  const page = new EventTarget();
+  let activated = false;
   const view = {
     AudioContext: class extends FakeContext {
       constructor() {
-        super(log, state, failSource);
+        super(log, state, failSource, () => activated);
         contexts.push(this);
       }
     },
     setTimeout: globalThis.setTimeout,
+    addEventListener: page.addEventListener.bind(page),
+    removeEventListener: page.removeEventListener.bind(page),
   } as unknown as typeof globalThis;
-  return { view, contexts, log };
+  /** Dispatches a page event; the AudioContext may start only inside gesture listeners. */
+  const dispatch = (type: string) => {
+    activated = true;
+    page.dispatchEvent(new Event(type));
+    activated = false;
+  };
+  return { view, contexts, log, dispatch };
 }
+
+const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 
 function only(node: FakeNode) {
   assert.equal(node.links.length, 1, `${node.name} 应只有一条输出`);
@@ -181,7 +194,7 @@ const expectedWeights: Record<ChannelMode, number[][]> = {
 };
 
 function element() {
-  return {} as HTMLMediaElement;
+  return { isConnected: true } as HTMLMediaElement;
 }
 
 test('超过 100% 时按 source → gain → 声道矩阵 → 限幅器 → destination 连接，增益不超过 1 时不建图', async () => {
@@ -299,7 +312,7 @@ test('没有用户手势或媒体已被接管时不保留增益和声道', async
   const waiting = createAmplifier(blocked.view);
   const media = element();
   await assert.rejects(() => waiting.set(media, 2), /点击一次网页，再把音量/);
-  await assert.rejects(() => waiting.setChannel(media, 'mono'), /点击一次网页，再切换声道/);
+  await assert.rejects(() => waiting.setChannel(media, 'mono'), /点击一次网页，声道会随即切换/);
   assert.equal(waiting.gain(media), 1);
   assert.equal(waiting.channel(media), 'stereo');
   assert.equal(blocked.contexts.length, 1);
@@ -315,6 +328,50 @@ test('没有用户手势或媒体已被接管时不保留增益和声道', async
   assert.equal(denied.channel(media), 'stereo');
   assert.equal(taken.contexts[0]?.gains.length, 0);
   assert.equal(taken.log.some(event => event.type === 'connect'), false);
+});
+
+test('缺少手势时声道模式留到页面上的下一次手势再接入，增益不延后', async () => {
+  const page = installAudio({ state: 'suspended' });
+  const amplifier = createAmplifier(page.view);
+  const restored = element();
+  const cancelled = element();
+  const removed = element();
+  const boosted = element();
+  await assert.rejects(() => amplifier.setChannel(restored, 'left'));
+  await assert.rejects(() => amplifier.setChannel(cancelled, 'mono'));
+  await assert.rejects(() => amplifier.setChannel(removed, 'right'));
+  await assert.rejects(() => amplifier.set(boosted, 2));
+  await amplifier.setChannel(cancelled, 'stereo');
+  Object.assign(removed, { isConnected: false });
+  const context = page.contexts[0]!;
+  const resumes = context.resumes;
+
+  page.dispatch('click');
+  await settle();
+  assert.equal(context.resumes, resumes, '只有能授予用户激活的事件才重试');
+  assert.equal(amplifier.channel(restored), 'stereo');
+
+  page.dispatch('pointerdown');
+  await settle();
+  assert.equal(context.resumes, resumes + 1, '只为仍在页面上的待定媒体重试一次');
+  assert.equal(context.sources.length, 1);
+  assert.deepEqual(weightsOf(graph(context.sources[0]!).weights), expectedWeights.left);
+  assert.deepEqual([amplifier.channel(restored), amplifier.channel(cancelled), amplifier.channel(removed)], ['left', 'stereo', 'stereo']);
+  assert.equal(amplifier.gain(boosted), 1);
+
+  page.dispatch('keydown');
+  await settle();
+  assert.equal(context.resumes, resumes + 1, '生效后移除手势监听');
+
+  const later = installAudio({ state: 'suspended' });
+  const disposed = createAmplifier(later.view);
+  const media = element();
+  await assert.rejects(() => disposed.setChannel(media, 'mono'));
+  disposed.dispose();
+  later.dispatch('pointerdown');
+  await settle();
+  assert.equal(later.contexts[0]!.sources.length, 0, '销毁后不再接入');
+  assert.equal(disposed.channel(media), 'stereo');
 });
 
 test('默认立体声：只调音量不超过 100% 或选立体声都不接入 Web Audio', async () => {
