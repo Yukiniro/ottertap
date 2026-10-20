@@ -2,7 +2,7 @@ import { i18n } from '#i18n';
 import { atom, createStore, type Atom, type WritableAtom } from 'jotai';
 import { selectAtom } from 'jotai/utils';
 import { normalizeSettings } from './settings';
-import { defaultSettings, type FloatingPosition, type Settings, type SettingsStore, type SiteMode, type SitePref, type Theme } from './types';
+import { defaultSettings, type FloatingPosition, type Settings, type SettingsStore, type SiteMode, type SitePref, type SkipSeconds, type Theme } from './types';
 
 const readError = () => i18n.t('settingsReadError');
 const writeError = () => i18n.t('settingsWriteError');
@@ -14,7 +14,7 @@ const sameSitePrefs = (a: Record<string, SitePref>, b: Record<string, SitePref>)
   const keys = Object.keys(a);
   return keys.length === Object.keys(b).length && keys.every(key => !!b[key] && sameSitePref(a[key]!, b[key]!));
 };
-const sameSettings = (a: Settings, b: Settings) => a.theme === b.theme && a.floating === b.floating && a.lockRate === b.lockRate && a.hoverWheel === b.hoverWheel && a.singleKey === b.singleKey && a.siteMode === b.siteMode && samePosition(a.floatingPosition, b.floatingPosition) && sameSites(a.sites, b.sites) && sameSitePrefs(a.sitePrefs, b.sitePrefs) && samePresets(a.ratePresets, b.ratePresets);
+const sameSettings = (a: Settings, b: Settings) => a.theme === b.theme && a.floating === b.floating && a.lockRate === b.lockRate && a.hoverWheel === b.hoverWheel && a.singleKey === b.singleKey && a.skipSeconds === b.skipSeconds && a.siteMode === b.siteMode && samePosition(a.floatingPosition, b.floatingPosition) && sameSites(a.sites, b.sites) && sameSitePrefs(a.sitePrefs, b.sitePrefs) && samePresets(a.ratePresets, b.ratePresets);
 
 function mergeSettings(current: Settings, update: Partial<Settings>): Settings {
   const next = normalizeSettings({ ...current, ...update });
@@ -35,6 +35,7 @@ export interface SettingsAtoms {
   lockRateAtom: Atom<boolean>;
   hoverWheelAtom: Atom<boolean>;
   singleKeyAtom: Atom<boolean>;
+  skipSecondsAtom: Atom<SkipSeconds>;
   floatingPositionAtom: Atom<FloatingPosition>;
   siteModeAtom: Atom<SiteMode>;
   sitesAtom: Atom<string[]>;
@@ -58,6 +59,7 @@ export function createSettingsAtoms(source: SettingsStore, options?: { initialLo
   const lockRateAtom = selectAtom(settingsAtom, settings => settings.lockRate);
   const hoverWheelAtom = selectAtom(settingsAtom, settings => settings.hoverWheel);
   const singleKeyAtom = selectAtom(settingsAtom, settings => settings.singleKey);
+  const skipSecondsAtom = selectAtom(settingsAtom, settings => settings.skipSeconds);
   const floatingPositionAtom = selectAtom(settingsAtom, settings => settings.floatingPosition);
   const siteModeAtom = selectAtom(settingsAtom, settings => settings.siteMode);
   const sitesAtom = selectAtom(settingsAtom, settings => settings.sites);
@@ -151,7 +153,7 @@ export function createSettingsAtoms(source: SettingsStore, options?: { initialLo
   }
 
   return {
-    store, settingsAtom, themeAtom, floatingAtom, lockRateAtom, hoverWheelAtom, singleKeyAtom, floatingPositionAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom, mount, ready,
+    store, settingsAtom, themeAtom, floatingAtom, lockRateAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, floatingPositionAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom, mount, ready,
     settled: () => idle
   };
 }

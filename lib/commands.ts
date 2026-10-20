@@ -3,8 +3,8 @@ import type { HotkeyAction } from './hotkey';
 // Chrome accepts at most four suggested shortcuts. These stay off Alt so they do not also run the on-page hotkeys.
 export const extensionCommands = [
   { name: 'play-pause', message: 'cmdPlayPause', suggestedKey: { default: 'Ctrl+Shift+Space', mac: 'Command+Shift+Space' }, action: { type: 'toggle' } },
-  { name: 'skip-back', message: 'cmdSkipBack', suggestedKey: { default: 'Ctrl+Shift+Comma', mac: 'Command+Shift+Comma' }, action: { type: 'skip', delta: -10 } },
-  { name: 'skip-forward', message: 'cmdSkipForward', suggestedKey: { default: 'Ctrl+Shift+Period', mac: 'Command+Shift+Period' }, action: { type: 'skip', delta: 10 } },
+  { name: 'skip-back', message: 'cmdSkipBack', suggestedKey: { default: 'Ctrl+Shift+Comma', mac: 'Command+Shift+Comma' }, action: { type: 'skip', delta: -1 } },
+  { name: 'skip-forward', message: 'cmdSkipForward', suggestedKey: { default: 'Ctrl+Shift+Period', mac: 'Command+Shift+Period' }, action: { type: 'skip', delta: 1 } },
   { name: 'mute', message: 'cmdMute', suggestedKey: { default: 'Ctrl+Shift+M', mac: 'Command+Shift+M' }, action: { type: 'mute' } },
   { name: 'volume-up', message: 'cmdVolumeUp', action: { type: 'volume', delta: 10 } },
   { name: 'volume-down', message: 'cmdVolumeDown', action: { type: 'volume', delta: -10 } },

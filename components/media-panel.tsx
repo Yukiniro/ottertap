@@ -77,12 +77,13 @@ function OtherPlaying({ client }: { client?: SoundingTabsClient }) {
 }
 export function MediaPanel({ client, openSettings, sounding, initial }: { client: MediaClient; openSettings: () => void; sounding?: SoundingTabsClient; initial?: PageState }) {
   const { page, selected, select, command, refresh, loading, error } = useMedia(client, { initial });
-  const { floatingAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { floatingAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, skipSecondsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const floating = useAtomValue(floatingAtom);
   const siteMode = useAtomValue(siteModeAtom);
   const sites = useAtomValue(sitesAtom);
   const sitePrefs = useAtomValue(sitePrefsAtom);
   const ratePresets = useAtomValue(ratePresetsAtom);
+  const skipSeconds = useAtomValue(skipSecondsAtom);
   const settingsLoading = useAtomValue(loadingAtom);
   const settingsError = useAtomValue(errorAtom);
   const write = useSetAtom(writeSettingsAtom);
@@ -137,9 +138,9 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
           <p className="mt-0.5 text-sm text-muted-foreground">{selected.kind === 'video' ? i18n.t('video') : i18n.t('audio')} · {selected.paused ? i18n.t('paused') : i18n.t('playing')}</p>
         </div>
         <div className="mt-4 flex items-center justify-center gap-7">
-          <Button variant="ghost" className="relative size-[50px] rounded-full bg-muted hover:bg-muted/80 [&_svg:not([class*='size-'])]:size-[26px]" aria-label={i18n.t('skipBack')} disabled={!canSeek} onClick={() => void command({ type: 'skip', value: -10 })}><RotateCcw className="-translate-y-0.5" /><span className="absolute top-6 bg-muted px-0.5 text-[10px] leading-none font-semibold">10</span></Button>
+          <Button variant="ghost" className="relative size-[50px] rounded-full bg-muted hover:bg-muted/80 [&_svg:not([class*='size-'])]:size-[26px]" aria-label={i18n.t('skipBack', { seconds: skipSeconds })} disabled={!canSeek} onClick={() => void command({ type: 'skip', value: -skipSeconds })}><RotateCcw className="-translate-y-0.5" /><span className="absolute top-6 bg-muted px-0.5 text-[10px] leading-none font-semibold">{skipSeconds}</span></Button>
           <Button className="size-[66px] rounded-full transition-transform hover:bg-primary/90 active:scale-95 [&_svg:not([class*='size-'])]:size-7" aria-label={selected.paused ? i18n.t('play') : i18n.t('pause')} onClick={() => void command({ type: selected.paused ? 'play' : 'pause' })}>{selected.paused ? <Play fill="currentColor" strokeWidth={0} className="ml-0.5" /> : <Pause fill="currentColor" strokeWidth={0} />}</Button>
-          <Button variant="ghost" className="relative size-[50px] rounded-full bg-muted hover:bg-muted/80 [&_svg:not([class*='size-'])]:size-[26px]" aria-label={i18n.t('skipForward')} disabled={!canSeek} onClick={() => void command({ type: 'skip', value: 10 })}><RotateCw className="-translate-y-0.5" /><span className="absolute top-6 bg-muted px-0.5 text-[10px] leading-none font-semibold">10</span></Button>
+          <Button variant="ghost" className="relative size-[50px] rounded-full bg-muted hover:bg-muted/80 [&_svg:not([class*='size-'])]:size-[26px]" aria-label={i18n.t('skipForward', { seconds: skipSeconds })} disabled={!canSeek} onClick={() => void command({ type: 'skip', value: skipSeconds })}><RotateCw className="-translate-y-0.5" /><span className="absolute top-6 bg-muted px-0.5 text-[10px] leading-none font-semibold">{skipSeconds}</span></Button>
         </div>
         <Slider aria-label={i18n.t('seek')} className="mt-3 py-2" min={seekMin} max={Math.max(seekMin + 1, seekMax)} step={1} value={[seekDraft ?? selected.currentTime]} disabled={!canSeek} onValueChange={value => setSeekDraft(first(value) ?? null)} onValueCommitted={value => { void command({ type: 'seek', value: first(value) ?? seekMin }).finally(() => setSeekDraft(null)); }} />
         <div className="mt-0.5 flex justify-between text-sm text-muted-foreground tabular-nums"><span>{formatTime(seekDraft ?? selected.currentTime)}</span><span>{selected.duration === null ? selected.live ? i18n.t('live') : '--:--' : formatTime(selected.duration)}</span></div>

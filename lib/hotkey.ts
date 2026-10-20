@@ -1,5 +1,7 @@
+import { i18n } from '#i18n';
 import { lockedMedia } from './media';
 import { nextRate } from './rate';
+import { isSkipSeconds, normalizeSkipSeconds } from './settings';
 import { steppedVolume } from './volume';
 import type { MediaCommand, MediaState, PageState } from './types';
 
@@ -18,7 +20,7 @@ export const actionHintEvent = 'ottertap-action-hint';
 
 interface KeyInput { key: string; code?: string; altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }
 /** `onMedia`: the pointer is over a media element or one has focus. Single-key ↑/↓ need it so page scrolling keeps the arrows. */
-export interface KeyContext { singleKey?: boolean; onMedia?: boolean }
+export interface KeyContext { singleKey?: boolean; onMedia?: boolean; skipSeconds?: number }
 
 const typedKeys = new Set([',', '.', '0', '<', '>', ')', 'm', 'k', 'j', 'l']);
 const physicalKeys: Record<string, string> = { Comma: ',', Period: '.', Digit0: '0', KeyM: 'm', KeyK: 'k', KeyJ: 'j', KeyL: 'l' };
@@ -32,7 +34,8 @@ function keyName(event: KeyInput) {
 
 const rate = (direction: 1 | -1 | 0): HotkeyAction => ({ type: 'rate', direction });
 
-export function hotkeyFromKeyboard(event: KeyInput, { singleKey = false, onMedia = false }: KeyContext = {}): HotkeyAction | null {
+export function hotkeyFromKeyboard(event: KeyInput, { singleKey = false, onMedia = false, skipSeconds = 10 }: KeyContext = {}): HotkeyAction | null {
+  const step = normalizeSkipSeconds(skipSeconds);
   if (event.ctrlKey || event.metaKey) return null;
   const name = keyName(event);
   if (event.altKey) {
@@ -51,8 +54,8 @@ export function hotkeyFromKeyboard(event: KeyInput, { singleKey = false, onMedia
   if (name === '<') return rate(-1);
   if (name === 'k') return { type: 'toggle' };
   if (name === 'm') return { type: 'mute' };
-  if (name === 'j' || name === 'ArrowLeft') return { type: 'skip', delta: -10 };
-  if (name === 'l' || name === 'ArrowRight') return { type: 'skip', delta: 10 };
+  if (name === 'j' || name === 'ArrowLeft') return { type: 'skip', delta: -step };
+  if (name === 'l' || name === 'ArrowRight') return { type: 'skip', delta: step };
   if (!onMedia) return null;
   if (name === 'ArrowUp') return { type: 'volume', delta: 10 };
   if (name === 'ArrowDown') return { type: 'volume', delta: -10 };
@@ -85,11 +88,18 @@ export function isHotkeyAction(value: unknown): value is HotkeyAction {
   if (action.type === 'volume') return Number.isFinite(action.delta) && Math.abs(action.delta) <= 150;
   if (action.type === 'rate') return action.direction === 1 || action.direction === -1 || action.direction === 0;
   if (action.type === 'toggle' || action.type === 'mute') return true;
-  return action.type === 'skip' && (action.delta === 10 || action.delta === -10);
+  return action.type === 'skip' && isSkipSeconds(Math.abs(action.delta));
 }
 
 export function shownPercent(media: MediaState) {
   return media.muted || media.volume <= 0 ? 0 : media.volume * 100;
+}
+
+/** Command deltas only point backward or forward. The stored step supplies the seconds. */
+export function applySkipStep(action: HotkeyAction, seconds: number): HotkeyAction {
+  if (action.type !== 'skip') return action;
+  const direction = action.delta < 0 ? -1 : 1;
+  return { type: 'skip', delta: direction * normalizeSkipSeconds(seconds) };
 }
 
 export function commandForHotkey(action: HotkeyAction, media: MediaState): MediaCommand | null {
@@ -99,10 +109,16 @@ export function commandForHotkey(action: HotkeyAction, media: MediaState): Media
   }
   if (action.type === 'toggle') return { type: media.paused ? 'play' : 'pause' };
   if (action.type === 'mute') return { type: 'mute' };
-  if (action.type === 'skip') return action.delta === 10 || action.delta === -10 ? { type: 'skip', value: action.delta } : null;
+  if (action.type === 'skip') return isSkipSeconds(Math.abs(action.delta)) ? { type: 'skip', value: action.delta } : null;
   if (!action.delta) return null;
   const max = media.maxVolume * 100;
   return { type: 'volume', value: steppedVolume(shownPercent(media), action.delta, max) / 100 };
+}
+
+export function actionHintText(key: string, seconds?: number) {
+  if (key === 'skipBack' || key === 'skipForward') return i18n.t(key, { seconds: normalizeSkipSeconds(seconds) });
+  if (key === 'play' || key === 'paused' || key === 'mute' || key === 'unmute') return i18n.t(key);
+  return '';
 }
 
 export function actionHintKey(action: HotkeyAction, media: MediaState): ActionHintKey | '' {
@@ -153,7 +169,7 @@ export function createHotkeyInput(send: (action: HotkeyAction, target?: string) 
     if (!frame) frame = window.requestAnimationFrame(flush);
   };
   return {
-    key(event: KeyInput & { type?: string; repeat?: boolean; preventDefault(): void; stopPropagation(): void; stopImmediatePropagation?(): void }, { singleKey = false, target }: { singleKey?: boolean; target?: string } = {}) {
+    key(event: KeyInput & { type?: string; repeat?: boolean; preventDefault(): void; stopPropagation(): void; stopImmediatePropagation?(): void }, { singleKey = false, skipSeconds = 10, target }: { singleKey?: boolean; skipSeconds?: number; target?: string } = {}) {
       if (event.key === 'Alt') {
         // Windows Chrome focuses its menu on an Alt release the page leaves unhandled, even after the page used Alt+wheel or Alt+key.
         if (event.type !== 'keyup') {
@@ -165,7 +181,7 @@ export function createHotkeyInput(send: (action: HotkeyAction, target?: string) 
         if (swallow) event.preventDefault();
         return swallow;
       }
-      const action = hotkeyFromKeyboard(event, { singleKey, onMedia: target !== undefined });
+      const action = hotkeyFromKeyboard(event, { singleKey, onMedia: target !== undefined, skipSeconds });
       if (!action) return false;
       // Capture-phase stop keeps the site's own shortcut on the same key from also running.
       event.preventDefault();

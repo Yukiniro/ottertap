@@ -2,11 +2,11 @@ import { i18n } from '#i18n';
 import { createRoot } from 'react-dom/client';
 import { browser } from 'wxt/browser';
 import { createShadowRootUi } from 'wxt/utils/content-script-ui/shadow-root';
-import { actionHintEvent, createHotkeyInput, isFloatingEvent, isTypingEvent, rateHintEvent, volumeGestureEvent } from '../lib/hotkey';
+import { actionHintEvent, actionHintText, createHotkeyInput, isFloatingEvent, isTypingEvent, rateHintEvent, volumeGestureEvent } from '../lib/hotkey';
 import { createMediaController, isMediaCommand, mediaPresenceEvent } from '../lib/media';
 import { rateLockEvent } from '../lib/rate-lock';
 import { maxEffectiveVolume, shouldReportVolume, volumeReportIntervalMs } from '../lib/volume-badge';
-import { isSiteEnabled } from '../lib/settings';
+import { isSiteEnabled, normalizeSkipSeconds } from '../lib/settings';
 import { extensionStore } from '../lib/extension-store';
 import { createExtensionClient } from '../lib/extension-client';
 import { defaultSettings, type Settings } from '../lib/types';
@@ -27,7 +27,7 @@ export default defineContentScript({
     let reported: number | null = null;
     let pageUrl = '';
     let watched: Settings | undefined;
-    let contextKeys = { singleKey: defaultSettings.singleKey, hoverWheel: defaultSettings.hoverWheel };
+    let contextKeys = { singleKey: defaultSettings.singleKey, hoverWheel: defaultSettings.hoverWheel, skipSeconds: defaultSettings.skipSeconds };
     let presenceEpoch = 0;
     let heartbeat = 0;
     const announce = () => {
@@ -83,8 +83,7 @@ export default defineContentScript({
       if (!['snapshot', 'command', 'highlight', 'reveal', 'rateHint', 'actionHint', 'rateLockHint'].includes(message.type)) return;
       void (async () => {
       if (message.type === 'actionHint') {
-        const key = message.key;
-        const label = key === 'play' || key === 'paused' || key === 'skipBack' || key === 'skipForward' || key === 'mute' || key === 'unmute' ? i18n.t(key) : '';
+        const label = actionHintText(typeof message.key === 'string' ? message.key : '', message.seconds);
         if (label) window.dispatchEvent(new window.CustomEvent(actionHintEvent, { detail: label }));
         return { ok: true };
       }
@@ -134,8 +133,8 @@ export default defineContentScript({
       if (!shortcutActive() || isTypingEvent(event)) return;
       // Arrows inside the floater belong to its slider and to docking the otter.
       if (isFloatingEvent(event) && event.key.startsWith('Arrow')) return;
-      const { singleKey } = watched ?? contextKeys;
-      hotkeys.key(event, { singleKey, target: singleKey ? controller.pointed(pointer, true) : undefined });
+      const source = watched ?? contextKeys;
+      hotkeys.key(event, { singleKey: source.singleKey, skipSeconds: source.skipSeconds, target: source.singleKey ? controller.pointed(pointer, true) : undefined });
     };
     const onWheel = (event: WheelEvent) => {
       if (!shortcutActive()) return;
@@ -170,7 +169,7 @@ export default defineContentScript({
       enabled = result?.enabled === true;
       pageUrl = typeof result?.url === 'string' ? result.url : '';
       contextLock = result?.lockRate === true;
-      contextKeys = { singleKey: result?.singleKey === true, hoverWheel: result?.hoverWheel !== false };
+      contextKeys = { singleKey: result?.singleKey === true, hoverWheel: result?.hoverWheel !== false, skipSeconds: normalizeSkipSeconds(result?.skipSeconds) };
       // A push that arrives while this request is in flight is newer than the response.
       if (window.top === window && presenceEpoch === epoch) tabHasMedia = result?.hasMedia === true;
     } catch { enabled = false; pageUrl = ''; }

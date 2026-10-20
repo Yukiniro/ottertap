@@ -76,7 +76,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
 | --- | --- |
 | 弹出面板 | `region` `Media controls` |
 | 播放 / 暂停 | `button` `Play` 或 `Pause`（精确匹配） |
-| 后退 / 前进 10 秒 | `Back 10 seconds` / `Forward 10 seconds` |
+| 后退 / 前进 | 默认 `Back 10 seconds` / `Forward 10 seconds`。数字来自设置里的步长，默认 10 秒 |
 | 进度 | `slider` `Seek` |
 | 音量 | `slider` `Volume`，静音按钮 `Mute` / `Unmute` |
 | 声道 | `button` 名以 `Channels: ` 开头；菜单项是 `menuitemradio`：`Stereo`、`Mono`、`Left channel only`、`Right channel only` |

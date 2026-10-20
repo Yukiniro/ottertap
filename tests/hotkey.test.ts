@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { Window } from 'happy-dom';
 import { actionForCommand, commandBindings, extensionCommands, formatCommandShortcut, manifestCommands, shortcutsSettingsUrl } from '../lib/commands';
 import { createDemo } from '../lib/demo';
-import { actionHintKey, commandForHotkey, planHotkey } from '../lib/hotkey';
+import { actionHintKey, applySkipStep, commandForHotkey, planHotkey } from '../lib/hotkey';
 import { defaultSettings, type MediaState } from '../lib/types';
 
 for (const { name, deltaX, deltaY, deltaMode, modifiers, expected } of [
@@ -51,8 +51,10 @@ test('扩展命令映射到同一套媒体指令，建议键避开页内的 Alt'
   assert.deepEqual(commandForHotkey(actionForCommand('play-pause')!, media), { type: 'pause' });
   assert.deepEqual(actionHintKey(actionForCommand('play-pause')!, { ...media, paused: true }), 'play');
   assert.deepEqual(actionHintKey(actionForCommand('play-pause')!, media), 'paused');
-  assert.deepEqual(commandForHotkey(actionForCommand('skip-back')!, media), { type: 'skip', value: -10 });
-  assert.deepEqual(commandForHotkey(actionForCommand('skip-forward')!, media), { type: 'skip', value: 10 });
+  assert.deepEqual(actionForCommand('skip-back'), { type: 'skip', delta: -1 });
+  assert.deepEqual(actionForCommand('skip-forward'), { type: 'skip', delta: 1 });
+  assert.deepEqual(commandForHotkey(applySkipStep(actionForCommand('skip-back')!, 10), media), { type: 'skip', value: -10 });
+  assert.deepEqual(commandForHotkey(applySkipStep(actionForCommand('skip-forward')!, 10), media), { type: 'skip', value: 10 });
   assert.equal(actionHintKey(actionForCommand('skip-back')!, media), 'skipBack');
   assert.equal(actionHintKey(actionForCommand('skip-forward')!, media), 'skipForward');
   assert.deepEqual(commandForHotkey(actionForCommand('mute')!, media), { type: 'mute' });
@@ -68,7 +70,7 @@ test('扩展命令映射到同一套媒体指令，建议键避开页内的 Alt'
   const page = { host: 'example.com', enabled: true, media: [media], selectedId: '1' };
   assert.equal(planHotkey({ ...page, enabled: false }, actionForCommand('play-pause')!), null);
   assert.equal(planHotkey({ ...page, media: [] }, actionForCommand('mute')!), null);
-  assert.deepEqual(planHotkey(page, actionForCommand('skip-forward')!)?.command, { type: 'skip', value: 10 });
+  assert.deepEqual(planHotkey(page, applySkipStep(actionForCommand('skip-forward')!, 10))?.command, { type: 'skip', value: 10 });
 
   const suggested = extensionCommands.filter(command => 'suggestedKey' in command);
   assert.equal(suggested.length, 4);
