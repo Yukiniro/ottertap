@@ -95,7 +95,7 @@ test('声道模式是 sitePrefs 的可选字段：旧数据原样保留，立体
   assert.equal(withRememberedCommand(saved, 'other.com', { type: 'channel', value: 'mono' }), null);
   assert.equal(withRememberedCommand(saved, 'www.bilibili.com', { type: 'channel', value: 'surround' } as never), null);
 
-  const channelOnly = { 'bilibili.com': { volume: .4, rate: 1.5 }, 'www.bilibili.com': { channel: 'mono' } };
+  const channelOnly: Record<string, SitePref> = { 'bilibili.com': { volume: .4, rate: 1.5 }, 'www.bilibili.com': { channel: 'mono' } };
   const cleared = withRememberedCommand(channelOnly, 'player.www.bilibili.com', { type: 'channel', value: 'stereo' });
   assert.ok(cleared);
   assert.equal('www.bilibili.com' in cleared, false);
