@@ -1,8 +1,8 @@
 import { i18n } from '#i18n';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { commandBindings, extensionShortcutApis, shortcutsSettingsUrl } from '../lib/commands';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { Sun, AppWindow, Keyboard, Gauge, Globe, Bookmark, X, CircleCheck, ArrowLeft, CircleAlert, ChevronUp, ChevronDown } from 'lucide-react';
+import { Sun, AppWindow, Keyboard, Gauge, Globe, Bookmark, Archive, X, CircleCheck, ArrowLeft, CircleAlert, ChevronUp, ChevronDown } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -15,13 +15,20 @@ import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 import { Brand } from './brand';
 import { cn } from '../lib/utils';
 import { defaultRatePresets, formatRate, maxRatePresets, parseRatePreset } from '../lib/rate';
+import { downloadSettingsBackup, parseSettingsBackup, readExtensionVersion, settingsBackupErrors, type SettingsBackupError } from '../lib/settings-backup';
 import { forgetSitePref, normalizeDomain } from '../lib/settings';
 import type { Settings, SitePref } from '../lib/types';
 import { useSettingsAtoms } from './theme';
 
 const themes = [{ value: 'light', label: () => i18n.t('themeLight') }, { value: 'dark', label: () => i18n.t('themeDark') }, { value: 'system', label: () => i18n.t('themeSystem') }] as const;
 const siteModes = [{ value: 'all', label: () => i18n.t('modeAll'), description: () => i18n.t('modeAllDescription') }, { value: 'allow', label: () => i18n.t('modeAllow'), description: () => i18n.t('modeAllowDescription') }, { value: 'exclude', label: () => i18n.t('modeExclude'), description: () => i18n.t('modeExcludeDescription') }] as const;
-const nav = [{ id: 'appearance', label: () => i18n.t('appearance'), icon: Sun }, { id: 'floating', label: () => i18n.t('floatingController'), icon: AppWindow }, { id: 'playback', label: () => i18n.t('playback'), icon: Gauge }, { id: 'shortcuts', label: () => i18n.t('shortcuts'), icon: Keyboard }, { id: 'presets', label: () => i18n.t('ratePresets'), icon: Gauge }, { id: 'sites', label: () => i18n.t('siteRules'), icon: Globe }, { id: 'memory', label: () => i18n.t('rememberedSites'), icon: Bookmark }] as const;
+const nav = [{ id: 'appearance', label: () => i18n.t('appearance'), icon: Sun }, { id: 'floating', label: () => i18n.t('floatingController'), icon: AppWindow }, { id: 'playback', label: () => i18n.t('playback'), icon: Gauge }, { id: 'shortcuts', label: () => i18n.t('shortcuts'), icon: Keyboard }, { id: 'presets', label: () => i18n.t('ratePresets'), icon: Gauge }, { id: 'sites', label: () => i18n.t('siteRules'), icon: Globe }, { id: 'memory', label: () => i18n.t('rememberedSites'), icon: Bookmark }, { id: 'backup', label: () => i18n.t('backup'), icon: Archive }] as const;
+const importErrorMessage: Record<SettingsBackupError, () => string> = {
+  [settingsBackupErrors.invalidJson]: () => i18n.t('importInvalidJson'),
+  [settingsBackupErrors.notOttertap]: () => i18n.t('importNotOttertap'),
+  [settingsBackupErrors.versionTooNew]: () => i18n.t('importVersionTooNew'),
+  [settingsBackupErrors.versionTooOld]: () => i18n.t('importVersionTooOld')
+};
 const presetsMatch = (a: readonly number[], b: readonly number[]) => a.length === b.length && a.every((rate, index) => rate === b[index]);
 function reorderPresets(presets: readonly number[], index: number, direction: -1 | 1) {
   const target = index + direction;
@@ -70,6 +77,56 @@ function RatePresetsSection({ presets, disabled, save }: { presets: number[]; di
         </Field>
       </form>
       <Button variant="outline" className="mt-3" disabled={disabled || presetsMatch(presets, defaultRatePresets)} onClick={() => void save([...defaultRatePresets])}>{i18n.t('resetRatePresets')}</Button>
+    </div>
+  </section>;
+}
+
+function BackupSection({ disabled, save }: { disabled: boolean; save: (next: Settings) => Promise<boolean> }) {
+  const { settingsAtom } = useSettingsAtoms();
+  const settings = useAtomValue(settingsAtom);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const requestId = useRef(0);
+  const [pending, setPending] = useState<Settings | null>(null);
+  const [importError, setImportError] = useState('');
+  const onFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    const request = ++requestId.current;
+    setImportError('');
+    setPending(null);
+    void file.text().then(text => {
+      if (request !== requestId.current) return;
+      const result = parseSettingsBackup(text);
+      if (!result.ok) { setImportError(importErrorMessage[result.error]()); return; }
+      setPending(result.settings);
+    }).catch(() => {
+      if (request !== requestId.current) return;
+      setImportError(i18n.t('importInvalidJson'));
+    });
+  };
+  const confirmImport = async () => {
+    if (!pending) return;
+    if (await save(pending)) setPending(null);
+  };
+  return <section id="backup" aria-labelledby="backup-heading" className="scroll-mt-32 rounded-xl bg-card shadow-card md:scroll-mt-8">
+    <div className="px-5 py-5 sm:px-6">
+      <h2 id="backup-heading" className="text-sm font-semibold">{i18n.t('backup')}</h2>
+      <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('backupDescription')}</p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Button type="button" disabled={disabled} onClick={() => downloadSettingsBackup(settings, readExtensionVersion())}>{i18n.t('exportSettings')}</Button>
+        <Button type="button" variant="outline" disabled={disabled} onClick={() => fileRef.current?.click()}>{i18n.t('importSettings')}</Button>
+        <input ref={fileRef} type="file" accept=".json,application/json" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={onFile} />
+      </div>
+      {importError && <Alert variant="destructive" className="mt-4"><CircleAlert /><AlertDescription>{importError}</AlertDescription></Alert>}
+      {pending && <div className="mt-4 rounded-lg border bg-muted/40 p-4" role="region" aria-labelledby="import-confirm-title">
+        <h3 id="import-confirm-title" className="text-sm font-semibold">{i18n.t('importConfirmTitle')}</h3>
+        <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('importConfirm')}</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button type="button" variant="destructive" disabled={disabled} onClick={() => void confirmImport()}>{i18n.t('importConfirmAction')}</Button>
+          <Button type="button" variant="outline" disabled={disabled} onClick={() => setPending(null)}>{i18n.t('importCancel')}</Button>
+        </div>
+      </div>}
     </div>
   </section>;
 }
@@ -330,6 +387,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
             : <p className="rounded-lg bg-muted/50 px-3 py-5 text-sm text-muted-foreground">{i18n.t('rememberedEmpty')}</p>}
         </div>
       </section>
+      <BackupSection disabled={disabled} save={save} />
       {error && <Alert variant="destructive"><CircleAlert /><AlertDescription>{error}</AlertDescription></Alert>}
       <p className="px-1 text-xs leading-5 text-muted-foreground md:hidden">{i18n.t('localOnly')}</p>
     </main>
