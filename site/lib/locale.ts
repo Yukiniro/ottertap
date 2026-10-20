@@ -1,24 +1,14 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { readFlatMessages } from '../../lib/message-catalog';
+import { localeById, type Lang } from './site-locales';
 
-export type Lang = 'zh' | 'en';
+export type { Lang, T } from './site-locales';
+export { languageAlternates, links, listedStores, localeById, localeBySegment, locales, matchNavigatorLanguage, routedLocales, siteUrl } from './site-locales';
 
-const files: Record<Lang, string> = { zh: 'zh_CN.yml', en: 'en.yml' };
-// Next runs from the site package directory in both dev and build.
 const read = (...path: string[]) => readFlatMessages(readFileSync(join(process.cwd(), ...path), 'utf8'));
 
-export type T = (key: string) => string;
-
-export const siteUrl = 'https://ottertap.vercel.app';
-export const languageAlternates = { 'zh-CN': `${siteUrl}/zh/`, en: `${siteUrl}/`, 'x-default': `${siteUrl}/` };
-
-export const links = {
-  repo: 'https://github.com/Yukiniro/ottertap',
-  releases: 'https://github.com/Yukiniro/ottertap/releases',
-  latest: 'https://github.com/Yukiniro/ottertap/releases/latest'
-};
-
 export function loadMessages(lang: Lang) {
-  return { site: read('locales', files[lang]), extension: read('..', 'locales', files[lang]) };
+  const file = localeById(lang).file;
+  return { site: read('locales', file), extension: read('..', 'locales', file) };
 }

@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
-import { languageAlternates, loadMessages, siteUrl, type Lang } from './locale';
+import { languageAlternates, loadMessages, localeById, locales, siteUrl, type Lang } from './locale';
 
 export function siteMetadata(lang: Lang, path: string): Metadata {
   const { site } = loadMessages(lang);
+  const current = localeById(lang);
   const image = { url: `${siteUrl}/og.jpg`, width: 1200, height: 630, alt: site.metaTitle };
   return {
     title: site.metaTitle,
@@ -18,8 +19,8 @@ export function siteMetadata(lang: Lang, path: string): Metadata {
       url: siteUrl + path,
       title: site.metaTitle,
       description: site.metaDescription,
-      locale: lang === 'zh' ? 'zh_CN' : 'en_US',
-      alternateLocale: lang === 'zh' ? 'en_US' : 'zh_CN',
+      locale: current.ogLocale,
+      alternateLocale: locales.filter(locale => locale.id !== lang).map(locale => locale.ogLocale),
       images: [image]
     },
     twitter: {

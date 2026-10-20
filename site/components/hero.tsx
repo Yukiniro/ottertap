@@ -1,10 +1,10 @@
-import { ArrowDownToLine } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { links, type T } from '~/lib/locale';
+import { links, listedStores, type T } from '~/lib/site-locales';
 import { GitHubIcon } from './github-icon';
 import { HeroDemo } from './islands';
+import { StoreButtons } from './store-buttons';
 
 const appear = 'animate-in fade-in slide-in-from-bottom-3 duration-700 [animation-fill-mode:both] motion-reduce:animate-none';
 
@@ -15,10 +15,11 @@ export function Hero({ t }: { t: T }) {
       <Badge variant="secondary" className={`h-6 px-3 ${appear}`}>{t('heroBadge')}</Badge>
       <h1 className={`bg-gradient-to-b from-foreground via-foreground/90 to-muted-foreground bg-clip-text pb-1 text-5xl leading-[1.12] font-bold tracking-tight whitespace-pre-line text-transparent sm:text-6xl lg:text-7xl ${appear} [animation-delay:100ms]`}>{t('heroTitle')}</h1>
       <p className={`max-w-xl text-base text-muted-foreground sm:text-lg ${appear} [animation-delay:200ms]`}>{t('heroSubtitle')}</p>
-      <div className={`flex flex-wrap justify-center gap-3 ${appear} [animation-delay:300ms]`}>
-        <a className={cn(buttonVariants({ size: 'lg' }), 'h-11 px-5 shadow-lg shadow-primary/20')} href={links.latest} target="_blank" rel="noreferrer"><ArrowDownToLine />{t('ctaDownload')}</a>
+      <div className={`flex flex-wrap items-center justify-center gap-3 ${appear} [animation-delay:300ms]`}>
+        <StoreButtons t={t} prominent />
         <a className={cn(buttonVariants({ size: 'lg', variant: 'ghost' }), 'h-11 px-5')} href={links.repo} target="_blank" rel="noreferrer"><GitHubIcon className="size-4" />{t('ctaSource')}</a>
       </div>
+      {listedStores().length === 0 && <p className="text-sm text-muted-foreground">{t('storePending')}</p>}
       <div className={`mt-10 w-full ${appear} [animation-delay:500ms]`}>
         <HeroDemo copy={{ caption: t('demoCaption'), play: t('demoPlay'), pause: t('demoPause'), reset: t('demoReset'), addSecond: t('demoAddSecond'), removeSecond: t('demoRemoveSecond'), note: t('demoNote'), mediaTitle: t('demoMediaTitle'), secondTitle: t('demoSecondTitle') }} />
       </div>
