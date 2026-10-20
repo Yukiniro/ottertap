@@ -27,15 +27,18 @@ test('设置加载防止无效数据覆盖默认值，域名输入支持网址�
   assert.equal(normalizeDomain('例子.中国'), 'xn--fsqu00a.xn--fiqs8s');
   for (const value of ['', 'a b.com', 'javascript:alert(1)', 'ftp://example.com', 'https://user:pass@example.com']) assert.throws(() => normalizeDomain(value));
   const settings = normalizeSettings({ theme: 'oops', floating: 'yes', sites: ['x.com', 'x.com', 12, ''], siteMode: 'oops' });
-  assert.deepEqual(settings, { theme: 'system', floating: true, floatingPosition: { side: 'right', y: .8 }, siteMode: 'all', sites: ['x.com'], sitePrefs: {}, ratePresets: [...defaultRatePresets], lockRate: false, hoverWheel: false, singleKey: false });
+  assert.deepEqual(settings, { theme: 'system', floating: true, floatingPosition: { side: 'right', y: .8 }, siteMode: 'all', sites: ['x.com'], sitePrefs: {}, ratePresets: [...defaultRatePresets], lockRate: false, hoverWheel: true, singleKey: false });
   assert.deepEqual(normalizeSettings({ ratePresets: [3, 3, 8, 0.1] }).ratePresets, [3, 4, 0.25]);
   assert.deepEqual(normalizeSettings({ ratePresets: [] }).ratePresets, [...defaultRatePresets]);
   assert.equal(normalizeSettings({ lockRate: true }).lockRate, true);
   assert.equal(normalizeSettings({ lockRate: 'yes' }).lockRate, false);
-  assert.equal(defaultSettings.hoverWheel, false);
+  assert.equal(defaultSettings.hoverWheel, true);
   assert.equal(defaultSettings.singleKey, false);
-  assert.deepEqual([normalizeSettings({ hoverWheel: true, singleKey: true }).hoverWheel, normalizeSettings({ hoverWheel: true, singleKey: true }).singleKey], [true, true]);
-  assert.deepEqual([normalizeSettings({ hoverWheel: 1, singleKey: 'yes' }).hoverWheel, normalizeSettings({ hoverWheel: 1, singleKey: 'yes' }).singleKey], [false, false]);
+  assert.equal(normalizeSettings({}).hoverWheel, true, '没有保存过时悬停滚轮默认开启');
+  assert.equal(normalizeSettings({ hoverWheel: false }).hoverWheel, false, '用户关闭后保持关闭');
+  assert.equal(normalizeSettings({ hoverWheel: 0 }).hoverWheel, true);
+  assert.equal(normalizeSettings({ singleKey: true }).singleKey, true);
+  assert.equal(normalizeSettings({ singleKey: 'yes' }).singleKey, false);
   assert.deepEqual(normalizeSettings({ floatingPosition: { side: 'left', y: .3 } }).floatingPosition, { side: 'left', y: .3 });
   for (const floatingPosition of [{ side: 'top', y: .3 }, { side: 'left', y: 2 }, { side: 'left', y: NaN }, 'left']) {
     assert.deepEqual(normalizeSettings({ floatingPosition }).floatingPosition, { side: 'right', y: .8 });

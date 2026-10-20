@@ -9,7 +9,7 @@ import { maxEffectiveVolume, shouldReportVolume, volumeReportIntervalMs } from '
 import { isSiteEnabled } from '../lib/settings';
 import { extensionStore } from '../lib/extension-store';
 import { createExtensionClient } from '../lib/extension-client';
-import type { Settings } from '../lib/types';
+import { defaultSettings, type Settings } from '../lib/types';
 import { FloatingController } from '../components/floating';
 import { RateHint, RateLockNotice } from '../components/rate-hint';
 import { ThemeProvider } from '../components/theme';
@@ -27,7 +27,7 @@ export default defineContentScript({
     let reported: number | null = null;
     let pageUrl = '';
     let watched: Settings | undefined;
-    let contextKeys = { singleKey: false, hoverWheel: false };
+    let contextKeys = { singleKey: defaultSettings.singleKey, hoverWheel: defaultSettings.hoverWheel };
     let presenceEpoch = 0;
     let heartbeat = 0;
     const announce = () => {
@@ -164,7 +164,7 @@ export default defineContentScript({
       enabled = result?.enabled === true;
       pageUrl = typeof result?.url === 'string' ? result.url : '';
       contextLock = result?.lockRate === true;
-      contextKeys = { singleKey: result?.singleKey === true, hoverWheel: result?.hoverWheel === true };
+      contextKeys = { singleKey: result?.singleKey === true, hoverWheel: result?.hoverWheel !== false };
       // A push that arrives while this request is in flight is newer than the response.
       if (window.top === window && presenceEpoch === epoch) tabHasMedia = result?.hasMedia === true;
     } catch { enabled = false; pageUrl = ''; }

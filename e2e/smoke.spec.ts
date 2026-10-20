@@ -442,13 +442,12 @@ test('Alt + , . 0 调倍速、Alt + M 静音，在输入框里不触发', async 
   });
 });
 
-test('打开悬停滚轮后，鼠标在视频上直接滚轮调音量，不在视频上照常滚动', async () => {
+test('默认悬停在视频上直接滚轮调音量，不在视频上照常滚动；关闭后回落为 Alt+滚轮', async () => {
   await withPage(async page => {
     if (!browser) throw new Error('浏览器还没有启动');
     await openFixture(page, '/keys');
     await ready(page);
     const media = page.locator('#media');
-    await media.evaluate((element: HTMLMediaElement) => { element.volume = 0.5; });
     const hover = async () => {
       await page.evaluate(() => window.scrollTo(0, 0));
       const box = await media.boundingBox();
@@ -456,22 +455,27 @@ test('打开悬停滚轮后，鼠标在视频上直接滚轮调音量，不在�
       await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
       return box;
     };
-    await hover();
-    await page.mouse.wheel(0, 100);
-    await page.waitForTimeout(300);
-    expect(await mediaVolume(page), '默认关闭时裸滚轮不调音量').toBeCloseTo(0.5, 2);
-    await saveSettings(await serviceWorker(browser), { ...defaultSettings(), hoverWheel: true });
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await ready(page);
     await media.evaluate((element: HTMLMediaElement) => { element.volume = 0.5; });
     const box = await hover();
     await page.mouse.wheel(0, -100);
-    await expect.poll(() => mediaVolume(page)).toBeCloseTo(0.6, 2);
-    const before = await page.evaluate(() => window.scrollY);
+    await expect.poll(() => mediaVolume(page), '默认开启时裸滚轮调音量').toBeCloseTo(0.6, 2);
+    expect(await page.evaluate(() => window.scrollY), '在视频上滚轮不滚动页面').toBe(0);
     await page.mouse.move(box.x + box.width / 2, box.y + box.height + 200);
     await page.mouse.wheel(0, 100);
-    await expect.poll(() => page.evaluate(() => window.scrollY), '不在视频上时页面照常滚动').toBeGreaterThan(before);
+    await expect.poll(() => page.evaluate(() => window.scrollY), '不在视频上时页面照常滚动').toBeGreaterThan(0);
     expect(await mediaVolume(page)).toBeCloseTo(0.6, 2);
+
+    await saveSettings(await serviceWorker(browser), { ...defaultSettings(), hoverWheel: false });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await ready(page);
+    await media.evaluate((element: HTMLMediaElement) => { element.volume = 0.5; });
+    await hover();
+    await page.mouse.wheel(0, -100);
+    await page.waitForTimeout(300);
+    expect(await mediaVolume(page), '关闭后裸滚轮不调音量').toBeCloseTo(0.5, 2);
+    await hover();
+    await volumeUp(page);
+    await expect.poll(() => mediaVolume(page), '关闭后 Alt+滚轮照常调音量').toBeCloseTo(0.6, 2);
   });
 });
 

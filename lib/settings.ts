@@ -37,7 +37,7 @@ export function normalizeSettings(value: unknown): Settings {
     sitePrefs: normalizeSitePrefs(source.sitePrefs),
     ratePresets: normalizeRatePresets(source.ratePresets),
     lockRate: source.lockRate === true,
-    hoverWheel: source.hoverWheel === true,
+    hoverWheel: typeof source.hoverWheel === 'boolean' ? source.hoverWheel : true,
     singleKey: source.singleKey === true
   };
 }
