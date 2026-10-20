@@ -22,6 +22,12 @@ Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/age
 
 用户可见的变更附带 changeset。修复类为 patch，完整新功能为 minor，major 需要先确认。不需要发版时使用 `pnpm changeset add --empty`。
 
+## 完成定义
+
+- 凡是改了行为的 PR，必须运行 `.cursor/skills/verify-ottertap/` 中对应 feature 的检查（索引见 `features/README.md`），并在 PR 描述里附上证据：命令输出、截图或日志。
+- 新增功能必须同步在该技能的 `features/` 下新增对应的 feature 文件，并登记到 `features/README.md` 的功能地图。
+- 提 PR 前先对照根目录的 `REVIEW.md` 自查。review 中遇到重复出现的意见，按该文件文首的约定追加进去。
+
 ## 工程设计原则
 
 - 不要维护向后兼容性。应移除废弃路径，而不是增加兼容层、回退方案或迁移逻辑。
