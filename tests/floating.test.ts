@@ -72,7 +72,8 @@ test('浮动入口贴边半隐藏、可切换侧边；药丸可调到 200%、静
   await act(async () => { for (const type of ['pointerdown', 'pointerup', 'click'] as const) window.document.body.dispatchEvent(new (type === 'click' ? window.MouseEvent : window.PointerEvent)(type, { bubbles: true })); });
   assert.equal(!!host.querySelector('[role="dialog"]'), false);
   await act(async () => {
-    trigger().dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowUp', code: 'ArrowUp', altKey: true, shiftKey: true, bubbles: true, composed: true }));
+    // happy-dom's WheelEvent omits the modifier fields inherited from MouseEvent in browsers.
+    trigger().dispatchEvent(Object.assign(new window.WheelEvent('wheel', { deltaY: -100, bubbles: true, composed: true, cancelable: true }), { altKey: true, shiftKey: false, ctrlKey: false, metaKey: false }));
     await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)));
   });
   assert.equal(trigger().getAttribute('aria-expanded'), 'true');

@@ -8,7 +8,7 @@ import { isMediaCommand } from '../lib/media';
 import { defaultRatePresets, formatRate, maxRate, maxRatePresets, minRate, nextRate, normalizeRatePresets, parseRatePreset, readSettledRate } from '../lib/rate';
 import type { MediaState } from '../lib/types';
 
-const mods = { altKey: true, shiftKey: true, ctrlKey: false, metaKey: false };
+const mods = { altKey: true, shiftKey: false, ctrlKey: false, metaKey: false };
 
 test('倍速对齐到 0.25 网格，并停在 0.25× 与 4×', () => {
   assert.equal(minRate, 0.25);
@@ -78,9 +78,9 @@ test('倍速按键认字符，也认 Mac Option 改写后的 code', () => {
     { key: ')', code: 'Digit0' },
     { key: 'º', code: 'Digit0' }
   ]) assert.deepEqual(rate(event), { type: 'rate', direction: 0 });
-  assert.deepEqual(rate({ key: 'ArrowUp' }), { type: 'volume', delta: 10 });
+  assert.equal(rate({ key: 'ArrowUp' }), null);
   assert.equal(rate({ key: '>', code: 'Period', altKey: false }), null);
-  assert.equal(rate({ key: '.', code: 'Period', shiftKey: false }), null);
+  assert.deepEqual(rate({ key: '>', code: 'Period', shiftKey: true }), { type: 'rate', direction: 1 });
   assert.equal(rate({ key: '.', code: 'Period', ctrlKey: true }), null);
   assert.equal(rate({ key: '.', code: 'Period', metaKey: true }), null);
   assert.equal(rate({ key: 'ArrowLeft', code: 'ArrowLeft' }), null);
@@ -93,7 +93,7 @@ test('倍速按键认字符，也认 Mac Option 改写后的 code', () => {
 test('说明使用 , . 0 字符，面板同时提到音量和倍速', () => {
   const read = (file: string) => readFlatMessages(readFileSync(new URL(`../locales/${file}`, import.meta.url), 'utf8'));
   const zh = read('zh_CN.yml');
-  assert.equal(zh.volumeShortcut, 'Alt+Shift 调节音量和倍速');
+  assert.equal(zh.volumeShortcut, 'Alt+滚轮调音量，Alt+, . 调倍速');
   assert.equal(zh.speedHint, '倍速 {rate}×');
   assert.match(zh.shortcutsRateKeys ?? '', /, \. 0/);
   for (const file of ['de.yml', 'en.yml', 'es.yml', 'fr.yml', 'ja.yml', 'ko.yml', 'zh_CN.yml', 'zh_TW.yml']) {

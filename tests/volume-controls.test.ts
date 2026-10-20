@@ -54,15 +54,14 @@ test('面板和音量药丸的真实滑块：双向拖动吸附、松手保留�
           await act(async () => { control.dispatchEvent(pointer('pointerdown', 95)); window.document.dispatchEvent(pointer('pointerup', 95)); });
           commands.length = 0;
           await act(async () => {
-            input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowUp', altKey: true, shiftKey: true, bubbles: true }));
-            input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowUp', altKey: true, shiftKey: true, repeat: true, bubbles: true }));
+            // happy-dom's WheelEvent omits MouseEvent modifier properties.
+            for (const axes of [{ deltaX: 0, deltaY: -100 }, { deltaX: 0, deltaY: -100 }]) input.dispatchEvent(Object.assign(new window.WheelEvent('wheel', { ...axes, bubbles: true }), { altKey: true, shiftKey: false, ctrlKey: false, metaKey: false }));
             await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)));
           });
           assert.deepEqual(commands.map(Math.round), [100, 110]);
           commands.length = 0;
           await act(async () => {
-            // happy-dom's WheelEvent omits MouseEvent modifier properties.
-            for (const axes of [{ deltaX: 200, deltaY: 0 }, { deltaX: 0, deltaY: 100 }]) input.dispatchEvent(Object.assign(new window.WheelEvent('wheel', { ...axes, bubbles: true }), { altKey: true, shiftKey: true, ctrlKey: false, metaKey: false }));
+            for (const axes of [{ deltaX: 200, deltaY: 0 }, { deltaX: 0, deltaY: 100 }]) input.dispatchEvent(Object.assign(new window.WheelEvent('wheel', { ...axes, bubbles: true }), { altKey: true, shiftKey: false, ctrlKey: false, metaKey: false }));
             await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)));
           });
           assert.deepEqual(commands.map(Math.round), [100, 90]);

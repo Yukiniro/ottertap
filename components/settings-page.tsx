@@ -162,6 +162,25 @@ function ShortcutKey({ shortcut }: { shortcut: string }) {
   return <kbd className="inline-block rounded-md border bg-background px-2 py-1 font-mono text-xs whitespace-nowrap">{shortcut}</kbd>;
 }
 
+function ShortcutList({ label, rows }: { label: string; rows: { id: string; key: string; description: string }[] }) {
+  return <dl aria-label={label} className="divide-y rounded-lg bg-muted/50 px-3">
+    {rows.map(row => <div key={row.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 text-sm">
+      <dt><kbd className="inline-block rounded-md border bg-background px-2 py-1 font-mono text-xs whitespace-nowrap">{row.key}</kbd></dt>
+      <dd className="text-muted-foreground">{row.description}</dd>
+    </div>)}
+  </dl>;
+}
+
+function SwitchRow({ id, label, description, checked, disabled, onChange }: { id: string; label: string; description: string; checked: boolean; disabled: boolean; onChange: (checked: boolean) => void }) {
+  return <Field orientation="horizontal" className="justify-between gap-4 rounded-lg bg-muted/50 px-3 py-3">
+    <FieldContent>
+      <FieldLabel htmlFor={id} className="text-sm font-normal">{label}</FieldLabel>
+      <FieldDescription id={id + '-description'}>{description}</FieldDescription>
+    </FieldContent>
+    <Switch id={id} aria-label={label} aria-describedby={id + '-description'} checked={checked} disabled={disabled} onCheckedChange={onChange} />
+  </Field>;
+}
+
 function useCommandBindings() {
   const [rows, setRows] = useState(() => commandBindings([]));
   useEffect(() => {
@@ -191,10 +210,12 @@ function Row({ title, description, titleId, children }: { title: string; descrip
 }
 
 export function SettingsPage({ back }: { back?: () => void }) {
-  const { themeAtom, floatingAtom, lockRateAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { themeAtom, floatingAtom, lockRateAtom, hoverWheelAtom, singleKeyAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const theme = useAtomValue(themeAtom);
   const floating = useAtomValue(floatingAtom);
   const lockRate = useAtomValue(lockRateAtom);
+  const hoverWheel = useAtomValue(hoverWheelAtom);
+  const singleKey = useAtomValue(singleKeyAtom);
   const siteMode = useAtomValue(siteModeAtom);
   const sites = useAtomValue(sitesAtom);
   const sitePrefs = useAtomValue(sitePrefsAtom);
@@ -319,21 +340,32 @@ export function SettingsPage({ back }: { back?: () => void }) {
             </div>)}
           </dl>
           <h3 className="mt-6 mb-2 text-sm font-medium">{i18n.t('pageShortcuts')}</h3>
-          <dl className="divide-y rounded-lg bg-muted/50 px-3">
-            {[
-              { id: 'volume-up', key: '↑', description: i18n.t('shortcutVolumeUp') },
-              { id: 'volume-down', key: '↓', description: i18n.t('shortcutVolumeDown') },
-              { id: 'volume-wheel', key: i18n.t('shortcutWheel'), description: i18n.t('shortcutVolumeWheel') },
-              { id: 'speed-up', key: '.', description: i18n.t('shortcutSpeedUp') },
-              { id: 'speed-down', key: ',', description: i18n.t('shortcutSpeedDown') },
-              { id: 'speed-reset', key: '0', description: i18n.t('shortcutSpeedReset') },
-            ].map(shortcut => <div key={shortcut.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 text-sm">
-              <dt><kbd className="inline-block rounded-md border bg-background px-2 py-1 font-mono text-xs whitespace-nowrap">Alt + Shift + {shortcut.key}</kbd></dt>
-              <dd className="text-muted-foreground">{shortcut.description}</dd>
-            </div>)}
-          </dl>
+          <ShortcutList label={i18n.t('pageShortcuts')} rows={[
+            { id: 'volume-wheel', key: `Alt + ${i18n.t('shortcutWheel')}`, description: i18n.t('shortcutVolumeWheel') },
+            { id: 'speed-up', key: 'Alt + .', description: i18n.t('shortcutSpeedUp') },
+            { id: 'speed-down', key: 'Alt + ,', description: i18n.t('shortcutSpeedDown') },
+            { id: 'speed-reset', key: 'Alt + 0', description: i18n.t('shortcutSpeedReset') },
+            { id: 'mute', key: 'Alt + M', description: i18n.t('cmdMute') }
+          ]} />
           <p className="mt-3 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsMac')}</p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsRateKeys')}</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsTyping')}</p>
+          <div className="mt-4 flex flex-col gap-2">
+            <SwitchRow id="settings-hover-wheel" label={i18n.t('hoverWheel')} description={i18n.t('hoverWheelDescription')} checked={hoverWheel} disabled={disabled} onChange={checked => void save({ hoverWheel: checked })} />
+            <SwitchRow id="settings-single-key" label={i18n.t('singleKey')} description={i18n.t('singleKeyDescription')} checked={singleKey} disabled={disabled} onChange={checked => void save({ singleKey: checked })} />
+          </div>
+          <h3 className="mt-6 mb-2 text-sm font-medium">{i18n.t('singleKeyShortcuts')}</h3>
+          <ShortcutList label={i18n.t('singleKeyShortcuts')} rows={[
+            { id: 'toggle', key: 'K', description: i18n.t('cmdPlayPause') },
+            { id: 'skip-back', key: 'J / ←', description: i18n.t('cmdSkipBack') },
+            { id: 'skip-forward', key: 'L / →', description: i18n.t('cmdSkipForward') },
+            { id: 'volume-up', key: '↑', description: i18n.t('shortcutVolumeUp') },
+            { id: 'volume-down', key: '↓', description: i18n.t('shortcutVolumeDown') },
+            { id: 'mute', key: 'M', description: i18n.t('cmdMute') },
+            { id: 'speed-up', key: '>', description: i18n.t('shortcutSpeedUp') },
+            { id: 'speed-down', key: '<', description: i18n.t('shortcutSpeedDown') }
+          ]} />
+          <p className="mt-3 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsSingleKeyArrows')}</p>
         </div>
       </section>
       <RatePresetsSection presets={ratePresets} disabled={disabled} save={async next => save({ ratePresets: next })} />

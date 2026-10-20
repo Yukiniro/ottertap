@@ -1,6 +1,6 @@
 import type { HotkeyAction } from './hotkey';
 
-// Chrome accepts at most four suggested shortcuts. These stay off Alt+Shift so they do not also run the on-page hotkeys.
+// Chrome accepts at most four suggested shortcuts. These stay off Alt so they do not also run the on-page hotkeys.
 export const extensionCommands = [
   { name: 'play-pause', message: 'cmdPlayPause', suggestedKey: { default: 'Ctrl+Shift+Space', mac: 'Command+Shift+Space' }, action: { type: 'toggle' } },
   { name: 'skip-back', message: 'cmdSkipBack', suggestedKey: { default: 'Ctrl+Shift+Comma', mac: 'Command+Shift+Comma' }, action: { type: 'skip', delta: -10 } },

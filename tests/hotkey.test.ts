@@ -9,15 +9,16 @@ import { defaultSettings, type MediaState } from '../lib/types';
 for (const { name, deltaX, deltaY, deltaMode, modifiers, expected } of [
   { name: '纵向滚轮向下', deltaX: 0, deltaY: 100, expected: .65 },
   { name: '纵向滚轮向上', deltaX: 0, deltaY: -100, expected: .85 },
-  { name: 'Shift 转为横向后向下', deltaX: 100, deltaY: 0, expected: .65 },
-  { name: 'Shift 转为横向后向上', deltaX: -100, deltaY: 0, expected: .85 },
+  { name: '只有横向滚动量时向下', deltaX: 100, deltaY: 0, expected: .65 },
+  { name: '只有横向滚动量时向上', deltaX: -100, deltaY: 0, expected: .85 },
   { name: '横向按行滚动', deltaX: 1, deltaY: 0, deltaMode: 1, expected: .65 },
   { name: '双轴滚动以纵向为准', deltaX: 100, deltaY: -100, expected: .85 },
   { name: '没有滚动量', deltaX: 0, deltaY: 0, expected: .75 },
-  { name: '未按 Shift', deltaX: 100, deltaY: 0, modifiers: { shiftKey: false }, expected: .75 },
+  { name: '未按 Alt', deltaX: 0, deltaY: 100, modifiers: { altKey: false }, expected: .75 },
+  { name: '同时按 Ctrl', deltaX: 0, deltaY: 100, modifiers: { ctrlKey: true }, expected: .75 },
   { name: '同时按 Command', deltaX: 100, deltaY: 0, modifiers: { metaKey: true }, expected: .75 }
 ]) {
-  test(`Option+Shift 滚轮：${name}`, async () => {
+  test(`Alt/Option 滚轮：${name}`, async () => {
     const window = new Window({ url: 'https://example.com' });
     Object.defineProperty(globalThis, 'window', { value: window, configurable: true });
     let frame: FrameRequestCallback | undefined;
@@ -31,7 +32,7 @@ for (const { name, deltaX, deltaY, deltaMode, modifiers, expected } of [
       await Promise.resolve();
       const event = new window.WheelEvent('wheel', { deltaX, deltaY, deltaMode, bubbles: true, cancelable: true });
       // happy-dom's WheelEvent omits the modifier fields inherited from MouseEvent in browsers.
-      Object.assign(event, { altKey: true, shiftKey: true, ctrlKey: false, metaKey: false, ...modifiers });
+      Object.assign(event, { altKey: true, shiftKey: false, ctrlKey: false, metaKey: false, ...modifiers });
       window.document.body.dispatchEvent(event);
       frame?.(0);
       await new Promise(resolve => setImmediate(resolve));
@@ -45,7 +46,7 @@ for (const { name, deltaX, deltaY, deltaMode, modifiers, expected } of [
 
 const media = { id: '1', paused: false, muted: false, volume: .5, maxVolume: 2, rate: 1.5 } as MediaState;
 
-test('扩展命令映射到同一套媒体指令，建议键避开 Alt+Shift', () => {
+test('扩展命令映射到同一套媒体指令，建议键避开页内的 Alt', () => {
   assert.deepEqual(commandForHotkey(actionForCommand('play-pause')!, { ...media, paused: true }), { type: 'play' });
   assert.deepEqual(commandForHotkey(actionForCommand('play-pause')!, media), { type: 'pause' });
   assert.deepEqual(actionHintKey(actionForCommand('play-pause')!, { ...media, paused: true }), 'play');
@@ -79,8 +80,7 @@ test('扩展命令映射到同一套媒体指令，建议键避开 Alt+Shift', (
   assert.equal(Object.keys(manifest).length, 9);
   for (const command of suggested) {
     for (const key of [command.suggestedKey.default, command.suggestedKey.mac]) {
-      assert.equal(/Alt\+Shift|Shift\+Alt|Option\+Shift|Shift\+Option/.test(key), false, key);
-      assert.equal(/Ctrl\+Alt|Alt\+Ctrl/.test(key), false, key);
+      assert.equal(/Alt|Option/.test(key), false, key);
       assert.match(key, /^(Ctrl|Command)\+Shift\+/);
     }
     const entry = manifest[command.name];

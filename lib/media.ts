@@ -27,6 +27,22 @@ export function lockedMedia(media: MediaState[], selectedId: string) {
   return media.find(item => item.id === selectedId) ?? pickMedia(media);
 }
 
+export function mediaAtPoint<T extends Element>(elements: readonly T[], x: number, y: number) {
+  return elements.find(element => {
+    const rect = element.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0 && x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+  });
+}
+
+/** Players often focus a wrapper around the video, so a focused ancestor counts too. */
+export function focusedMedia<T extends Element>(elements: readonly T[], document: Document) {
+  let active = document.activeElement;
+  while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
+  const focused = active;
+  if (!focused || focused === document.body || focused === document.documentElement) return undefined;
+  return elements.find(element => focused === element || focused.contains(element));
+}
+
 export function keptSelection(selectedId: string, ids: string[], failedFrames: Set<number>) {
   if (!selectedId) return '';
   if (ids.includes(selectedId)) return selectedId;
@@ -238,21 +254,33 @@ export function createMediaController(document: Document, onChange?: () => void,
     slot.state = noteDesiredRate(slot.state, rate);
     if (lockOn) listen(element);
   };
+  const refresh = () => {
+    // shortcut: late Shadow Roots need an outer DOM mutation; add attachShadow tracking if target sites require it.
+    if (!dirty) return;
+    elements = discoverMedia(document, observe);
+    dirty = false;
+    for (const [root, observer] of observers) if ('host' in root && !root.host.isConnected) { observer.disconnect(); observers.delete(root); }
+    for (const element of slots.keys()) if (!element.isConnected) release(element);
+  };
+  const idOf = (element: HTMLMediaElement) => {
+    if (!ids.has(element)) ids.set(element, String(++nextId));
+    return ids.get(element)!;
+  };
   return {
     snapshot() {
-      // shortcut: late Shadow Roots need an outer DOM mutation; add attachShadow tracking if target sites require it.
-      if (dirty) {
-        elements = discoverMedia(document, observe);
-        dirty = false;
-        for (const [root, observer] of observers) if ('host' in root && !root.host.isConnected) { observer.disconnect(); observers.delete(root); }
-        for (const element of slots.keys()) if (!element.isConnected) release(element);
-      }
+      refresh();
       if (lockOn) for (const element of elements) listen(element);
       return elements.map(element => {
-        if (!ids.has(element)) ids.set(element, String(++nextId));
-        const snap = mediaSnapshot(element, ids.get(element)!, document, amplifier);
+        const snap = mediaSnapshot(element, idOf(element), document, amplifier);
         return slots.get(element)?.state.givenUp ? { ...snap, rateLock: 'given-up' as const } : snap;
       });
+    },
+    /** Id of the media under the point, else of the focused media when `focus` is set. */
+    pointed(point: { x: number; y: number } | null, focus: boolean) {
+      refresh();
+      const live = elements.filter(element => element.isConnected);
+      const element = (point ? mediaAtPoint(live, point.x, point.y) : undefined) ?? (focus ? focusedMedia(live, document) : undefined);
+      return element ? idOf(element) : undefined;
     },
     setLockRate(enabled: boolean) {
       if (lockOn === enabled) return;

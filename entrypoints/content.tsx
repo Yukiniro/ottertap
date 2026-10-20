@@ -2,7 +2,7 @@ import { i18n } from '#i18n';
 import { createRoot } from 'react-dom/client';
 import { browser } from 'wxt/browser';
 import { createShadowRootUi } from 'wxt/utils/content-script-ui/shadow-root';
-import { actionHintEvent, createHotkeyInput, hotkeyFromKeyboard, isFloatingEvent, rateHintEvent, volumeGestureEvent } from '../lib/hotkey';
+import { actionHintEvent, createHotkeyInput, isFloatingEvent, isTypingEvent, rateHintEvent, volumeGestureEvent } from '../lib/hotkey';
 import { createMediaController, isMediaCommand, mediaPresenceEvent } from '../lib/media';
 import { rateLockEvent } from '../lib/rate-lock';
 import { maxEffectiveVolume, shouldReportVolume, volumeReportIntervalMs } from '../lib/volume-badge';
@@ -27,6 +27,7 @@ export default defineContentScript({
     let reported: number | null = null;
     let pageUrl = '';
     let watched: Settings | undefined;
+    let contextKeys = { singleKey: false, hoverWheel: false };
     let presenceEpoch = 0;
     let heartbeat = 0;
     const announce = () => {
@@ -115,22 +116,25 @@ export default defineContentScript({
       return true;
     };
     browser.runtime.onMessage.addListener(listener);
-    const hotkeys = createHotkeyInput(action => {
-      void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'hotkey', action }).then(result => {
+    const hotkeys = createHotkeyInput((action, target) => {
+      void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'hotkey', action, target }).then(result => {
         if (typeof result?.percent === 'number') window.dispatchEvent(new CustomEvent('ottertap-volume', { detail: result.percent }));
       }).catch(() => {});
     });
     const shortcutActive = () => enabled && (controller.snapshot().length > 0 || tabHasMedia);
+    let pointer: { x: number; y: number } | null = null;
+    const onPointer = (event: PointerEvent) => { pointer = event.type === 'pointerout' && !event.relatedTarget ? null : { x: event.clientX, y: event.clientY }; };
     const onKey = (event: KeyboardEvent) => {
-      if (!shortcutActive()) return;
-      const action = hotkeyFromKeyboard(event);
-      // Volume keyup stays with the page. Rate keyup is swallowed so a site shortcut cannot take a second step.
-      if (event.type === 'keyup' && action?.type !== 'rate') return;
-      // Volume keys inside the floater keep its own slider. Rate keys stay on this listener so the hint can show.
-      if (isFloatingEvent(event) && action?.type !== 'rate') return;
-      hotkeys.key(event);
+      if (!shortcutActive() || isTypingEvent(event)) return;
+      // Arrows inside the floater belong to its slider and to docking the otter.
+      if (isFloatingEvent(event) && event.key.startsWith('Arrow')) return;
+      const { singleKey } = watched ?? contextKeys;
+      hotkeys.key(event, { singleKey, target: singleKey ? controller.pointed(pointer, true) : undefined });
     };
-    const onWheel = (event: WheelEvent) => { if (shortcutActive()) hotkeys.wheel(event); };
+    const onWheel = (event: WheelEvent) => {
+      if (!shortcutActive()) return;
+      hotkeys.wheel(event, (watched ?? contextKeys).hoverWheel ? controller.pointed({ x: event.clientX, y: event.clientY }, false) : undefined);
+    };
     const onPageHide = () => {
       if (reported == null) return;
       reported = null;
@@ -142,6 +146,8 @@ export default defineContentScript({
     window.addEventListener('keydown', onKey, true);
     window.addEventListener('keyup', onKey, true);
     window.addEventListener('wheel', onWheel, { capture: true, passive: false });
+    window.addEventListener('pointermove', onPointer, { capture: true, passive: true });
+    window.addEventListener('pointerout', onPointer, { capture: true, passive: true });
     document.addEventListener('volumechange', reportVolume, true);
     window.addEventListener('pagehide', onPageHide);
     const unwatch = extensionStore.watch(settings => { watched = settings; applyWatched(); });
@@ -149,6 +155,7 @@ export default defineContentScript({
       unwatch(); controller.destroy(); if (heartbeat) clearInterval(heartbeat); browser.runtime.onMessage.removeListener(listener); hotkeys.dispose();
       document.removeEventListener('volumechange', reportVolume, true); window.removeEventListener('pagehide', onPageHide);
       window.removeEventListener('keydown', onKey, true); window.removeEventListener('keyup', onKey, true); window.removeEventListener('wheel', onWheel, true);
+      window.removeEventListener('pointermove', onPointer, true); window.removeEventListener('pointerout', onPointer, true);
     });
     const epoch = presenceEpoch;
     let contextLock = false;
@@ -157,6 +164,7 @@ export default defineContentScript({
       enabled = result?.enabled === true;
       pageUrl = typeof result?.url === 'string' ? result.url : '';
       contextLock = result?.lockRate === true;
+      contextKeys = { singleKey: result?.singleKey === true, hoverWheel: result?.hoverWheel === true };
       // A push that arrives while this request is in flight is newer than the response.
       if (window.top === window && presenceEpoch === epoch) tabHasMedia = result?.hasMedia === true;
     } catch { enabled = false; pageUrl = ''; }

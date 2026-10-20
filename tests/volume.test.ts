@@ -27,24 +27,26 @@ test('同帧连续按键、长按重复、滚轮及反向输入保留各自的 1
     assert.equal(command?.type, 'volume');
     if (command?.type === 'volume') { media = { ...media, volume: command.value }; values.push(command.value * 100); }
   });
-  const keys = { altKey: true, shiftKey: true, ctrlKey: false, metaKey: false, preventDefault() {}, stopPropagation() {} };
+  const bare = { altKey: false, shiftKey: false, ctrlKey: false, metaKey: false, preventDefault() {}, stopPropagation() {} };
+  const alt = { ...bare, altKey: true };
+  const overMedia = { singleKey: true, target: '1' };
   const waitForValues = async (count: number) => {
     await window.happyDOM.waitUntilComplete();
     for (let attempt = 0; values.length < count && attempt < 100; attempt++) await new Promise(resolve => setTimeout(resolve, 5));
     assert.equal(values.length, count);
   };
   try {
-    input.key({ ...keys, key: 'ArrowUp' });
-    input.key(new window.KeyboardEvent('keydown', { ...keys, key: 'ArrowUp', repeat: true }));
-    input.key({ ...keys, key: 'ArrowDown' });
-    input.wheel({ ...keys, deltaX: 0, deltaY: 100, deltaMode: 0 });
-    input.wheel({ ...keys, deltaX: -200, deltaY: 0, deltaMode: 0 });
+    input.key({ ...bare, key: 'ArrowUp' }, overMedia);
+    input.key(new window.KeyboardEvent('keydown', { ...bare, key: 'ArrowUp', repeat: true }), overMedia);
+    input.key({ ...bare, key: 'ArrowDown' }, overMedia);
+    input.wheel({ ...alt, deltaX: 0, deltaY: 100, deltaMode: 0 });
+    input.wheel({ ...alt, deltaX: -200, deltaY: 0, deltaMode: 0 });
     await waitForValues(5);
     assert.deepEqual(values.map(Math.round), [100, 110, 100, 90, 100]);
-    input.wheel({ ...keys, deltaX: -4, deltaY: 0, deltaMode: 0 });
+    input.wheel({ ...alt, deltaX: -4, deltaY: 0, deltaMode: 0 });
     await waitForValues(6);
     assert.equal(values[5], 100.4);
-    input.key({ ...keys, key: 'ArrowUp' });
+    input.key({ ...bare, key: 'ArrowUp' }, overMedia);
     input.dispose();
     await window.happyDOM.waitUntilComplete();
     assert.equal(values.length, 6);

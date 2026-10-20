@@ -27,11 +27,15 @@ test('设置加载防止无效数据覆盖默认值，域名输入支持网址�
   assert.equal(normalizeDomain('例子.中国'), 'xn--fsqu00a.xn--fiqs8s');
   for (const value of ['', 'a b.com', 'javascript:alert(1)', 'ftp://example.com', 'https://user:pass@example.com']) assert.throws(() => normalizeDomain(value));
   const settings = normalizeSettings({ theme: 'oops', floating: 'yes', sites: ['x.com', 'x.com', 12, ''], siteMode: 'oops' });
-  assert.deepEqual(settings, { theme: 'system', floating: true, floatingPosition: { side: 'right', y: .8 }, siteMode: 'all', sites: ['x.com'], sitePrefs: {}, ratePresets: [...defaultRatePresets], lockRate: false });
+  assert.deepEqual(settings, { theme: 'system', floating: true, floatingPosition: { side: 'right', y: .8 }, siteMode: 'all', sites: ['x.com'], sitePrefs: {}, ratePresets: [...defaultRatePresets], lockRate: false, hoverWheel: false, singleKey: false });
   assert.deepEqual(normalizeSettings({ ratePresets: [3, 3, 8, 0.1] }).ratePresets, [3, 4, 0.25]);
   assert.deepEqual(normalizeSettings({ ratePresets: [] }).ratePresets, [...defaultRatePresets]);
   assert.equal(normalizeSettings({ lockRate: true }).lockRate, true);
   assert.equal(normalizeSettings({ lockRate: 'yes' }).lockRate, false);
+  assert.equal(defaultSettings.hoverWheel, false);
+  assert.equal(defaultSettings.singleKey, false);
+  assert.deepEqual([normalizeSettings({ hoverWheel: true, singleKey: true }).hoverWheel, normalizeSettings({ hoverWheel: true, singleKey: true }).singleKey], [true, true]);
+  assert.deepEqual([normalizeSettings({ hoverWheel: 1, singleKey: 'yes' }).hoverWheel, normalizeSettings({ hoverWheel: 1, singleKey: 'yes' }).singleKey], [false, false]);
   assert.deepEqual(normalizeSettings({ floatingPosition: { side: 'left', y: .3 } }).floatingPosition, { side: 'left', y: .3 });
   for (const floatingPosition of [{ side: 'top', y: .3 }, { side: 'left', y: 2 }, { side: 'left', y: NaN }, 'left']) {
     assert.deepEqual(normalizeSettings({ floatingPosition }).floatingPosition, { side: 'right', y: .8 });
@@ -182,11 +186,11 @@ test('多个媒体优先锁定在播且有声的一个，快捷键按锁定目�
   assert.equal(keptSelection('2:5', ['0:1'], new Set()), '');
   assert.equal(keptSelection('2:5', ['2:5'], new Set()), '2:5');
   assert.equal(keptSelection('', ['0:1'], new Set([0])), '');
-  const keys = { altKey: true, shiftKey: true, ctrlKey: false, metaKey: false };
-  assert.deepEqual(hotkeyFromKeyboard({ ...keys, key: 'ArrowUp' }), { type: 'volume', delta: 10 });
+  const keys = { altKey: true, shiftKey: false, ctrlKey: false, metaKey: false };
+  assert.equal(hotkeyFromKeyboard({ ...keys, key: 'ArrowUp' }), null);
   assert.equal(hotkeyFromKeyboard({ ...keys, key: 'ArrowLeft' }), null);
   assert.equal(hotkeyFromKeyboard({ ...keys, key: ' ' }), null);
-  assert.equal(hotkeyFromKeyboard({ ...keys, key: 'ArrowUp', altKey: false }), null);
+  assert.deepEqual(hotkeyFromKeyboard({ ...keys, key: 'm', code: 'KeyM' }), { type: 'mute' });
   assert.equal(wheelVolumeDelta(-100, 0), 10);
   assert.equal(wheelVolumeDelta(4, 0), -.4);
   assert.equal(wheelVolumeDelta(1, 1), -10);

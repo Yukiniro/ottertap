@@ -307,7 +307,7 @@ export default defineBackground(() => {
         const settings = await currentSettings();
         const enabled = isSiteEnabled(url, settings);
         const host = new URL(url).hostname;
-        if (message.type === 'context') return { enabled, host, url, hasMedia: hasMedia(tabId), lockRate: settings.lockRate };
+        if (message.type === 'context') return { enabled, host, url, hasMedia: hasMedia(tabId), lockRate: settings.lockRate, singleKey: settings.singleKey, hoverWheel: settings.hoverWheel };
         if (message.type === 'rateLock') { showRateLock(tabId); return { ok: true }; }
         if (message.type === 'register' && sender.tab) {
           const frameId = sender.frameId ?? 0;
@@ -359,6 +359,11 @@ export default defineBackground(() => {
         }
         if (message.type === 'hotkey') {
           if (!isHotkeyAction(message.action)) throw new Error(i18n.t('invalidCommand'));
+          // Hover and focus gestures act on the media under them, and that media becomes the locked one.
+          if (sender.tab && typeof message.target === 'string' && /^\d+$/.test(message.target)) {
+            const pointed = `${sender.frameId ?? 0}:${message.target}`;
+            if (selectedIds.get(tabId) !== pointed) { selectedIds.set(tabId, pointed); gestures.delete(tabId); }
+          }
           return await performHotkey(tabId, host, message.action);
         }
         if (message.type === 'command') {
