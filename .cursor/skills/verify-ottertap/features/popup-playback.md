@@ -25,14 +25,14 @@
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
 ```
 
-助手在同一个持久化上下文里：
+助手在同一个持久化上下文里。夹具页用 Playwright；弹出面板用 CDP，因为 `launchPersistentContext` 不会把 `chrome.action.openPopup()` 打开的窗口收成 `Page`（`e2e/smoke.spec.ts` 的 `readActionPopup` 同样如此）。
 
 1. `page.goto('https://media.ottertap.test/video')`，等到 `getByRole('button', { name: /volume pill/i })` 可见，并且 `#media.readyState >= 1`。
 2. `fixture.bringToFront()`，再在 service worker 里 `chrome.action.openPopup()`。
-3. 找到 URL 以 `/popup.html` 结尾的页面。`getByRole('region', { name: 'Media controls' })` 可见，`getByRole('heading', { name: 'Fixture video' })` 可见。
-4. 截 `fixture-ready.png` 和 `popup-paused.png`。此时按钮精确匹配 `Play`，文案精确匹配 `Video · Paused`，`#media.paused === true`。
-5. 点击 `Play`。按钮变为 `Pause`，文案变为 `Video · Playing`，没有 `role=alert`，`#media.paused === false`，并且 `currentTime` 至少再前进 0.05 秒。截 `popup-playing.png` 和 `fixture-playing.png`。
-6. 点击 `Pause`。回到 `Play` / `Video · Paused` / `paused === true`。再等 400ms，`currentTime` 增加不超过 0.25 秒。
+3. 在夹具页的 CDP 会话里 `Target.getTargets`，找到 `type === 'page'` 且 URL 以 `/popup.html` 结尾的 target，`Target.attachToTarget` 且 `flatten: false`。
+4. 截 `fixture-ready.png`（Playwright）和 `popup-paused.png`（`Page.captureScreenshot`）。此时存在 `[aria-label="Media controls"]`，`h1` 是 `Fixture video`，播放按钮的 `aria-label` 精确为 `Play`，状态文案精确为 `Video · Paused`，`#media.paused === true`。
+5. 在弹出面板文档里对 `aria-label="Play"` 的按钮调用 `click()`。按钮变为 `Pause`，文案变为 `Video · Playing`，没有 `[role="alert"]`，`#media.paused === false`，并且 `currentTime` 至少再前进 0.05 秒。截 `popup-playing.png` 和 `fixture-playing.png`。
+6. 对 `aria-label="Pause"` 调用 `click()`。回到 `Play` / `Video · Paused` / `paused === true`。再等 400ms，`currentTime` 增加不超过 0.25 秒。
 
 成功时 `state.json` 的 `ok` 为 `true`。
 
@@ -42,5 +42,5 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
 - 选择器是英语。`doctor` 若报告语言不是 `en` 开头，先停掉会话再按 `SKILL.md` 的 launch 参数重开。
 - 不循环的短媒体播完会自己变成暂停。夹具视频带 `loop`，长度约 1 秒。
 - 播放被拒绝时面板上会出现 `alert`，视频保持暂停。这是失败，不要改断言。
-- 弹出面板点外面或按 Escape 会关掉。点击要落在面板内部。
-- 浮动入口在网页的开放 shadow root 里；弹出面板本身不是 shadow root。
+- 弹出面板点外面或按 Escape 会关掉。`click()` 要打在面板文档里的按钮上。
+- 浮动入口在网页的开放 shadow root 里，Playwright `getByRole` 能穿透。弹出面板不是 Playwright `Page`，也不在 shadow root 里；按上面的 aria-label 在 CDP 里点，不要对弹出面板调用 `getByRole`。

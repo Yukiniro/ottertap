@@ -205,23 +205,97 @@ async function openFixture(context) {
   return page;
 }
 
+const popupView = `(() => {
+  const button = [...document.querySelectorAll('button')].find(item => {
+    const label = item.getAttribute('aria-label');
+    return label === 'Play' || label === 'Pause';
+  });
+  const statusNode = [...document.querySelectorAll('p')].find(item => {
+    const text = item.textContent?.trim();
+    return text === 'Video · Playing' || text === 'Video · Paused';
+  });
+  return {
+    button: button?.getAttribute('aria-label') ?? '',
+    heading: document.querySelector('h1')?.textContent?.trim() ?? '',
+    status: statusNode?.textContent?.trim() ?? '',
+    alert: document.querySelector('[role="alert"]')?.textContent?.trim() ?? '',
+    region: Boolean(document.querySelector('[aria-label="Media controls"]')),
+  };
+})()`;
+
+function clickLabel(label) {
+  return `(() => {
+    const button = [...document.querySelectorAll('button')].find(item => item.getAttribute('aria-label') === ${JSON.stringify(label)});
+    if (!button) return false;
+    button.click();
+    return true;
+  })()`;
+}
+
 async function openActionPopup(context, fixture) {
   await fixture.bringToFront();
   const worker = await serviceWorker(context);
-  const seen = context.waitForEvent('page', { timeout: 8_000 }).catch(() => null);
-  await worker.evaluate(async () => {
-    await chrome.action.openPopup();
-  });
-  let popup = await seen;
+  const cdp = await context.newCDPSession(fixture);
+  await worker.evaluate(async () => { await chrome.action.openPopup(); });
+  let targetId = '';
+  let targets = [];
   const deadline = Date.now() + 8_000;
-  while (!popup?.url().endsWith('/popup.html') && Date.now() < deadline) {
-    popup = context.pages().find(page => page.url().endsWith('/popup.html')) ?? null;
-    if (popup) break;
+  while (Date.now() < deadline) {
+    const listed = await cdp.send('Target.getTargets');
+    targets = listed.targetInfos ?? [];
+    targetId = targets.find(item => item.type === 'page' && item.url.endsWith('/popup.html'))?.targetId ?? '';
+    if (targetId) break;
     await new Promise(resolve => setTimeout(resolve, 100));
   }
-  if (!popup?.url().endsWith('/popup.html')) throw new Error('chrome.action.openPopup() 没有打开 popup.html。不要改用地址栏打开 popup.html，那会把弹出面板变成活动标签。');
-  await popup.getByRole('region', { name: 'Media controls' }).waitFor({ timeout: 8_000 });
-  return popup;
+  if (!targetId) {
+    await cdp.detach().catch(() => {});
+    const brief = targets.map(item => ({ type: item.type, url: item.url }));
+    throw new Error(`chrome.action.openPopup() 没有打开 popup.html。targets=${JSON.stringify(brief)}。不要改用地址栏打开 popup.html，那会把弹出面板变成活动标签。`);
+  }
+  const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: false });
+  let next = 1;
+  const send = (method, params = {}) => new Promise((resolve, reject) => {
+    const id = next++;
+    const timer = setTimeout(() => {
+      cdp.off('Target.receivedMessageFromTarget', onMessage);
+      reject(new Error(`弹出面板没有响应 ${method}`));
+    }, 8_000);
+    const onMessage = event => {
+      if (event.sessionId !== sessionId) return;
+      const message = JSON.parse(event.message);
+      if (message.id !== id) return;
+      clearTimeout(timer);
+      cdp.off('Target.receivedMessageFromTarget', onMessage);
+      if (message.error) reject(new Error(JSON.stringify(message.error)));
+      else resolve(message.result);
+    };
+    cdp.on('Target.receivedMessageFromTarget', onMessage);
+    void cdp.send('Target.sendMessageToTarget', { sessionId, message: JSON.stringify({ id, method, params }) });
+  });
+  const evaluate = async expression => {
+    const result = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
+    if (result.exceptionDetails) throw new Error(result.exceptionDetails.exception?.description || result.exceptionDetails.text || 'popup evaluate failed');
+    return result.result?.value;
+  };
+  const screenshot = async file => {
+    const result = await send('Page.captureScreenshot', { format: 'png' });
+    await writeFile(file, Buffer.from(result.data, 'base64'));
+  };
+  const view = await poll(() => evaluate(popupView), value => value?.region && value.button, '弹出面板应出现 Media controls 和播放按钮');
+  return {
+    view: () => evaluate(popupView),
+    click: async label => {
+      const clicked = await evaluate(clickLabel(label));
+      if (!clicked) throw new Error(`弹出面板里没有按钮 ${label}：${JSON.stringify(await evaluate(popupView))}`);
+    },
+    screenshot,
+    seen: view,
+    close: async () => {
+      await fixture.keyboard.press('Escape').catch(() => {});
+      await cdp.send('Target.detachFromTarget', { sessionId }).catch(() => {});
+      await cdp.detach().catch(() => {});
+    },
+  };
 }
 
 async function mediaState(page) {
@@ -248,19 +322,6 @@ async function poll(read, check, label, timeout = 8_000) {
   throw new Error(`${label}：${detail}`);
 }
 
-async function buttonLabel(popup) {
-  const button = popup.getByRole('button', { name: /^(Play|Pause)$/ });
-  return button.getAttribute('aria-label');
-}
-
-async function statusText(popup) {
-  const playing = popup.getByText('Video · Playing', { exact: true });
-  const paused = popup.getByText('Video · Paused', { exact: true });
-  if (await playing.count()) return 'Video · Playing';
-  if (await paused.count()) return 'Video · Paused';
-  return '';
-}
-
 async function drivePopupPlayback(context, dir, note) {
   await mkdir(dir, { recursive: true });
   const fixture = await openFixture(context);
@@ -269,36 +330,28 @@ async function drivePopupPlayback(context, dir, note) {
     note('fixture ready, floating controller visible');
     const popup = await openActionPopup(context, fixture);
     try {
-      const play = popup.getByRole('button', { name: 'Play', exact: true });
-      await play.waitFor({ timeout: 8_000 });
-      await popup.getByRole('heading', { name: 'Fixture video' }).waitFor({ timeout: 8_000 });
       const beforeMedia = await mediaState(fixture);
+      const opened = await popup.view();
       const before = {
         paused: beforeMedia.paused,
-        button: await buttonLabel(popup),
-        status: await statusText(popup),
+        button: opened.button,
+        status: opened.status,
+        heading: opened.heading,
         currentTime: beforeMedia.currentTime,
       };
-      if (!before.paused || before.button !== 'Play' || before.status !== 'Video · Paused') {
+      if (!before.paused || before.button !== 'Play' || before.status !== 'Video · Paused' || before.heading !== 'Fixture video') {
         throw new Error(`打开面板时期望暂停：${JSON.stringify(before)}`);
       }
-      await popup.screenshot({ path: path.join(dir, 'popup-paused.png'), animations: 'disabled' });
+      await popup.screenshot(path.join(dir, 'popup-paused.png'));
       note(`before ${JSON.stringify(before)}`);
-      await play.click();
-      const playing = await poll(async () => {
-        const alert = await popup.getByRole('alert').count() ? await popup.getByRole('alert').innerText() : '';
-        return { media: await mediaState(fixture), button: await buttonLabel(popup), status: await statusText(popup), alert };
-      }, value => value.media.paused === false && value.button === 'Pause' && value.status === 'Video · Playing' && !value.alert, '点击 Play 后弹出面板和视频都应进入播放');
+      await popup.click('Play');
+      const playing = await poll(async () => ({ media: await mediaState(fixture), popup: await popup.view() }), value => value.media.paused === false && value.popup.button === 'Pause' && value.popup.status === 'Video · Playing' && !value.popup.alert, '点击 Play 后弹出面板和视频都应进入播放');
       const advanced = await poll(async () => mediaState(fixture), media => media.paused === false && media.currentTime > playing.media.currentTime + 0.05, '播放中 currentTime 应前进');
-      await popup.screenshot({ path: path.join(dir, 'popup-playing.png'), animations: 'disabled' });
+      await popup.screenshot(path.join(dir, 'popup-playing.png'));
       await fixture.screenshot({ path: path.join(dir, 'fixture-playing.png'), animations: 'disabled' });
       note(`playing currentTime=${advanced.currentTime}`);
-      await popup.getByRole('button', { name: 'Pause', exact: true }).click();
-      const paused = await poll(async () => ({
-        media: await mediaState(fixture),
-        button: await buttonLabel(popup),
-        status: await statusText(popup),
-      }), value => value.media.paused === true && value.button === 'Play' && value.status === 'Video · Paused', '点击 Pause 后应回到暂停');
+      await popup.click('Pause');
+      const paused = await poll(async () => ({ media: await mediaState(fixture), popup: await popup.view() }), value => value.media.paused === true && value.popup.button === 'Play' && value.popup.status === 'Video · Paused', '点击 Pause 后应回到暂停');
       const heldAt = paused.media.currentTime;
       await new Promise(resolve => setTimeout(resolve, 400));
       const later = await mediaState(fixture);
@@ -315,7 +368,6 @@ async function drivePopupPlayback(context, dir, note) {
       note('paused again, currentTime held');
       return state;
     } finally {
-      await fixture.keyboard.press('Escape').catch(() => {});
       await popup.close().catch(() => {});
     }
   } finally {

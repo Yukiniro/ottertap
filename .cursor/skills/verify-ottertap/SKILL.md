@@ -25,6 +25,8 @@ pnpm verify-build
 node .cursor/skills/verify-ottertap/scripts/session.mjs launch
 ```
 
+若 Chromium 因缺少系统库起不来，再跑与 CI 相同的 `pnpm exec playwright install-deps chromium`。已经能打开浏览器时不要跑它。
+
 `launch` 会拉起一个脱离终端的会话进程。它用 Playwright 的 `chromium.launchPersistentContext` 打开全新的 `/tmp/ottertap-verify/current/profile`，加载 `.output/chrome-mv3`，参数与 `e2e/smoke.spec.ts` 相同：`channel: 'chromium'`、`headless: true`、`locale: 'en-US'`、`--lang=en-US`，并去掉默认的 `--disable-extensions`。夹具页由这个上下文的 `route` 拦截，不访问外网，也没有单独的网站端口。
 
 就绪的标准是扩展已经能用，而不是端口通了：service worker 已出现，UI 语言以 `en` 开头，版本与 `package.json` 一致，并且 `https://media.ottertap.test/video` 上能看见浮动入口。成功时进程打印一行后退出，浏览器继续留在会话进程里：
@@ -61,12 +63,12 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
 
 1. 打开 `https://media.ottertap.test/video`。页面里是一个循环播放的静音视频，`aria-label="Fixture video"`，并带原生 `controls`。
 2. 等到浮动入口可见。无障碍名匹配 `/volume pill/i`，也就是 `Open the volume pill. Arrow keys move the floater.`
-3. 把夹具页带到前台，在 service worker 里调用 `chrome.action.openPopup()`。等到 URL 以 `/popup.html` 结尾的页面，再等到 `region`「Media controls」。
-4. 断言标题是 `Fixture video`，状态文案是 `Video · Paused`，按钮 `Play` 存在，视频 `#media` 的 `paused === true`。截图。
-5. 点击 `Play`。断言按钮变成 `Pause`，状态变成 `Video · Playing`，没有 `alert`，并且 `currentTime` 前进。再截图。
-6. 点击 `Pause`。断言回到 `Play` / `Video · Paused`，等待 400ms 后进度不再前进。
+3. 把夹具页带到前台，在 service worker 里调用 `chrome.action.openPopup()`。Playwright 不会把这个弹出面板收成 `Page`。用夹具页上的 CDP `Target.getTargets` 找到 `type === 'page'` 且 URL 以 `/popup.html` 结尾的 target，再 `Target.attachToTarget`（`flatten: false`）。这和 `e2e/smoke.spec.ts` 的 `readActionPopup` 是同一条路。
+4. 在弹出面板文档里按无障碍名读取：`[aria-label="Media controls"]`、`h1` 文本 `Fixture video`、状态文案 `Video · Paused`、按钮 `aria-label="Play"`。视频 `#media` 的 `paused === true`。用 `Page.captureScreenshot` 截弹出面板。
+5. 对 `aria-label="Play"` 的按钮调用 `click()`。断言按钮变成 `Pause`，状态变成 `Video · Playing`，没有 `[role="alert"]`，并且 `currentTime` 前进。再截图。
+6. 对 `Pause` 调用 `click()`。断言回到 `Play` / `Video · Paused`，等待 400ms 后进度不再前进。
 
-不要用地址栏打开 `popup.html`。弹出面板用 `tabs.query({ active: true, currentWindow: true })` 决定控制哪个标签；把 `popup.html` 打开成标签后，活动标签就变成扩展页自己。
+不要用地址栏打开 `popup.html`。弹出面板用 `tabs.query({ active: true, currentWindow: true })` 决定控制哪个标签；把 `popup.html` 打开成标签后，活动标签就变成扩展页自己。夹具页上的浮动入口仍用 Playwright `getByRole`。
 
 页内控件在开放 shadow root 里，Playwright 的 `getByRole` 能穿透。弹出面板不在 shadow root 里。英语文案来自 `locales/en.yml`。稳定把手是这些无障碍名，不要用坐标或 Tab 顺序：
 
