@@ -82,6 +82,7 @@ export function parseSettingsBackup(text: string): SettingsBackupResult {
   if (value.version > settingsBackupVersion) return { ok: false, error: settingsBackupErrors.versionTooNew };
   const migrated = migrateExportedSettings(value.version, value.settings);
   if (!migrated.ok) return migrated;
+  if (!isRecord(migrated.settings)) return { ok: false, error: settingsBackupErrors.notOttertap };
   return { ok: true, settings: normalizeSettings(migrated.settings) };
 }
 

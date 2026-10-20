@@ -56,6 +56,10 @@ test('坏文件、旧版本、新版本和未知字段不会产生可写入的�
   assert.deepEqual(parseSettingsBackup(JSON.stringify({ format: settingsBackupFormat, version: '1', settings })), { ok: false, error: settingsBackupErrors.notOttertap });
   assert.deepEqual(parseSettingsBackup(JSON.stringify({ format: settingsBackupFormat, version: 2, settings })), { ok: false, error: settingsBackupErrors.versionTooNew });
   assert.deepEqual(parseSettingsBackup(JSON.stringify({ format: settingsBackupFormat, version: 0, settings })), { ok: false, error: settingsBackupErrors.versionTooOld });
+  assert.deepEqual(parseSettingsBackup(JSON.stringify({ format: settingsBackupFormat, version: 1 })), { ok: false, error: settingsBackupErrors.notOttertap });
+  assert.deepEqual(parseSettingsBackup(JSON.stringify({ format: settingsBackupFormat, version: 1, settings: null })), { ok: false, error: settingsBackupErrors.notOttertap });
+  assert.deepEqual(parseSettingsBackup(JSON.stringify({ format: settingsBackupFormat, version: 1, settings: 'reset' })), { ok: false, error: settingsBackupErrors.notOttertap });
+  assert.deepEqual(parseSettingsBackup(JSON.stringify({ format: settingsBackupFormat, version: 1, settings: [] })), { ok: false, error: settingsBackupErrors.notOttertap });
   assert.deepEqual(normalizeSettings(settings), settings);
 });
 
