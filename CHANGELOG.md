@@ -1,5 +1,25 @@
 # ottertap-extension
 
+## 1.6.0
+
+### Minor Changes
+
+- [#45](https://github.com/Yukiniro/ottertap/pull/45) [`60aace3`](https://github.com/Yukiniro/ottertap/commit/60aace3a04be1d9c34147ebc84bb32be4d2db3de) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 弹出面板的音量区新增声道模式：立体声（默认）、单声道、只听左声道、只听右声道，可与音量放大叠加，并随「记住此站点」保存。只有选了非立体声才会接入 Web Audio；跨域且无 CORS 的媒体不支持，入口置灰并说明原因。
+
+- [#56](https://github.com/Yukiniro/ottertap/pull/56) [`fbd6e71`](https://github.com/Yukiniro/ottertap/commit/fbd6e7162732353b9b8db110407e4b2dd5d054b7) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 页内 Alt+0（单键模式开启时同样）和扩展命令会在 1× 与本页刚才的倍速之间来回切换。已经是 1× 且本页还没记过倍速时保持不变。记住的倍速只留在当前页面的内容脚本里，不写入存储。
+
+- [#44](https://github.com/Yukiniro/ottertap/pull/44) [`024aa2f`](https://github.com/Yukiniro/ottertap/commit/024aa2fa13481083c857b256660c3244dd08c9ce) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 设置页可以导出和导入全部设置，方便在重装或更换浏览器时带走网站规则、已记住的站点和倍速预设。
+
+- [#52](https://github.com/Yukiniro/ottertap/pull/52) [`f1c8ab8`](https://github.com/Yukiniro/ottertap/commit/f1c8ab88af4891c53b7c258b3d09c39f6d07bd05) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 设置里可以选择快进 / 快退步长（5、10、15 或 30 秒，默认 10）。弹出面板按钮、页内快捷键 J / L / ← / →，以及扩展命令「后退 / 前进」都按这个步长跳转。
+
+- [#48](https://github.com/Yukiniro/ottertap/pull/48) [`071e8b3`](https://github.com/Yukiniro/ottertap/commit/071e8b36ee66e9a3afc41e1cb874f1927dec55cf) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 页内快捷键与滚轮调音量去掉 Alt+Shift，改为两键：按住 Alt（Mac 为 Option）滚动滚轮调音量，Alt + , . 0 调倍速，Alt + M 静音；原来的 Alt+Shift 组合不再生效，Alt+方向键留给浏览器。鼠标停在视频上时直接滚动滚轮即可调音量，不在视频上照常滚动页面，此项默认开启，可在设置中关闭，关闭后需按住 Alt 滚动。设置页另有默认关闭的「单键模式」（K 播放暂停、J/L 或 ←/→ 跳 10 秒、悬停或聚焦视频时 ↑/↓ 调音量、M 静音、< > 调倍速）。在输入框和可编辑区域中输入时，页内快捷键不会触发。在 Windows 上用 Alt+滚轮或 Alt 快捷键后松开 Alt，不会再聚焦浏览器菜单；单独按松 Alt 不受影响。扩展命令的快捷键不变。
+
+### Patch Changes
+
+- [#45](https://github.com/Yukiniro/ottertap/pull/45) [`60aace3`](https://github.com/Yukiniro/ottertap/commit/60aace3a04be1d9c34147ebc84bb32be4d2db3de) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 只记住了声道的站点切回立体声后，不再留下空的站点偏好，父域名上记住的音量和倍速可以重新生效。
+
+- [#44](https://github.com/Yukiniro/ottertap/pull/44) [`024aa2f`](https://github.com/Yukiniro/ottertap/commit/024aa2fa13481083c857b256660c3244dd08c9ce) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 导入设置时，缺少设置内容或内容不是对象的备份会被拒绝，避免确认后把当前设置重置成默认值。
+
 ## 1.5.0
 
 ### Minor Changes
