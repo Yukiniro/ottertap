@@ -19,6 +19,11 @@ for (const locale of locales) {
 assert.equal(manifest.options_ui.open_in_tab, true);
 assert.equal(manifest.action.default_popup, 'popup.html');
 assert.equal(manifest.content_scripts[0].all_frames, true);
+assert.ok(manifest.content_scripts.every(script => script.all_frames === true));
+const mainWorld = manifest.content_scripts.find(script => script.world === 'MAIN');
+assert.ok(mainWorld, 'page playbackRate hook must run in the MAIN world');
+assert.equal(mainWorld.run_at, 'document_start');
+assert.match([].concat(mainWorld.js ?? []).join(','), /assigned-rate/);
 assert.deepEqual(manifest.permissions, ['storage']);
 assert.deepEqual(manifest.host_permissions.sort(), ['http://*/*', 'https://*/*']);
 for (const file of ['popup.html', 'options.html', 'background.js', 'content-scripts/content.js', 'content-scripts/content.css', 'LICENSE', ...Object.values(manifest.icons)]) {

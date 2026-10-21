@@ -19,8 +19,25 @@ export function stepRate(current: number, direction: 1 | -1) {
   return clampRate(aligned * rateStep);
 }
 
-export function nextRate(current: number, direction: 1 | -1 | 0) {
-  return direction === 0 ? 1 : stepRate(current, direction);
+export function nextRate(current: number, direction: 1 | -1 | 0, remembered?: number | null) {
+  if (direction !== 0) return stepRate(current, direction);
+  if (sameRate(current, 1)) {
+    const recalled = remembered == null ? null : recallableRate(remembered);
+    if (recalled != null) return recalled;
+  }
+  return 1;
+}
+
+/** A non-1× speed this page can return to. 1× and unusable numbers are ignored. */
+export function recallableRate(rate: number): number | null {
+  if (!Number.isFinite(rate)) return null;
+  const clamped = clampRate(rate);
+  return sameRate(clamped, 1) ? null : clamped;
+}
+
+/** Keep the latest non-1× speed. Observing 1× leaves the previous value in place. */
+export function noteRecallRate(remembered: number | null, observed: number): number | null {
+  return recallableRate(observed) ?? remembered;
 }
 
 export function formatRate(rate: number) {

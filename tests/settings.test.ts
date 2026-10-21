@@ -64,7 +64,8 @@ test('设置同页展示全部项，保存只改对应字段，失败时不误�
     }
     assert.match(host.textContent!, /加快 0\.25×/);
     assert.match(host.textContent!, /减慢 0\.25×/);
-    assert.match(host.textContent!, /回到 1×/);
+    assert.match(host.textContent!, /回到 1×，再按切回/);
+    assert.match(host.textContent!, /1× 与之前的倍速间切换/);
     assert.match(host.textContent!, /, \. 0/);
     assert.match(host.textContent!, /锁定倍速/);
     const lock = host.querySelector('[role="switch"][aria-label="锁定倍速"]');

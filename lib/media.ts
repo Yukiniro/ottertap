@@ -1,7 +1,8 @@
 import { i18n } from '#i18n';
 import { canAmplify, createAmplifier, isChannelMode, maxGain, splitVolume, type Amplifier } from './amplifier';
 import { armRateEcho, createRateLockState, noteDesiredRate, observePlaybackRate, rateLockEpsilon, type RateLockState } from './rate-lock';
-import { maxRate, minRate, readSettledRate } from './rate';
+import { assignedRateAttribute, assignedRateEvent, installAssignedRateHook } from './assigned-rate';
+import { maxRate, minRate, noteRecallRate, readSettledRate, recallableRate, sameRate } from './rate';
 import type { ChannelMode, MediaCommand, MediaState } from './types';
 import { formatTime } from './utils';
 
@@ -171,8 +172,13 @@ export function createMediaController(document: Document, onChange?: () => void,
   let elements: HTMLMediaElement[] = [];
   let dirty = true;
   let lockOn = false;
+  // Last non-1× speed for this document. Reset toggles back to it. Not written to storage.
+  let recall: number | null = null;
+  const seenRates = new WeakMap<HTMLMediaElement, number>();
   const slots = new Map<HTMLMediaElement, RateSlot>();
-  const amplifier = createAmplifier(document.defaultView!);
+  const view = document.defaultView!;
+  installAssignedRateHook(view);
+  const amplifier = createAmplifier(view);
   const flashed = new WeakMap<HTMLMediaElement, { token: number; outline: string; offset: string }>();
   let flashToken = 0;
   const onPip = () => onChange?.();
@@ -190,8 +196,52 @@ export function createMediaController(document: Document, onChange?: () => void,
     element.ownerDocument.defaultView?.clearTimeout(slot.timer);
     slot.timer = 0;
   };
+  const noteSeen = (element: HTMLMediaElement, rate: number) => {
+    const previous = seenRates.get(element);
+    seenRates.set(element, rate);
+    if (previous !== undefined && sameRate(previous, rate)) return;
+    // A second element's first look must not replace a speed this page already remembered.
+    if (previous === undefined && recall != null && recallableRate(rate) != null) return;
+    recall = noteRecallRate(recall, rate);
+  };
+  const rateWatchers = new Set<HTMLMediaElement>();
+  // Lock's listener only exists while lock is on, and it rewrites instead of remembering.
+  // This one stays attached so a site can move off 1× and back between snapshots.
+  const lockOwnsRate = (element: HTMLMediaElement) => {
+    if (!lockOn) return false;
+    const slot = slots.get(element);
+    return !!slot && slot.state.desired != null && !slot.state.givenUp;
+  };
+  // The setter publishes the value it just wrote. ratechange is queued, so a
+  // burst is already back at the final rate by the time that event runs.
+  const onAssigned = (event: Event) => {
+    const element = event.currentTarget as HTMLMediaElement;
+    if (lockOwnsRate(element)) return;
+    const raw = element.getAttribute(assignedRateAttribute);
+    if (raw == null) return;
+    const rate = Number(raw);
+    if (!Number.isFinite(rate)) return;
+    noteSeen(element, rate);
+  };
+  const onRateChange = (event: Event) => {
+    const element = event.currentTarget as HTMLMediaElement;
+    if (lockOwnsRate(element)) return;
+    noteSeen(element, element.playbackRate);
+  };
+  const unwatchRate = (element: HTMLMediaElement) => {
+    if (!rateWatchers.delete(element)) return;
+    element.removeEventListener('ratechange', onRateChange);
+    element.removeEventListener(assignedRateEvent, onAssigned);
+  };
+  const watchRate = (element: HTMLMediaElement) => {
+    if (rateWatchers.has(element)) return;
+    rateWatchers.add(element);
+    element.addEventListener('ratechange', onRateChange);
+    element.addEventListener(assignedRateEvent, onAssigned);
+  };
   const release = (element: HTMLMediaElement) => {
     const slot = slots.get(element);
+    unwatchRate(element);
     if (!slot) return;
     clearTimer(element, slot);
     if (slot.listening) {
@@ -259,8 +309,10 @@ export function createMediaController(document: Document, onChange?: () => void,
     if (!dirty) return;
     elements = discoverMedia(document, observe);
     dirty = false;
+    for (const element of elements) watchRate(element);
     for (const [root, observer] of observers) if ('host' in root && !root.host.isConnected) { observer.disconnect(); observers.delete(root); }
     for (const element of slots.keys()) if (!element.isConnected) release(element);
+    for (const element of [...rateWatchers]) if (!element.isConnected) unwatchRate(element);
   };
   const idOf = (element: HTMLMediaElement) => {
     if (!ids.has(element)) ids.set(element, String(++nextId));
@@ -271,10 +323,12 @@ export function createMediaController(document: Document, onChange?: () => void,
       refresh();
       if (lockOn) for (const element of elements) listen(element);
       return elements.map(element => {
+        noteSeen(element, element.playbackRate);
         const snap = mediaSnapshot(element, idOf(element), document, amplifier);
         return slots.get(element)?.state.givenUp ? { ...snap, rateLock: 'given-up' as const } : snap;
       });
     },
+    recallRate() { return recall; },
     /** Id of the media under the point, else of the focused media when `focus` is set. */
     pointed(point: { x: number; y: number } | null, focus: boolean) {
       refresh();
@@ -293,9 +347,18 @@ export function createMediaController(document: Document, onChange?: () => void,
     async command(id: string, command: MediaCommand) {
       const element = elements.find(media => ids.get(media) === id && media.isConnected);
       if (!element) throw new Error(i18n.t('mediaRemoved'));
-      if (command.type === 'rate') rememberRate(element, command.value);
+      if (command.type === 'rate') {
+        const leaving = recallableRate(element.playbackRate);
+        if (leaving != null) recall = leaving;
+        seenRates.set(element, element.playbackRate);
+        rememberRate(element, command.value);
+      }
       await applyMediaCommand(element, command, amplifier);
-      if (command.type === 'rate') return readSettledRate(element);
+      if (command.type === 'rate') {
+        const settled = await readSettledRate(element);
+        noteSeen(element, settled);
+        return settled;
+      }
     },
     flash(id: string) {
       this.snapshot();
@@ -325,6 +388,7 @@ export function createMediaController(document: Document, onChange?: () => void,
       for (const observer of observers.values()) observer.disconnect();
       observers.clear();
       for (const element of [...slots.keys()]) release(element);
+      for (const element of [...rateWatchers]) unwatchRate(element);
       amplifier.dispose();
     }
   };

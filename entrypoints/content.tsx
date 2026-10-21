@@ -100,7 +100,10 @@ export default defineContentScript({
         if (typeof message.percent === 'number') window.dispatchEvent(new window.CustomEvent('ottertap-volume', { detail: message.percent }));
         return { ok: true };
       }
-      if (message.type === 'snapshot') return { media: enabled ? controller.snapshot() : [] };
+      if (message.type === 'snapshot') {
+        if (!enabled) return { media: [], recallRate: null };
+        return { media: controller.snapshot(), recallRate: controller.recallRate() };
+      }
       if (message.type === 'highlight') { if (enabled && typeof message.id === 'string') controller.flash(message.id); return { ok: true }; }
       if (message.type === 'command') {
         try {

@@ -77,7 +77,7 @@ export function createDemo(document: Document, { src, title, store }: { src: str
     const unwatch = store.watch(apply);
     const hotkeys = createHotkeySession(async (action: HotkeyAction) => {
       const page = await client.read();
-      const plan = planHotkey(page, action);
+      const plan = planHotkey(page, action, controller.recallRate());
       if (!plan) return;
       if (plan.media.id !== page.selectedId) await client.select(plan.media.id);
       await client.command(plan.media, plan.command);
