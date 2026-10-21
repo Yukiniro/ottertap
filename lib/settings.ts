@@ -1,8 +1,16 @@
 import { i18n } from '#i18n';
 import { isChannelMode, maxGain } from './amplifier';
 import { maxRate, minRate, normalizeRatePresets } from './rate';
-import { defaultSettings, type MediaCommand, type Settings, type SitePref } from './types';
+import { defaultSettings, skipSteps, type MediaCommand, type Settings, type SitePref, type SkipSeconds } from './types';
 const matchesSite = (host: string, site: string) => host === site || host.endsWith(`.${site}`);
+
+export function isSkipSeconds(value: unknown): value is SkipSeconds {
+  return typeof value === 'number' && (skipSteps as readonly number[]).includes(value);
+}
+
+export function normalizeSkipSeconds(value: unknown): SkipSeconds {
+  return isSkipSeconds(value) ? value : 10;
+}
 
 export function normalizeDomain(input: string): string {
   const text = input.trim().toLowerCase();
@@ -38,7 +46,8 @@ export function normalizeSettings(value: unknown): Settings {
     ratePresets: normalizeRatePresets(source.ratePresets),
     lockRate: source.lockRate === true,
     hoverWheel: typeof source.hoverWheel === 'boolean' ? source.hoverWheel : true,
-    singleKey: source.singleKey === true
+    singleKey: source.singleKey === true,
+    skipSeconds: normalizeSkipSeconds(source.skipSeconds)
   };
 }
 

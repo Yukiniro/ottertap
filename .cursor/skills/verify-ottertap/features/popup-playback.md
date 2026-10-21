@@ -1,15 +1,15 @@
 # 弹出面板播放控制
 
-工具栏上的小獭 OtterTap 打开 400px 宽的弹出面板，控制当前标签里的视频或音频：播放、暂停、进退 10 秒、拖动进度，以及画中画。
+工具栏上的小獭 OtterTap 打开 400px 宽的弹出面板，控制当前标签里的视频或音频：播放、暂停、按设置里的步长进退（默认 10 秒）、拖动进度，以及画中画。
 
 ## Sub-features
 
 - 播放 / 暂停。按钮无障碍名在 `Play` 和 `Pause` 之间切换，面板状态在 `Video · Paused` 与 `Video · Playing` 之间切换。
-- 后退 10 秒、前进 10 秒。按钮名是 `Back 10 seconds` 和 `Forward 10 seconds`。媒体不可 seek 时这两个按钮禁用。
+- 后退、前进。按钮名带上当前步长，默认是 `Back 10 seconds` 和 `Forward 10 seconds`。媒体不可 seek 时这两个按钮禁用。
 - 进度条。滑块名是 `Seek`，松手后把 `currentTime` 设到提交的位置。
 - 画中画。视频上按钮名是 `Picture-in-picture`；音频上禁用，并出现 `Audio can't use picture-in-picture.`
 
-脚本化证据只覆盖播放 / 暂停。进退、拖动进度和画中画用上面的名字在同一个弹出面板里点，结束状态分别是 `currentTime` 变化约 10 秒、滑块 `aria-valuenow` 接近目标秒数、以及按钮变为 `Exit picture-in-picture`。站点禁用画中画时按钮保持禁用，提示是 `This site has turned off picture-in-picture.`（`e2e/smoke.spec.ts` 的画中画测试已经覆盖禁用原因）。
+脚本化证据只覆盖播放 / 暂停。进退、拖动进度和画中画用上面的名字在同一个弹出面板里点。默认步长下，结束状态分别是 `currentTime` 变化约 10 秒、滑块 `aria-valuenow` 接近目标秒数、以及按钮变为 `Exit picture-in-picture`。步长改成别的档位时，进度变化和按钮名里的秒数跟着变。站点禁用画中画时按钮保持禁用，提示是 `This site has turned off picture-in-picture.`（`e2e/smoke.spec.ts` 的画中画测试已经覆盖禁用原因）。
 
 ## How to get to it (user POV)
 

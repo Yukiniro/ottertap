@@ -2,7 +2,7 @@ import { i18n } from '#i18n';
 import { createHotkeySession, isTypingEvent, planHotkey, type HotkeyAction } from './hotkey';
 import { createMediaController, lockedMedia } from './media';
 import { createSitePrefSession, isSiteEnabled, normalizeSettings, withRememberedCommand } from './settings';
-import type { MediaClient, Settings, SettingsStore } from './types';
+import { defaultSettings, type MediaClient, type Settings, type SettingsStore } from './types';
 
 export function createDemoStore(key: string): SettingsStore {
   const listeners = new Set<(settings: Settings) => void>();
@@ -71,7 +71,8 @@ export function createDemo(document: Document, { src, title, store }: { src: str
   const listenHotkeys = (window: Window) => {
     let on = true;
     let singleKey = false;
-    const apply = (settings: Settings) => { on = isSiteEnabled(demoUrl, settings); singleKey = settings.singleKey; };
+    let skipSeconds = defaultSettings.skipSeconds;
+    const apply = (settings: Settings) => { on = isSiteEnabled(demoUrl, settings); singleKey = settings.singleKey; skipSeconds = settings.skipSeconds; };
     void store.load().then(apply);
     const unwatch = store.watch(apply);
     const hotkeys = createHotkeySession(async (action: HotkeyAction) => {
@@ -82,7 +83,7 @@ export function createDemo(document: Document, { src, title, store }: { src: str
       await client.command(plan.media, plan.command);
     });
     const allow = () => on && controller.snapshot().length > 0;
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Alt' || (allow() && !isTypingEvent(event))) hotkeys.key(event, { singleKey }); };
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Alt' || (allow() && !isTypingEvent(event))) hotkeys.key(event, { singleKey, skipSeconds }); };
     const onWheel = (event: WheelEvent) => { if (allow()) hotkeys.wheel(event); };
     window.addEventListener('keydown', onKey, true);
     window.addEventListener('wheel', onWheel, { capture: true, passive: false });

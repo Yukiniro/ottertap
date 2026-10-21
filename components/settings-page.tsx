@@ -17,8 +17,8 @@ import { cn } from '../lib/utils';
 import { defaultRatePresets, formatRate, maxRatePresets, parseRatePreset } from '../lib/rate';
 import { channelLabel } from '../lib/media';
 import { downloadSettingsBackup, parseSettingsBackup, readExtensionVersion, settingsBackupErrors, type SettingsBackupError } from '../lib/settings-backup';
-import { forgetSitePref, normalizeDomain } from '../lib/settings';
-import type { Settings, SitePref } from '../lib/types';
+import { forgetSitePref, isSkipSeconds, normalizeDomain } from '../lib/settings';
+import { skipSteps, type Settings, type SitePref } from '../lib/types';
 import { useSettingsAtoms } from './theme';
 
 const themes = [{ value: 'light', label: () => i18n.t('themeLight') }, { value: 'dark', label: () => i18n.t('themeDark') }, { value: 'system', label: () => i18n.t('themeSystem') }] as const;
@@ -210,12 +210,13 @@ function Row({ title, description, titleId, children }: { title: string; descrip
 }
 
 export function SettingsPage({ back }: { back?: () => void }) {
-  const { themeAtom, floatingAtom, lockRateAtom, hoverWheelAtom, singleKeyAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { themeAtom, floatingAtom, lockRateAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const theme = useAtomValue(themeAtom);
   const floating = useAtomValue(floatingAtom);
   const lockRate = useAtomValue(lockRateAtom);
   const hoverWheel = useAtomValue(hoverWheelAtom);
   const singleKey = useAtomValue(singleKeyAtom);
+  const skipSeconds = useAtomValue(skipSecondsAtom);
   const siteMode = useAtomValue(siteModeAtom);
   const sites = useAtomValue(sitesAtom);
   const sitePrefs = useAtomValue(sitePrefsAtom);
@@ -318,6 +319,15 @@ export function SettingsPage({ back }: { back?: () => void }) {
             <FieldLabel htmlFor="settings-lock-rate" className="text-sm font-normal">{i18n.t('lockRate')}</FieldLabel>
             <Switch id="settings-lock-rate" aria-label={i18n.t('lockRate')} checked={lockRate} disabled={disabled} onCheckedChange={checked => void save({ lockRate: checked })} />
           </Field>
+          <div className="mt-4">
+            <div className="flex flex-col gap-3 rounded-lg bg-muted/50 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <h3 id="skip-seconds-label" className="text-sm font-medium">{i18n.t('skipSeconds')}</h3>
+              <ToggleGroup aria-labelledby="skip-seconds-label" spacing={1} className="grid h-auto w-full grid-cols-4 rounded-lg bg-background/80 p-1 sm:w-auto" value={[String(skipSeconds)]} disabled={disabled} onValueChange={value => { const next = Number(value[0]); if (isSkipSeconds(next)) void save({ skipSeconds: next }); }}>
+                {skipSteps.map(seconds => <ToggleGroupItem key={seconds} value={String(seconds)} className="h-8 rounded-md border-0 px-2.5 text-xs text-muted-foreground shadow-none aria-pressed:bg-card aria-pressed:font-semibold aria-pressed:text-foreground aria-pressed:shadow-sm">{i18n.t('skipSecondsOption', { seconds })}</ToggleGroupItem>)}
+              </ToggleGroup>
+            </div>
+            <p className="mt-2 text-sm leading-5 text-muted-foreground">{i18n.t('skipSecondsDescription')}</p>
+          </div>
         </div>
       </section>
       <section id="shortcuts" aria-labelledby="shortcuts-heading" className="scroll-mt-32 rounded-xl bg-card shadow-card md:scroll-mt-8">
@@ -357,8 +367,8 @@ export function SettingsPage({ back }: { back?: () => void }) {
           <h3 className="mt-6 mb-2 text-sm font-medium">{i18n.t('singleKeyShortcuts')}</h3>
           <ShortcutList label={i18n.t('singleKeyShortcuts')} rows={[
             { id: 'toggle', key: 'K', description: i18n.t('cmdPlayPause') },
-            { id: 'skip-back', key: 'J / ←', description: i18n.t('cmdSkipBack') },
-            { id: 'skip-forward', key: 'L / →', description: i18n.t('cmdSkipForward') },
+            { id: 'skip-back', key: 'J / ←', description: i18n.t('skipBack', { seconds: skipSeconds }) },
+            { id: 'skip-forward', key: 'L / →', description: i18n.t('skipForward', { seconds: skipSeconds }) },
             { id: 'volume-up', key: '↑', description: i18n.t('shortcutVolumeUp') },
             { id: 'volume-down', key: '↓', description: i18n.t('shortcutVolumeDown') },
             { id: 'mute', key: 'M', description: i18n.t('cmdMute') },

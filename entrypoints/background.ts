@@ -4,7 +4,7 @@ import { extensionStore } from '../lib/extension-store';
 import { createSitePrefSession, isSiteEnabled, withRememberedCommand } from '../lib/settings';
 import { isMediaCommand } from '../lib/media';
 import { actionForCommand } from '../lib/commands';
-import { actionHintKey, isHotkeyAction, planHotkey, shownPercent, type HotkeyAction } from '../lib/hotkey';
+import { actionHintKey, applySkipStep, isHotkeyAction, planHotkey, shownPercent, type HotkeyAction } from '../lib/hotkey';
 import { nextRate } from '../lib/rate';
 import { steppedVolume } from '../lib/volume';
 import { volumeBadgeColor, volumeBadgeFromReports, volumeBadgeTtlMs } from '../lib/volume-badge';
@@ -167,8 +167,8 @@ export default defineBackground(() => {
   const showRate = (tabId: number, rate: number) => {
     void browser.tabs.sendMessage(tabId, { namespace: 'ottertap', type: 'rateHint', rate }, { frameId: 0 }).catch(() => {});
   };
-  const showAction = (tabId: number, key: string) => {
-    void browser.tabs.sendMessage(tabId, { namespace: 'ottertap', type: 'actionHint', key }, { frameId: 0 }).catch(() => {});
+  const showAction = (tabId: number, key: string, seconds?: number) => {
+    void browser.tabs.sendMessage(tabId, { namespace: 'ottertap', type: 'actionHint', key, seconds }, { frameId: 0 }).catch(() => {});
   };
   const showRateLock = (tabId: number) => {
     void browser.tabs.sendMessage(tabId, { namespace: 'ottertap', type: 'rateLockHint' }, { frameId: 0 }).catch(() => {});
@@ -218,7 +218,7 @@ export default defineBackground(() => {
     if (plan.command.type === 'mute') gestures.delete(tabId);
     await deliver(tabId, plan.media.id, 'command', plan.command);
     const key = actionHintKey(action, plan.media);
-    if (key) showAction(tabId, key);
+    if (key) showAction(tabId, key, action.type === 'skip' ? Math.abs(action.delta) : undefined);
     return true;
   }
   async function performHotkey(tabId: number, host: string, action: HotkeyAction) {
@@ -237,8 +237,8 @@ export default defineBackground(() => {
     return { handled: await applyTransport(tabId, host, action) };
   }
   async function runExtensionCommand(name: string, source?: { id?: number; url?: string }) {
-    const action = actionForCommand(name);
-    if (!action) return;
+    const raw = actionForCommand(name);
+    if (!raw) return;
     try {
       let tabId = source?.id;
       let url = source?.url;
@@ -254,6 +254,7 @@ export default defineBackground(() => {
       await framesReady;
       const settings = await currentSettings();
       if (!isSiteEnabled(pageUrl, settings)) return;
+      const action = applySkipStep(raw, settings.skipSeconds);
       await enqueueCommand(tabId, () => performHotkey(tabId, new URL(pageUrl).hostname, action));
     } catch { /* The active page has no controllable media. */ }
   }
@@ -311,7 +312,7 @@ export default defineBackground(() => {
         const settings = await currentSettings();
         const enabled = isSiteEnabled(url, settings);
         const host = new URL(url).hostname;
-        if (message.type === 'context') return { enabled, host, url, hasMedia: hasMedia(tabId), lockRate: settings.lockRate, singleKey: settings.singleKey, hoverWheel: settings.hoverWheel };
+        if (message.type === 'context') return { enabled, host, url, hasMedia: hasMedia(tabId), lockRate: settings.lockRate, singleKey: settings.singleKey, hoverWheel: settings.hoverWheel, skipSeconds: settings.skipSeconds };
         if (message.type === 'rateLock') { showRateLock(tabId); return { ok: true }; }
         if (message.type === 'register' && sender.tab) {
           const frameId = sender.frameId ?? 0;
