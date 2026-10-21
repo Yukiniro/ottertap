@@ -28,6 +28,8 @@ export default defineContentScript({
     let pageUrl = '';
     let watched: Settings | undefined;
     let contextKeys = { singleKey: defaultSettings.singleKey, hoverWheel: defaultSettings.hoverWheel, skipSeconds: defaultSettings.skipSeconds };
+    let lockedLocalId = '';
+    let selectionEpoch = 0;
     let presenceEpoch = 0;
     let heartbeat = 0;
     const announce = () => {
@@ -80,6 +82,11 @@ export default defineContentScript({
         return;
       }
       if (message.type === 'altUsed') { hotkeys.arm(); return; }
+      if (message.type === 'selected') {
+        selectionEpoch += 1;
+        lockedLocalId = typeof message.id === 'string' && /^\d+$/.test(message.id) ? message.id : '';
+        return;
+      }
       if (!['snapshot', 'command', 'highlight', 'reveal', 'rateHint', 'actionHint', 'rateLockHint'].includes(message.type)) return;
       void (async () => {
       if (message.type === 'actionHint') {
@@ -141,7 +148,9 @@ export default defineContentScript({
     };
     const onWheel = (event: WheelEvent) => {
       if (!shortcutActive()) return;
-      hotkeys.wheel(event, (watched ?? contextKeys).hoverWheel ? controller.pointed({ x: event.clientX, y: event.clientY }, false) : undefined);
+      const hover = (watched ?? contextKeys).hoverWheel;
+      const target = hover ? controller.hoverTarget({ x: event.clientX, y: event.clientY }, lockedLocalId) : undefined;
+      hotkeys.wheel(event, target);
     };
     const onPageHide = () => {
       if (reported == null) return;
@@ -166,6 +175,7 @@ export default defineContentScript({
       window.removeEventListener('pointermove', onPointer, true); window.removeEventListener('pointerout', onPointer, true);
     });
     const epoch = presenceEpoch;
+    const selectionAtContext = selectionEpoch;
     let contextLock = false;
     try {
       const result = await browser.runtime.sendMessage({ namespace: 'ottertap', type: 'context' });
@@ -175,6 +185,7 @@ export default defineContentScript({
       contextKeys = { singleKey: result?.singleKey === true, hoverWheel: result?.hoverWheel !== false, skipSeconds: normalizeSkipSeconds(result?.skipSeconds) };
       // A push that arrives while this request is in flight is newer than the response.
       if (window.top === window && presenceEpoch === epoch) tabHasMedia = result?.hasMedia === true;
+      if (selectionEpoch === selectionAtContext) lockedLocalId = typeof result?.selectedLocalId === 'string' && /^\d+$/.test(result.selectedLocalId) ? result.selectedLocalId : '';
     } catch { enabled = false; pageUrl = ''; }
     if (watched && pageUrl) enabled = isSiteEnabled(pageUrl, watched);
     controller.setLockRate(enabled && (watched ? watched.lockRate : contextLock));

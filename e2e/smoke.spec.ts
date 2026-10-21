@@ -133,6 +133,7 @@ const pages: Record<string, string> = {
   '/embed': documentHtml(`<video id="media" src="${wav}" preload="auto" playsinline></video>`),
   '/video': documentHtml(`<video id="media" src="${wav}" preload="auto" playsinline></video>`),
   '/keys': documentHtml(`<video id="media" src="${wav}" preload="auto" playsinline style="display:block;width:320px;height:180px"></video><input id="field" aria-label="Field" style="margin-top:1200px">`),
+  '/feed': documentHtml(`<video id="preview" aria-label="Feed preview" src="${wav}" preload="auto" playsinline loop style="display:block;width:240px;height:135px"></video><video id="media" aria-label="Main player" src="${wav}" preload="auto" playsinline loop style="display:block;width:640px;height:360px;margin-top:24px"></video><div style="height:1600px"></div>`),
   '/pip-off': documentHtml(`<video id="media" src="${wav}" preload="auto" playsinline disablepictureinpicture></video>`),
   '/other': documentHtml(`<audio id="media" src="${wav}" preload="auto"></audio>`, 'Other tab'),
   '/stereo': documentHtml(`<audio id="media" src="${tone}" preload="auto" loop></audio>`),
@@ -621,6 +622,41 @@ test('在 iframe 里的视频上 Alt+滚轮，焦点在顶层页面时松开 Alt
   });
 });
 
+test('悬停滚轮只作用在有声主播放器，静音信息流预览不拦截页面滚动', async () => {
+  await withPage(async page => {
+    await openFixture(page, '/feed');
+    await ready(page);
+    const main = page.locator('#media');
+    const preview = page.locator('#preview');
+    const play = (selector: string, muted: boolean, volume: number) => page.locator(selector).evaluate(async (element: HTMLMediaElement, options: { muted: boolean; volume: number }) => {
+      element.muted = true;
+      await element.play();
+      element.muted = options.muted;
+      element.volume = options.volume;
+      return { paused: element.paused, muted: element.muted, volume: element.volume };
+    }, { muted, volume });
+    await play('#preview', true, 1);
+    await play('#media', false, 0.5);
+    await expect.poll(() => preview.evaluate((element: HTMLMediaElement) => ({ paused: element.paused, muted: element.muted }))).toEqual({ paused: false, muted: true });
+    await expect.poll(() => main.evaluate((element: HTMLMediaElement) => ({ paused: element.paused, muted: element.muted, volume: element.volume }))).toEqual({ paused: false, muted: false, volume: 0.5 });
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const previewBox = await preview.boundingBox();
+    if (!previewBox) throw new Error('预览没有位置');
+    await page.mouse.move(previewBox.x + previewBox.width / 2, previewBox.y + previewBox.height / 2);
+    await page.mouse.wheel(0, 120);
+    await expect.poll(() => page.evaluate(() => window.scrollY), '静音预览上滚轮应滚动页面').toBeGreaterThan(0);
+    expect(await preview.evaluate((element: HTMLMediaElement) => element.volume)).toBeCloseTo(1, 2);
+    expect(await main.evaluate((element: HTMLMediaElement) => element.volume)).toBeCloseTo(0.5, 2);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const mainBox = await main.boundingBox();
+    if (!mainBox) throw new Error('主播放器没有位置');
+    await page.mouse.move(mainBox.x + mainBox.width / 2, mainBox.y + mainBox.height / 2);
+    await page.mouse.wheel(0, -100);
+    await expect.poll(() => main.evaluate((element: HTMLMediaElement) => element.volume), '有声主播放器上裸滚轮调音量').toBeCloseTo(0.6, 2);
+    expect(await page.evaluate(() => window.scrollY), '主播放器上滚轮不滚动页面').toBe(0);
+  });
+});
+
 test('默认悬停在视频上直接滚轮调音量，不在视频上照常滚动；关闭后回落为 Alt+滚轮', async () => {
   await withPage(async page => {
     if (!browser) throw new Error('浏览器还没有启动');
@@ -787,7 +823,7 @@ test('英文设置页的快捷键一节不写死中文', async () => {
     await expect(shortcuts).toContainText('Back to 1×, press again to restore');
     await expect(shortcuts).not.toContainText('Reset speed to 1×');
     await expect(shortcuts).toContainText('Single-key mode');
-    await expect(shortcuts).toContainText('Scroll over a video to change volume');
+    await expect(shortcuts).toContainText('Scroll over the main player to change volume');
     await expect(shortcuts).not.toContainText('Alt + Shift');
     for (const chinese of ['快捷键', '滚轮', '提高音量', '降低音量']) await expect(shortcuts).not.toContainText(chinese);
   });
