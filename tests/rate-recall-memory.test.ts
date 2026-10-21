@@ -56,6 +56,54 @@ test('内容脚本按页面记住最近一次非 1×，站点菜单和预设都�
   }
 });
 
+test('锁定关闭时，两次快照之间改到非 1× 再改回 1×，记住的是中间的倍速', async () => {
+  const view = new Window({ url: 'https://example.com/watch' });
+  const document = view.document as unknown as Document;
+  const media = view.document.createElement('video');
+  view.document.body.append(media);
+  installRateEvents(media as unknown as HTMLMediaElement, view);
+  const controller = createMediaController(document);
+  try {
+    const id = controller.snapshot()[0]!.id;
+    assert.equal(controller.recallRate(), null);
+    media.playbackRate = 2;
+    media.playbackRate = 1;
+    assert.equal(media.playbackRate, 1);
+    assert.equal(controller.recallRate(), 2, '没有再跑快照，2× 再回到 1× 仍要记住 2×');
+    assert.equal(await controller.command(id, { type: 'rate', value: nextRate(media.playbackRate, 0, controller.recallRate()) }), 2);
+    await controller.command(id, { type: 'rate', value: 1 });
+    media.playbackRate = 1.5;
+    media.playbackRate = 1;
+    assert.equal(controller.recallRate(), 1.5, '更新的非 1× 盖过之前记住的 2×');
+  } finally {
+    controller.destroy();
+    await view.happyDOM.close();
+  }
+});
+
+test('锁定打开时，站点在回写前改掉的倍速不会变成记忆', async () => {
+  const view = new Window({ url: 'https://example.com/watch' });
+  const document = view.document as unknown as Document;
+  const media = view.document.createElement('video');
+  view.document.body.append(media);
+  installRateEvents(media as unknown as HTMLMediaElement, view);
+  const controller = createMediaController(document);
+  controller.setLockRate(true);
+  try {
+    const id = controller.snapshot()[0]!.id;
+    assert.equal(await controller.command(id, { type: 'rate', value: 1.5 }), 1.5);
+    assert.equal(await controller.command(id, { type: 'rate', value: nextRate(1.5, 0, controller.recallRate()) }), 1);
+    assert.equal(controller.recallRate(), 1.5);
+    media.playbackRate = 2;
+    await view.happyDOM.waitUntilComplete();
+    assert.equal(media.playbackRate, 1, '锁定目标仍是 1×');
+    assert.equal(controller.recallRate(), 1.5, '站点改到的 2× 会被写回，不能盖过已经记住的 1.5×');
+  } finally {
+    controller.destroy();
+    await view.happyDOM.close();
+  }
+});
+
 test('锁定倍速时来回切换会更新锁定目标，不会写回旧倍速', async () => {
   const view = new Window({ url: 'https://example.com/watch' });
   const document = view.document as unknown as Document;

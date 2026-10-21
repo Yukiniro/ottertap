@@ -489,6 +489,15 @@ test('1× 与之前的倍速来回切换，提示显示实际倍速', async () =
     await expect.poll(rate).toBeCloseTo(1.75);
     await expect(hint('Speed 1.75×')).toBeVisible();
 
+    await page.locator('#media').evaluate((element: HTMLMediaElement) => {
+      element.playbackRate = 2;
+      element.playbackRate = 1;
+    });
+    expect(await rate()).toBe(1);
+    await page.keyboard.press('Alt+Digit0');
+    await expect.poll(rate).toBeCloseTo(2);
+    await expect(hint('Speed 2×')).toBeVisible();
+
     const stored = await (await serviceWorker(browser)).evaluate(async key => {
       return JSON.stringify(await (globalThis as unknown as ExtensionGlobal).chrome.storage.local.get(key));
     }, settingsKey);

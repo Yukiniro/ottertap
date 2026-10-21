@@ -193,8 +193,39 @@ export function createMediaController(document: Document, onChange?: () => void,
     element.ownerDocument.defaultView?.clearTimeout(slot.timer);
     slot.timer = 0;
   };
+  const noteSeen = (element: HTMLMediaElement, rate: number) => {
+    const previous = seenRates.get(element);
+    seenRates.set(element, rate);
+    if (previous !== undefined && sameRate(previous, rate)) return;
+    // A second element's first look must not replace a speed this page already remembered.
+    if (previous === undefined && recall != null && recallableRate(rate) != null) return;
+    recall = noteRecallRate(recall, rate);
+  };
+  const rateWatchers = new Set<HTMLMediaElement>();
+  // Lock's listener only exists while lock is on, and it rewrites instead of remembering.
+  // This one stays attached so a site can move off 1× and back between snapshots.
+  const lockOwnsRate = (element: HTMLMediaElement) => {
+    if (!lockOn) return false;
+    const slot = slots.get(element);
+    return !!slot && slot.state.desired != null && !slot.state.givenUp;
+  };
+  const onRateChange = (event: Event) => {
+    const element = event.currentTarget as HTMLMediaElement;
+    if (lockOwnsRate(element)) return;
+    noteSeen(element, element.playbackRate);
+  };
+  const unwatchRate = (element: HTMLMediaElement) => {
+    if (!rateWatchers.delete(element)) return;
+    element.removeEventListener('ratechange', onRateChange);
+  };
+  const watchRate = (element: HTMLMediaElement) => {
+    if (rateWatchers.has(element)) return;
+    rateWatchers.add(element);
+    element.addEventListener('ratechange', onRateChange);
+  };
   const release = (element: HTMLMediaElement) => {
     const slot = slots.get(element);
+    unwatchRate(element);
     if (!slot) return;
     clearTimer(element, slot);
     if (slot.listening) {
@@ -247,14 +278,6 @@ export function createMediaController(document: Document, onChange?: () => void,
     element.removeEventListener('play', slot.onEvent);
     element.removeEventListener('seeked', slot.onEvent);
   };
-  const noteSeen = (element: HTMLMediaElement, rate: number) => {
-    const previous = seenRates.get(element);
-    seenRates.set(element, rate);
-    if (previous !== undefined && sameRate(previous, rate)) return;
-    // A second element's first look must not replace a speed this page already remembered.
-    if (previous === undefined && recall != null && recallableRate(rate) != null) return;
-    recall = noteRecallRate(recall, rate);
-  };
   const rememberRate = (element: HTMLMediaElement, rate: number) => {
     let slot = slots.get(element);
     if (!slot) {
@@ -270,8 +293,10 @@ export function createMediaController(document: Document, onChange?: () => void,
     if (!dirty) return;
     elements = discoverMedia(document, observe);
     dirty = false;
+    for (const element of elements) watchRate(element);
     for (const [root, observer] of observers) if ('host' in root && !root.host.isConnected) { observer.disconnect(); observers.delete(root); }
     for (const element of slots.keys()) if (!element.isConnected) release(element);
+    for (const element of [...rateWatchers]) if (!element.isConnected) unwatchRate(element);
   };
   const idOf = (element: HTMLMediaElement) => {
     if (!ids.has(element)) ids.set(element, String(++nextId));
@@ -347,6 +372,7 @@ export function createMediaController(document: Document, onChange?: () => void,
       for (const observer of observers.values()) observer.disconnect();
       observers.clear();
       for (const element of [...slots.keys()]) release(element);
+      for (const element of [...rateWatchers]) unwatchRate(element);
       amplifier.dispose();
     }
   };
