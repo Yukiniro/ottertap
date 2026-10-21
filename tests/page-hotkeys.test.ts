@@ -152,6 +152,36 @@ test('悬停判定：指针落在可见媒体的矩形内，聚焦媒体或其�
   } finally { await window.happyDOM.close(); }
 });
 
+test('悬停滚轮目标必须是主媒体：静音预览不命中，有声播放和单独的播放器才命中', async () => {
+  const window = new Window({ url: 'https://example.com' });
+  const document = window.document;
+  try {
+    const rect = (x: number, y: number, width: number, height: number) => () => new window.DOMRect(x, y, width, height);
+    const preview = document.createElement('video');
+    const main = document.createElement('video');
+    preview.getBoundingClientRect = rect(0, 0, 200, 120);
+    main.getBoundingClientRect = rect(0, 200, 640, 360);
+    preview.muted = true;
+    main.muted = false;
+    main.volume = 0.5;
+    document.body.append(preview, main);
+    const controller = createMediaController(document as unknown as Document);
+    try {
+      await preview.play();
+      await main.play();
+      preview.setAttribute('aria-label', 'preview');
+      main.setAttribute('aria-label', 'main');
+      const byLabel = new Map(controller.snapshot().map(item => [item.label, item.id]));
+      assert.equal(preview.paused, false);
+      assert.equal(main.paused, false);
+      assert.equal(controller.hoverTarget({ x: 40, y: 40 }), undefined, '静音预览上的滚轮留给页面');
+      assert.equal(controller.hoverTarget({ x: 80, y: 280 }), byLabel.get('main'), '有声主播放器仍接受悬停滚轮');
+      assert.equal(controller.hoverTarget({ x: 40, y: 40 }, byLabel.get('preview')), undefined, '锁定静音预览也不会拦截页面滚动');
+      assert.equal(controller.hoverTarget({ x: 80, y: 280 }, byLabel.get('preview')), byLabel.get('main'));
+    } finally { controller.destroy(); }
+  } finally { await window.happyDOM.close(); }
+});
+
 test('悬停滚轮只在视频上拦截，Alt+滚轮随处可用；目标只随悬停或聚焦手势发送', async () => {
   const window = new Window();
   Object.defineProperty(globalThis, 'window', { value: window, configurable: true });

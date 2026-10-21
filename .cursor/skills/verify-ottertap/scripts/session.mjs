@@ -22,7 +22,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback'];
+const supportedFeatures = ['popup-playback', 'wheel-volume'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -163,6 +163,13 @@ const wav = silentWav();
 
 function fixtureHtml() {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" aria-label="Fixture video" src="${wav}" preload="auto" playsinline loop controls style="display:block;width:640px;height:360px;margin:48px"></video></body></html>`;
+}
+
+function routedHtml(pathname) {
+  if (pathname === '/video') return fixtureHtml();
+  if (pathname === '/keys') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" src="${wav}" preload="auto" playsinline style="display:block;width:320px;height:180px;margin:24px"></video><input id="field" aria-label="Field" style="margin-top:1200px"></body></html>`;
+  if (pathname === '/feed') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="preview" aria-label="Feed preview" src="${wav}" preload="auto" playsinline loop style="display:block;width:240px;height:135px;margin:24px"></video><video id="media" aria-label="Main player" src="${wav}" preload="auto" playsinline loop style="display:block;width:640px;height:360px;margin:24px"></video><div style="height:1600px"></div></body></html>`;
+  return null;
 }
 
 async function packageVersion() {
@@ -322,6 +329,89 @@ async function poll(read, check, label, timeout = 8_000) {
   throw new Error(`${label}：${detail}`);
 }
 
+async function centerOf(locator) {
+  const box = await locator.boundingBox();
+  if (!box) throw new Error(`${await locator.evaluate(element => element.id || element.tagName)} 没有位置`);
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
+async function driveWheelVolume(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const page = await context.newPage();
+  const readMedia = selector => page.locator(selector).evaluate(element => ({ paused: element.paused, muted: element.muted, volume: element.volume }));
+  const play = (selector, muted, volume) => page.locator(selector).evaluate(async (element, options) => {
+    element.muted = true;
+    await element.play();
+    element.muted = options.muted;
+    element.volume = options.volume;
+  }, { muted, volume });
+  try {
+    await page.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
+    const toggle = page.getByRole('switch', { name: 'Scroll over the main player to change volume' });
+    await toggle.waitFor({ state: 'visible', timeout: 15_000 });
+    if (await toggle.getAttribute('aria-checked') !== 'true') throw new Error('悬停滚轮默认应开启');
+    await toggle.scrollIntoViewIfNeeded();
+    const row = toggle.locator('xpath=ancestor::div[contains(@class,"rounded-lg")][1]');
+    await row.screenshot({ path: path.join(dir, 'settings-hover-after.png'), animations: 'disabled' });
+    await row.screenshot({ path: path.join(evidenceRoot, 'settings-hover-toggle-after.png'), animations: 'disabled' });
+    note('settings toggle says main player and is on');
+
+    await page.goto(`${origin}/feed`, { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await play('#preview', true, 1);
+    await play('#media', false, 0.5);
+    await poll(() => readMedia('#preview'), value => value.paused === false && value.muted === true, '预览应静音播放');
+    await poll(() => readMedia('#media'), value => value.paused === false && value.muted === false && Math.abs(value.volume - 0.5) < 0.02, '主播放器应有声播放');
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const previewAt = await centerOf(page.locator('#preview'));
+    await page.mouse.move(previewAt.x, previewAt.y);
+    await page.screenshot({ path: path.join(dir, 'feed-preview-before.png'), animations: 'disabled' });
+    await page.mouse.wheel(0, 120);
+    const previewScroll = await poll(() => page.evaluate(() => window.scrollY), value => value > 0, '静音预览上滚轮应滚动页面');
+    const afterPreview = { preview: await readMedia('#preview'), main: await readMedia('#media'), scrollY: previewScroll };
+    if (Math.abs(afterPreview.preview.volume - 1) > 0.02 || Math.abs(afterPreview.main.volume - 0.5) > 0.02) throw new Error(`静音预览改变了音量 ${JSON.stringify(afterPreview)}`);
+    await page.screenshot({ path: path.join(dir, 'feed-preview-scrolled.png'), animations: 'disabled' });
+    note(`muted preview scrolled to ${previewScroll} without changing volume`);
+
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const mainAt = await centerOf(page.locator('#media'));
+    await page.mouse.move(mainAt.x, mainAt.y);
+    await page.mouse.wheel(0, -100);
+    const mainVolume = await poll(() => page.locator('#media').evaluate(element => element.volume), value => Math.abs(value - 0.6) < 0.02, '有声主播放器上裸滚轮应调音量');
+    const mainScroll = await page.evaluate(() => window.scrollY);
+    if (mainScroll !== 0) throw new Error(`主播放器上滚轮滚动了页面 scrollY=${mainScroll}`);
+    await page.screenshot({ path: path.join(dir, 'feed-main-after.png'), animations: 'disabled' });
+    note(`main player volume ${mainVolume} scrollY ${mainScroll}`);
+
+    await page.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
+    const off = page.getByRole('switch', { name: 'Scroll over the main player to change volume' });
+    await off.waitFor({ state: 'visible', timeout: 15_000 });
+    await off.click();
+    await poll(() => off.getAttribute('aria-checked'), value => value === 'false', '应能关闭悬停滚轮');
+    note('hover wheel turned off');
+    await page.goto(`${origin}/keys`, { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await page.locator('#media').evaluate(element => { element.volume = 0.5; });
+    const keysAt = await centerOf(page.locator('#media'));
+    await page.mouse.move(keysAt.x, keysAt.y);
+    await page.mouse.wheel(0, -100);
+    await new Promise(resolve => setTimeout(resolve, 400));
+    const bare = await page.locator('#media').evaluate(element => element.volume);
+    if (Math.abs(bare - 0.5) > 0.02) throw new Error(`关闭后裸滚轮仍改了音量 ${bare}`);
+    await page.keyboard.down('Alt');
+    try { await page.mouse.wheel(0, -100); }
+    finally { await page.keyboard.up('Alt'); }
+    const alt = await poll(() => page.locator('#media').evaluate(element => element.volume), value => Math.abs(value - 0.6) < 0.02, '关闭悬停后 Alt+滚轮仍应调音量');
+    note(`hover off bare ${bare} alt ${alt}`);
+    const state = { ok: true, preview: afterPreview, main: { volume: mainVolume, scrollY: mainScroll }, hoverOff: { bare, alt } };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally { await page.close(); }
+}
+
 async function drivePopupPlayback(context, dir, note) {
   await mkdir(dir, { recursive: true });
   const fixture = await openFixture(context);
@@ -421,11 +511,12 @@ async function serve() {
     await serviceWorker(context);
     await context.route(`${origin}/**`, async route => {
       const pathname = new URL(route.request().url()).pathname;
-      if (pathname !== fixturePath) {
+      const body = routedHtml(pathname);
+      if (!body) {
         await route.fulfill({ status: 404, contentType: 'text/plain', body: 'not found' });
         return;
       }
-      await route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', headers: { 'cache-control': 'no-store' }, body: fixtureHtml() });
+      await route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', headers: { 'cache-control': 'no-store' }, body });
     });
     const probe = await openFixture(context);
     await mkdir(evidenceRoot, { recursive: true });
@@ -467,7 +558,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const state = await drivePopupPlayback(context, dir, note);
+            const state = feature === 'wheel-volume' ? await driveWheelVolume(context, dir, note) : await drivePopupPlayback(context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
           } catch (error) {

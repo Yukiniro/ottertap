@@ -131,6 +131,33 @@ export default defineBackground(() => {
   browser.tabs.onRemoved.addListener(tabId => framesReady.then(() => { forget(tabId); commandTails.delete(tabId); }));
   browser.tabs.onUpdated.addListener((tabId, change) => change.status === 'loading' ? framesReady.then(() => forget(tabId)) : undefined);
   const frameIds = (tabId: number) => new Set([0, ...(frames.get(tabId) ?? [])]);
+  const publishSelection = (tabId: number) => {
+    const send = browser.tabs.sendMessage;
+    if (typeof send !== 'function') return;
+    const selected = selectedIds.get(tabId) ?? '';
+    const [frame, local] = selected.split(':');
+    const owner = selected ? Number(frame) : NaN;
+    for (const frameId of frameIds(tabId)) {
+      const here = frameId === owner;
+      void send(tabId, { namespace: 'ottertap', type: 'selected', id: here ? local ?? '' : '' }, { frameId }).catch(() => {});
+    }
+  };
+  const rememberSelection = (tabId: number, id: string) => {
+    if (selectedIds.get(tabId) === id) return;
+    selectedIds.set(tabId, id);
+    publishSelection(tabId);
+  };
+  const clearSelection = (tabId: number) => {
+    if (!selectedIds.has(tabId)) return;
+    selectedIds.delete(tabId);
+    publishSelection(tabId);
+  };
+  const localSelection = (tabId: number, frameId: number) => {
+    const selected = selectedIds.get(tabId) ?? '';
+    const [frame, local] = selected.split(':');
+    const here = selected !== '' && frame === String(frameId);
+    return { selectedLocalId: here ? local ?? '' : '' };
+  };
   const hasMedia = (tabId: number) => (frames.get(tabId)?.size ?? 0) > 0;
   const publishMedia = (tabId: number) => {
     const present = hasMedia(tabId);
@@ -161,7 +188,7 @@ export default defineBackground(() => {
   }
   const lockedId = (tabId: number, media: MediaState[], failed: Set<number>) => {
     const selectedId = keptSelection(selectedIds.get(tabId) ?? '', media.map(item => item.id), failed);
-    if (!selectedId) selectedIds.delete(tabId);
+    if (!selectedId) clearSelection(tabId);
     return selectedId;
   };
   const reveal = (tabId: number, percent: number) => {
@@ -186,7 +213,7 @@ export default defineBackground(() => {
       const target = lockedMedia(media, saved);
       if (!target) return;
       gesture = { id: target.id, percent: shownPercent(target), max: target.maxVolume * 100, at: 0 };
-      selectedIds.set(tabId, target.id);
+      rememberSelection(tabId, target.id);
       gestures.set(tabId, gesture);
     }
     const previous = gesture.percent;
@@ -203,7 +230,7 @@ export default defineBackground(() => {
     if (saved && !media.some(item => item.id === saved)) return;
     const target = lockedMedia(media, saved);
     if (!target) return;
-    selectedIds.set(tabId, target.id);
+    rememberSelection(tabId, target.id);
     const frameId = Number(target.id.split(':')[0]);
     const next = nextRate(target.rate, direction, recall.get(frameId) ?? null);
     if (next === target.rate) return target.rate;
@@ -218,7 +245,7 @@ export default defineBackground(() => {
     if (saved && !media.some(item => item.id === saved)) return false;
     const plan = planHotkey({ host, enabled: true, media, selectedId: saved }, action);
     if (!plan) return false;
-    selectedIds.set(tabId, plan.media.id);
+    rememberSelection(tabId, plan.media.id);
     if (plan.command.type === 'mute') gestures.delete(tabId);
     await deliver(tabId, plan.media.id, 'command', plan.command);
     const key = actionHintKey(action, plan.media);
@@ -316,7 +343,7 @@ export default defineBackground(() => {
         const settings = await currentSettings();
         const enabled = isSiteEnabled(url, settings);
         const host = new URL(url).hostname;
-        if (message.type === 'context') return { enabled, host, url, hasMedia: hasMedia(tabId), lockRate: settings.lockRate, singleKey: settings.singleKey, hoverWheel: settings.hoverWheel, skipSeconds: settings.skipSeconds };
+        if (message.type === 'context') return { enabled, host, url, hasMedia: hasMedia(tabId), lockRate: settings.lockRate, singleKey: settings.singleKey, hoverWheel: settings.hoverWheel, skipSeconds: settings.skipSeconds, ...localSelection(tabId, sender.frameId ?? 0) };
         if (message.type === 'rateLock') { showRateLock(tabId); return { ok: true }; }
         if (message.type === 'register' && sender.tab) {
           const frameId = sender.frameId ?? 0;
@@ -357,7 +384,7 @@ export default defineBackground(() => {
         if (message.type === 'select') {
           if (!mediaId) throw new Error(i18n.t('invalidCommand'));
           if (gestures.get(tabId)?.id !== mediaId) gestures.delete(tabId);
-          selectedIds.set(tabId, mediaId);
+          rememberSelection(tabId, mediaId);
           await applySitePref(tabId, host, mediaId, settings.sitePrefs);
           return { ok: true };
         }
@@ -371,7 +398,7 @@ export default defineBackground(() => {
           // Hover and focus gestures act on the media under them, and that media becomes the locked one.
           if (sender.tab && typeof message.target === 'string' && /^\d+$/.test(message.target)) {
             const pointed = `${sender.frameId ?? 0}:${message.target}`;
-            if (selectedIds.get(tabId) !== pointed) { selectedIds.set(tabId, pointed); gestures.delete(tabId); }
+            if (selectedIds.get(tabId) !== pointed) { rememberSelection(tabId, pointed); gestures.delete(tabId); }
           }
           return await performHotkey(tabId, host, message.action);
         }

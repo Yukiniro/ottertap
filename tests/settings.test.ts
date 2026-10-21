@@ -53,7 +53,7 @@ test('设置同页展示全部项，保存只改对应字段，失败时不误�
     const singleKeys = [...host.querySelectorAll('dl[aria-label="单键模式按键"] kbd')].map(node => node.textContent);
     assert.deepEqual(singleKeys, ['K', 'J / ←', 'L / →', '↑', '↓', 'M', '>', '<']);
     assert.match(host.textContent!, /输入框或可编辑区域/);
-    for (const [label, key, initial] of [['悬停在视频上直接用滚轮调音量', 'hoverWheel', true], ['单键模式', 'singleKey', false]] as const) {
+    for (const [label, key, initial] of [['悬停在主播放区直接用滚轮调音量', 'hoverWheel', true], ['单键模式', 'singleKey', false]] as const) {
       const toggle = host.querySelector(`[role="switch"][aria-label="${label}"]`);
       assert.ok(toggle, label);
       assert.equal(toggle.getAttribute('aria-checked'), String(initial), label);

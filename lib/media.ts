@@ -28,6 +28,33 @@ export function lockedMedia(media: MediaState[], selectedId: string) {
   return media.find(item => item.id === selectedId) ?? pickMedia(media);
 }
 
+type HoverMedia = Pick<MediaState, 'id' | 'paused' | 'muted' | 'volume'>;
+
+const audiblePlayback = (item: HoverMedia) => !item.paused && !item.muted && item.volume > 0;
+
+/**
+ * Bare hover-wheel follows this id.
+ * An audible lock wins. Otherwise the audible player (`!paused && !muted && volume > 0`).
+ * One player on the page still qualifies when it is not a muted playback, so a paused watch page keeps the wheel.
+ * A muted preview does not, even when it is playing or was auto-selected.
+ */
+export function hoverPrimaryId(media: readonly HoverMedia[], selectedId = '') {
+  const locked = selectedId ? media.find(item => item.id === selectedId) : undefined;
+  if (locked && audiblePlayback(locked)) return locked.id;
+  const audible = media.find(audiblePlayback);
+  if (audible) return audible.id;
+  if (media.length !== 1) return undefined;
+  const only = media[0];
+  if (!only || (!only.paused && only.muted)) return undefined;
+  return only.id;
+}
+
+/** Pointed id when it is the hover primary. */
+export function hoverWheelTarget(pointedId: string | undefined, media: readonly HoverMedia[], selectedId = '') {
+  if (!pointedId) return undefined;
+  return hoverPrimaryId(media, selectedId) === pointedId ? pointedId : undefined;
+}
+
 export function mediaAtPoint<T extends Element>(elements: readonly T[], x: number, y: number) {
   return elements.find(element => {
     const rect = element.getBoundingClientRect();
@@ -335,6 +362,20 @@ export function createMediaController(document: Document, onChange?: () => void,
       const live = elements.filter(element => element.isConnected);
       const element = (point ? mediaAtPoint(live, point.x, point.y) : undefined) ?? (focus ? focusedMedia(live, document) : undefined);
       return element ? idOf(element) : undefined;
+    },
+    /** Hover-wheel target: the element under the point, and only when it is the primary media. */
+    hoverTarget(point: { x: number; y: number }, selectedLocalId = '') {
+      refresh();
+      const live = elements.filter(element => element.isConnected);
+      const hit = mediaAtPoint(live, point.x, point.y);
+      if (!hit) return undefined;
+      const states = live.map(element => ({
+        id: idOf(element),
+        paused: element.paused,
+        muted: element.muted,
+        volume: element.volume * amplifier.gain(element),
+      }));
+      return hoverWheelTarget(idOf(hit), states, selectedLocalId);
     },
     setLockRate(enabled: boolean) {
       if (lockOn === enabled) return;
