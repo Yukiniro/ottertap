@@ -56,6 +56,28 @@ test('内容脚本按页面记住最近一次非 1×，站点菜单和预设都�
   }
 });
 
+test('ratechange 晚到且只能看到最终 1× 时，仍记住这一回合里的非 1×', async () => {
+  const view = new Window({ url: 'https://example.com/watch' });
+  const document = view.document as unknown as Document;
+  const media = view.document.createElement('video');
+  view.document.body.append(media);
+  const controller = createMediaController(document);
+  try {
+    const id = controller.snapshot()[0]!.id;
+    assert.equal(controller.recallRate(), null);
+    media.playbackRate = 2;
+    media.playbackRate = 1;
+    assert.equal(media.playbackRate, 1);
+    assert.equal(media.getAttribute('data-ottertap-assigned-rate'), null);
+    media.dispatchEvent(new view.Event('ratechange'));
+    assert.equal(controller.recallRate(), 2, '晚到的 ratechange 只看到 1×，不能把刚才的 2× 盖掉');
+    assert.equal(await controller.command(id, { type: 'rate', value: nextRate(media.playbackRate, 0, controller.recallRate()) }), 2);
+  } finally {
+    controller.destroy();
+    await view.happyDOM.close();
+  }
+});
+
 test('锁定关闭时，两次快照之间改到非 1× 再改回 1×，记住的是中间的倍速', async () => {
   const view = new Window({ url: 'https://example.com/watch' });
   const document = view.document as unknown as Document;

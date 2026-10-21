@@ -1,6 +1,7 @@
 import { i18n } from '#i18n';
 import { canAmplify, createAmplifier, isChannelMode, maxGain, splitVolume, type Amplifier } from './amplifier';
 import { armRateEcho, createRateLockState, noteDesiredRate, observePlaybackRate, rateLockEpsilon, type RateLockState } from './rate-lock';
+import { assignedRateAttribute, assignedRateEvent, installAssignedRateHook } from './assigned-rate';
 import { maxRate, minRate, noteRecallRate, readSettledRate, recallableRate, sameRate } from './rate';
 import type { ChannelMode, MediaCommand, MediaState } from './types';
 import { formatTime } from './utils';
@@ -175,7 +176,9 @@ export function createMediaController(document: Document, onChange?: () => void,
   let recall: number | null = null;
   const seenRates = new WeakMap<HTMLMediaElement, number>();
   const slots = new Map<HTMLMediaElement, RateSlot>();
-  const amplifier = createAmplifier(document.defaultView!);
+  const view = document.defaultView!;
+  installAssignedRateHook(view);
+  const amplifier = createAmplifier(view);
   const flashed = new WeakMap<HTMLMediaElement, { token: number; outline: string; offset: string }>();
   let flashToken = 0;
   const onPip = () => onChange?.();
@@ -209,6 +212,17 @@ export function createMediaController(document: Document, onChange?: () => void,
     const slot = slots.get(element);
     return !!slot && slot.state.desired != null && !slot.state.givenUp;
   };
+  // The setter publishes the value it just wrote. ratechange is queued, so a
+  // burst is already back at the final rate by the time that event runs.
+  const onAssigned = (event: Event) => {
+    const element = event.currentTarget as HTMLMediaElement;
+    if (lockOwnsRate(element)) return;
+    const raw = element.getAttribute(assignedRateAttribute);
+    if (raw == null) return;
+    const rate = Number(raw);
+    if (!Number.isFinite(rate)) return;
+    noteSeen(element, rate);
+  };
   const onRateChange = (event: Event) => {
     const element = event.currentTarget as HTMLMediaElement;
     if (lockOwnsRate(element)) return;
@@ -217,11 +231,13 @@ export function createMediaController(document: Document, onChange?: () => void,
   const unwatchRate = (element: HTMLMediaElement) => {
     if (!rateWatchers.delete(element)) return;
     element.removeEventListener('ratechange', onRateChange);
+    element.removeEventListener(assignedRateEvent, onAssigned);
   };
   const watchRate = (element: HTMLMediaElement) => {
     if (rateWatchers.has(element)) return;
     rateWatchers.add(element);
     element.addEventListener('ratechange', onRateChange);
+    element.addEventListener(assignedRateEvent, onAssigned);
   };
   const release = (element: HTMLMediaElement) => {
     const slot = slots.get(element);
