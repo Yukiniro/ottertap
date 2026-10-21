@@ -143,9 +143,12 @@ export default defineBackground(() => {
   };
   async function collect(tabId: number, host: string) {
     const frames = [...frameIds(tabId)];
+    const recall = new Map<number, number | null>();
     const results = await Promise.allSettled(frames.map(async frameId => {
       const response = await browser.tabs.sendMessage(tabId, { namespace: 'ottertap', type: 'snapshot' }, { frameId });
       const media: MediaState[] = response?.media ?? [];
+      const remembered = response?.recallRate;
+      recall.set(frameId, typeof remembered === 'number' && Number.isFinite(remembered) ? remembered : null);
       return media.map(item => ({ ...item, frameId, host, id: `${frameId}:${item.id}` }));
     }));
     const failed = new Set<number>();
@@ -154,7 +157,7 @@ export default defineBackground(() => {
       failed.add(frames[index]!);
       return [];
     });
-    return { media, failed };
+    return { media, failed, recall };
   }
   const lockedId = (tabId: number, media: MediaState[], failed: Set<number>) => {
     const selectedId = keptSelection(selectedIds.get(tabId) ?? '', media.map(item => item.id), failed);
@@ -195,13 +198,14 @@ export default defineBackground(() => {
     return gesture.percent;
   }
   async function applyRate(tabId: number, host: string, direction: 1 | -1 | 0) {
-    const { media, failed } = await collect(tabId, host);
+    const { media, failed, recall } = await collect(tabId, host);
     const saved = lockedId(tabId, media, failed);
     if (saved && !media.some(item => item.id === saved)) return;
     const target = lockedMedia(media, saved);
     if (!target) return;
     selectedIds.set(tabId, target.id);
-    const next = nextRate(target.rate, direction);
+    const frameId = Number(target.id.split(':')[0]);
+    const next = nextRate(target.rate, direction, recall.get(frameId) ?? null);
     if (next === target.rate) return target.rate;
     const result = await deliver(tabId, target.id, 'command', { type: 'rate', value: next });
     await rememberCommand(host, { type: 'rate', value: next });

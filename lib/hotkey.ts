@@ -102,9 +102,9 @@ export function applySkipStep(action: HotkeyAction, seconds: number): HotkeyActi
   return { type: 'skip', delta: direction * normalizeSkipSeconds(seconds) };
 }
 
-export function commandForHotkey(action: HotkeyAction, media: MediaState): MediaCommand | null {
+export function commandForHotkey(action: HotkeyAction, media: MediaState, remembered?: number | null): MediaCommand | null {
   if (action.type === 'rate') {
-    const value = nextRate(media.rate, action.direction);
+    const value = nextRate(media.rate, action.direction, remembered);
     return value === media.rate ? null : { type: 'rate', value };
   }
   if (action.type === 'toggle') return { type: media.paused ? 'play' : 'pause' };
@@ -132,11 +132,11 @@ export function isFloatingEvent(event: Event) {
   return event.composedPath().some(node => node instanceof Element && node.localName === 'ottertap-controller');
 }
 
-export function planHotkey(page: PageState, action: HotkeyAction) {
+export function planHotkey(page: PageState, action: HotkeyAction, remembered?: number | null) {
   if (!page.enabled || !page.media.length) return null;
   const media = lockedMedia(page.media, page.selectedId);
   if (!media) return null;
-  const command = commandForHotkey(action, media);
+  const command = commandForHotkey(action, media, remembered);
   return command ? { media, command } : null;
 }
 

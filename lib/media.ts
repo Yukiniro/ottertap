@@ -1,7 +1,7 @@
 import { i18n } from '#i18n';
 import { canAmplify, createAmplifier, isChannelMode, maxGain, splitVolume, type Amplifier } from './amplifier';
 import { armRateEcho, createRateLockState, noteDesiredRate, observePlaybackRate, rateLockEpsilon, type RateLockState } from './rate-lock';
-import { maxRate, minRate, readSettledRate } from './rate';
+import { maxRate, minRate, noteRecallRate, readSettledRate, recallableRate, sameRate } from './rate';
 import type { ChannelMode, MediaCommand, MediaState } from './types';
 import { formatTime } from './utils';
 
@@ -171,6 +171,9 @@ export function createMediaController(document: Document, onChange?: () => void,
   let elements: HTMLMediaElement[] = [];
   let dirty = true;
   let lockOn = false;
+  // Last non-1× speed for this document. Reset toggles back to it. Not written to storage.
+  let recall: number | null = null;
+  const seenRates = new WeakMap<HTMLMediaElement, number>();
   const slots = new Map<HTMLMediaElement, RateSlot>();
   const amplifier = createAmplifier(document.defaultView!);
   const flashed = new WeakMap<HTMLMediaElement, { token: number; outline: string; offset: string }>();
@@ -244,6 +247,14 @@ export function createMediaController(document: Document, onChange?: () => void,
     element.removeEventListener('play', slot.onEvent);
     element.removeEventListener('seeked', slot.onEvent);
   };
+  const noteSeen = (element: HTMLMediaElement, rate: number) => {
+    const previous = seenRates.get(element);
+    seenRates.set(element, rate);
+    if (previous !== undefined && sameRate(previous, rate)) return;
+    // A second element's first look must not replace a speed this page already remembered.
+    if (previous === undefined && recall != null && recallableRate(rate) != null) return;
+    recall = noteRecallRate(recall, rate);
+  };
   const rememberRate = (element: HTMLMediaElement, rate: number) => {
     let slot = slots.get(element);
     if (!slot) {
@@ -271,10 +282,12 @@ export function createMediaController(document: Document, onChange?: () => void,
       refresh();
       if (lockOn) for (const element of elements) listen(element);
       return elements.map(element => {
+        noteSeen(element, element.playbackRate);
         const snap = mediaSnapshot(element, idOf(element), document, amplifier);
         return slots.get(element)?.state.givenUp ? { ...snap, rateLock: 'given-up' as const } : snap;
       });
     },
+    recallRate() { return recall; },
     /** Id of the media under the point, else of the focused media when `focus` is set. */
     pointed(point: { x: number; y: number } | null, focus: boolean) {
       refresh();
@@ -293,9 +306,18 @@ export function createMediaController(document: Document, onChange?: () => void,
     async command(id: string, command: MediaCommand) {
       const element = elements.find(media => ids.get(media) === id && media.isConnected);
       if (!element) throw new Error(i18n.t('mediaRemoved'));
-      if (command.type === 'rate') rememberRate(element, command.value);
+      if (command.type === 'rate') {
+        const leaving = recallableRate(element.playbackRate);
+        if (leaving != null) recall = leaving;
+        seenRates.set(element, element.playbackRate);
+        rememberRate(element, command.value);
+      }
       await applyMediaCommand(element, command, amplifier);
-      if (command.type === 'rate') return readSettledRate(element);
+      if (command.type === 'rate') {
+        const settled = await readSettledRate(element);
+        noteSeen(element, settled);
+        return settled;
+      }
     },
     flash(id: string) {
       this.snapshot();

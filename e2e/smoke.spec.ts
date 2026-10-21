@@ -15,6 +15,7 @@ type Settings = {
   sitePrefs: Record<string, SitePref>;
   hoverWheel?: boolean;
   singleKey?: boolean;
+  lockRate?: boolean;
 };
 type WheelSnapshot = { deltaX: number; deltaY: number; deltaMode: number; altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean };
 type ExtensionGlobal = {
@@ -457,6 +458,93 @@ test('Alt + , . 0 调倍速、Alt + M 静音，在输入框里不触发', async 
   });
 });
 
+test('1× 与之前的倍速来回切换，提示显示实际倍速', async () => {
+  await withPage(async page => {
+    if (!browser) throw new Error('浏览器还没有启动');
+    await openFixture(page, '/keys');
+    await ready(page);
+    const rate = () => page.locator('#media').evaluate((element: HTMLMediaElement) => element.playbackRate);
+    const hint = (text: string) => page.getByText(text, { exact: true });
+    await focusPage(page, 300);
+    await page.keyboard.press('Alt+Digit0');
+    await page.waitForTimeout(300);
+    expect(await rate(), '还没记过倍速时 Alt+0 不改变倍速').toBe(1);
+
+    await page.keyboard.press('Alt+Period');
+    await page.keyboard.press('Alt+Period');
+    await expect.poll(rate).toBeCloseTo(1.5);
+    await page.keyboard.press('Alt+Comma');
+    await expect.poll(rate).toBeCloseTo(1.25);
+    await page.keyboard.press('Alt+Digit0');
+    await expect.poll(rate).toBe(1);
+    await expect(hint('Speed 1×')).toBeVisible();
+    await page.keyboard.press('Alt+Digit0');
+    await expect.poll(rate).toBeCloseTo(1.25);
+    await expect(hint('Speed 1.25×')).toBeVisible();
+
+    await page.locator('#media').evaluate((element: HTMLMediaElement) => { element.playbackRate = 1.75; });
+    await page.keyboard.press('Alt+Digit0');
+    await expect.poll(rate).toBe(1);
+    await page.keyboard.press('Alt+Digit0');
+    await expect.poll(rate).toBeCloseTo(1.75);
+    await expect(hint('Speed 1.75×')).toBeVisible();
+
+    const stored = await (await serviceWorker(browser)).evaluate(async key => {
+      return JSON.stringify(await (globalThis as unknown as ExtensionGlobal).chrome.storage.local.get(key));
+    }, settingsKey);
+    expect(stored).not.toContain('recall');
+  });
+});
+
+test('单键模式开启时 Alt+0 仍可在 1× 和之前的倍速间切换', async () => {
+  if (!browser) throw new Error('浏览器还没有启动');
+  const worker = await serviceWorker(browser);
+  await saveSettings(worker, { ...defaultSettings(), singleKey: true });
+  try {
+    await withPage(async page => {
+      await openFixture(page, '/keys');
+      await ready(page);
+      const rate = () => page.locator('#media').evaluate((element: HTMLMediaElement) => element.playbackRate);
+      await focusPage(page, 300);
+      await page.keyboard.press('Shift+Period');
+      await expect.poll(rate).toBeCloseTo(1.25);
+      await page.keyboard.press('Alt+Digit0');
+      await expect.poll(rate).toBe(1);
+      await page.keyboard.press('Alt+Digit0');
+      await expect.poll(rate).toBeCloseTo(1.25);
+    });
+  } finally {
+    await saveSettings(worker, defaultSettings());
+  }
+});
+
+test('锁定倍速时来回切换后，站点改倍速会被写回新的目标', async () => {
+  if (!browser) throw new Error('浏览器还没有启动');
+  const worker = await serviceWorker(browser);
+  await saveSettings(worker, { ...defaultSettings(), lockRate: true });
+  try {
+    await withPage(async page => {
+      await openFixture(page, '/keys');
+      await ready(page);
+      const media = page.locator('#media');
+      const rate = () => media.evaluate((element: HTMLMediaElement) => element.playbackRate);
+      await focusPage(page, 300);
+      await page.keyboard.press('Alt+Period');
+      await expect.poll(rate).toBeCloseTo(1.25);
+      await page.keyboard.press('Alt+Digit0');
+      await expect.poll(rate).toBe(1);
+      await media.evaluate((element: HTMLMediaElement) => { element.playbackRate = 1.25; });
+      await expect.poll(rate, { timeout: 3_000 }).toBe(1);
+      await page.keyboard.press('Alt+Digit0');
+      await expect.poll(rate).toBeCloseTo(1.25);
+      await media.evaluate((element: HTMLMediaElement) => { element.playbackRate = 1; });
+      await expect.poll(rate, { timeout: 3_000 }).toBeCloseTo(1.25);
+    });
+  } finally {
+    await saveSettings(worker, defaultSettings());
+  }
+});
+
 test('用过 Alt+滚轮或 Alt+键后松开 Alt 被拦下，普通 Alt 按松与未匹配组合不拦', async () => {
   await withPage(async page => {
     await openFixture(page, '/keys');
@@ -686,6 +774,9 @@ test('英文设置页的快捷键一节不写死中文', async () => {
     await expect(shortcuts).toContainText('Alt + Mouse wheel');
     await expect(shortcuts).toContainText('Alt + .');
     await expect(shortcuts).toContainText('Alt + M');
+    await expect(shortcuts).toContainText('Toggle between 1× and the previous speed');
+    await expect(shortcuts).toContainText('Back to 1×, press again to restore');
+    await expect(shortcuts).not.toContainText('Reset speed to 1×');
     await expect(shortcuts).toContainText('Single-key mode');
     await expect(shortcuts).toContainText('Scroll over a video to change volume');
     await expect(shortcuts).not.toContainText('Alt + Shift');
@@ -738,6 +829,30 @@ const pipButtonState = `(() => {
   if (!button) return null;
   return { label: button.getAttribute('aria-label'), disabled: button.disabled, hint: document.getElementById('pip-hint')?.textContent ?? '' };
 })()`;
+
+test('弹出面板预设改倍速后，Alt+0 记住的是这个倍速', async () => {
+  await withPage(async page => {
+    await openFixture(page, '/video');
+    await ready(page);
+    const rate = () => page.locator('#media').evaluate((element: HTMLMediaElement) => element.playbackRate);
+    const read = await readActionPopup(page);
+    try {
+      await expect.poll(() => read(`(() => {
+        const button = [...document.querySelectorAll('button')].find(item => item.getAttribute('aria-label') === '2× speed');
+        if (!button) return 'missing';
+        button.click();
+        return 'clicked';
+      })()`)).toBe('clicked');
+      await expect.poll(rate).toBeCloseTo(2);
+    } finally { await page.keyboard.press('Escape'); }
+    await focusPage(page, 300);
+    await page.keyboard.press('Alt+Digit0');
+    await expect.poll(rate).toBe(1);
+    await page.keyboard.press('Alt+Digit0');
+    await expect.poll(rate).toBeCloseTo(2);
+    await expect(page.getByText('Speed 2×', { exact: true })).toBeVisible();
+  });
+});
 
 test('画中画按钮在视频上可点，音频和站点禁用时说明原因', async () => {
   await withPage(async page => {
