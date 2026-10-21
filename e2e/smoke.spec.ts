@@ -489,10 +489,20 @@ test('1× 与之前的倍速来回切换，提示显示实际倍速', async () =
     await expect.poll(rate).toBeCloseTo(1.75);
     await expect(hint('Speed 1.75×')).toBeVisible();
 
-    await page.locator('#media').evaluate((element: HTMLMediaElement) => {
+    // Chrome dispatches ratechange on a later task and the event has no rate of its own.
+    // Two writes in one turn both observe the final 1×. A site menu is two turns: 2× lands, then 1×.
+    const roundTrip = await page.locator('#media').evaluate(async (element: HTMLMediaElement) => {
+      const untilChange = () => new Promise<number>(resolve => {
+        element.addEventListener('ratechange', () => resolve(element.playbackRate), { once: true });
+      });
+      const toTwo = untilChange();
       element.playbackRate = 2;
+      const seen = await toTwo;
+      const toOne = untilChange();
       element.playbackRate = 1;
+      return { seen, after: await toOne };
     });
+    expect(roundTrip).toEqual({ seen: 2, after: 1 });
     expect(await rate()).toBe(1);
     await page.keyboard.press('Alt+Digit0');
     await expect.poll(rate).toBeCloseTo(2);
