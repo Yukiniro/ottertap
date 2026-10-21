@@ -1,4 +1,4 @@
-import { Gauge, Globe, Layers, Play, SunMoon, Volume2, type LucideIcon } from 'lucide-react';
+import { Gauge, Globe, Headphones, Layers, Play, SunMoon, Volume2, type LucideIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { maxGain } from '@/lib/amplifier';
 import { cn } from '@/lib/utils';
@@ -6,9 +6,10 @@ import type { T } from '~/lib/locale';
 
 const tiles: { key: string; icon: LucideIcon; wide?: boolean; visual?: 'boost' | 'speed' }[] = [
   { key: 'Boost', icon: Volume2, wide: true, visual: 'boost' },
+  { key: 'Channel', icon: Headphones },
   { key: 'Playback', icon: Play },
   { key: 'Speed', icon: Gauge, visual: 'speed' },
-  { key: 'Multi', icon: Layers, wide: true },
+  { key: 'Multi', icon: Layers },
   { key: 'Sites', icon: Globe, wide: true },
   { key: 'Theme', icon: SunMoon }
 ];
