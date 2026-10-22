@@ -1,5 +1,11 @@
 # ottertap-extension
 
+## 1.7.0
+
+### Minor Changes
+
+- [#60](https://github.com/Yukiniro/ottertap/pull/60) [`8961f57`](https://github.com/Yukiniro/ottertap/commit/8961f575cdbd974013edd8d2ce2179d7c3e393f5) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 悬停滚轮只作用在主播放区。信息流里的静音预览即使正在播放，也不再拦住页面滚动；正在有声播放的主播放器仍可用裸滚轮调音量。关闭悬停后，Alt + 滚轮保持可用。
+
 ## 1.6.0
 
 ### Minor Changes
