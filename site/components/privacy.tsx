@@ -4,7 +4,7 @@ import type { T } from '~/lib/locale';
 export function Privacy({ t }: { t: T }) {
   const items = [{ icon: Database, key: 'privacyStorage' }, { icon: Globe, key: 'privacyHosts' }, { icon: Ban, key: 'privacyNone' }];
   return <section id="privacy" className="px-5 py-20 md:py-28">
-    <div className="mx-auto grid max-w-6xl gap-10 rounded-3xl border bg-card p-8 shadow-card md:grid-cols-2 md:p-12">
+    <div className="mx-auto grid max-w-6xl gap-10 rounded-xl border bg-card p-8 md:grid-cols-2 md:p-12">
       <div className="flex flex-col gap-4">
         <ShieldCheck className="size-9 text-primary" strokeWidth={1.5} />
         <p className="eyebrow mb-0">{t('privacyEyebrow')}</p>

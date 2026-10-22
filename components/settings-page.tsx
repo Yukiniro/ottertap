@@ -50,13 +50,13 @@ function RatePresetsSection({ presets, disabled, save }: { presets: number[]; di
     if (presets.length >= maxRatePresets) { setError(i18n.t('ratePresetLimit')); return; }
     if (await save([...presets, rate])) { setInput(''); setError(''); }
   };
-  return <section id="presets" aria-labelledby="presets-heading" className="scroll-mt-32 rounded-xl bg-card shadow-card md:scroll-mt-8">
+  return <section id="presets" aria-labelledby="presets-heading" className="scroll-mt-32 rounded-xl border bg-card md:scroll-mt-8">
     <div className="px-5 py-5 sm:px-6">
-      <h2 id="presets-heading" className="text-sm font-semibold">{i18n.t('ratePresets')}</h2>
+      <h2 id="presets-heading" className="text-base font-semibold">{i18n.t('ratePresets')}</h2>
       <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('ratePresetsDescription')}</p>
     </div>
     <div className="px-5 pb-5 sm:px-6">
-      <ItemGroup aria-label={i18n.t('ratePresets')} className="gap-0 overflow-hidden rounded-lg bg-muted/50">
+      <ItemGroup aria-label={i18n.t('ratePresets')} className="gap-0 overflow-hidden rounded-lg bg-secondary/60">
         {presets.map((rate, index) => <Item key={rate} role="listitem" className="rounded-none border-b-border px-3 not-last:border-b">
           <ItemContent><ItemTitle className="font-normal tabular-nums">{formatRate(rate)}×</ItemTitle></ItemContent>
           <ItemActions>
@@ -110,9 +110,9 @@ function BackupSection({ disabled, save }: { disabled: boolean; save: (next: Set
     if (!pending) return;
     if (await save(pending)) setPending(null);
   };
-  return <section id="backup" aria-labelledby="backup-heading" className="scroll-mt-32 rounded-xl bg-card shadow-card md:scroll-mt-8">
+  return <section id="backup" aria-labelledby="backup-heading" className="scroll-mt-32 rounded-xl border bg-card md:scroll-mt-8">
     <div className="px-5 py-5 sm:px-6">
-      <h2 id="backup-heading" className="text-sm font-semibold">{i18n.t('backup')}</h2>
+      <h2 id="backup-heading" className="text-base font-semibold">{i18n.t('backup')}</h2>
       <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('backupDescription')}</p>
       <div className="mt-4 flex flex-wrap gap-2">
         <Button type="button" disabled={disabled} onClick={() => downloadSettingsBackup(settings, readExtensionVersion())}>{i18n.t('exportSettings')}</Button>
@@ -121,7 +121,7 @@ function BackupSection({ disabled, save }: { disabled: boolean; save: (next: Set
       </div>
       {importError && <Alert variant="destructive" className="mt-4"><CircleAlert /><AlertDescription>{importError}</AlertDescription></Alert>}
       {pending && <div className="mt-4 rounded-lg border bg-muted/40 p-4" role="region" aria-labelledby="import-confirm-title">
-        <h3 id="import-confirm-title" className="text-sm font-semibold">{i18n.t('importConfirmTitle')}</h3>
+        <h3 id="import-confirm-title" className="text-base font-semibold">{i18n.t('importConfirmTitle')}</h3>
         <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('importConfirm')}</p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Button type="button" variant="destructive" disabled={disabled} onClick={() => void confirmImport()}>{i18n.t('importConfirmAction')}</Button>
@@ -138,18 +138,18 @@ function ThemeThumb({ value }: { value: 'light' | 'dark' | 'system' }) {
   const frame = 'mb-2 block h-11 w-16 overflow-hidden rounded-md border';
   if (value === 'system') return <span aria-hidden="true" className={cn(frame, 'relative border-border')}>
     <span className="absolute inset-0 bg-white" />
-    <span className="absolute inset-y-0 right-0 w-1/2 bg-[#191a21]" />
-    <span className="absolute top-2 left-1.5 h-1 w-5 rounded-full bg-[#e4e1da]" />
-    <span className="absolute top-4 left-1.5 h-1 w-3 rounded-full bg-[#d5d2cb]" />
-    <span className="absolute top-2 right-1.5 h-1 w-4 rounded-full bg-[#3c3d48]" />
-    <span className="absolute bottom-1.5 left-1.5 h-1.5 w-4 rounded-sm bg-[#655de9]" />
-    <span className="absolute right-1.5 bottom-1.5 h-1.5 w-3 rounded-sm bg-[#a69cff]" />
+    <span className="absolute inset-y-0 right-0 w-1/2 bg-[#202124]" />
+    <span className="absolute top-2 left-1.5 h-1 w-5 rounded-full bg-[#e2e4e7]" />
+    <span className="absolute top-4 left-1.5 h-1 w-3 rounded-full bg-[#c5c8cd]" />
+    <span className="absolute top-2 right-1.5 h-1 w-4 rounded-full bg-[#414348]" />
+    <span className="absolute bottom-1.5 left-1.5 h-1.5 w-4 rounded-sm bg-[#554bc4]" />
+    <span className="absolute right-1.5 bottom-1.5 h-1.5 w-3 rounded-sm bg-[#b3acf5]" />
   </span>;
   const dark = value === 'dark';
-  return <span aria-hidden="true" className={cn(frame, 'flex flex-col gap-1 p-1.5', dark ? 'border-[#363742] bg-[#191a21]' : 'border-[#e6e4de] bg-white')}>
-    <span className={cn('h-1 w-7 rounded-full', dark ? 'bg-[#3c3d48]' : 'bg-[#e6e4de]')} />
-    <span className={cn('h-1 w-10 rounded-full', dark ? 'bg-[#4e4f5c]' : 'bg-[#d4d1ca]')} />
-    <span className={cn('mt-auto h-1.5 w-5 rounded-sm', dark ? 'bg-[#a69cff]' : 'bg-[#655de9]')} />
+  return <span aria-hidden="true" className={cn(frame, 'flex flex-col gap-1 p-1.5', dark ? 'border-[#414348] bg-[#202124]' : 'border-[#e2e4e7] bg-white')}>
+    <span className={cn('h-1 w-7 rounded-full', dark ? 'bg-[#414348]' : 'bg-[#e2e4e7]')} />
+    <span className={cn('h-1 w-10 rounded-full', dark ? 'bg-[#62666d]' : 'bg-[#c5c8cd]')} />
+    <span className={cn('mt-auto h-1.5 w-5 rounded-sm', dark ? 'bg-[#b3acf5]' : 'bg-[#554bc4]')} />
   </span>;
 }
 
@@ -163,7 +163,7 @@ function ShortcutKey({ shortcut }: { shortcut: string }) {
 }
 
 function ShortcutList({ label, rows }: { label: string; rows: { id: string; key: string; description: string }[] }) {
-  return <dl aria-label={label} className="divide-y rounded-lg bg-muted/50 px-3">
+  return <dl aria-label={label} className="divide-y rounded-lg bg-secondary/60 px-3">
     {rows.map(row => <div key={row.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 text-sm">
       <dt><kbd className="inline-block rounded-md border bg-background px-2 py-1 font-mono text-xs whitespace-nowrap">{row.key}</kbd></dt>
       <dd className="text-muted-foreground">{row.description}</dd>
@@ -172,7 +172,7 @@ function ShortcutList({ label, rows }: { label: string; rows: { id: string; key:
 }
 
 function SwitchRow({ id, label, description, checked, disabled, onChange }: { id: string; label: string; description: string; checked: boolean; disabled: boolean; onChange: (checked: boolean) => void }) {
-  return <Field orientation="horizontal" className="justify-between gap-4 rounded-lg bg-muted/50 px-3 py-3">
+  return <Field orientation="horizontal" className="justify-between gap-4 rounded-lg bg-secondary/60 px-3 py-3">
     <FieldContent>
       <FieldLabel htmlFor={id} className="text-sm font-normal">{label}</FieldLabel>
       <FieldDescription id={id + '-description'}>{description}</FieldDescription>
@@ -202,7 +202,7 @@ function useCommandBindings() {
 function Row({ title, description, titleId, children }: { title: string; description?: string; titleId?: string; children: React.ReactNode }) {
   return <div className="grid gap-4 px-5 py-5 sm:grid-cols-[160px_1fr] sm:items-start sm:gap-8 sm:px-6">
     <div className="min-w-0 sm:pt-0.5">
-      <h3 id={titleId} className="text-sm font-semibold">{title}</h3>
+      <h3 id={titleId} className="text-base font-semibold">{title}</h3>
       {description && <p className="mt-1 text-sm leading-5 text-muted-foreground">{description}</p>}
     </div>
     <div className="min-w-0">{children}</div>
@@ -265,13 +265,13 @@ export function SettingsPage({ back }: { back?: () => void }) {
   const disabled = loading || saving;
   const status = <SaveStatus loading={loading} saving={saving} error={error} saved={saved} />;
 
-  return <div className="min-h-screen bg-background md:grid md:grid-cols-[220px_1fr]">
-    <aside className="sticky top-0 z-20 flex flex-col bg-[color-mix(in_srgb,var(--muted)_55%,var(--background))] md:h-screen md:self-start md:border-r">
+  return <div className="min-h-screen bg-secondary/30 md:grid md:grid-cols-[220px_1fr]">
+    <aside className="sticky top-0 z-20 flex flex-col border-b bg-background md:h-screen md:self-start md:border-r">
       <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-3 md:px-5 md:pt-7">
         <div className="min-w-0">
           {back && <Button variant="ghost" className="-ml-2.5 mb-3 h-8 px-2 text-muted-foreground" onClick={back}><ArrowLeft />{i18n.t('backToPanel')}</Button>}
           <Brand />
-          <h1 className="mt-6 text-xs font-semibold tracking-wide text-muted-foreground max-md:sr-only">{i18n.t('settingsTitle')}</h1>
+          <p className="mt-6 text-xs font-semibold tracking-wide text-muted-foreground max-md:sr-only">{i18n.t('settingsTitle')}</p>
         </div>
         <div className="pt-1 md:hidden">{status}</div>
       </div>
@@ -279,7 +279,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
         {nav.map(item => {
           const Icon = item.icon;
           const current = active === item.id;
-          return <a key={item.id} href={'#' + item.id} aria-current={current ? 'true' : undefined} className={cn('flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm whitespace-nowrap transition-colors duration-150 md:whitespace-normal', current ? 'bg-accent font-medium text-accent-foreground' : 'text-muted-foreground hover:bg-background/70 hover:text-foreground')} onClick={() => setActive(item.id)}><Icon className="size-4 shrink-0" />{item.label()}</a>;
+          return <a key={item.id} href={'#' + item.id} aria-current={current ? 'true' : undefined} className={cn('flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm whitespace-nowrap transition-colors duration-150 md:whitespace-normal', current ? 'bg-secondary font-semibold text-foreground' : 'text-muted-foreground hover:bg-background/70 hover:text-foreground')} onClick={() => setActive(item.id)}><Icon className="size-4 shrink-0" />{item.label()}</a>;
         })}
       </nav>
       <div className="mt-auto hidden px-5 pt-6 pb-6 md:block">
@@ -287,11 +287,12 @@ export function SettingsPage({ back }: { back?: () => void }) {
         <p className="mt-4 text-xs leading-5 text-muted-foreground">{i18n.t('localOnly')}</p>
       </div>
     </aside>
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-6 md:px-10 md:py-10">
-      <section id="appearance" aria-labelledby="theme-label" className="scroll-mt-32 rounded-xl bg-card shadow-card md:scroll-mt-8">
+    <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6 md:px-10 md:py-10">
+      <h1 className="text-2xl font-semibold tracking-tight">{i18n.t('settingsTitle')}</h1>
+      <section id="appearance" aria-labelledby="theme-label" className="scroll-mt-32 rounded-xl border bg-card md:scroll-mt-8">
         <div className="grid gap-4 px-5 py-5 sm:grid-cols-[160px_1fr] sm:items-start sm:gap-8 sm:px-6">
           <div className="min-w-0 sm:pt-1">
-            <h2 id="theme-label" className="text-sm font-semibold">{i18n.t('appearance')}</h2>
+            <h2 id="theme-label" className="text-base font-semibold">{i18n.t('appearance')}</h2>
             <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('appearanceDescription')}</p>
           </div>
           <ToggleGroup aria-labelledby="theme-label" spacing={2} className="flex-wrap" value={[theme]} disabled={disabled} onValueChange={value => { const next = value[0] as Settings['theme'] | undefined; if (next) void save({ theme: next }); }}>
@@ -299,28 +300,28 @@ export function SettingsPage({ back }: { back?: () => void }) {
           </ToggleGroup>
         </div>
       </section>
-      <section id="floating" aria-labelledby="floating-heading" className="scroll-mt-32 rounded-xl bg-card shadow-card md:scroll-mt-8">
+      <section id="floating" aria-labelledby="floating-heading" className="scroll-mt-32 rounded-xl border bg-card md:scroll-mt-8">
         <div className="grid gap-4 px-5 py-5 sm:grid-cols-[160px_1fr] sm:items-center sm:gap-8 sm:px-6">
           <div className="min-w-0">
-            <h2 id="floating-heading" className="text-sm font-semibold">{i18n.t('floatingController')}</h2>
+            <h2 id="floating-heading" className="text-base font-semibold">{i18n.t('floatingController')}</h2>
             <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('floatingDescription')}</p>
           </div>
-          <Field orientation="horizontal" className="justify-between gap-4 rounded-lg bg-muted/50 px-3 py-3">
+          <Field orientation="horizontal" className="justify-between gap-4 rounded-lg bg-secondary/60 px-3 py-3">
             <FieldLabel htmlFor="settings-floating" className="text-sm font-normal">{i18n.t('showFloating')}</FieldLabel>
             <Switch id="settings-floating" aria-label={i18n.t('floatingController')} checked={floating} disabled={disabled} onCheckedChange={checked => void save({ floating: checked })} />
           </Field>
         </div>
       </section>
-      <section id="playback" aria-labelledby="playback-heading" className="scroll-mt-32 rounded-xl bg-card shadow-card md:scroll-mt-8">
+      <section id="playback" aria-labelledby="playback-heading" className="scroll-mt-32 rounded-xl border bg-card md:scroll-mt-8">
         <div className="px-5 py-5 sm:px-6">
-          <h2 id="playback-heading" className="text-sm font-semibold">{i18n.t('playback')}</h2>
+          <h2 id="playback-heading" className="text-base font-semibold">{i18n.t('playback')}</h2>
           <p className="mt-1 max-w-xl text-sm leading-5 text-muted-foreground">{i18n.t('lockRateDescription')}</p>
-          <Field orientation="horizontal" className="mt-4 justify-between gap-4 rounded-lg bg-muted/50 px-3 py-3">
+          <Field orientation="horizontal" className="mt-4 justify-between gap-4 rounded-lg bg-secondary/60 px-3 py-3">
             <FieldLabel htmlFor="settings-lock-rate" className="text-sm font-normal">{i18n.t('lockRate')}</FieldLabel>
             <Switch id="settings-lock-rate" aria-label={i18n.t('lockRate')} checked={lockRate} disabled={disabled} onCheckedChange={checked => void save({ lockRate: checked })} />
           </Field>
           <div className="mt-4">
-            <div className="flex flex-col gap-3 rounded-lg bg-muted/50 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 rounded-lg bg-secondary/60 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
               <h3 id="skip-seconds-label" className="text-sm font-medium">{i18n.t('skipSeconds')}</h3>
               <ToggleGroup aria-labelledby="skip-seconds-label" spacing={1} className="grid h-auto w-full grid-cols-4 rounded-lg bg-background/80 p-1 sm:w-auto" value={[String(skipSeconds)]} disabled={disabled} onValueChange={value => { const next = Number(value[0]); if (isSkipSeconds(next)) void save({ skipSeconds: next }); }}>
                 {skipSteps.map(seconds => <ToggleGroupItem key={seconds} value={String(seconds)} className="h-8 rounded-md border-0 px-2.5 text-xs text-muted-foreground shadow-none aria-pressed:bg-card aria-pressed:font-semibold aria-pressed:text-foreground aria-pressed:shadow-sm">{i18n.t('skipSecondsOption', { seconds })}</ToggleGroupItem>)}
@@ -330,10 +331,10 @@ export function SettingsPage({ back }: { back?: () => void }) {
           </div>
         </div>
       </section>
-      <section id="shortcuts" aria-labelledby="shortcuts-heading" className="scroll-mt-32 rounded-xl bg-card shadow-card md:scroll-mt-8">
+      <section id="shortcuts" aria-labelledby="shortcuts-heading" className="scroll-mt-32 rounded-xl border bg-card md:scroll-mt-8">
         <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3 px-5 py-5 sm:px-6">
           <div className="min-w-0 flex-1">
-            <h2 id="shortcuts-heading" className="text-sm font-semibold">{i18n.t('shortcuts')}</h2>
+            <h2 id="shortcuts-heading" className="text-base font-semibold">{i18n.t('shortcuts')}</h2>
             <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('shortcutsDescription')}</p>
           </div>
           <Button type="button" variant="outline" className="shrink-0" onClick={() => {
@@ -343,7 +344,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
         </div>
         <div className="px-5 pb-5 sm:px-6">
           <h3 className="mb-2 text-sm font-medium">{i18n.t('extensionShortcuts')}</h3>
-          <dl className="divide-y rounded-lg bg-muted/50 px-3">
+          <dl className="divide-y rounded-lg bg-secondary/60 px-3">
             {commandRows.map(command => <div key={command.name} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 text-sm">
               <dt><ShortcutKey shortcut={command.shortcut} /></dt>
               <dd className="text-muted-foreground">{i18n.t(command.message)}</dd>
@@ -379,9 +380,9 @@ export function SettingsPage({ back }: { back?: () => void }) {
         </div>
       </section>
       <RatePresetsSection presets={ratePresets} disabled={disabled} save={async next => save({ ratePresets: next })} />
-      <section id="sites" aria-labelledby="sites-label" className="scroll-mt-32 divide-y rounded-xl bg-card shadow-card md:scroll-mt-8">
+      <section id="sites" aria-labelledby="sites-label" className="scroll-mt-32 divide-y rounded-xl border bg-card md:scroll-mt-8">
         <div className="px-5 py-5 sm:px-6">
-          <h2 id="sites-label" className="text-sm font-semibold">{i18n.t('siteRules')}</h2>
+          <h2 id="sites-label" className="text-base font-semibold">{i18n.t('siteRules')}</h2>
           <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('siteRulesDescription')}</p>
         </div>
         <Row title={i18n.t('siteScope')} titleId="site-mode-label">
@@ -407,27 +408,27 @@ export function SettingsPage({ back }: { back?: () => void }) {
             </Field>
           </form>
           {sites.length
-            ? <ItemGroup aria-label={i18n.t('siteList')} className="mt-3 gap-0 overflow-hidden rounded-lg bg-muted/50">{sites.map(site => <Item key={site} role="listitem" className="rounded-none border-b-border px-3 not-last:border-b">
+            ? <ItemGroup aria-label={i18n.t('siteList')} className="mt-3 gap-0 overflow-hidden rounded-lg bg-secondary/60">{sites.map(site => <Item key={site} role="listitem" className="rounded-none border-b-border px-3 not-last:border-b">
               <ItemMedia variant="icon" className="text-muted-foreground"><Globe className="size-4" /></ItemMedia>
               <ItemContent><ItemTitle className="line-clamp-none font-normal break-all">{site}</ItemTitle></ItemContent>
               <ItemActions><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={i18n.t('removeSite', { site })} disabled={disabled} onClick={() => void save({ sites: sites.filter(value => value !== site) })}><X /></Button></ItemActions>
             </Item>)}</ItemGroup>
-            : <p className="mt-3 rounded-lg bg-muted/50 px-3 py-5 text-sm text-muted-foreground">{siteMode === 'allow' ? i18n.t('allowEmpty') : siteMode === 'exclude' ? i18n.t('excludeEmpty') : i18n.t('allEmpty')}</p>}
+            : <p className="mt-3 rounded-lg bg-secondary/60 px-3 py-5 text-sm text-muted-foreground">{siteMode === 'allow' ? i18n.t('allowEmpty') : siteMode === 'exclude' ? i18n.t('excludeEmpty') : i18n.t('allEmpty')}</p>}
         </Row>
       </section>
-      <section id="memory" aria-labelledby="memory-label" className="scroll-mt-32 rounded-xl bg-card shadow-card md:scroll-mt-8">
+      <section id="memory" aria-labelledby="memory-label" className="scroll-mt-32 rounded-xl border bg-card md:scroll-mt-8">
         <div className="px-5 py-5 sm:px-6">
-          <h2 id="memory-label" className="text-sm font-semibold">{i18n.t('rememberedSites')}</h2>
+          <h2 id="memory-label" className="text-base font-semibold">{i18n.t('rememberedSites')}</h2>
           <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('rememberedSitesDescription')}</p>
         </div>
         <div className="px-5 pb-5 sm:px-6">
           {Object.keys(sitePrefs).length
-            ? <ItemGroup aria-label={i18n.t('rememberedSites')} className="gap-0 overflow-hidden rounded-lg bg-muted/50">{Object.entries(sitePrefs).sort(([a], [b]) => a.localeCompare(b)).map(([site, pref]) => <Item key={site} role="listitem" className="rounded-none border-b-border px-3 not-last:border-b">
+            ? <ItemGroup aria-label={i18n.t('rememberedSites')} className="gap-0 overflow-hidden rounded-lg bg-secondary/60">{Object.entries(sitePrefs).sort(([a], [b]) => a.localeCompare(b)).map(([site, pref]) => <Item key={site} role="listitem" className="rounded-none border-b-border px-3 not-last:border-b">
               <ItemMedia variant="icon" className="text-muted-foreground"><Bookmark className="size-4" /></ItemMedia>
               <ItemContent><ItemTitle className="line-clamp-none font-normal break-all">{site}</ItemTitle><p className="text-xs text-muted-foreground">{prefSummary(pref)}</p></ItemContent>
               <ItemActions><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={i18n.t('forgetSite', { site })} disabled={disabled} onClick={() => void save({ sitePrefs: forgetSitePref(sitePrefs, site) })}><X /></Button></ItemActions>
             </Item>)}</ItemGroup>
-            : <p className="rounded-lg bg-muted/50 px-3 py-5 text-sm text-muted-foreground">{i18n.t('rememberedEmpty')}</p>}
+            : <p className="rounded-lg bg-secondary/60 px-3 py-5 text-sm text-muted-foreground">{i18n.t('rememberedEmpty')}</p>}
         </div>
       </section>
       <BackupSection disabled={disabled} save={save} />

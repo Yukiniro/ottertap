@@ -14,7 +14,7 @@
 ## How to get to it (user POV)
 
 1. 打开带有同源或 `data:` 音频的页面。回归夹具 `/stereo` 是一段左右声道不同的循环音色；`/cross` 指向另一个源且不带 CORS。
-2. 打开弹出面板，点音量标题旁的耳机按钮（名以 `Channels: ` 开头）。
+2. 打开弹出面板，点音量滑块下方、倍速标题右侧的耳机按钮（名以 `Channels: ` 开头）。
 3. 选 `Mono` 或某一侧。按钮名字跟着变。
 
 验证会话的 `route` 目前只有 `/video`。声道旅程需要 `/stereo` 和 `/cross` 的文档，以及 `e2e/smoke.spec.ts` 里那份左右不同的 wav。不要改用静音单声道夹具来假装电平对了。
@@ -41,6 +41,7 @@ pnpm exec playwright test e2e/smoke.spec.ts -g "跨域且无 CORS"
 
 ## Gotchas
 
+- 2026-10-22 在 Windows Chromium 上，「切换声道后两侧电平符合模式」在第二次 `chrome.action.openPopup()` 报 `Failed to open popup`；未修改的 HEAD 同样复现。此前声道电平断言通过，但这不代表整条旅程通过。
 - `data:` 和 blob URL 可以改声道。另一个源且没有 `crossorigin`、响应也没有 CORS 时不行。`/cross` 就是这个前置；夹具没配好就应失败。
 - 默认立体声不要为了「好截图」预先把媒体接进 Web Audio。那会改变被测的链路。
 - 电平要在播放开始之后读。暂停时的 analyser 接近静音，不能用来证明声道。

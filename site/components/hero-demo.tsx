@@ -65,11 +65,11 @@ export default function HeroDemo({ copy }: { copy: HeroDemoCopy }) {
 
   return <div data-hero-demo className="flex w-full flex-col items-center gap-5">
     <p className="flex w-[400px] max-w-full items-center gap-3 text-[11px] text-muted-foreground"><span className="h-px flex-1 bg-border" />{copy.caption}<span className="h-px flex-1 bg-border" /></p>
-    <div className="w-[400px] max-w-full overflow-hidden rounded-[13px] border bg-background text-left shadow-[0_24px_60px_-20px_rgb(101_93_233/.35)] dark:shadow-[0_24px_60px_-20px_rgb(0_0_0/.6)]">
+    <div className="w-[400px] max-w-full overflow-hidden rounded-xl border bg-background text-left shadow-[0_12px_32px_-12px_rgb(0_0_0/.16)] dark:shadow-[0_12px_32px_-12px_rgb(0_0_0/.4)]">
       <MediaPanel client={client} initial={preview} openSettings={() => setSettings(true)} />
     </div>
     <div className="flex flex-wrap justify-center gap-2.5">
-      <Button onClick={() => { const media = demoRef.current?.media; if (!media) return; if (media.paused) void media.play(); else media.pause(); }}>{playing ? <Pause /> : <Play />}{playing ? copy.pause : copy.play}</Button>
+      <Button variant="secondary" onClick={() => { const media = demoRef.current?.media; if (!media) return; if (media.paused) void media.play(); else media.pause(); }}>{playing ? <Pause /> : <Play />}{playing ? copy.pause : copy.play}</Button>
       <Button variant="outline" onClick={() => void demoRef.current?.reset()}><RotateCcw />{copy.reset}</Button>
       <Button variant="ghost" className="text-muted-foreground" onClick={() => { const demo = demoRef.current; if (!demo) return; demo.setSecond(extra ? null : copy.secondTitle); setExtra(!extra); }}>{extra ? <Minus /> : <Plus />}{extra ? copy.removeSecond : copy.addSecond}</Button>
     </div>

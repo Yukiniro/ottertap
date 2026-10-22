@@ -1,12 +1,13 @@
 import { i18n } from '#i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { ChevronDown, Settings2, Settings as SettingsIcon, Volume2, VolumeX, AppWindow, Pause, Play, RotateCcw, RotateCw, Keyboard, CircleAlert, Search, RefreshCw, PictureInPicture2, Headphones } from 'lucide-react';
+import { ChevronDown, Settings2, Settings as SettingsIcon, Volume2, VolumeX, AppWindow, Pause, Play, RotateCcw, RotateCw, Keyboard, CircleAlert, Info, Search, RefreshCw, PictureInPicture2, Headphones } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from './ui/empty';
-import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from './ui/item';
+import { Item, ItemActions, ItemContent, ItemGroup, ItemMedia, ItemTitle } from './ui/item';
+import { Popover, PopoverContent, PopoverDescription, PopoverTrigger } from './ui/popover';
 import { Slider } from './ui/slider';
 import { VolumeSlider } from './volume-slider';
 import { Switch } from './ui/switch';
@@ -64,7 +65,7 @@ function OtherPlaying({ client }: { client?: SoundingTabsClient }) {
   if (!tabs.length) return <p className="pb-1 text-center text-xs text-muted-foreground">{i18n.t('otherPlayingEmpty')}</p>;
   return <section aria-labelledby="other-playing-tabs" className="shrink-0">
     <h2 id="other-playing-tabs" className="px-1 pb-1 text-xs font-medium text-muted-foreground">{i18n.t('otherPlayingTabs')}</h2>
-    <div role="list" className="max-h-28 overflow-y-auto overscroll-contain rounded-xl bg-card shadow-card">
+    <div role="list" className="max-h-28 overflow-y-auto overscroll-contain rounded-lg border">
       {tabs.map(tab => <div role="listitem" key={tab.id} className="flex items-center gap-1 border-b border-border/70 px-1.5 py-1 last:border-b-0">
         <button type="button" className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1.5 py-1 text-left hover:bg-muted" aria-label={i18n.t('switchToTab', { title: tab.title || '—' })} onClick={() => focus(tab.id)}>
           <TabIcon src={tab.favIconUrl} />
@@ -114,13 +115,13 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
   const channelHint = selected && !selected.channelAvailable ? i18n.t('channelCrossOrigin') : '';
   const activePreset = selected ? ratePresets.find(speed => sameRate(speed, selected.rate)) : undefined;
   const showSiteAction = page.enabled && !outOfSync && !!siteAction?.settings;
-  return <section className="flex w-[400px] max-w-full flex-col gap-2.5 bg-background px-3.5 pt-1 pb-2" aria-label={i18n.t('mediaPanel')}>
-    <header className="flex h-12 items-center justify-between">
-      <Brand className="text-base [&_img]:size-7" />
+  return <section className="flex w-[400px] max-w-full flex-col gap-3 bg-background px-4 pt-1 pb-3" aria-label={i18n.t('mediaPanel')}>
+    <header className="flex h-10 items-center justify-between">
+      <Brand className="text-sm [&_img]:size-6" />
       <Button variant="ghost" size="icon" aria-label={i18n.t('openSettings')} onClick={openSettings}><SettingsIcon className="size-5" /></Button>
     </header>
     {page.media.length > 1 && <DropdownMenu onOpenChange={open => { if (open && selected) showMedia(selected.id); }}>
-      <DropdownMenuTrigger id="popup-media" render={<Button variant="ghost" size="sm" />} className="h-8 w-full justify-between rounded-full bg-card px-3 font-normal shadow-card">
+      <DropdownMenuTrigger id="popup-media" render={<Button variant="ghost" size="sm" />} className="h-8 w-full justify-between rounded-md bg-secondary px-2 font-normal">
         <span className="truncate">{selected ? mediaChoiceLabel(selected, page.media.findIndex(media => media.id === selected.id)) : i18n.t('chooseMedia')}</span>
         <ChevronDown data-icon="inline-end" />
       </DropdownMenuTrigger>
@@ -131,30 +132,37 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
       </DropdownMenuContent>
     </DropdownMenu>}
     {selected ? <>
-      <div className="rounded-2xl bg-card px-4 pt-4 pb-3 shadow-card">
-        <div className="text-center">
-          <p className="text-xs text-muted-foreground">{page.host || selected.host}</p>
-          <h1 title={selected.title} className="mt-1.5 line-clamp-2 min-h-7 text-[22px] leading-7 font-bold tracking-tight">{selected.title}</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">{selected.kind === 'video' ? i18n.t('video') : i18n.t('audio')} · {selected.paused ? i18n.t('paused') : i18n.t('playing')}</p>
+      <div className="rounded-xl bg-secondary/60 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          <p className="min-w-0 break-all">{page.host || selected.host}</p>
+          <p>{selected.kind === 'video' ? i18n.t('video') : i18n.t('audio')} · {selected.paused ? i18n.t('paused') : i18n.t('playing')}</p>
         </div>
-        <div className="mt-4 flex items-center justify-center gap-7">
-          <Button variant="ghost" className="relative size-[50px] rounded-full bg-muted hover:bg-muted/80 [&_svg:not([class*='size-'])]:size-[26px]" aria-label={i18n.t('skipBack', { seconds: skipSeconds })} disabled={!canSeek} onClick={() => void command({ type: 'skip', value: -skipSeconds })}><RotateCcw className="-translate-y-0.5" /><span className="absolute top-6 bg-muted px-0.5 text-[10px] leading-none font-semibold">{skipSeconds}</span></Button>
-          <Button className="size-[66px] rounded-full transition-transform hover:bg-primary/90 active:scale-95 [&_svg:not([class*='size-'])]:size-7" aria-label={selected.paused ? i18n.t('play') : i18n.t('pause')} onClick={() => void command({ type: selected.paused ? 'play' : 'pause' })}>{selected.paused ? <Play fill="currentColor" strokeWidth={0} className="ml-0.5" /> : <Pause fill="currentColor" strokeWidth={0} />}</Button>
-          <Button variant="ghost" className="relative size-[50px] rounded-full bg-muted hover:bg-muted/80 [&_svg:not([class*='size-'])]:size-[26px]" aria-label={i18n.t('skipForward', { seconds: skipSeconds })} disabled={!canSeek} onClick={() => void command({ type: 'skip', value: skipSeconds })}><RotateCw className="-translate-y-0.5" /><span className="absolute top-6 bg-muted px-0.5 text-[10px] leading-none font-semibold">{skipSeconds}</span></Button>
+        <h1 title={selected.title} className="mt-2 line-clamp-2 text-lg leading-6 font-semibold break-words">{selected.title}</h1>
+        <div className="mt-3 grid grid-cols-[minmax(0,1fr)_48px_44px_48px_minmax(0,1fr)] items-center gap-2">
+          <Button variant="ghost" size="sm" className="col-start-2 h-9 w-12 gap-1 px-2 tabular-nums" aria-label={i18n.t('skipBack', { seconds: skipSeconds })} disabled={!canSeek} onClick={() => void command({ type: 'skip', value: -skipSeconds })}><RotateCcw /><span className="text-xs">{skipSeconds}</span></Button>
+          <Button className="size-11 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 [&_svg:not([class*='size-'])]:size-5" aria-label={selected.paused ? i18n.t('play') : i18n.t('pause')} onClick={() => void command({ type: selected.paused ? 'play' : 'pause' })}>{selected.paused ? <Play fill="currentColor" strokeWidth={0} className="ml-0.5" /> : <Pause fill="currentColor" strokeWidth={0} />}</Button>
+          <Button variant="ghost" size="sm" className="h-9 w-12 gap-1 px-2 tabular-nums" aria-label={i18n.t('skipForward', { seconds: skipSeconds })} disabled={!canSeek} onClick={() => void command({ type: 'skip', value: skipSeconds })}><span className="text-xs">{skipSeconds}</span><RotateCw /></Button>
+          <Button type="button" variant="ghost" size="icon" className="justify-self-end text-muted-foreground aria-pressed:bg-accent aria-pressed:text-primary" aria-pressed={selected.pip} title={selected.pip ? i18n.t('exitPictureInPicture') : i18n.t('pictureInPicture')} aria-label={selected.pip ? i18n.t('exitPictureInPicture') : i18n.t('pictureInPicture')} aria-describedby={hint ? 'pip-hint' : undefined} disabled={!!hint} onClick={() => void command({ type: 'pip' })}><PictureInPicture2 /></Button>
         </div>
-        <Slider aria-label={i18n.t('seek')} className="mt-3 py-2" min={seekMin} max={Math.max(seekMin + 1, seekMax)} step={1} value={[seekDraft ?? selected.currentTime]} disabled={!canSeek} onValueChange={value => setSeekDraft(first(value) ?? null)} onValueCommitted={value => { void command({ type: 'seek', value: first(value) ?? seekMin }).finally(() => setSeekDraft(null)); }} />
-        <div className="mt-0.5 flex justify-between text-sm text-muted-foreground tabular-nums"><span>{formatTime(seekDraft ?? selected.currentTime)}</span><span>{selected.duration === null ? selected.live ? i18n.t('live') : '--:--' : formatTime(selected.duration)}</span></div>
-        <div className="mt-3 flex flex-col items-center gap-1">
-          <Button type="button" variant="ghost" size="sm" className="h-8 rounded-full bg-muted px-3 hover:bg-muted/80 aria-pressed:bg-primary/15 aria-pressed:text-primary" aria-pressed={selected.pip} aria-label={selected.pip ? i18n.t('exitPictureInPicture') : i18n.t('pictureInPicture')} aria-describedby={hint ? 'pip-hint' : undefined} disabled={!!hint} onClick={() => void command({ type: 'pip' })}><PictureInPicture2 />{selected.pip ? i18n.t('exitPictureInPicture') : i18n.t('pictureInPicture')}</Button>
-          {hint ? <p id="pip-hint" className="text-center text-xs text-muted-foreground">{hint}</p> : null}
+        <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground tabular-nums">
+          <span className="shrink-0">{formatTime(seekDraft ?? selected.currentTime)}</span>
+          <Slider aria-label={i18n.t('seek')} className="min-w-0 flex-1 py-2" min={seekMin} max={Math.max(seekMin + 1, seekMax)} step={1} value={[seekDraft ?? selected.currentTime]} disabled={!canSeek} onValueChange={value => setSeekDraft(first(value) ?? null)} onValueCommitted={value => { void command({ type: 'seek', value: first(value) ?? seekMin }).finally(() => setSeekDraft(null)); }} />
+          <span className="shrink-0">{selected.duration === null ? selected.live ? i18n.t('live') : '--:--' : formatTime(selected.duration)}</span>
         </div>
+        {hint ? <p id="pip-hint" className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
       </div>
-      <div className="rounded-xl bg-muted/60 px-3 py-3">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-sm font-medium">{i18n.t('volume')}</span>
-          <div className="flex min-w-0 items-center gap-1.5">
+      <div className="border-b pb-3">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" className="[&_svg:not([class*='size-'])]:size-5" aria-label={selected.muted ? i18n.t('unmute') : i18n.t('mute')} aria-pressed={selected.muted} onClick={() => void command({ type: 'mute' })}>{selected.muted || selected.volume === 0 ? <VolumeX /> : <Volume2 />}</Button>
+          <VolumeSlider aria-label={i18n.t('volume')} className="min-w-16 flex-1 py-2" max={Math.round(selected.maxVolume * 100)} value={volume} onValueChange={value => void adjust({ type: 'volume', value: value / 100 })} />
+          <span className="w-10 shrink-0 text-right text-sm tabular-nums text-muted-foreground">{volume}%</span>
+        </div>
+        {channelHint ? <p id="channel-hint" className="mt-1 text-xs text-muted-foreground">{channelHint}</p> : null}
+        <div className="mt-3">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <span id="speed-label" className="text-sm font-medium">{i18n.t('speed')}</span>
             <DropdownMenu>
-              <DropdownMenuTrigger render={<Button variant="ghost" size="xs" />} disabled={!selected.channelAvailable} aria-label={i18n.t('channelModeLabel', { mode: channelLabel(selected.channel) })} aria-describedby={channelHint ? 'channel-hint' : undefined} data-active={selected.channel !== 'stereo' ? '' : undefined} className="-my-1 min-w-0 rounded-full font-normal text-muted-foreground data-active:bg-primary/10 data-active:text-primary">
+              <DropdownMenuTrigger render={<Button variant="ghost" size="xs" />} disabled={!selected.channelAvailable} title={channelLabel(selected.channel)} aria-label={i18n.t('channelModeLabel', { mode: channelLabel(selected.channel) })} aria-describedby={channelHint ? 'channel-hint' : undefined} data-active={selected.channel !== 'stereo' ? '' : undefined} className="min-w-0 shrink rounded-md px-1 font-normal text-muted-foreground data-active:bg-accent data-active:text-primary">
                 <Headphones data-icon="inline-start" /><span className="truncate">{channelLabel(selected.channel)}</span><ChevronDown data-icon="inline-end" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-auto">
@@ -166,27 +174,16 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
                 </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
-            <span className="text-sm tabular-nums text-muted-foreground">{volume}%</span>
           </div>
-        </div>
-        <div className="mt-1.5 flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="[&_svg:not([class*='size-'])]:size-5" aria-label={selected.muted ? i18n.t('unmute') : i18n.t('mute')} aria-pressed={selected.muted} onClick={() => void command({ type: 'mute' })}>{selected.muted || selected.volume === 0 ? <VolumeX /> : <Volume2 />}</Button>
-          <VolumeSlider size="bar" aria-label={i18n.t('volume')} className="flex-1" max={Math.round(selected.maxVolume * 100)} value={volume} onValueChange={value => void adjust({ type: 'volume', value: value / 100 })} />
-        </div>
-        {channelHint ? <p id="channel-hint" className="mt-1 text-xs text-muted-foreground">{channelHint}</p> : null}
-        <div className="mt-3">
-          <div className="flex items-start gap-3">
-            <span id="speed-label" className="mt-2 min-w-8 shrink-0 text-sm">{i18n.t('speed')}</span>
-            <ToggleGroup aria-labelledby="speed-label" spacing={1} className="grid h-auto min-w-0 flex-1 grid-cols-4 rounded-lg bg-background/80 p-1" value={activePreset === undefined ? [] : [String(activePreset)]} onValueChange={value => { if (value[0]) void adjust({ type: 'rate', value: Number(value[0]) }); }}>
-              {ratePresets.map(speed => <ToggleGroupItem key={speed} value={String(speed)} aria-label={i18n.t('speedOption', { speed: formatRate(speed) })} className="h-7 w-full min-w-0 rounded-md border-0 px-0.5 text-xs text-muted-foreground shadow-none aria-pressed:bg-card aria-pressed:font-semibold aria-pressed:text-foreground aria-pressed:shadow-sm">{formatRate(speed)}×</ToggleGroupItem>)}
-            </ToggleGroup>
-          </div>
+          <ToggleGroup aria-labelledby="speed-label" spacing={1} className="grid h-auto w-full min-w-0 grid-cols-4 gap-1.5" value={activePreset === undefined ? [] : [String(activePreset)]} onValueChange={value => { if (value[0]) void adjust({ type: 'rate', value: Number(value[0]) }); }}>
+            {ratePresets.map(speed => <ToggleGroupItem key={speed} value={String(speed)} aria-label={i18n.t('speedOption', { speed: formatRate(speed) })} className="h-8 w-full min-w-0 rounded-md border-0 bg-secondary/60 px-1 text-sm text-muted-foreground shadow-none aria-pressed:bg-primary aria-pressed:font-semibold aria-pressed:text-primary-foreground">{formatRate(speed)}×</ToggleGroupItem>)}
+          </ToggleGroup>
           {activePreset === undefined && <p className="mt-1 text-xs text-muted-foreground">{i18n.t('currentSpeed', { rate: formatRate(selected.rate) })}</p>}
           {selected.rateLock === 'given-up' && <p className="mt-1 text-xs leading-5 text-destructive">{i18n.t('rateLockGaveUp')}</p>}
           {offerRemember && !remembered && <Button variant="ghost" size="sm" className="mt-1 h-7 w-full justify-start px-1 text-xs text-primary" disabled={settingsLoading} onClick={storePreference}>{i18n.t('rememberSite')}</Button>}
         </div>
       </div>
-    </> : <div className="flex min-h-[26.25rem] flex-col justify-center rounded-2xl bg-card shadow-card">
+    </> : <div className="flex min-h-56 flex-col justify-center border-y">
       <Empty className="border-0 px-4 py-8">
         <EmptyHeader>
           <EmptyMedia variant="icon" className="size-12 rounded-full bg-accent text-primary [&_svg:not([class*='size-'])]:size-6">{page.enabled ? <Search /> : <Settings2 />}</EmptyMedia>
@@ -197,24 +194,28 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
       </Empty>
     </div>}
     {(error || settingsError) && <Alert variant="destructive"><CircleAlert /><AlertDescription>{error || settingsError}</AlertDescription></Alert>}
-    <ItemGroup className="gap-0 divide-y overflow-hidden rounded-xl bg-card shadow-card">
-      {selected && page.host && <Item role="listitem" className="rounded-none px-3 py-2.5">
+    <ItemGroup className="gap-0 divide-y">
+      {selected && page.host && <Item role="listitem" className="flex-nowrap rounded-none px-0 py-1.5">
         <ItemContent>
-          <ItemTitle className="font-normal"><label htmlFor="remember-site">{i18n.t('rememberSite')}</label></ItemTitle>
-          <ItemDescription className="text-xs">{i18n.t('rememberSiteDescription')}</ItemDescription>
+          <ItemTitle className="overflow-visible font-normal"><label htmlFor="remember-site">{i18n.t('rememberSite')}</label>
+            <Popover>
+              <PopoverTrigger render={<Button variant="ghost" size="icon-xs" />} aria-label={i18n.t('rememberSiteDescription')} className="text-muted-foreground"><Info /></PopoverTrigger>
+              <PopoverContent side="top" aria-label={i18n.t('rememberSite')} className="max-w-[calc(100vw-32px)] p-3 text-sm leading-6"><PopoverDescription>{i18n.t('rememberSiteDescription')}</PopoverDescription></PopoverContent>
+            </Popover>
+          </ItemTitle>
         </ItemContent>
         <ItemActions><Switch id="remember-site" aria-label={i18n.t('rememberSite')} checked={!!remembered} disabled={settingsLoading} onCheckedChange={checked => { if (!page.host) return; void write({ sitePrefs: checked ? rememberSite(sitePrefs, page.host, selected ? currentPref(selected) : {}) : forgetMatchingSites(sitePrefs, page.host) }); }} /></ItemActions>
       </Item>}
-      <Item role="listitem" className="min-h-12 rounded-none px-3">
+      <Item role="listitem" className="min-h-10 flex-nowrap rounded-none px-0 py-1.5">
         <ItemMedia variant="icon" className="text-muted-foreground"><AppWindow className="size-5" /></ItemMedia>
         <ItemContent><ItemTitle className="font-normal"><label htmlFor="floating-toggle">{i18n.t('floatingController')}</label></ItemTitle></ItemContent>
         <ItemActions><Switch id="floating-toggle" aria-label={i18n.t('floatingController')} checked={floating} disabled={settingsLoading} onCheckedChange={checked => void write({ floating: checked })} /></ItemActions>
       </Item>
-      {showSiteAction && <Item role="listitem" className="rounded-none px-1.5 py-1">
-        <Button variant="ghost" className="w-full justify-start text-muted-foreground" disabled={settingsLoading} onClick={() => void write(siteAction.settings!).then(ok => { if (ok) void refresh(); })}>{siteAction.label}</Button>
+      {showSiteAction && <Item role="listitem" className="rounded-none px-0 py-0">
+        <Button variant="ghost" size="sm" className="h-auto min-h-8 w-full justify-start px-0 text-muted-foreground whitespace-normal break-all" disabled={settingsLoading} onClick={() => void write(siteAction.settings!).then(ok => { if (ok) void refresh(); })}>{siteAction.label}</Button>
       </Item>}
     </ItemGroup>
-    <footer className="flex min-h-9 items-center justify-center gap-2 pb-1 text-xs text-muted-foreground"><Keyboard aria-hidden="true" className="size-4" /><span>{i18n.t('volumeShortcut')}</span></footer>
+    <footer className="flex min-h-7 items-center gap-2 text-xs text-muted-foreground"><Keyboard aria-hidden="true" className="size-4 shrink-0" /><span>{i18n.t('volumeShortcut')}</span></footer>
     <OtherPlaying client={sounding} />
   </section>;
 }
