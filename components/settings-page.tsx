@@ -14,7 +14,7 @@ import { Switch } from './ui/switch';
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 import { Brand } from './brand';
 import { cn } from '../lib/utils';
-import { defaultRatePresets, formatRate, maxRatePresets, parseRatePreset } from '../lib/rate';
+import { defaultRatePresets, formatRate, maxRatePresets, parseRatePreset, sameRate } from '../lib/rate';
 import { channelLabel } from '../lib/media';
 import { downloadSettingsBackup, parseSettingsBackup, readExtensionVersion, settingsBackupErrors, type SettingsBackupError } from '../lib/settings-backup';
 import { forgetSitePref, isSkipSeconds, isVolumeStep, normalizeDomain } from '../lib/settings';
@@ -210,9 +210,10 @@ function Row({ title, description, titleId, children }: { title: string; descrip
 }
 
 export function SettingsPage({ back }: { back?: () => void }) {
-  const { themeAtom, floatingAtom, lockRateAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, volumeStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { themeAtom, floatingAtom, defaultRateAtom, lockRateAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, volumeStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const theme = useAtomValue(themeAtom);
   const floating = useAtomValue(floatingAtom);
+  const defaultRate = useAtomValue(defaultRateAtom);
   const lockRate = useAtomValue(lockRateAtom);
   const hoverWheel = useAtomValue(hoverWheelAtom);
   const singleKey = useAtomValue(singleKeyAtom);
@@ -265,6 +266,9 @@ export function SettingsPage({ back }: { back?: () => void }) {
   };
   const disabled = loading || saving;
   const status = <SaveStatus loading={loading} saving={saving} error={error} saved={saved} />;
+  const defaultRateChoices = defaultRate != null && !defaultRatePresets.some(rate => sameRate(rate, defaultRate))
+    ? [...defaultRatePresets, defaultRate].sort((a, b) => a - b)
+    : defaultRatePresets;
 
   return <div className="min-h-screen bg-secondary/30 md:grid md:grid-cols-[220px_1fr]">
     <aside className="sticky top-0 z-20 flex flex-col border-b bg-background md:h-screen md:self-start md:border-r">
@@ -321,6 +325,16 @@ export function SettingsPage({ back }: { back?: () => void }) {
             <FieldLabel htmlFor="settings-lock-rate" className="text-sm font-normal">{i18n.t('lockRate')}</FieldLabel>
             <Switch id="settings-lock-rate" aria-label={i18n.t('lockRate')} checked={lockRate} disabled={disabled} onCheckedChange={checked => void save({ lockRate: checked })} />
           </Field>
+          <div className="mt-4">
+            <div className="rounded-lg bg-secondary/60 px-3 py-3">
+              <h3 id="default-rate-label" className="text-sm font-medium">{i18n.t('defaultRate')}</h3>
+              <ToggleGroup aria-labelledby="default-rate-label" spacing={1} className="mt-3 flex h-auto w-full flex-wrap justify-start rounded-lg bg-background/80 p-1" value={[defaultRate == null ? 'follow' : String(defaultRate)]} disabled={disabled} onValueChange={value => { const next = value[0]; if (next === 'follow') { if (defaultRate != null) void save({ defaultRate: null }); return; } const rate = Number(next); if (Number.isFinite(rate)) void save({ defaultRate: rate }); }}>
+                <ToggleGroupItem value="follow" className="h-8 rounded-md border-0 px-2.5 text-xs text-muted-foreground shadow-none aria-pressed:bg-card aria-pressed:font-semibold aria-pressed:text-foreground aria-pressed:shadow-sm">{i18n.t('defaultRateFollow')}</ToggleGroupItem>
+                {defaultRateChoices.map(rate => <ToggleGroupItem key={rate} value={String(rate)} className="h-8 rounded-md border-0 px-2.5 text-xs text-muted-foreground shadow-none aria-pressed:bg-card aria-pressed:font-semibold aria-pressed:text-foreground aria-pressed:shadow-sm">{i18n.t('defaultRateOption', { rate: formatRate(rate) })}</ToggleGroupItem>)}
+              </ToggleGroup>
+            </div>
+            <p className="mt-2 text-sm leading-5 text-muted-foreground">{i18n.t('defaultRateDescription')}</p>
+          </div>
           <div className="mt-4">
             <div className="flex flex-col gap-3 rounded-lg bg-secondary/60 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
               <h3 id="skip-seconds-label" className="text-sm font-medium">{i18n.t('skipSeconds')}</h3>

@@ -43,7 +43,7 @@ export function createDemo(document: Document, { src, title, store }: { src: str
   const enabled = async () => isSiteEnabled(demoUrl, await store.load());
   const applyRemembered = async (id: string) => {
     const settings = await store.load();
-    const commands = remembered.plan(demoHost, id, settings.sitePrefs);
+    const commands = remembered.plan(demoHost, id, settings.sitePrefs, settings.defaultRate);
     for (const command of commands) {
       try { await controller.command(id, command); } catch { /* Once per visit. */ }
     }

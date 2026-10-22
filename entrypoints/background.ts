@@ -116,8 +116,8 @@ export default defineBackground(() => {
       if (sitePrefs) { const next = { ...latest, sitePrefs }; await extensionStore.save(next); settingsCache = next; }
     } catch { /* The control already applied; the next adjustment can store it. */ }
   }
-  async function applySitePref(tabId: number, host: string, mediaId: string, prefs: Record<string, SitePref>) {
-    const commands = sitePrefSession(tabId).plan(host, mediaId, prefs);
+  async function applySitePref(tabId: number, host: string, mediaId: string, prefs: Record<string, SitePref>, defaultRate: number | null) {
+    const commands = sitePrefSession(tabId).plan(host, mediaId, prefs, defaultRate);
     if (!commands.length) return false;
     let applied = false;
     await enqueueCommand(tabId, async () => {
@@ -382,7 +382,7 @@ export default defineBackground(() => {
           const { media, failed } = await collect(tabId, host);
           const selectedId = lockedId(tabId, media, failed);
           const target = lockedMedia(media, selectedId);
-          if (target && await applySitePref(tabId, host, target.id, settings.sitePrefs)) {
+          if (target && await applySitePref(tabId, host, target.id, settings.sitePrefs, settings.defaultRate)) {
             const refreshed = await collect(tabId, host);
             return { host, enabled, media: refreshed.media, selectedId: lockedId(tabId, refreshed.media, refreshed.failed) };
           }
@@ -393,7 +393,7 @@ export default defineBackground(() => {
           if (!mediaId) throw new Error(i18n.t('invalidCommand'));
           if (gestures.get(tabId)?.id !== mediaId) gestures.delete(tabId);
           rememberSelection(tabId, mediaId);
-          await applySitePref(tabId, host, mediaId, settings.sitePrefs);
+          await applySitePref(tabId, host, mediaId, settings.sitePrefs, settings.defaultRate);
           return { ok: true };
         }
         if (message.type === 'highlight') {

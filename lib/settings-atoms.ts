@@ -14,7 +14,7 @@ const sameSitePrefs = (a: Record<string, SitePref>, b: Record<string, SitePref>)
   const keys = Object.keys(a);
   return keys.length === Object.keys(b).length && keys.every(key => !!b[key] && sameSitePref(a[key]!, b[key]!));
 };
-const sameSettings = (a: Settings, b: Settings) => a.theme === b.theme && a.floating === b.floating && a.lockRate === b.lockRate && a.hoverWheel === b.hoverWheel && a.singleKey === b.singleKey && a.skipSeconds === b.skipSeconds && a.volumeStep === b.volumeStep && a.siteMode === b.siteMode && samePosition(a.floatingPosition, b.floatingPosition) && sameSites(a.sites, b.sites) && sameSitePrefs(a.sitePrefs, b.sitePrefs) && samePresets(a.ratePresets, b.ratePresets);
+const sameSettings = (a: Settings, b: Settings) => a.theme === b.theme && a.floating === b.floating && a.defaultRate === b.defaultRate && a.lockRate === b.lockRate && a.hoverWheel === b.hoverWheel && a.singleKey === b.singleKey && a.skipSeconds === b.skipSeconds && a.volumeStep === b.volumeStep && a.siteMode === b.siteMode && samePosition(a.floatingPosition, b.floatingPosition) && sameSites(a.sites, b.sites) && sameSitePrefs(a.sitePrefs, b.sitePrefs) && samePresets(a.ratePresets, b.ratePresets);
 
 function mergeSettings(current: Settings, update: Partial<Settings>): Settings {
   const next = normalizeSettings({ ...current, ...update });
@@ -32,6 +32,7 @@ export interface SettingsAtoms {
   settingsAtom: Atom<Settings>;
   themeAtom: Atom<Theme>;
   floatingAtom: Atom<boolean>;
+  defaultRateAtom: Atom<number | null>;
   lockRateAtom: Atom<boolean>;
   hoverWheelAtom: Atom<boolean>;
   singleKeyAtom: Atom<boolean>;
@@ -57,6 +58,7 @@ export function createSettingsAtoms(source: SettingsStore, options?: { initialLo
   const errorAtom = atom('');
   const themeAtom = selectAtom(settingsAtom, settings => settings.theme);
   const floatingAtom = selectAtom(settingsAtom, settings => settings.floating);
+  const defaultRateAtom = selectAtom(settingsAtom, settings => settings.defaultRate);
   const lockRateAtom = selectAtom(settingsAtom, settings => settings.lockRate);
   const hoverWheelAtom = selectAtom(settingsAtom, settings => settings.hoverWheel);
   const singleKeyAtom = selectAtom(settingsAtom, settings => settings.singleKey);
@@ -155,7 +157,7 @@ export function createSettingsAtoms(source: SettingsStore, options?: { initialLo
   }
 
   return {
-    store, settingsAtom, themeAtom, floatingAtom, lockRateAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, volumeStepAtom, floatingPositionAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom, mount, ready,
+    store, settingsAtom, themeAtom, floatingAtom, defaultRateAtom, lockRateAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, volumeStepAtom, floatingPositionAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom, mount, ready,
     settled: () => idle
   };
 }

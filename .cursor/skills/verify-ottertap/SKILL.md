@@ -60,11 +60,14 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive skip-step
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive volume-step
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive extension-pip
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive default-rate
 ```
 
 `skip-step` 在设置页把 `Skip step` 改成 `30s` 并打开 `Single-key mode`，再看弹出面板进退按钮名和页内 `L` / `J` / `→` / `←` 让 `/long` 夹具的 `currentTime` 跟着步长变；它会改写 profile，同一会话只能跑一次。步骤见 `features/skip-step.md`。
 
 `volume-step` 在设置页把 `Volume step` 改成 `5%` 和 `20%`，再看同一夹具页上的悬停滚轮、Alt+滚轮和单键 ↑ ↓ 跟着步长变，并确认跨过 100% 仍先停住。它会改写 profile，同一会话只能跑一次，而且不能接在 `drive wheel-volume` 前面。步骤见 `features/volume-step.md`。
+
+`default-rate` 在设置页确认 `Default speed` 默认是 `Follow the page`，再改成 `1.5×`，看新开的夹具视频被写成 1.5×；记住此站点为 2× 后重新加载，用记住的 2×。它会改写 profile，同一会话只能跑一次。步骤见 `features/default-rate.md`。
 
 `popup-playback` 在已启动的会话里做这些事：
 
@@ -113,6 +116,8 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive extension-pip
 
 `drive volume-step` 写入 `volume-step/`：`settings-default.png`、`settings-5.png`、`settings-20.png`、`fixture-10.png`、`fixture-5.png`、`fixture-20.png`、`fixture-snap-100.png`、`fixture-snap-120.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
 
+`drive default-rate` 写入 `default-rate/`：`settings-follow.png`、`fixture-follow.png`、`settings-1.5.png`、`fixture-1.5.png`、`fixture-site.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
 `launch` 成功后还会留下 `launch-probe.png`（浮动入口已经出现）。失败时同目录可能有 `error.txt`，那不算通过。
 
 换了 `OTTERTAP_VERIFY_ID` 时，文件名变成 `<id>-popup-playback/`。不要把这些截图提交进仓库。
@@ -138,6 +143,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive skip-step
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive volume-step
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive extension-pip
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive default-rate
 node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 ```
 

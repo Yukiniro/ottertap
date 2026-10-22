@@ -6,6 +6,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive skip-step
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive volume-step
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive extension-pip
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive default-rate
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -25,7 +26,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'volume-step', 'extension-pip'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'volume-step', 'extension-pip', 'default-rate'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -724,6 +725,109 @@ async function driveVolumeStep(context, dir, note) {
   }
 }
 
+async function driveDefaultRate(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const near = expected => value => Math.abs(value - expected) < 0.02;
+  const manifest = await worker.evaluate(() => {
+    const listed = chrome.runtime.getManifest();
+    return { permissions: listed.permissions ?? [], hostPermissions: listed.host_permissions ?? [] };
+  });
+  if (JSON.stringify(manifest.permissions) !== JSON.stringify(['storage']) || JSON.stringify(manifest.hostPermissions) !== JSON.stringify(['http://*/*', 'https://*/*'])) {
+    throw new Error(`权限应保持原样：${JSON.stringify(manifest)}`);
+  }
+  const openVideo = async () => {
+    const fixture = await context.newPage();
+    await fixture.goto(`${origin}/video`, { waitUntil: 'domcontentloaded' });
+    await fixture.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await fixture.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+    });
+    return fixture;
+  };
+  const rateOf = fixture => fixture.locator('#media').evaluate(element => element.playbackRate);
+  let settings;
+  let followed;
+  let applied;
+  try {
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#playback`, { waitUntil: 'domcontentloaded' });
+    const group = settings.getByRole('group', { name: 'Default speed' });
+    await group.waitFor({ state: 'visible', timeout: 15_000 });
+    const choices = await group.getByRole('button').allInnerTexts();
+    const pressedBefore = await group.locator('[aria-pressed="true"]').allInnerTexts();
+    const expectedChoices = ['Follow the page', '0.75×', '1×', '1.25×', '1.5×', '2×', '2.5×', '3×', '4×'];
+    if (choices.join() !== expectedChoices.join() || pressedBefore.join() !== 'Follow the page') {
+      throw new Error(`默认倍速档位或默认值不对：${JSON.stringify({ choices, pressedBefore })}`);
+    }
+    await settings.getByText('On sites that have not remembered a speed, new media uses this speed once. A speed remembered for the site comes first.', { exact: true }).waitFor({ state: 'visible' });
+    const lock = settings.getByRole('switch', { name: 'Lock playback speed' });
+    if (await lock.getAttribute('aria-checked') !== 'false') throw new Error('锁定倍速默认应关闭');
+    await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-follow.png'), animations: 'disabled' });
+    const followStored = await stored();
+    if (followStored.defaultRate != null) throw new Error(`跟随网页时 defaultRate 应为 null：${followStored.defaultRate}`);
+    note(`settings Default speed choices=${choices} pressed=${pressedBefore}`);
+
+    followed = await openVideo();
+    await followed.locator('#media').evaluate(element => { element.playbackRate = 1.75; });
+    await followed.waitForTimeout(1200);
+    const stayed = await poll(rateOf.bind(null, followed), near(1.75), '跟随网页时不应改写 1.75×');
+    await followed.screenshot({ path: path.join(dir, 'fixture-follow.png'), animations: 'disabled' });
+    note(`follow page left playbackRate=${stayed}`);
+    await followed.close();
+    followed = undefined;
+
+    const target = group.getByRole('button', { name: '1.5×', exact: true });
+    await target.click();
+    await poll(() => target.getAttribute('aria-pressed'), value => value === 'true', '点 1.5× 后应按下');
+    const savedRate = await poll(stored, value => value.defaultRate === 1.5 && value.lockRate !== true, '设置里应存下 defaultRate=1.5，且锁定仍关');
+    await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-1.5.png'), animations: 'disabled' });
+    note(`saved defaultRate=${savedRate.defaultRate} lockRate=${savedRate.lockRate}`);
+
+    applied = await openVideo();
+    const once = await poll(rateOf.bind(null, applied), near(1.5), '新页面的新媒体应应用一次 1.5×');
+    await applied.screenshot({ path: path.join(dir, 'fixture-1.5.png'), animations: 'disabled' });
+    await applied.locator('#media').evaluate(element => { element.playbackRate = 1; });
+    await applied.waitForTimeout(800);
+    const unlocked = await rateOf(applied);
+    if (!near(1)(unlocked)) throw new Error(`锁定关着时，站点把倍速改成 1 后不应写回：${unlocked}`);
+    note(`applied 1.5 then stayed at ${unlocked} with lock off`);
+
+    const popup = await openActionPopup(context, applied);
+    try {
+      await popup.click('2× speed');
+      await poll(() => popup.evaluate(`(() => document.querySelector('[aria-label="2× speed"]')?.getAttribute('aria-pressed') ?? '')()`), value => value === 'true', '弹出面板应按下 2×');
+      await poll(rateOf.bind(null, applied), near(2), '点 2× 后媒体应为 2×');
+      const remembered = await popup.evaluate(`(() => {
+        const node = [...document.querySelectorAll('button')].find(item => item.getAttribute('aria-label') === 'Remember this site');
+        if (!node) return false;
+        node.click();
+        return true;
+      })()`);
+      if (!remembered) throw new Error('弹出面板里没有 Remember this site');
+      await poll(stored, value => value.sitePrefs?.['media.ottertap.test']?.rate === 2 && value.defaultRate === 1.5, '记住此站点应写下 2×，默认倍速仍是 1.5');
+      note('remembered media.ottertap.test at 2×');
+    } finally { await popup.close().catch(() => {}); }
+
+    await applied.reload({ waitUntil: 'domcontentloaded' });
+    await applied.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    const siteRate = await poll(rateOf.bind(null, applied), near(2), '已记住的 2× 应盖过默认 1.5×');
+    await applied.screenshot({ path: path.join(dir, 'fixture-site.png'), animations: 'disabled' });
+    note(`reloaded site rate=${siteRate}`);
+
+    const state = { ok: true, choices, follow: stayed, applied: once, unlocked, siteRate, permissions: manifest.permissions };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await settings?.close().catch(() => {});
+    await followed?.close().catch(() => {});
+    await applied?.close().catch(() => {});
+  }
+}
+
 const pipButtonState = `(() => {
   const button = [...document.querySelectorAll('button')].find(item => item.getAttribute('aria-label') === 'Picture-in-picture' || item.getAttribute('aria-label') === 'Exit picture-in-picture');
   if (!button) return null;
@@ -966,7 +1070,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'volume-step': driveVolumeStep, 'extension-pip': driveExtensionPip };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'volume-step': driveVolumeStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -1157,7 +1261,7 @@ try {
   else if (command === 'drive') await drive(feature);
   else if (command === 'cleanup') await cleanup();
   else {
-    console.error('用法：node .cursor/skills/verify-ottertap/scripts/session.mjs <launch|doctor|drive|cleanup> [popup-playback|wheel-volume|skip-step|volume-step|extension-pip]');
+    console.error('用法：node .cursor/skills/verify-ottertap/scripts/session.mjs <launch|doctor|drive|cleanup> [popup-playback|wheel-volume|skip-step|volume-step|extension-pip|default-rate]');
     process.exit(2);
   }
 } catch (error) {

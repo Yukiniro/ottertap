@@ -1,6 +1,6 @@
 import { i18n } from '#i18n';
 import { isChannelMode, maxGain } from './amplifier';
-import { maxRate, minRate, normalizeRatePresets } from './rate';
+import { clampRate, formatRate, maxRate, minRate, normalizeRatePresets, rateStep } from './rate';
 import { defaultSettings, skipSteps, volumeSteps, type MediaCommand, type Settings, type SitePref, type SkipSeconds, type VolumeStep } from './types';
 const matchesSite = (host: string, site: string) => host === site || host.endsWith(`.${site}`);
 
@@ -18,6 +18,13 @@ export function isVolumeStep(value: unknown): value is VolumeStep {
 
 export function normalizeVolumeStep(value: unknown): VolumeStep {
   return isVolumeStep(value) ? value : 10;
+}
+
+/** `null` follows the page. Other finite numbers snap onto the 0.25 grid inside min–max. */
+export function normalizeDefaultRate(value: unknown): number | null {
+  if (value == null || typeof value !== 'number' || !Number.isFinite(value)) return null;
+  const snapped = Number(formatRate(Math.round(clampRate(value) / rateStep) * rateStep));
+  return snapped >= minRate && snapped <= maxRate ? snapped : null;
 }
 
 export function normalizeDomain(input: string): string {
@@ -52,6 +59,7 @@ export function normalizeSettings(value: unknown): Settings {
     sites: [...new Set(sites)],
     sitePrefs: normalizeSitePrefs(source.sitePrefs),
     ratePresets: normalizeRatePresets(source.ratePresets),
+    defaultRate: normalizeDefaultRate(source.defaultRate),
     lockRate: source.lockRate === true,
     hoverWheel: typeof source.hoverWheel === 'boolean' ? source.hoverWheel : true,
     singleKey: source.singleKey === true,
@@ -150,18 +158,18 @@ export function createSitePrefSession() {
   const applied = new Set<string>();
   return {
     reset() { applied.clear(); },
-    plan(host: string, mediaId: string, prefs: Record<string, SitePref>): MediaCommand[] {
+    plan(host: string, mediaId: string, prefs: Record<string, SitePref>, defaultRate: number | null = null): MediaCommand[] {
       const name = hostKey(host);
       if (!name || !mediaId) return [];
       const key = `${name}\0${mediaId}`;
       if (applied.has(key)) return [];
       applied.add(key);
       const match = sitePrefFor(name, prefs);
-      if (!match) return [];
       const commands: MediaCommand[] = [];
-      if (match.pref.volume !== undefined) commands.push({ type: 'volume', value: match.pref.volume });
-      if (match.pref.rate !== undefined) commands.push({ type: 'rate', value: match.pref.rate });
-      if (match.pref.channel !== undefined) commands.push({ type: 'channel', value: match.pref.channel });
+      if (match?.pref.volume !== undefined) commands.push({ type: 'volume', value: match.pref.volume });
+      const rate = match?.pref.rate !== undefined ? match.pref.rate : defaultRate;
+      if (rate != null) commands.push({ type: 'rate', value: rate });
+      if (match?.pref.channel !== undefined) commands.push({ type: 'channel', value: match.pref.channel });
       return commands;
     }
   };
