@@ -1,8 +1,9 @@
 import { chromium, expect, test, type BrowserContext, type Page, type Worker } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
 
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
-const extensionPath = decodeURIComponent(new URL('../.output/chrome-mv3/', import.meta.url).pathname);
+const extensionPath = fileURLToPath(new URL('../.output/chrome-mv3/', import.meta.url));
 const settingsKey = 'ottertap-settings-v1';
 
 type SitePref = { volume?: number; rate?: number; channel?: 'mono' | 'left' | 'right' };
@@ -651,9 +652,43 @@ test('悬停滚轮只作用在有声主播放器，静音信息流预览不拦�
     const mainBox = await main.boundingBox();
     if (!mainBox) throw new Error('主播放器没有位置');
     await page.mouse.move(mainBox.x + mainBox.width / 2, mainBox.y + mainBox.height / 2);
+    await page.waitForTimeout(300);
     await page.mouse.wheel(0, -100);
     await expect.poll(() => main.evaluate((element: HTMLMediaElement) => element.volume), '有声主播放器上裸滚轮调音量').toBeCloseTo(0.6, 2);
     expect(await page.evaluate(() => window.scrollY), '主播放器上滚轮不滚动页面').toBe(0);
+  });
+});
+
+test('页面连续滚动经过视频不接管，停顿后重新滚动才调音量', async () => {
+  await withPage(async page => {
+    await openFixture(page, '/keys');
+    await ready(page);
+    const media = page.locator('#media');
+    await media.evaluate((element: HTMLMediaElement) => {
+      element.style.marginTop = '400px';
+      element.volume = 0.5;
+    });
+    await page.mouse.move(100, 350);
+    await page.mouse.wheel(0, 100);
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(50);
+    const box = await media.boundingBox();
+    expect(box!.y).toBeLessThan(350);
+    expect(box!.y + box!.height).toBeGreaterThan(350);
+    await page.mouse.wheel(0, 50);
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(120);
+    expect(await mediaVolume(page)).toBeCloseTo(0.5, 2);
+    await page.screenshot({ path: test.info().outputPath('page-scroll-over-video.png') });
+    await page.waitForTimeout(350);
+    const scroll = await page.evaluate(() => window.scrollY);
+    await page.mouse.wheel(0, -100);
+    await expect.poll(() => mediaVolume(page)).toBeCloseTo(0.6, 2);
+    expect(await page.evaluate(() => window.scrollY)).toBe(scroll);
+    await page.screenshot({ path: test.info().outputPath('volume-after-rest.png') });
+    // An explicit Alt gesture also works while a page-scroll gesture is still active.
+    await page.mouse.move(700, 350);
+    await page.mouse.wheel(0, 50);
+    await volumeUp(page);
+    await expect.poll(() => mediaVolume(page)).toBeCloseTo(0.7, 2);
   });
 });
 
