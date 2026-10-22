@@ -10,6 +10,7 @@ import { isSiteEnabled, normalizeSkipSeconds } from '../lib/settings';
 import { extensionStore } from '../lib/extension-store';
 import { createExtensionClient } from '../lib/extension-client';
 import { defaultSettings, type Settings } from '../lib/types';
+import { createHoverWheelGesture } from '../lib/hover-wheel';
 import { FloatingController } from '../components/floating';
 import { RateHint, RateLockNotice } from '../components/rate-hint';
 import { ThemeProvider } from '../components/theme';
@@ -146,11 +147,13 @@ export default defineContentScript({
       const source = watched ?? contextKeys;
       hotkeys.key(event, { singleKey: source.singleKey, skipSeconds: source.skipSeconds, target: source.singleKey ? controller.pointed(pointer, true) : undefined });
     };
+    const hoverGesture = createHoverWheelGesture();
     const onWheel = (event: WheelEvent) => {
-      if (!shortcutActive()) return;
+      const active = shortcutActive();
       const hover = (watched ?? contextKeys).hoverWheel;
-      const target = hover ? controller.hoverTarget({ x: event.clientX, y: event.clientY }, lockedLocalId) : undefined;
-      hotkeys.wheel(event, target);
+      const target = active && hover ? controller.hoverTarget({ x: event.clientX, y: event.clientY }, lockedLocalId) : undefined;
+      const bareTarget = hoverGesture(!event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey && event.deltaY ? target : undefined, event.timeStamp);
+      if (active) hotkeys.wheel(event, event.altKey ? target : bareTarget);
     };
     const onPageHide = () => {
       if (reported == null) return;

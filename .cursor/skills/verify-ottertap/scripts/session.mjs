@@ -386,6 +386,7 @@ async function driveWheelVolume(context, dir, note) {
     await page.evaluate(() => window.scrollTo(0, 0));
     const mainAt = await centerOf(page.locator('#media'));
     await page.mouse.move(mainAt.x, mainAt.y);
+    await page.waitForTimeout(300);
     await page.mouse.wheel(0, -100);
     const mainVolume = await poll(() => page.locator('#media').evaluate(element => element.volume), value => Math.abs(value - 0.6) < 0.02, '有声主播放器上裸滚轮应调音量');
     const mainScroll = await page.evaluate(() => window.scrollY);
