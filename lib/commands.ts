@@ -10,7 +10,8 @@ export const extensionCommands = [
   { name: 'volume-down', message: 'cmdVolumeDown', action: { type: 'volume', delta: -10 } },
   { name: 'rate-faster', message: 'cmdRateFaster', action: { type: 'rate', direction: 1 } },
   { name: 'rate-slower', message: 'cmdRateSlower', action: { type: 'rate', direction: -1 } },
-  { name: 'rate-reset', message: 'cmdRateReset', action: { type: 'rate', direction: 0 } }
+  { name: 'rate-reset', message: 'cmdRateReset', action: { type: 'rate', direction: 0 } },
+  { name: 'pip', message: 'cmdPictureInPicture', action: { type: 'pip' } }
 ] as const satisfies ReadonlyArray<{ name: string; message: string; suggestedKey?: { default: string; mac: string }; action: HotkeyAction }>;
 
 export type ExtensionCommandName = (typeof extensionCommands)[number]['name'];

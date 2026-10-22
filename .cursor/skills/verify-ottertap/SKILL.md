@@ -53,11 +53,12 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs doctor
 
 ## Drive
 
-脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）和快进快退步长（见 `features/skip-step.md`）。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
+脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）和扩展命令画中画（见 `features/extension-pip.md`）。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
 
 ```bash
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive skip-step
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive extension-pip
 ```
 
 `skip-step` 在设置页把 `Skip step` 改成 `30s` 并打开 `Single-key mode`，再看弹出面板进退按钮名和页内 `L` / `J` / `→` / `←` 让 `/long` 夹具的 `currentTime` 跟着步长变；它会改写 profile，同一会话只能跑一次。步骤见 `features/skip-step.md`。
@@ -129,6 +130,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs launch
 node .cursor/skills/verify-ottertap/scripts/session.mjs doctor
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive skip-step
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive extension-pip
 node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 ```
 

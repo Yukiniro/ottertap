@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { Window } from 'happy-dom';
 import { actionForCommand, commandBindings, extensionCommands, formatCommandShortcut, manifestCommands, shortcutsSettingsUrl } from '../lib/commands';
 import { createDemo } from '../lib/demo';
-import { actionHintKey, applySkipStep, commandForHotkey, planHotkey } from '../lib/hotkey';
+import { actionHintKey, applySkipStep, commandForHotkey, hotkeyFromKeyboard, isHotkeyAction, planHotkey } from '../lib/hotkey';
 import { defaultSettings, type MediaState } from '../lib/types';
 
 for (const { name, deltaX, deltaY, deltaMode, modifiers, expected } of [
@@ -66,20 +66,30 @@ test('扩展命令映射到同一套媒体指令，建议键避开页内的 Alt'
   assert.deepEqual(commandForHotkey(actionForCommand('rate-slower')!, media), { type: 'rate', value: 1.25 });
   assert.deepEqual(commandForHotkey(actionForCommand('rate-reset')!, media), { type: 'rate', value: 1 });
   assert.equal(commandForHotkey(actionForCommand('rate-reset')!, { ...media, rate: 1 }), null);
+  assert.deepEqual(actionForCommand('pip'), { type: 'pip' });
+  assert.deepEqual(commandForHotkey(actionForCommand('pip')!, media), { type: 'pip' });
+  assert.deepEqual(commandForHotkey(actionForCommand('pip')!, { ...media, pip: true }), { type: 'pip' });
+  assert.equal(actionHintKey(actionForCommand('pip')!, media), '');
+  assert.equal(isHotkeyAction({ type: 'pip' }), true);
+  assert.equal(hotkeyFromKeyboard({ key: 'p', code: 'KeyP', altKey: true, shiftKey: false, ctrlKey: false, metaKey: false }), null);
+  assert.equal(hotkeyFromKeyboard({ key: 'p', code: 'KeyP', altKey: false, shiftKey: false, ctrlKey: false, metaKey: false }, { singleKey: true }), null);
   assert.equal(actionForCommand('missing'), null);
   const page = { host: 'example.com', enabled: true, media: [media], selectedId: '1' };
   assert.equal(planHotkey({ ...page, enabled: false }, actionForCommand('play-pause')!), null);
   assert.equal(planHotkey({ ...page, media: [] }, actionForCommand('mute')!), null);
+  assert.equal(planHotkey({ ...page, media: [] }, actionForCommand('pip')!), null);
+  assert.equal(planHotkey({ ...page, enabled: false }, actionForCommand('pip')!), null);
+  assert.deepEqual(planHotkey(page, actionForCommand('pip')!)?.command, { type: 'pip' });
   assert.deepEqual(planHotkey(page, applySkipStep(actionForCommand('skip-forward')!, 10))?.command, { type: 'skip', value: 10 });
 
   const suggested = extensionCommands.filter(command => 'suggestedKey' in command);
   assert.equal(suggested.length, 4);
   assert.deepEqual(suggested.map(command => command.name), ['play-pause', 'skip-back', 'skip-forward', 'mute']);
-  for (const name of ['volume-up', 'volume-down', 'rate-faster', 'rate-slower', 'rate-reset']) {
+  for (const name of ['volume-up', 'volume-down', 'rate-faster', 'rate-slower', 'rate-reset', 'pip']) {
     assert.equal('suggestedKey' in extensionCommands.find(command => command.name === name)!, false);
   }
   const manifest = manifestCommands();
-  assert.equal(Object.keys(manifest).length, 9);
+  assert.equal(Object.keys(manifest).length, extensionCommands.length);
   for (const command of suggested) {
     for (const key of [command.suggestedKey.default, command.suggestedKey.mac]) {
       assert.equal(/Alt|Option/.test(key), false, key);
@@ -93,11 +103,15 @@ test('扩展命令映射到同一套媒体指令，建议键避开页内的 Alt'
   const volumeUp = manifest['volume-up'];
   assert.ok(volumeUp);
   assert.equal(volumeUp.suggested_key, undefined);
+  const pip = manifest.pip;
+  assert.ok(pip);
+  assert.equal(pip.description, '__MSG_cmdPictureInPicture__');
+  assert.equal(pip.suggested_key, undefined);
   assert.equal(formatCommandShortcut('Ctrl+Shift+Comma'), 'Ctrl + Shift + ,');
   assert.equal(formatCommandShortcut(''), '');
   assert.equal(shortcutsSettingsUrl('Mozilla/5.0 Edg/140.0.0.0'), 'edge://extensions/shortcuts');
   assert.equal(shortcutsSettingsUrl('Mozilla/5.0 Chrome/140.0.0.0'), 'chrome://extensions/shortcuts');
   assert.deepEqual(commandBindings([{ name: 'mute', shortcut: 'Alt+M' }, { name: 'volume-up', shortcut: '' }]).map(row => [row.name, row.shortcut]), [
-    ['play-pause', ''], ['skip-back', ''], ['skip-forward', ''], ['mute', 'Alt + M'], ['volume-up', ''], ['volume-down', ''], ['rate-faster', ''], ['rate-slower', ''], ['rate-reset', '']
+    ['play-pause', ''], ['skip-back', ''], ['skip-forward', ''], ['mute', 'Alt + M'], ['volume-up', ''], ['volume-down', ''], ['rate-faster', ''], ['rate-slower', ''], ['rate-reset', ''], ['pip', '']
   ]);
 });

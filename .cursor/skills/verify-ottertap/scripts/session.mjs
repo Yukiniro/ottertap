@@ -4,6 +4,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs doctor
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive skip-step
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive extension-pip
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -23,7 +24,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'extension-pip'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -172,6 +173,8 @@ function routedHtml(pathname) {
   if (pathname === '/keys') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" src="${wav}" preload="auto" playsinline style="display:block;width:320px;height:180px;margin:24px"></video><input id="field" aria-label="Field" style="margin-top:1200px"></body></html>`;
   if (pathname === '/long') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" aria-label="Long video" src="${longWav}" preload="auto" playsinline style="display:block;width:640px;height:360px;margin:48px"></video></body></html>`;
   if (pathname === '/feed') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="preview" aria-label="Feed preview" src="${wav}" preload="auto" playsinline loop style="display:block;width:240px;height:135px;margin:24px"></video><video id="media" aria-label="Main player" src="${wav}" preload="auto" playsinline loop style="display:block;width:640px;height:360px;margin:24px"></video><div style="height:1600px"></div></body></html>`;
+  if (pathname === '/audio') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><audio id="media" aria-label="Fixture audio" src="${wav}" preload="auto"></audio></body></html>`;
+  if (pathname === '/pip-off') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" aria-label="Fixture video" src="${wav}" preload="auto" playsinline disablepictureinpicture style="display:block;width:640px;height:360px;margin:48px"></video></body></html>`;
   return null;
 }
 
@@ -575,6 +578,155 @@ async function driveSkipStep(context, dir, note) {
   } finally { await changed.fixture.close(); }
 }
 
+const pipButtonState = `(() => {
+  const button = [...document.querySelectorAll('button')].find(item => item.getAttribute('aria-label') === 'Picture-in-picture' || item.getAttribute('aria-label') === 'Exit picture-in-picture');
+  if (!button) return null;
+  return { label: button.getAttribute('aria-label'), disabled: button.disabled, hint: document.getElementById('pip-hint')?.textContent ?? '', alert: document.querySelector('[role="alert"]')?.textContent?.trim() ?? '' };
+})()`;
+
+const pipHintText = {
+  audio: "Audio can't use picture-in-picture.",
+  disabled: 'This site has turned off picture-in-picture.',
+  unsupported: "This browser can't use picture-in-picture.",
+  gesture: 'The browser blocked picture-in-picture for this click. Try again.',
+  failed: "Couldn't switch picture-in-picture. Try again.",
+  notReady: 'Wait for the video to load, then try picture-in-picture again.',
+};
+
+function readablePipAlert(alert) {
+  return Object.values(pipHintText).includes(alert);
+}
+
+async function driveExtensionPip(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const registered = await worker.evaluate(async () => {
+    const manifest = chrome.runtime.getManifest();
+    const listed = await chrome.commands.getAll();
+    const commands = manifest.commands ?? {};
+    const suggested = Object.entries(commands).filter(([, command]) => command.suggested_key).map(([name]) => name);
+    return {
+      permissions: manifest.permissions ?? [],
+      hostPermissions: manifest.host_permissions ?? [],
+      pip: commands.pip ?? null,
+      suggested,
+      listed: listed.map(item => ({ name: item.name ?? '', shortcut: item.shortcut ?? '', description: item.description ?? '' })),
+    };
+  });
+  const pipCommand = registered.listed.find(item => item.name === 'pip');
+  if (JSON.stringify(registered.permissions) !== JSON.stringify(['storage'])) throw new Error(`权限应仍只有 storage：${JSON.stringify(registered.permissions)}`);
+  if (JSON.stringify([...registered.hostPermissions].sort()) !== JSON.stringify(['http://*/*', 'https://*/*'])) throw new Error(`主机权限不应扩大：${JSON.stringify(registered.hostPermissions)}`);
+  if (!registered.pip || registered.pip.suggested_key) throw new Error(`pip 不应占用建议键：${JSON.stringify(registered.pip)}`);
+  if (registered.suggested.length !== 4 || !['play-pause', 'skip-back', 'skip-forward', 'mute'].every(name => registered.suggested.includes(name))) {
+    throw new Error(`建议键应仍是原来四个：${JSON.stringify(registered.suggested)}`);
+  }
+  if (!pipCommand || pipCommand.description !== 'Enter or exit picture-in-picture' || pipCommand.shortcut !== '') {
+    throw new Error(`扩展命令 pip 未按未绑定登记：${JSON.stringify(pipCommand)}`);
+  }
+  note(`commands pip shortcut=${JSON.stringify(pipCommand.shortcut)} suggested=${registered.suggested.join(',')}`);
+
+  const settings = await context.newPage();
+  try {
+    await settings.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
+    const section = settings.locator('#shortcuts');
+    await section.getByRole('heading', { name: 'Keyboard shortcuts' }).waitFor({ state: 'visible', timeout: 15_000 });
+    const label = section.getByText('Enter or exit picture-in-picture', { exact: true });
+    await label.waitFor({ state: 'visible' });
+    if (await label.count() !== 1) throw new Error('画中画命令说明应只出现在扩展快捷键列表里');
+    const row = label.locator('xpath=ancestor::div[contains(@class,"py-3")][1]');
+    const shortcut = (await row.locator('dt').innerText()).trim();
+    if (shortcut !== 'Not set') throw new Error(`未绑定的画中画命令应显示 Not set：${shortcut}`);
+    await section.getByRole('button', { name: 'Edit shortcuts' }).waitFor({ state: 'visible' });
+    await row.scrollIntoViewIfNeeded();
+    await section.locator('dl').first().screenshot({ path: path.join(dir, 'settings-shortcuts.png'), animations: 'disabled' });
+    note('settings lists Enter or exit picture-in-picture as Not set');
+  } finally { await settings.close(); }
+
+  const openPanel = async (pathname, shot) => {
+    const page = await context.newPage();
+    try {
+      await page.goto(`${origin}${pathname}`, { waitUntil: 'domcontentloaded' });
+      await page.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+      const capability = await page.locator('#media').evaluate(element => ({
+        kind: element.localName,
+        enabled: document.pictureInPictureEnabled === true,
+        request: typeof element.requestPictureInPicture === 'function',
+        disabledBySite: element.disablePictureInPicture === true,
+      }));
+      const popup = await openActionPopup(context, page);
+      try {
+        const button = await poll(() => popup.evaluate(pipButtonState), value => Boolean(value?.label), `${pathname} 的弹出面板应有画中画按钮`);
+        await popup.screenshot(path.join(dir, shot));
+        return { page, popup, capability, button };
+      } catch (error) {
+        await popup.close().catch(() => {});
+        throw error;
+      }
+    } catch (error) {
+      await page.close().catch(() => {});
+      throw error;
+    }
+  };
+  const closePanel = async opened => {
+    await opened.popup.close().catch(() => {});
+    await opened.page.close().catch(() => {});
+  };
+
+  const video = await openPanel('/video', 'popup-video.png');
+  let videoAfter = null;
+  try {
+    const available = video.capability.enabled && video.capability.request && !video.capability.disabledBySite && video.capability.kind === 'video';
+    if (!available) {
+      if (video.button.label !== 'Picture-in-picture' || video.button.disabled !== true || video.button.hint !== pipHintText.unsupported) {
+        throw new Error(`浏览器不支持画中画时，面板应说明原因：${JSON.stringify(video)}`);
+      }
+      note('panel video: picture-in-picture unavailable, hint shown');
+    } else {
+      if (video.button.label !== 'Picture-in-picture' || video.button.disabled !== false || video.button.hint !== '') {
+        throw new Error(`视频可进画中画时按钮应可点：${JSON.stringify(video.button)}`);
+      }
+      if (!await video.popup.evaluate(clickLabel('Picture-in-picture'))) throw new Error('点不到 Picture-in-picture');
+      videoAfter = await poll(async () => ({
+        button: await video.popup.evaluate(pipButtonState),
+        pip: await video.page.locator('#media').evaluate(element => document.pictureInPictureElement === element),
+      }), value => value.pip === true || value.button?.label === 'Exit picture-in-picture' || readablePipAlert(value.button?.alert ?? ''), '点击画中画后应进入画中画，或显示和面板相同的失败说明');
+      await video.popup.screenshot(path.join(dir, 'popup-video-after.png'));
+      note(`panel video click ${JSON.stringify(videoAfter)}`);
+    }
+  } finally { await closePanel(video); }
+
+  const audio = await openPanel('/audio', 'popup-audio.png');
+  try {
+    if (audio.button.label !== 'Picture-in-picture' || audio.button.disabled !== true || audio.button.hint !== pipHintText.audio) {
+      throw new Error(`音频应禁用画中画并说明原因：${JSON.stringify(audio.button)}`);
+    }
+    note('panel audio shows the picture-in-picture hint');
+  } finally { await closePanel(audio); }
+
+  const blocked = await openPanel('/pip-off', 'popup-pip-off.png');
+  try {
+    const hint = blocked.capability.enabled && blocked.capability.request ? pipHintText.disabled : pipHintText.unsupported;
+    if (blocked.button.label !== 'Picture-in-picture' || blocked.button.disabled !== true || blocked.button.hint !== hint) {
+      throw new Error(`站点关闭画中画时应显示对应说明：${JSON.stringify({ button: blocked.button, capability: blocked.capability })}`);
+    }
+    note(`panel pip-off hint=${hint}`);
+  } finally { await closePanel(blocked); }
+
+  const state = {
+    ok: true,
+    command: pipCommand,
+    suggested: registered.suggested,
+    permissions: registered.permissions,
+    video: { capability: video.capability, before: video.button, after: videoAfter },
+    audio: audio.button,
+    pipOff: { capability: blocked.capability, button: blocked.button },
+  };
+  await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+  return state;
+}
+
 async function inspect(context) {
   const worker = await serviceWorker(context);
   const runtime = await worker.evaluate(() => ({
@@ -668,7 +820,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'extension-pip': driveExtensionPip };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -859,7 +1011,7 @@ try {
   else if (command === 'drive') await drive(feature);
   else if (command === 'cleanup') await cleanup();
   else {
-    console.error('用法：node .cursor/skills/verify-ottertap/scripts/session.mjs <launch|doctor|drive|cleanup> [popup-playback|wheel-volume|skip-step]');
+    console.error('用法：node .cursor/skills/verify-ottertap/scripts/session.mjs <launch|doctor|drive|cleanup> [popup-playback|wheel-volume|skip-step|extension-pip]');
     process.exit(2);
   }
 } catch (error) {

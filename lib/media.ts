@@ -120,6 +120,18 @@ export function pipHint(media: Pick<MediaState, 'pip' | 'pipAvailable' | 'pipBlo
   return i18n.t('pipUnsupported');
 }
 
+const pipFailureKeys = ['pipUnavailableAudio', 'pipDisabledBySite', 'pipUnsupported', 'pipNeedsGesture', 'pipNotReady', 'pipFailed'] as const;
+export type PipFailureKey = (typeof pipFailureKeys)[number];
+
+export function isPipFailureKey(key: string): key is PipFailureKey {
+  return (pipFailureKeys as readonly string[]).includes(key);
+}
+
+export function pipFailureKey(message: string): PipFailureKey | '' {
+  for (const key of pipFailureKeys) if (i18n.t(key) === message) return key;
+  return '';
+}
+
 const channelMessages = { stereo: 'channelStereo', mono: 'channelMono', left: 'channelLeft', right: 'channelRight' } as const;
 export const channelLabel = (mode: ChannelMode) => i18n.t(channelMessages[mode]);
 

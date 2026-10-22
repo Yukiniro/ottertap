@@ -1,5 +1,5 @@
 import { i18n } from '#i18n';
-import { lockedMedia } from './media';
+import { isPipFailureKey, lockedMedia } from './media';
 import { nextRate } from './rate';
 import { isSkipSeconds, normalizeSkipSeconds } from './settings';
 import { steppedVolume } from './volume';
@@ -10,6 +10,7 @@ export type HotkeyAction =
   | { type: 'rate'; direction: 1 | -1 | 0 }
   | { type: 'toggle' }
   | { type: 'mute' }
+  | { type: 'pip' }
   | { type: 'skip'; delta: number };
 
 export type ActionHintKey = 'play' | 'paused' | 'skipBack' | 'skipForward' | 'mute' | 'unmute';
@@ -87,7 +88,7 @@ export function isHotkeyAction(value: unknown): value is HotkeyAction {
   const action = value as HotkeyAction;
   if (action.type === 'volume') return Number.isFinite(action.delta) && Math.abs(action.delta) <= 150;
   if (action.type === 'rate') return action.direction === 1 || action.direction === -1 || action.direction === 0;
-  if (action.type === 'toggle' || action.type === 'mute') return true;
+  if (action.type === 'toggle' || action.type === 'mute' || action.type === 'pip') return true;
   return action.type === 'skip' && isSkipSeconds(Math.abs(action.delta));
 }
 
@@ -109,6 +110,7 @@ export function commandForHotkey(action: HotkeyAction, media: MediaState, rememb
   }
   if (action.type === 'toggle') return { type: media.paused ? 'play' : 'pause' };
   if (action.type === 'mute') return { type: 'mute' };
+  if (action.type === 'pip') return { type: 'pip' };
   if (action.type === 'skip') return isSkipSeconds(Math.abs(action.delta)) ? { type: 'skip', value: action.delta } : null;
   if (!action.delta) return null;
   const max = media.maxVolume * 100;
@@ -117,7 +119,7 @@ export function commandForHotkey(action: HotkeyAction, media: MediaState, rememb
 
 export function actionHintText(key: string, seconds?: number) {
   if (key === 'skipBack' || key === 'skipForward') return i18n.t(key, { seconds: normalizeSkipSeconds(seconds) });
-  if (key === 'play' || key === 'paused' || key === 'mute' || key === 'unmute') return i18n.t(key);
+  if (key === 'play' || key === 'paused' || key === 'mute' || key === 'unmute' || isPipFailureKey(key)) return i18n.t(key);
   return '';
 }
 
