@@ -802,7 +802,7 @@ async function driveDefaultRate(context, dir, note) {
       await poll(() => popup.evaluate(`(() => document.querySelector('[aria-label="2× speed"]')?.getAttribute('aria-pressed') ?? '')()`), value => value === 'true', '弹出面板应按下 2×');
       await poll(rateOf.bind(null, applied), near(2), '点 2× 后媒体应为 2×');
       const remembered = await popup.evaluate(`(() => {
-        const node = [...document.querySelectorAll('button')].find(item => item.getAttribute('aria-label') === 'Remember this site');
+        const node = document.querySelector('[role="switch"][aria-label="Remember this site"]');
         if (!node) return false;
         node.click();
         return true;
