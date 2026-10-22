@@ -25,7 +25,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive extension-pip
 
 1. 从 service worker 读清单和 `chrome.commands.getAll()`。`pip` 没有 `suggested_key`，快捷键为空，说明是 `Enter or exit picture-in-picture`。建议键仍是那四个。权限仍是 `storage`。
 2. 打开设置页 `#shortcuts`。扩展快捷键列表里这一行是 `Not set`，`Edit shortcuts` 可见。截 `settings-shortcuts.png`。
-3. 打开 `/video`，弹出面板里看画中画按钮。浏览器支持时按钮可点，点下去要么进入画中画，要么出现面板已有的失败说明（无头环境里 `button.click()` 经常拿不到用户手势，这时应看到 `The browser blocked picture-in-picture for this click. Try again.`）。浏览器不支持时按钮禁用并说明原因。
+3. 打开 `/video`，弹出面板里看画中画按钮。浏览器支持时按钮可点，点下去要么进入画中画，要么出现面板已有的失败说明。浏览器不支持时按钮禁用并说明原因。
 4. 打开 `/audio`，按钮禁用，提示音频不能进画中画。截 `popup-audio.png`。
 5. 打开 `/pip-off`，按钮禁用，提示与浏览器是否支持画中画一致。
 
@@ -38,5 +38,6 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive extension-pip
 - 不要给 `pip` 加 `suggested_key`。四个名额已经占满。
 - 页内 Alt / 单键模式没有画中画键。`Alt+P` 只有在用户把它绑成扩展命令之后才切换画中画。
 - 浮动入口没有画中画按钮。
-- 扩展命令触发的 `requestPictureInPicture` 若被拒绝（`NotAllowedError`），页面提示用现有的 `pipNeedsGesture`，和面板点击失败是同一句，里面仍写「这次点击」。不要为此加 `scripting` 或其它权限。
+- 扩展命令触发的 `requestPictureInPicture` 若被拒绝（`NotAllowedError`），页面提示用现有的 `pipNeedsGesture`，和面板点击失败是同一句，里面仍写「这次点击」。其它拒绝（例如无头 Chromium 里这次点击得到的 `Couldn't switch picture-in-picture. Try again.`）走 `pipFailed`。都不是静默。不要为此加 `scripting` 或其它权限。
+- 这次无头 Chromium 里 `pictureInPictureEnabled` 为 true，按钮可点，但 `button.click()` 没有进入画中画，面板底部出现 `Couldn't switch picture-in-picture. Try again.`。
 - 设置页地址是 `chrome-extension://<extensionId>/options.html#shortcuts`，不是 `https://`。
