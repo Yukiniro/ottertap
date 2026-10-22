@@ -11,8 +11,8 @@ export const skipSteps = [5, 10, 15, 30] as const;
 export type SkipSeconds = (typeof skipSteps)[number];
 export const volumeSteps = [5, 10, 20] as const;
 export type VolumeStep = (typeof volumeSteps)[number];
-export interface Settings { theme: Theme; floating: boolean; floatingPosition: FloatingPosition; siteMode: SiteMode; sites: string[]; sitePrefs: Record<string, SitePref>; ratePresets: number[]; lockRate: boolean; hoverWheel: boolean; singleKey: boolean; skipSeconds: SkipSeconds; volumeStep: VolumeStep }
-export const defaultSettings: Settings = { theme: 'system', floating: true, floatingPosition: { side: 'right', y: .8 }, siteMode: 'all', sites: [], sitePrefs: {}, ratePresets: [...defaultRatePresets], lockRate: false, hoverWheel: true, singleKey: false, skipSeconds: 10, volumeStep: 10 };
+export interface Settings { theme: Theme; floating: boolean; floatingPosition: FloatingPosition; siteMode: SiteMode; sites: string[]; sitePrefs: Record<string, SitePref>; ratePresets: number[]; defaultRate: number | null; lockRate: boolean; hoverWheel: boolean; singleKey: boolean; skipSeconds: SkipSeconds; volumeStep: VolumeStep }
+export const defaultSettings: Settings = { theme: 'system', floating: true, floatingPosition: { side: 'right', y: .8 }, siteMode: 'all', sites: [], sitePrefs: {}, ratePresets: [...defaultRatePresets], defaultRate: null, lockRate: false, hoverWheel: true, singleKey: false, skipSeconds: 10, volumeStep: 10 };
 export interface SettingsStore {
   load(): Promise<Settings>;
   save(settings: Settings): Promise<void>;
