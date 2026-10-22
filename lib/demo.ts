@@ -72,7 +72,8 @@ export function createDemo(document: Document, { src, title, store }: { src: str
     let on = true;
     let singleKey = false;
     let skipSeconds = defaultSettings.skipSeconds;
-    const apply = (settings: Settings) => { on = isSiteEnabled(demoUrl, settings); singleKey = settings.singleKey; skipSeconds = settings.skipSeconds; };
+    let volumeStep = defaultSettings.volumeStep;
+    const apply = (settings: Settings) => { on = isSiteEnabled(demoUrl, settings); singleKey = settings.singleKey; skipSeconds = settings.skipSeconds; volumeStep = settings.volumeStep; };
     void store.load().then(apply);
     const unwatch = store.watch(apply);
     const hotkeys = createHotkeySession(async (action: HotkeyAction) => {
@@ -83,8 +84,8 @@ export function createDemo(document: Document, { src, title, store }: { src: str
       await client.command(plan.media, plan.command);
     });
     const allow = () => on && controller.snapshot().length > 0;
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Alt' || (allow() && !isTypingEvent(event))) hotkeys.key(event, { singleKey, skipSeconds }); };
-    const onWheel = (event: WheelEvent) => { if (allow()) hotkeys.wheel(event); };
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Alt' || (allow() && !isTypingEvent(event))) hotkeys.key(event, { singleKey, skipSeconds, volumeStep }); };
+    const onWheel = (event: WheelEvent) => { if (allow()) hotkeys.wheel(event, undefined, volumeStep); };
     window.addEventListener('keydown', onKey, true);
     window.addEventListener('wheel', onWheel, { capture: true, passive: false });
     return () => { unwatch(); hotkeys.dispose(); window.removeEventListener('keydown', onKey, true); window.removeEventListener('wheel', onWheel, true); };
