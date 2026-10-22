@@ -685,7 +685,9 @@ async function driveVolumeStep(context, dir, note) {
     await page.screenshot({ path: path.join(dir, 'fixture-20.png'), animations: 'disabled' });
     note(`20% alt wheel volume=${afterTwenty}`);
 
-    await page.mouse.move(at.x, at.y);
+    await page.keyboard.up('Alt');
+    const arrowAt = await centerOf(page.locator('#media'));
+    await page.mouse.click(arrowAt.x, arrowAt.y);
     await page.keyboard.press('ArrowDown');
     const afterDown = await poll(volume, near(0.65), '单键 ↓ 应按 20% 回到 65%');
     await page.keyboard.press('ArrowUp');

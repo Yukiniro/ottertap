@@ -31,7 +31,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive volume-step
 2. 新开设置页 `#playback`，不关闭夹具页。`Volume step` 的按钮依次是 `5%,10%,20%`，只有 `10%` 按下。截图后点 `5%`，存储里 `volumeStep === 5`。
 3. 回到原来的夹具页，不再加载。再滚一格，音量约 0.65。
 4. 设置页点 `20%`，存储里 `volumeStep === 20`。打开 `#shortcuts`，`Single-key mode` 从关到开。`↑` 那一行的说明是 `Increase volume by 20 percentage points`。
-5. 回到夹具页，Alt+滚轮向上一格，音量约 0.85。指针仍在视频上，按 `ArrowDown` 回到约 0.65，按 `ArrowUp` 回到约 0.85。
+5. 回到夹具页，Alt+滚轮向上一格，音量约 0.85。松开 Alt，点一下视频让它获得焦点，再按 `ArrowDown` 回到约 0.65，按 `ArrowUp` 回到约 0.85。
 6. 把音量设成 0.95，等手势间隔过去，再 Alt+滚轮向上。浮动滑块先显示 100，再向上显示 120，元素音量仍约为 1。
 
 成功时 `state.json` 的 `ok` 为 `true`。证据写到 `/opt/cursor/artifacts/verify-ottertap/volume-step/`：`settings-default.png`、`settings-5.png`、`settings-20.png`、`fixture-10.png`、`fixture-5.png`、`fixture-20.png`、`fixture-snap-100.png`、`fixture-snap-120.png`、`state.json`、`transcript.txt`。
