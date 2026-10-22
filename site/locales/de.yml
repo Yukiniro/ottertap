@@ -51,7 +51,7 @@ featureBoostBody: "Ist ein Video zu leise, erhöhen Sie die Lautstärke auf bis 
 featureChannelTitle: "Kanalmodi"
 featureChannelBody: "Im Popup wählen Sie Stereo (Standard), Mono, nur den linken oder nur den rechten Kanal. Das lässt sich mit der Lautstärkeerhöhung kombinieren. Medien von einer anderen Website ohne CORS können die Kanäle nicht wechseln, und „Diese Website merken“ kann die Auswahl speichern."
 featureSpeedTitle: "Tempo"
-featureSpeedBody: "Voreinstellungen von 0,75× bis 4× mit einem Tipp. Bearbeiten und sortieren Sie sie in den Einstellungen. Tempo sperren ist optional und aus: Ist es an, schreibt OtterTap Ihr letztes Tempo zurück, wenn eine Website es ändert. Auf der Seite wechselt Alt+0 (auch bei eingeschaltetem Einzeltastenmodus) zwischen 1× und dem Tempo, das Sie auf dieser Seite gerade verwendet haben."
+featureSpeedBody: "Voreinstellungen von 0,75× bis 4× mit einem Tipp. Bearbeiten und sortieren Sie sie in den Einstellungen. Dort lässt sich auch ein Standardtempo wählen: Auf Websites ohne gemerktes Tempo wird ein neues Medium einmal darauf gesetzt, ein für die Website gemerktes Tempo hat Vorrang. Standard ist, der Seite zu folgen. Tempo sperren ist optional und aus: Ist es an, schreibt OtterTap Ihr letztes Tempo zurück, wenn eine Website es ändert. Auf der Seite wechselt Alt+0 (auch bei eingeschaltetem Einzeltastenmodus) zwischen 1× und dem Tempo, das Sie auf dieser Seite gerade verwendet haben."
 featureMultiTitle: "Mehrere Medien"
 featureMultiBody: "Wählen Sie das Ziel, wenn eine Seite mehrere Videos oder Audiospuren hat, auch eingebettete Player. Das Popup listet außerdem andere hörbare oder stummgeschaltete Tabs."
 featureSitesTitle: "Websiteregeln"
