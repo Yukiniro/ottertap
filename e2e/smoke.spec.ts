@@ -807,6 +807,7 @@ test('英文设置页的快捷键一节不写死中文', async () => {
     await expect(shortcuts).toBeVisible();
     await expect(shortcuts).toContainText('Keyboard shortcuts');
     await expect(shortcuts).toContainText('Play or pause');
+    await expect(shortcuts).toContainText('Enter or exit picture-in-picture');
     await expect(shortcuts).toContainText('Edit shortcuts');
     await expect(shortcuts).toContainText('Not set');
     await expect(shortcuts).toContainText('On-page shortcuts');

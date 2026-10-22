@@ -2,7 +2,7 @@ import { i18n } from '#i18n';
 import { browser } from 'wxt/browser';
 import { extensionStore } from '../lib/extension-store';
 import { createSitePrefSession, isSiteEnabled, withRememberedCommand } from '../lib/settings';
-import { isMediaCommand } from '../lib/media';
+import { isMediaCommand, pipFailureKey } from '../lib/media';
 import { actionForCommand } from '../lib/commands';
 import { actionHintKey, applySkipStep, isHotkeyAction, planHotkey, shownPercent, type HotkeyAction } from '../lib/hotkey';
 import { nextRate } from '../lib/rate';
@@ -247,7 +247,15 @@ export default defineBackground(() => {
     if (!plan) return false;
     rememberSelection(tabId, plan.media.id);
     if (plan.command.type === 'mute') gestures.delete(tabId);
-    await deliver(tabId, plan.media.id, 'command', plan.command);
+    try {
+      await deliver(tabId, plan.media.id, 'command', plan.command);
+    } catch (error) {
+      if (plan.command.type === 'pip' && error instanceof Error) {
+        const key = pipFailureKey(error.message);
+        if (key) { showAction(tabId, key); return true; }
+      }
+      throw error;
+    }
     const key = actionHintKey(action, plan.media);
     if (key) showAction(tabId, key, action.type === 'skip' ? Math.abs(action.delta) : undefined);
     return true;

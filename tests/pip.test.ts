@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Window } from 'happy-dom';
 import { createElement, act } from 'react';
-import { applyMediaCommand, createMediaController, isMediaCommand, mediaSnapshot, pipHint, togglePictureInPicture } from '../lib/media';
+import { i18n } from '#i18n';
+import { actionHintText } from '../lib/hotkey';
+import { applyMediaCommand, createMediaController, isMediaCommand, mediaSnapshot, pipFailureKey, pipHint, togglePictureInPicture } from '../lib/media';
 import { defaultSettings, type MediaClient, type MediaState, type SettingsStore } from '../lib/types';
 
 function page() {
@@ -94,6 +96,22 @@ test('音频、不支持、站点禁用和未加载时不能进入画中画', as
   await assert.rejects(applyMediaCommand(video, { type: 'pip' }), /无法切换画中画/);
   video.requestPictureInPicture = async () => { throw new DOMException('policy', 'SecurityError'); };
   await assert.rejects(applyMediaCommand(video, { type: 'pip' }), /已关闭画中画/);
+});
+
+test('画中画失败文案能回到页内提示键', () => {
+  const keys = ['pipUnavailableAudio', 'pipDisabledBySite', 'pipUnsupported', 'pipNeedsGesture', 'pipNotReady', 'pipFailed'] as const;
+  for (const key of keys) {
+    assert.equal(pipFailureKey(i18n.t(key)), key);
+    assert.equal(actionHintText(key), i18n.t(key));
+    assert.notEqual(i18n.t(key), '');
+  }
+  assert.equal(pipFailureKey(''), '');
+  assert.equal(pipFailureKey('frame send failed'), '');
+  assert.equal(pipHint({ pip: false, pipAvailable: false, pipBlock: 'audio' }), i18n.t('pipUnavailableAudio'));
+  assert.equal(pipHint({ pip: false, pipAvailable: false, pipBlock: 'disabled' }), i18n.t('pipDisabledBySite'));
+  assert.equal(pipHint({ pip: false, pipAvailable: false, pipBlock: 'unsupported' }), i18n.t('pipUnsupported'));
+  assert.equal(pipHint({ pip: true, pipAvailable: false, pipBlock: 'unsupported' }), '');
+  assert.equal(pipFailureKey(pipHint({ pip: false, pipAvailable: false, pipBlock: 'audio' })), 'pipUnavailableAudio');
 });
 
 test('进入和离开画中画的事件会刷新快照', async () => {
