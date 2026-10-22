@@ -1,7 +1,7 @@
 import { i18n } from '#i18n';
 import { isChannelMode, maxGain } from './amplifier';
 import { maxRate, minRate, normalizeRatePresets } from './rate';
-import { defaultSettings, skipSteps, type MediaCommand, type Settings, type SitePref, type SkipSeconds } from './types';
+import { defaultSettings, skipSteps, volumeSteps, type MediaCommand, type Settings, type SitePref, type SkipSeconds, type VolumeStep } from './types';
 const matchesSite = (host: string, site: string) => host === site || host.endsWith(`.${site}`);
 
 export function isSkipSeconds(value: unknown): value is SkipSeconds {
@@ -10,6 +10,14 @@ export function isSkipSeconds(value: unknown): value is SkipSeconds {
 
 export function normalizeSkipSeconds(value: unknown): SkipSeconds {
   return isSkipSeconds(value) ? value : 10;
+}
+
+export function isVolumeStep(value: unknown): value is VolumeStep {
+  return typeof value === 'number' && (volumeSteps as readonly number[]).includes(value);
+}
+
+export function normalizeVolumeStep(value: unknown): VolumeStep {
+  return isVolumeStep(value) ? value : 10;
 }
 
 export function normalizeDomain(input: string): string {
@@ -47,7 +55,8 @@ export function normalizeSettings(value: unknown): Settings {
     lockRate: source.lockRate === true,
     hoverWheel: typeof source.hoverWheel === 'boolean' ? source.hoverWheel : true,
     singleKey: source.singleKey === true,
-    skipSeconds: normalizeSkipSeconds(source.skipSeconds)
+    skipSeconds: normalizeSkipSeconds(source.skipSeconds),
+    volumeStep: normalizeVolumeStep(source.volumeStep)
   };
 }
 

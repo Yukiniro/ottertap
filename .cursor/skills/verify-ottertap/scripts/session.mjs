@@ -4,6 +4,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs doctor
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive skip-step
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive volume-step
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive extension-pip
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
@@ -24,7 +25,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'extension-pip'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'volume-step', 'extension-pip'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -579,6 +580,150 @@ async function driveSkipStep(context, dir, note) {
   } finally { await changed.fixture.close(); }
 }
 
+async function driveVolumeStep(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const near = expected => value => Math.abs(value - expected) < 0.02;
+  const page = await context.newPage();
+  let settings;
+  const volume = () => page.locator('#media').evaluate(element => element.volume);
+  const setVolume = async value => {
+    await page.locator('#media').evaluate((element, next) => { element.volume = next; }, value);
+    await poll(volume, near(value), `应能把音量设成 ${value}`);
+  };
+  const hoverUp = async () => {
+    const at = await centerOf(page.locator('#media'));
+    await page.mouse.move(at.x, at.y);
+    await page.waitForTimeout(350);
+    await page.mouse.wheel(0, -100);
+  };
+  const altUp = async () => {
+    const at = await centerOf(page.locator('#media'));
+    await page.mouse.move(at.x, at.y);
+    await page.keyboard.down('Alt');
+    try { await page.mouse.wheel(0, -100); }
+    finally { await page.keyboard.up('Alt'); }
+  };
+  const shown = () => page.getByRole('slider', { name: 'Volume' }).getAttribute('aria-valuenow').then(value => Number(value));
+  const openPill = async () => {
+    const slider = page.getByRole('slider', { name: 'Volume' });
+    if (!(await slider.isVisible())) {
+      const toggle = page.getByRole('button', { name: /volume pill/i });
+      const box = await toggle.boundingBox();
+      if (!box) throw new Error('浮动入口没有位置');
+      await page.mouse.move(box.x + Math.min(8, box.width / 4), box.y + box.height / 2);
+      await toggle.click();
+    }
+    await slider.waitFor({ state: 'visible', timeout: 5_000 });
+  };
+  try {
+    await page.goto(`${origin}/keys`, { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await page.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+    });
+    await setVolume(0.5);
+    await hoverUp();
+    const afterDefault = await poll(volume, near(0.6), '默认步长下悬停滚轮一格应到 60%');
+    await page.screenshot({ path: path.join(dir, 'fixture-10.png'), animations: 'disabled' });
+    note(`default hover wheel volume=${afterDefault}`);
+
+    settings = await context.newPage();
+    try {
+      await settings.goto(`chrome-extension://${extensionId}/options.html#playback`, { waitUntil: 'domcontentloaded' });
+      const group = settings.getByRole('group', { name: 'Volume step' });
+      await group.waitFor({ state: 'visible', timeout: 15_000 });
+      const steps = await group.getByRole('button').allInnerTexts();
+      const pressedBefore = await group.locator('[aria-pressed="true"]').allInnerTexts();
+      if (steps.join() !== '5%,10%,20%' || pressedBefore.join() !== '10%') throw new Error(`音量步长默认值或档位不对：${JSON.stringify({ steps, pressedBefore })}`);
+      await settings.getByText('The scroll wheel, single-key arrow keys, and browser extension commands all change volume by this step.', { exact: true }).waitFor({ state: 'visible' });
+      await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-default.png'), animations: 'disabled' });
+      await settings.locator('#playback').screenshot({ path: '/opt/cursor/artifacts/volume-step-ui/settings-playback-after.png', animations: 'disabled' });
+      note(`settings Volume step steps=${steps} pressed=${pressedBefore}`);
+
+      const five = group.getByRole('button', { name: '5%', exact: true });
+      await five.click();
+      await poll(() => five.getAttribute('aria-pressed'), value => value === 'true', '点 5% 后应按下');
+      await poll(stored, value => value.volumeStep === 5, '设置里应存下 volumeStep=5');
+      await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-5.png'), animations: 'disabled' });
+      await settings.locator('#playback').screenshot({ path: '/opt/cursor/artifacts/volume-step-ui/settings-playback-5.png', animations: 'disabled' });
+      note('saved volumeStep=5 without reloading the fixture');
+    } finally { /* keep settings open so the fixture is not reloaded */ }
+
+    await page.bringToFront();
+    await hoverUp();
+    const afterFive = await poll(volume, near(0.65), '改成 5% 后同一页悬停滚轮一格应到 65%');
+    await page.screenshot({ path: path.join(dir, 'fixture-5.png'), animations: 'disabled' });
+    note(`5% hover wheel volume=${afterFive}`);
+
+    await settings.bringToFront();
+    const twenty = settings.getByRole('group', { name: 'Volume step' }).getByRole('button', { name: '20%', exact: true });
+    await twenty.click();
+    await poll(() => twenty.getAttribute('aria-pressed'), value => value === 'true', '点 20% 后应按下');
+    await poll(stored, value => value.volumeStep === 20, '设置里应存下 volumeStep=20');
+    await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-20.png'), animations: 'disabled' });
+    await settings.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
+    const singleKey = settings.getByRole('switch', { name: 'Single-key mode' });
+    if (await singleKey.getAttribute('aria-checked') !== 'false') throw new Error('单键模式默认应关闭');
+    await singleKey.click();
+    await poll(stored, value => value.singleKey === true && value.volumeStep === 20, '设置里应存下 singleKey=true 且 volumeStep=20');
+    const upLabel = settings.getByRole('term').filter({ hasText: /^↑$/ }).locator('xpath=following-sibling::dd');
+    await poll(() => upLabel.innerText(), value => value === 'Increase volume by 20 percentage points', '快捷键说明应跟着步长变成 20');
+    note('single-key mode on, shortcut list says 20 percentage points');
+    await settings.close();
+    settings = undefined;
+
+    await page.bringToFront();
+    const at = await centerOf(page.locator('#media'));
+    await page.mouse.move(at.x, at.y);
+    await page.waitForTimeout(350);
+    await altUp();
+    const afterTwenty = await poll(volume, near(0.85), '20% 的 Alt+滚轮一格应到 85%');
+    await page.screenshot({ path: path.join(dir, 'fixture-20.png'), animations: 'disabled' });
+    note(`20% alt wheel volume=${afterTwenty}`);
+
+    await page.keyboard.up('Alt');
+    const arrowAt = await centerOf(page.locator('#media'));
+    await page.mouse.click(arrowAt.x, arrowAt.y);
+    await page.keyboard.press('ArrowDown');
+    const afterDown = await poll(volume, near(0.65), '单键 ↓ 应按 20% 回到 65%');
+    await page.keyboard.press('ArrowUp');
+    const afterUp = await poll(volume, near(0.85), '单键 ↑ 应按 20% 回到 85%');
+    note(`single-key arrows down=${afterDown} up=${afterUp}`);
+
+    await setVolume(0.95);
+    await page.waitForTimeout(400);
+    await altUp();
+    await openPill();
+    const snapped = await poll(shown, value => value === 100, '从 95% 按 20% 向上应先停在 100%');
+    await page.screenshot({ path: path.join(dir, 'fixture-snap-100.png'), animations: 'disabled' });
+    await page.mouse.move(at.x, at.y);
+    await altUp();
+    const boosted = await poll(shown, value => value === 120, '停在 100% 后再按 20% 应到 120%');
+    const capped = await volume();
+    if (capped > 1.02) throw new Error(`媒体元素音量不应超过 1：${capped}`);
+    await page.screenshot({ path: path.join(dir, 'fixture-snap-120.png'), animations: 'disabled' });
+    note(`snap ${snapped} then ${boosted}, element volume ${capped}`);
+
+    const state = {
+      ok: true,
+      defaultHover: afterDefault,
+      step5: afterFive,
+      step20: afterTwenty,
+      arrows: { down: afterDown, up: afterUp },
+      snap: { at100: snapped, at120: boosted, elementVolume: capped },
+    };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await settings?.close().catch(() => {});
+    await page.close().catch(() => {});
+  }
+}
+
 const pipButtonState = `(() => {
   const button = [...document.querySelectorAll('button')].find(item => item.getAttribute('aria-label') === 'Picture-in-picture' || item.getAttribute('aria-label') === 'Exit picture-in-picture');
   if (!button) return null;
@@ -821,7 +966,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'extension-pip': driveExtensionPip };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'volume-step': driveVolumeStep, 'extension-pip': driveExtensionPip };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -1012,7 +1157,7 @@ try {
   else if (command === 'drive') await drive(feature);
   else if (command === 'cleanup') await cleanup();
   else {
-    console.error('用法：node .cursor/skills/verify-ottertap/scripts/session.mjs <launch|doctor|drive|cleanup> [popup-playback|wheel-volume|skip-step|extension-pip]');
+    console.error('用法：node .cursor/skills/verify-ottertap/scripts/session.mjs <launch|doctor|drive|cleanup> [popup-playback|wheel-volume|skip-step|volume-step|extension-pip]');
     process.exit(2);
   }
 } catch (error) {

@@ -1,7 +1,7 @@
 import { i18n } from '#i18n';
 import { isPipFailureKey, lockedMedia } from './media';
 import { nextRate } from './rate';
-import { isSkipSeconds, normalizeSkipSeconds } from './settings';
+import { isSkipSeconds, normalizeSkipSeconds, normalizeVolumeStep } from './settings';
 import { steppedVolume } from './volume';
 import type { MediaCommand, MediaState, PageState } from './types';
 
@@ -21,7 +21,7 @@ export const actionHintEvent = 'ottertap-action-hint';
 
 interface KeyInput { key: string; code?: string; altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }
 /** `onMedia`: the pointer is over a media element or one has focus. Single-key ↑/↓ need it so page scrolling keeps the arrows. */
-export interface KeyContext { singleKey?: boolean; onMedia?: boolean; skipSeconds?: number }
+export interface KeyContext { singleKey?: boolean; onMedia?: boolean; skipSeconds?: number; volumeStep?: number }
 
 const typedKeys = new Set([',', '.', '0', '<', '>', ')', 'm', 'k', 'j', 'l']);
 const physicalKeys: Record<string, string> = { Comma: ',', Period: '.', Digit0: '0', KeyM: 'm', KeyK: 'k', KeyJ: 'j', KeyL: 'l' };
@@ -35,8 +35,9 @@ function keyName(event: KeyInput) {
 
 const rate = (direction: 1 | -1 | 0): HotkeyAction => ({ type: 'rate', direction });
 
-export function hotkeyFromKeyboard(event: KeyInput, { singleKey = false, onMedia = false, skipSeconds = 10 }: KeyContext = {}): HotkeyAction | null {
+export function hotkeyFromKeyboard(event: KeyInput, { singleKey = false, onMedia = false, skipSeconds = 10, volumeStep = 10 }: KeyContext = {}): HotkeyAction | null {
   const step = normalizeSkipSeconds(skipSeconds);
+  const volume = normalizeVolumeStep(volumeStep);
   if (event.ctrlKey || event.metaKey) return null;
   const name = keyName(event);
   if (event.altKey) {
@@ -58,8 +59,8 @@ export function hotkeyFromKeyboard(event: KeyInput, { singleKey = false, onMedia
   if (name === 'j' || name === 'ArrowLeft') return { type: 'skip', delta: -step };
   if (name === 'l' || name === 'ArrowRight') return { type: 'skip', delta: step };
   if (!onMedia) return null;
-  if (name === 'ArrowUp') return { type: 'volume', delta: 10 };
-  if (name === 'ArrowDown') return { type: 'volume', delta: -10 };
+  if (name === 'ArrowUp') return { type: 'volume', delta: volume };
+  if (name === 'ArrowDown') return { type: 'volume', delta: -volume };
   return null;
 }
 
@@ -77,10 +78,10 @@ export function isTypingEvent(event: Event) {
   return isTypingTarget(event.composedPath()[0]);
 }
 
-export function wheelVolumeDelta(deltaY: number, deltaMode: number) {
+export function wheelVolumeDelta(deltaY: number, deltaMode: number, volumeStep = 10) {
   if (!deltaY) return 0;
   const notches = deltaMode === 0 ? deltaY / 100 : deltaY;
-  return -notches * 10;
+  return -notches * normalizeVolumeStep(volumeStep);
 }
 
 export function isHotkeyAction(value: unknown): value is HotkeyAction {
@@ -101,6 +102,13 @@ export function applySkipStep(action: HotkeyAction, seconds: number): HotkeyActi
   if (action.type !== 'skip') return action;
   const direction = action.delta < 0 ? -1 : 1;
   return { type: 'skip', delta: direction * normalizeSkipSeconds(seconds) };
+}
+
+/** Command deltas only point up or down. The stored step supplies the percentage points. */
+export function applyVolumeStep(action: HotkeyAction, step: number): HotkeyAction {
+  if (action.type !== 'volume') return action;
+  const direction = action.delta < 0 ? -1 : 1;
+  return { type: 'volume', delta: direction * normalizeVolumeStep(step) };
 }
 
 export function commandForHotkey(action: HotkeyAction, media: MediaState, remembered?: number | null): MediaCommand | null {
@@ -171,7 +179,7 @@ export function createHotkeyInput(send: (action: HotkeyAction, target?: string) 
     if (!frame) frame = window.requestAnimationFrame(flush);
   };
   return {
-    key(event: KeyInput & { type?: string; repeat?: boolean; preventDefault(): void; stopPropagation(): void; stopImmediatePropagation?(): void }, { singleKey = false, skipSeconds = 10, target }: { singleKey?: boolean; skipSeconds?: number; target?: string } = {}) {
+    key(event: KeyInput & { type?: string; repeat?: boolean; preventDefault(): void; stopPropagation(): void; stopImmediatePropagation?(): void }, { singleKey = false, skipSeconds = 10, volumeStep = 10, target }: { singleKey?: boolean; skipSeconds?: number; volumeStep?: number; target?: string } = {}) {
       if (event.key === 'Alt') {
         // Windows Chrome focuses its menu on an Alt release the page leaves unhandled, even after the page used Alt+wheel or Alt+key.
         if (event.type !== 'keyup') {
@@ -183,7 +191,7 @@ export function createHotkeyInput(send: (action: HotkeyAction, target?: string) 
         if (swallow) event.preventDefault();
         return swallow;
       }
-      const action = hotkeyFromKeyboard(event, { singleKey, onMedia: target !== undefined, skipSeconds });
+      const action = hotkeyFromKeyboard(event, { singleKey, onMedia: target !== undefined, skipSeconds, volumeStep });
       if (!action) return false;
       // Capture-phase stop keeps the site's own shortcut on the same key from also running.
       event.preventDefault();
@@ -194,11 +202,11 @@ export function createHotkeyInput(send: (action: HotkeyAction, target?: string) 
       queue(action, action.type === 'volume' ? target : undefined);
       return true;
     },
-    wheel(event: { deltaX: number; deltaY: number; deltaMode: number; altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean; preventDefault(): void; stopPropagation(): void }, target?: string) {
+    wheel(event: { deltaX: number; deltaY: number; deltaMode: number; altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean; preventDefault(): void; stopPropagation(): void }, target?: string, volumeStep = 10) {
       if (event.ctrlKey || event.metaKey) return false;
       if (!event.altKey && (target === undefined || event.shiftKey)) return false;
       // Alt+wheel keeps the horizontal axis for macOS. A bare hover wheel leaves sideways swipes to the page.
-      const delta = wheelVolumeDelta(event.altKey ? event.deltaY || event.deltaX : event.deltaY, event.deltaMode);
+      const delta = wheelVolumeDelta(event.altKey ? event.deltaY || event.deltaX : event.deltaY, event.deltaMode, volumeStep);
       if (!delta) return false;
       event.preventDefault();
       event.stopPropagation();

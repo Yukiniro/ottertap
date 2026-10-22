@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { Window } from 'happy-dom';
 import { actionForCommand, commandBindings, extensionCommands, formatCommandShortcut, manifestCommands, shortcutsSettingsUrl } from '../lib/commands';
 import { createDemo } from '../lib/demo';
-import { actionHintKey, applySkipStep, commandForHotkey, hotkeyFromKeyboard, isHotkeyAction, planHotkey } from '../lib/hotkey';
+import { actionHintKey, applySkipStep, applyVolumeStep, commandForHotkey, hotkeyFromKeyboard, isHotkeyAction, planHotkey } from '../lib/hotkey';
 import { defaultSettings, type MediaState } from '../lib/types';
 
 for (const { name, deltaX, deltaY, deltaMode, modifiers, expected } of [
@@ -60,8 +60,10 @@ test('扩展命令映射到同一套媒体指令，建议键避开页内的 Alt'
   assert.deepEqual(commandForHotkey(actionForCommand('mute')!, media), { type: 'mute' });
   assert.equal(actionHintKey(actionForCommand('mute')!, media), 'mute');
   assert.equal(actionHintKey(actionForCommand('mute')!, { ...media, muted: true }), 'unmute');
-  assert.deepEqual(commandForHotkey(actionForCommand('volume-up')!, { ...media, volume: .95 }), { type: 'volume', value: 1 });
-  assert.deepEqual(commandForHotkey(actionForCommand('volume-down')!, media), { type: 'volume', value: .4 });
+  assert.deepEqual(actionForCommand('volume-up'), { type: 'volume', delta: 1 });
+  assert.deepEqual(actionForCommand('volume-down'), { type: 'volume', delta: -1 });
+  assert.deepEqual(commandForHotkey(applyVolumeStep(actionForCommand('volume-up')!, 10), { ...media, volume: .95 }), { type: 'volume', value: 1 });
+  assert.deepEqual(commandForHotkey(applyVolumeStep(actionForCommand('volume-down')!, 10), media), { type: 'volume', value: .4 });
   assert.deepEqual(commandForHotkey(actionForCommand('rate-faster')!, media), { type: 'rate', value: 1.75 });
   assert.deepEqual(commandForHotkey(actionForCommand('rate-slower')!, media), { type: 'rate', value: 1.25 });
   assert.deepEqual(commandForHotkey(actionForCommand('rate-reset')!, media), { type: 'rate', value: 1 });

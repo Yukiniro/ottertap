@@ -4,7 +4,7 @@ import { extensionStore } from '../lib/extension-store';
 import { createSitePrefSession, isSiteEnabled, withRememberedCommand } from '../lib/settings';
 import { isMediaCommand, pipFailureKey } from '../lib/media';
 import { actionForCommand } from '../lib/commands';
-import { actionHintKey, applySkipStep, isHotkeyAction, planHotkey, shownPercent, type HotkeyAction } from '../lib/hotkey';
+import { actionHintKey, applySkipStep, applyVolumeStep, isHotkeyAction, planHotkey, shownPercent, type HotkeyAction } from '../lib/hotkey';
 import { nextRate } from '../lib/rate';
 import { steppedVolume } from '../lib/volume';
 import { volumeBadgeColor, volumeBadgeFromReports, volumeBadgeTtlMs } from '../lib/volume-badge';
@@ -293,7 +293,7 @@ export default defineBackground(() => {
       await framesReady;
       const settings = await currentSettings();
       if (!isSiteEnabled(pageUrl, settings)) return;
-      const action = applySkipStep(raw, settings.skipSeconds);
+      const action = applyVolumeStep(applySkipStep(raw, settings.skipSeconds), settings.volumeStep);
       await enqueueCommand(tabId, () => performHotkey(tabId, new URL(pageUrl).hostname, action));
     } catch { /* The active page has no controllable media. */ }
   }
@@ -351,7 +351,7 @@ export default defineBackground(() => {
         const settings = await currentSettings();
         const enabled = isSiteEnabled(url, settings);
         const host = new URL(url).hostname;
-        if (message.type === 'context') return { enabled, host, url, hasMedia: hasMedia(tabId), lockRate: settings.lockRate, singleKey: settings.singleKey, hoverWheel: settings.hoverWheel, skipSeconds: settings.skipSeconds, ...localSelection(tabId, sender.frameId ?? 0) };
+        if (message.type === 'context') return { enabled, host, url, hasMedia: hasMedia(tabId), lockRate: settings.lockRate, singleKey: settings.singleKey, hoverWheel: settings.hoverWheel, skipSeconds: settings.skipSeconds, volumeStep: settings.volumeStep, ...localSelection(tabId, sender.frameId ?? 0) };
         if (message.type === 'rateLock') { showRateLock(tabId); return { ok: true }; }
         if (message.type === 'register' && sender.tab) {
           const frameId = sender.frameId ?? 0;

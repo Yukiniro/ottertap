@@ -6,7 +6,7 @@ import { actionHintEvent, actionHintText, createHotkeyInput, isFloatingEvent, is
 import { createMediaController, isMediaCommand, mediaPresenceEvent } from '../lib/media';
 import { rateLockEvent } from '../lib/rate-lock';
 import { maxEffectiveVolume, shouldReportVolume, volumeReportIntervalMs } from '../lib/volume-badge';
-import { isSiteEnabled, normalizeSkipSeconds } from '../lib/settings';
+import { isSiteEnabled, normalizeSkipSeconds, normalizeVolumeStep } from '../lib/settings';
 import { extensionStore } from '../lib/extension-store';
 import { createExtensionClient } from '../lib/extension-client';
 import { defaultSettings, type Settings } from '../lib/types';
@@ -28,7 +28,7 @@ export default defineContentScript({
     let reported: number | null = null;
     let pageUrl = '';
     let watched: Settings | undefined;
-    let contextKeys = { singleKey: defaultSettings.singleKey, hoverWheel: defaultSettings.hoverWheel, skipSeconds: defaultSettings.skipSeconds };
+    let contextKeys = { singleKey: defaultSettings.singleKey, hoverWheel: defaultSettings.hoverWheel, skipSeconds: defaultSettings.skipSeconds, volumeStep: defaultSettings.volumeStep };
     let lockedLocalId = '';
     let selectionEpoch = 0;
     let presenceEpoch = 0;
@@ -145,15 +145,16 @@ export default defineContentScript({
       // Arrows inside the floater belong to its slider and to docking the otter.
       if (isFloatingEvent(event) && event.key.startsWith('Arrow')) return;
       const source = watched ?? contextKeys;
-      hotkeys.key(event, { singleKey: source.singleKey, skipSeconds: source.skipSeconds, target: source.singleKey ? controller.pointed(pointer, true) : undefined });
+      hotkeys.key(event, { singleKey: source.singleKey, skipSeconds: source.skipSeconds, volumeStep: source.volumeStep, target: source.singleKey ? controller.pointed(pointer, true) : undefined });
     };
     const hoverGesture = createHoverWheelGesture();
     const onWheel = (event: WheelEvent) => {
       const active = shortcutActive();
-      const hover = (watched ?? contextKeys).hoverWheel;
+      const source = watched ?? contextKeys;
+      const hover = source.hoverWheel;
       const target = active && hover ? controller.hoverTarget({ x: event.clientX, y: event.clientY }, lockedLocalId) : undefined;
       const bareTarget = hoverGesture(!event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey && event.deltaY ? target : undefined, event.timeStamp);
-      if (active) hotkeys.wheel(event, event.altKey ? target : bareTarget);
+      if (active) hotkeys.wheel(event, event.altKey ? target : bareTarget, source.volumeStep);
     };
     const onPageHide = () => {
       if (reported == null) return;
@@ -185,7 +186,7 @@ export default defineContentScript({
       enabled = result?.enabled === true;
       pageUrl = typeof result?.url === 'string' ? result.url : '';
       contextLock = result?.lockRate === true;
-      contextKeys = { singleKey: result?.singleKey === true, hoverWheel: result?.hoverWheel !== false, skipSeconds: normalizeSkipSeconds(result?.skipSeconds) };
+      contextKeys = { singleKey: result?.singleKey === true, hoverWheel: result?.hoverWheel !== false, skipSeconds: normalizeSkipSeconds(result?.skipSeconds), volumeStep: normalizeVolumeStep(result?.volumeStep) };
       // A push that arrives while this request is in flight is newer than the response.
       if (window.top === window && presenceEpoch === epoch) tabHasMedia = result?.hasMedia === true;
       if (selectionEpoch === selectionAtContext) lockedLocalId = typeof result?.selectedLocalId === 'string' && /^\d+$/.test(result.selectedLocalId) ? result.selectedLocalId : '';
