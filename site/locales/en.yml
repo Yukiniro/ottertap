@@ -51,7 +51,7 @@ featureBoostBody: "When a video is too quiet, boost it up to 200%. A limiter kee
 featureChannelTitle: "Channel modes"
 featureChannelBody: "Choose stereo (the default), mono, left channel only, or right channel only in the popup. It stacks with volume boost. Media from another site without CORS cannot change channels, and Remember this site can save the choice."
 featureSpeedTitle: "Playback speed"
-featureSpeedBody: "One-tap presets from 0.75× to 4×. Edit and reorder them in settings. Optional speed lock, off by default, writes your last speed back when a site changes it. On the page, Alt+0 (also when single-key mode is on) switches between 1× and the speed you just used on this page."
+featureSpeedBody: "One-tap presets from 0.75× to 4×. Edit and reorder them in settings. Settings can also set a default speed: on sites with no remembered speed, new media uses it once, and a speed remembered for the site comes first. The default is to follow the page. Optional speed lock, off by default, writes your last speed back when a site changes it. On the page, Alt+0 (also when single-key mode is on) switches between 1× and the speed you just used on this page."
 featureMultiTitle: "Multiple media"
 featureMultiBody: "Pick the target when a page has several videos or audio tracks, including embedded players. The popup also lists other tabs that are audible or muted."
 featureSitesTitle: "Site rules"
