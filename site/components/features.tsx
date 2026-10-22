@@ -26,7 +26,7 @@ function BoostVisual() {
 
 function SpeedVisual() {
   const presets = ['0.75', '1', '1.25', '1.5', '2', '2.5', '3', '4'];
-  return <div aria-hidden="true" className="grid grid-cols-4 gap-1 rounded-lg bg-muted p-1 text-xs">{presets.map(speed => <span key={speed} className={cn('rounded-md py-1 text-center text-muted-foreground tabular-nums', speed === '3' && 'bg-card font-semibold text-foreground shadow-sm')}>{speed}×</span>)}</div>;
+  return <div aria-hidden="true" className="grid grid-cols-4 gap-1.5 text-xs">{presets.map(speed => <span key={speed} className={cn('rounded-md bg-secondary/60 py-2 text-center text-muted-foreground tabular-nums', speed === '3' && 'bg-primary font-semibold text-primary-foreground')}>{speed}×</span>)}</div>;
 }
 
 export function Features({ t }: { t: T }) {
@@ -34,11 +34,11 @@ export function Features({ t }: { t: T }) {
     <div className="mx-auto flex max-w-6xl flex-col gap-10">
       <div className="flex flex-col items-start gap-4">
         <Badge variant="secondary">{t('featuresEyebrow')}</Badge>
-        <h2 className="max-w-xl text-3xl font-bold tracking-tight md:text-5xl">{t('featuresTitle')}</h2>
+        <h2 className="max-w-xl text-3xl font-bold tracking-tight md:text-4xl">{t('featuresTitle')}</h2>
         <p className="max-w-xl text-lg leading-relaxed text-muted-foreground">{t('featuresSubtitle')}</p>
       </div>
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {tiles.map(({ key, icon: Icon, wide, visual }) => <article key={key} className={cn('flex min-h-64 flex-col justify-between gap-8 rounded-2xl border bg-card p-6 shadow-card', wide && 'lg:col-span-2')}>
+        {tiles.map(({ key, icon: Icon, wide, visual }) => <article key={key} className={cn('flex min-h-56 flex-col justify-between gap-6 rounded-xl border bg-card p-6', wide && 'lg:col-span-2')}>
           <span className="grid size-10 place-items-center rounded-xl bg-accent text-accent-foreground"><Icon className="size-5" /></span>
           {visual === 'boost' && <BoostVisual />}
           {visual === 'speed' && <SpeedVisual />}

@@ -8,6 +8,7 @@
 - 后退、前进。按钮名带上当前步长，默认是 `Back 10 seconds` 和 `Forward 10 seconds`。媒体不可 seek 时这两个按钮禁用。
 - 进度条。滑块名是 `Seek`，松手后把 `currentTime` 设到提交的位置。
 - 画中画。视频上按钮名是 `Picture-in-picture`；音频上禁用，并出现 `Audio can't use picture-in-picture.`
+- 布局与说明。单媒体、默认八个倍速预设时，面板高度不超过 600px，播放按钮至少 44px，无横向溢出，常用控制（到倍速按钮）完整可见。较矮窗口允许底部设置滚动；长标题、多媒体、额外提示可增加高度，不能裁掉控件和说明。「Remember this site」旁的信息按钮展开原有说明，不改变开关。回归为 `pnpm exec playwright test e2e/smoke.spec.ts -g "单媒体弹出面板常用控制"`。
 
 脚本化证据只覆盖播放 / 暂停（进退按钮的步长由 `drive skip-step` 覆盖）。进退、拖动进度和画中画用上面的名字在同一个弹出面板里点。默认步长下，结束状态分别是 `currentTime` 变化约 10 秒、滑块 `aria-valuenow` 接近目标秒数、以及按钮变为 `Exit picture-in-picture`。步长改成别的档位时，进度变化和按钮名里的秒数跟着变，改法和驱动步骤见 [skip-step.md](skip-step.md)。站点禁用画中画时按钮保持禁用，提示是 `This site has turned off picture-in-picture.`（`e2e/smoke.spec.ts` 的画中画测试已经覆盖禁用原因）。
 
@@ -38,6 +39,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
 
 ## Gotchas
 
+- 2026-10-22 在 Windows Chromium 上，画中画 e2e 在第二次 `chrome.action.openPopup()` 报 `Failed to open popup`；未修改的 HEAD 同样复现。`drive popup-playback` 的播放/暂停旅程可通过。
 - 用地址栏打开 `chrome-extension://<id>/popup.html` 会让弹出面板变成活动标签，面板读不到夹具页上的视频。必须 `openPopup()`，并且夹具页在前台。
 - 选择器是英语。`doctor` 若报告语言不是 `en` 开头，先停掉会话再按 `SKILL.md` 的 launch 参数重开。
 - 不循环的短媒体播完会自己变成暂停。夹具视频带 `loop`，长度约 1 秒。

@@ -14,9 +14,9 @@ export function SiteNav({ lang, t }: { lang: Lang; t: T }) {
   const sections = [['features', t('navFeatures')], ['privacy', t('navPrivacy')], ['install', t('navInstall')], ['faq', t('navFaq')]] as const;
   const suffix = t('brandSuffix');
   return <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-md">
-    <nav aria-label={t('navMain')} className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-5">
-      <a href={localeById(lang).path} className="inline-flex items-center gap-2.5 text-lg font-bold tracking-tight">
-        <img src={otterMark} alt="" className="size-8" />{t('brandName')}{suffix !== t('brandName') && <small className="text-[11px] font-semibold text-muted-foreground">{suffix}</small>}
+    <nav aria-label={t('navMain')} className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-4 sm:gap-6 sm:px-5">
+      <a href={localeById(lang).path} className="inline-flex shrink-0 items-center gap-2.5 text-lg font-bold tracking-tight whitespace-nowrap">
+        <img src={otterMark} alt="" className="size-8" />{t('brandName')}{suffix !== t('brandName') && <small className="hidden text-[11px] font-semibold text-muted-foreground sm:inline">{suffix}</small>}
       </a>
       <ul className="ml-auto hidden items-center gap-6 text-sm text-muted-foreground md:flex">
         {sections.map(([id, label]) => <li key={id}><a href={`#${id}`} className="transition-colors hover:text-foreground">{label}</a></li>)}

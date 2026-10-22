@@ -15,7 +15,7 @@ import { useSettingsAtoms } from './theme';
 
 const readViewport = (): Viewport => ({ width: document.documentElement.clientWidth || window.innerWidth, height: document.documentElement.clientHeight || window.innerHeight });
 const thumbHeight = 10;
-const boostColor = (volume: number, max: number) => `color-mix(in oklch, oklch(0.577 0.245 27.325) ${Math.max(0, Math.min(1, (volume - 100) / (max - 100))) * 100}%, oklch(0.705 0.213 47.604))`;
+const boostColor = (volume: number, max: number) => `color-mix(in oklch, var(--destructive) ${Math.max(0, Math.min(1, (volume - 100) / (max - 100))) * 100}%, #b57835)`;
 
 export function FloatingController({ client }: { client: MediaClient }) {
   const { floatingAtom, floatingPositionAtom, loadingAtom, writeSettingsAtom } = useSettingsAtoms();
@@ -103,7 +103,7 @@ export function FloatingController({ client }: { client: MediaClient }) {
   const boostLimit = max > 100 ? undefined : i18n.t('cannotBoostCrossOrigin');
   return <aside ref={container} className="fixed z-2147483647 size-12 transition-[left,top] duration-150 ease-out data-dragging:transition-none" aria-label={i18n.t('floatingController')} data-side={position.side} data-revealed={revealed} data-dragging={dragPoint ? '' : undefined} style={{ left: point.x, top: point.y }} onPointerEnter={() => { window.clearTimeout(hideTimer.current); setHovered(true); }} onPointerLeave={() => { window.clearTimeout(hideTimer.current); hideTimer.current = window.setTimeout(() => setHovered(false), 300); }} onWheelCapture={event => { hotkeys.wheel(event); }}>
     <Popover open={expanded} onOpenChange={setExpanded}>
-      <PopoverTrigger render={<Button variant="outline" size="icon" />} className="size-12 cursor-grab touch-none rounded-full bg-background text-primary shadow-[0_5px_18px_#15112914] hover:border-2 hover:border-primary hover:bg-background active:cursor-grabbing aria-expanded:border-2 aria-expanded:border-primary aria-expanded:bg-background dark:bg-background dark:hover:bg-background" aria-label={expanded ? i18n.t('collapsePill') : i18n.t('openPill')} title={i18n.t('pillTitle', { title: selected.title })} onFocus={event => setFocused(event.currentTarget.matches(':focus-visible'))} onBlur={() => setFocused(false)} onClick={event => {
+      <PopoverTrigger render={<Button variant="outline" size="icon" />} className="size-12 cursor-grab touch-none rounded-full bg-background text-primary shadow-[0_2px_8px_rgb(0_0_0/.12)] hover:border-primary hover:bg-background active:cursor-grabbing aria-expanded:border-primary aria-expanded:bg-background dark:bg-background dark:hover:bg-background" aria-label={expanded ? i18n.t('collapsePill') : i18n.t('openPill')} title={i18n.t('pillTitle', { title: selected.title })} onFocus={event => setFocused(event.currentTarget.matches(':focus-visible'))} onBlur={() => setFocused(false)} onClick={event => {
         if (!dragged.current) return;
         dragged.current = false;
         event.preventBaseUIHandler();
@@ -128,10 +128,10 @@ export function FloatingController({ client }: { client: MediaClient }) {
         const next = nudgePosition(position, event.key, viewport);
         if (next) { event.preventDefault(); move(next); }
       }}><img src={otterMark} alt="" aria-hidden="true" className="pointer-events-none size-[34px] object-contain" /></PopoverTrigger>
-      <PopoverContent container={container} side={position.side === 'right' ? 'left' : 'right'} sideOffset={8} aria-label={i18n.t('volumePill')} title={boostLimit} className="group/pill relative w-[60px] gap-0 rounded-full p-0 shadow-[0_12px_28px_#15112924] ring-0" style={{ height: pillHeight, '--volume-boost': max > 100 ? boostColor(volume, max) : undefined } as CSSProperties}>
+      <PopoverContent container={container} side={position.side === 'right' ? 'left' : 'right'} sideOffset={8} aria-label={i18n.t('volumePill')} title={boostLimit} className="group/pill relative w-[60px] gap-0 rounded-full p-0 shadow-[0_4px_16px_rgb(0_0_0/.16)] ring-0" style={{ height: pillHeight, '--volume-boost': max > 100 ? boostColor(volume, max) : undefined } as CSSProperties}>
         <VolumeSlider size="pill" orientation="vertical" aria-label={i18n.t('volume')} aria-description={boostLimit} data-boost={volume > 100} format={{ style: 'unit', unit: 'percent' }} className="size-full rounded-[inherit]" max={max} value={volume} onValueChange={value => setVolume(value, false)} onValueCommitted={value => setVolume(value, true)} />
         {max > 100 && <span aria-hidden="true" data-slot="volume-limit-mark" className="pointer-events-none absolute inset-x-2 h-px bg-foreground/35" style={{ bottom: `calc(${thumbHeight / 2}px + (100% - ${thumbHeight}px) * ${100 / max})` }} />}
-        <span aria-hidden="true" className="pointer-events-none absolute top-6 left-1/2 -translate-x-1/2 rounded-lg bg-background px-1 text-sm font-semibold tabular-nums transition-colors group-has-data-dragging/pill:text-primary data-[boost=true]:text-(--volume-boost)" data-boost={volume > 100}>{volume}%</span>
+        <span aria-hidden="true" className="pointer-events-none absolute top-6 left-1/2 -translate-x-1/2 rounded-lg bg-background px-1 text-sm font-semibold tabular-nums transition-colors text-primary data-[boost=true]:text-(--volume-boost)" data-boost={volume > 100}>{volume}%</span>
         <Button variant="ghost" size="icon" className="absolute bottom-2 left-1/2 size-11 -translate-x-1/2 rounded-full text-primary-foreground hover:bg-transparent hover:text-primary-foreground data-[low-volume=true]:text-foreground data-[low-volume=true]:hover:text-foreground dark:hover:bg-transparent [&_svg:not([class*='size-'])]:size-[23px]" data-low-volume={volume / max * pillHeight < 40} aria-label={selected.muted ? i18n.t('unmute') : i18n.t('mute')} aria-pressed={selected.muted} onClick={() => { setDraft(null); void command({ type: 'mute' }); }}>{selected.muted || volume === 0 ? <VolumeX /> : <Volume2 />}</Button>
       </PopoverContent>
     </Popover>

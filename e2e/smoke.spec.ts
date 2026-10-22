@@ -911,6 +911,39 @@ const pipButtonState = `(() => {
   return { label: button.getAttribute('aria-label'), disabled: button.disabled, hint: document.getElementById('pip-hint')?.textContent ?? '' };
 })()`;
 
+test('单媒体弹出面板常用控制完整可见且说明可展开', async () => {
+  await withPage(async page => {
+    await openFixture(page, '/video');
+    const read = await readActionPopup(page);
+    try {
+      await expect.poll(() => read(`document.querySelector('h1')?.textContent`)).toBe('OtterTap fixture');
+      const layout = await read(`(() => {
+        const root = document.documentElement;
+        const panel = document.querySelector('[aria-label="Media controls"]');
+        const presets = document.querySelector('[aria-labelledby="speed-label"]');
+        return { height: panel.getBoundingClientRect().height, viewportHeight: root.clientHeight, scrollHeight: root.scrollHeight,
+          overflowX: root.scrollWidth > root.clientWidth,
+          controlsBottom: presets.getBoundingClientRect().bottom,
+          playSize: document.querySelector('[aria-label="Play"]').getBoundingClientRect().width,
+          presets: presets.querySelectorAll('button').length };
+      })()`) as { height: number; viewportHeight: number; overflowX: boolean; controlsBottom: number; playSize: number; presets: number };
+      console.log('[popup layout]', layout);
+      expect(layout.height).toBeLessThanOrEqual(600);
+      expect(layout.overflowX).toBe(false);
+      expect(layout.controlsBottom).toBeLessThanOrEqual(layout.viewportHeight);
+      expect(layout.playSize).toBeGreaterThanOrEqual(44);
+      expect(layout.presets).toBe(8);
+      const description = await read(`(() => {
+        const trigger = document.querySelector('[data-slot="popover-trigger"]');
+        trigger.click();
+        return trigger.getAttribute('aria-label');
+      })()`);
+      await expect.poll(() => read(`document.querySelector('[data-slot="popover-description"]')?.textContent`)).toBe(description);
+      expect(await read(`document.querySelector('[role="switch"][aria-label="Remember this site"]').getAttribute('aria-checked')`)).toBe('false');
+    } finally { await page.keyboard.press('Escape'); }
+  });
+});
+
 test('弹出面板预设改倍速后，Alt+0 记住的是这个倍速', async () => {
   await withPage(async page => {
     await openFixture(page, '/video');
