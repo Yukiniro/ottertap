@@ -53,11 +53,14 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs doctor
 
 ## Drive
 
-脚本化旅程目前只有弹出面板播放。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
+脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）和快进快退步长（见 `features/skip-step.md`）。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
 
 ```bash
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive skip-step
 ```
+
+`skip-step` 在设置页把 `Skip step` 改成 `30s` 并打开 `Single-key mode`，再看弹出面板进退按钮名和页内 `L` / `J` / `→` / `←` 让 `/long` 夹具的 `currentTime` 跟着步长变；它会改写 profile，同一会话只能跑一次。步骤见 `features/skip-step.md`。
 
 `popup-playback` 在已启动的会话里做这些事：
 
@@ -83,9 +86,10 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
 | 倍速 | `button` `1.25× speed` 这种，乘号是 `×` |
 | 打开设置 | `Open settings` |
 | 浮动入口 | `/volume pill/i` |
-| 设置页备份 | `https://<extensionId>/options.html#backup`，按钮 `Export settings`、`Import settings`、确认 `Replace settings` |
+| 设置页备份 | `chrome-extension://<extensionId>/options.html#backup`，按钮 `Export settings`、`Import settings`、确认 `Replace settings` |
+| 设置页步长 | `chrome-extension://<extensionId>/options.html#playback`，`group` `Skip step` 里的 `button` `5s` / `10s` / `15s` / `30s`，默认 `10s` 按下 |
 
-`pnpm e2e` 覆盖滚轮、倍速快捷键、声道和设置页文案，测试名写在对应功能文件里。设置导出导入没有 e2e，只有 `tests/settings-backup.test.ts` 覆盖文件格式；用户路径以功能文件为准。
+`pnpm e2e` 覆盖滚轮、倍速快捷键、声道和设置页文案，测试名写在对应功能文件里。设置导出导入没有 e2e，只有 `tests/settings-backup.test.ts` 覆盖文件格式；快进快退步长没有 e2e，只有 `tests/skip-*.test.ts` 在 fake browser 里覆盖；用户路径以功能文件为准。
 
 ## Evidence
 
@@ -99,6 +103,8 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
 - `popup-playback/fixture-playing.png` — 同一时刻的网页
 - `popup-playback/state.json` — `before`、`playing`、`afterPause`，成功时 `ok: true`
 - `popup-playback/transcript.txt` — 动作顺序
+
+`drive skip-step` 写入 `skip-step/`：`settings-default.png`、`settings-30.png`、`popup-10.png`、`popup-30.png`、`fixture-start.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
 
 `launch` 成功后还会留下 `launch-probe.png`（浮动入口已经出现）。失败时同目录可能有 `error.txt`，那不算通过。
 
@@ -122,6 +128,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 node .cursor/skills/verify-ottertap/scripts/session.mjs launch
 node .cursor/skills/verify-ottertap/scripts/session.mjs doctor
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive skip-step
 node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 ```
 

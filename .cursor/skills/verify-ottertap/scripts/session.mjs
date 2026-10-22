@@ -3,6 +3,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs launch
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs doctor
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive skip-step
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -22,7 +23,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -136,8 +137,8 @@ function freePort() {
   });
 }
 
-function silentWav() {
-  const samples = 8000;
+function silentWav(seconds = 1) {
+  const samples = 8000 * seconds;
   const bytes = new Uint8Array(44 + samples * 2);
   const view = new DataView(bytes.buffer);
   const text = (offset, value) => {
@@ -160,6 +161,7 @@ function silentWav() {
 }
 
 const wav = silentWav();
+const longWav = silentWav(120);
 
 function fixtureHtml() {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" aria-label="Fixture video" src="${wav}" preload="auto" playsinline loop controls style="display:block;width:640px;height:360px;margin:48px"></video></body></html>`;
@@ -168,6 +170,7 @@ function fixtureHtml() {
 function routedHtml(pathname) {
   if (pathname === '/video') return fixtureHtml();
   if (pathname === '/keys') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" src="${wav}" preload="auto" playsinline style="display:block;width:320px;height:180px;margin:24px"></video><input id="field" aria-label="Field" style="margin-top:1200px"></body></html>`;
+  if (pathname === '/long') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" aria-label="Long video" src="${longWav}" preload="auto" playsinline style="display:block;width:640px;height:360px;margin:48px"></video></body></html>`;
   if (pathname === '/feed') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="preview" aria-label="Feed preview" src="${wav}" preload="auto" playsinline loop style="display:block;width:240px;height:135px;margin:24px"></video><video id="media" aria-label="Main player" src="${wav}" preload="auto" playsinline loop style="display:block;width:640px;height:360px;margin:24px"></video><div style="height:1600px"></div></body></html>`;
   return null;
 }
@@ -290,6 +293,7 @@ async function openActionPopup(context, fixture) {
   };
   const view = await poll(() => evaluate(popupView), value => value?.region && value.button, '弹出面板应出现 Media controls 和播放按钮');
   return {
+    evaluate,
     view: () => evaluate(popupView),
     click: async label => {
       const clicked = await evaluate(clickLabel(label));
@@ -465,6 +469,112 @@ async function drivePopupPlayback(context, dir, note) {
   }
 }
 
+const skipButtons = `[...document.querySelectorAll('button')].filter(item => /^(Back|Forward) \\d+ seconds$/.test(item.getAttribute('aria-label') ?? '')).map(item => ({ name: item.getAttribute('aria-label'), disabled: item.disabled, badge: item.textContent?.trim() }))`;
+
+async function driveSkipStep(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const near = expected => value => Math.abs(value - expected) < 0.05;
+
+  const openLong = async () => {
+    const fixture = await context.newPage();
+    await fixture.goto(`${origin}/long`, { waitUntil: 'domcontentloaded' });
+    await fixture.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await fixture.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+      element.currentTime = 60;
+    });
+    const time = () => fixture.locator('#media').evaluate(element => element.currentTime);
+    const duration = await fixture.locator('#media').evaluate(element => element.duration);
+    if (!(duration > 100)) throw new Error(`/long 的时长应约 120 秒：${duration}`);
+    await poll(time, near(60), '起点应是 60 秒');
+    return { fixture, time };
+  };
+  const popupSkip = async (fixture, time, step, shot) => {
+    const popup = await openActionPopup(context, fixture);
+    try {
+      const buttons = await popup.evaluate(skipButtons);
+      const names = [`Back ${step} seconds`, `Forward ${step} seconds`];
+      if (JSON.stringify(buttons.map(item => item.name)) !== JSON.stringify(names) || buttons.some(item => item.disabled || item.badge !== String(step))) {
+        throw new Error(`弹出面板进退按钮应是 ${step} 秒：${JSON.stringify(buttons)}`);
+      }
+      await popup.screenshot(path.join(dir, shot));
+      await popup.click(names[1]);
+      await poll(time, near(60 + step), `${names[1]} 后应到 ${60 + step} 秒`);
+      await popup.click(names[0]);
+      await poll(time, near(60), `${names[0]} 后应回到 60 秒`);
+      note(`popup ${names[1]} / ${names[0]} moved 60 -> ${60 + step} -> 60`);
+      return buttons;
+    } finally { await popup.close().catch(() => {}); }
+  };
+
+  const base = await openLong();
+  let defaultButtons;
+  try {
+    defaultButtons = await popupSkip(base.fixture, base.time, 10, 'popup-10.png');
+    await base.fixture.bringToFront();
+    await base.fixture.mouse.click(1000, 600);
+    await base.fixture.keyboard.press('l');
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const idle = await base.time();
+    if (!near(60)(idle)) throw new Error(`单键模式关着时 L 不应跳秒：${idle}`);
+    note('single-key mode off: L left currentTime at 60');
+  } finally { await base.fixture.close(); }
+
+  const settings = await context.newPage();
+  try {
+    await settings.goto(`chrome-extension://${extensionId}/options.html#playback`, { waitUntil: 'domcontentloaded' });
+    const group = settings.getByRole('group', { name: 'Skip step' });
+    await group.waitFor({ state: 'visible', timeout: 15_000 });
+    const steps = await group.getByRole('button').allInnerTexts();
+    const pressedBefore = await group.locator('[aria-pressed="true"]').allInnerTexts();
+    if (steps.join() !== '5s,10s,15s,30s' || pressedBefore.join() !== '10s') throw new Error(`步长默认值或档位不对：${JSON.stringify({ steps, pressedBefore })}`);
+    await settings.getByText('Popup buttons, on-page shortcuts, and browser shortcuts all jump by this step.', { exact: true }).waitFor({ state: 'visible' });
+    await group.screenshot({ path: path.join(dir, 'settings-default.png'), animations: 'disabled' });
+    note(`settings Skip step steps=${steps} pressed=${pressedBefore}`);
+
+    const target = group.getByRole('button', { name: '30s', exact: true });
+    await target.click();
+    await poll(() => target.getAttribute('aria-pressed'), value => value === 'true', '点 30s 后应按下');
+    const savedStep = await poll(stored, value => value.skipSeconds === 30, '设置里应存下 skipSeconds=30');
+    await group.screenshot({ path: path.join(dir, 'settings-30.png'), animations: 'disabled' });
+    note(`saved skipSeconds=${savedStep.skipSeconds}`);
+
+    await settings.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
+    const singleKey = settings.getByRole('switch', { name: 'Single-key mode' });
+    await singleKey.waitFor({ state: 'visible', timeout: 15_000 });
+    if (await singleKey.getAttribute('aria-checked') !== 'false') throw new Error('单键模式默认应关闭');
+    await singleKey.click();
+    await poll(() => singleKey.getAttribute('aria-checked'), value => value === 'true', '应能打开单键模式');
+    await poll(stored, value => value.singleKey === true && value.skipSeconds === 30, '设置里应存下 singleKey=true');
+    const back = settings.getByRole('term').filter({ hasText: /^J \/ ←$/ }).locator('xpath=following-sibling::dd');
+    await poll(() => back.innerText(), value => value === 'Back 30 seconds', '快捷键说明应跟着步长变成 Back 30 seconds');
+    note('single-key mode on, shortcut list says Back 30 seconds');
+  } finally { await settings.close(); }
+
+  const changed = await openLong();
+  try {
+    await changed.fixture.screenshot({ path: path.join(dir, 'fixture-start.png'), animations: 'disabled' });
+    const popupButtons = await popupSkip(changed.fixture, changed.time, 30, 'popup-30.png');
+
+    await changed.fixture.bringToFront();
+    await changed.fixture.mouse.click(1000, 600);
+    const keys = [];
+    for (const [key, expected] of [['l', 90], ['j', 60], ['ArrowRight', 90], ['ArrowLeft', 60]]) {
+      await changed.fixture.keyboard.press(key);
+      keys.push({ key, currentTime: await poll(changed.time, near(expected), `${key} 后应在 ${expected} 秒`) });
+    }
+    note(`page keys ${JSON.stringify(keys)}`);
+
+    const state = { ok: true, defaultButtons, popupButtons, keys };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally { await changed.fixture.close(); }
+}
+
 async function inspect(context) {
   const worker = await serviceWorker(context);
   const runtime = await worker.evaluate(() => ({
@@ -558,7 +668,8 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const state = feature === 'wheel-volume' ? await driveWheelVolume(context, dir, note) : await drivePopupPlayback(context, dir, note);
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep };
+            const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
           } catch (error) {
@@ -748,7 +859,7 @@ try {
   else if (command === 'drive') await drive(feature);
   else if (command === 'cleanup') await cleanup();
   else {
-    console.error('用法：node .cursor/skills/verify-ottertap/scripts/session.mjs <launch|doctor|drive|cleanup> [popup-playback]');
+    console.error('用法：node .cursor/skills/verify-ottertap/scripts/session.mjs <launch|doctor|drive|cleanup> [popup-playback|wheel-volume|skip-step]');
     process.exit(2);
   }
 } catch (error) {

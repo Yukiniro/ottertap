@@ -9,7 +9,7 @@
 - 进度条。滑块名是 `Seek`，松手后把 `currentTime` 设到提交的位置。
 - 画中画。视频上按钮名是 `Picture-in-picture`；音频上禁用，并出现 `Audio can't use picture-in-picture.`
 
-脚本化证据只覆盖播放 / 暂停。进退、拖动进度和画中画用上面的名字在同一个弹出面板里点。默认步长下，结束状态分别是 `currentTime` 变化约 10 秒、滑块 `aria-valuenow` 接近目标秒数、以及按钮变为 `Exit picture-in-picture`。步长改成别的档位时，进度变化和按钮名里的秒数跟着变。站点禁用画中画时按钮保持禁用，提示是 `This site has turned off picture-in-picture.`（`e2e/smoke.spec.ts` 的画中画测试已经覆盖禁用原因）。
+脚本化证据只覆盖播放 / 暂停（进退按钮的步长由 `drive skip-step` 覆盖）。进退、拖动进度和画中画用上面的名字在同一个弹出面板里点。默认步长下，结束状态分别是 `currentTime` 变化约 10 秒、滑块 `aria-valuenow` 接近目标秒数、以及按钮变为 `Exit picture-in-picture`。步长改成别的档位时，进度变化和按钮名里的秒数跟着变，改法和驱动步骤见 [skip-step.md](skip-step.md)。站点禁用画中画时按钮保持禁用，提示是 `This site has turned off picture-in-picture.`（`e2e/smoke.spec.ts` 的画中画测试已经覆盖禁用原因）。
 
 ## How to get to it (user POV)
 
