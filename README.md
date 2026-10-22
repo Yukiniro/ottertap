@@ -15,6 +15,8 @@
 
 Edge 商店暂未上架。按照 [微软官方说明](https://support.microsoft.com/en-us/edge/add-turn-off-or-remove-extensions-in-microsoft-edge)，Edge 可以在 Chrome 网上应用店的商品页安装扩展，需要先允许“来自其他应用商店的扩展”；也可以使用下方的手动安装。
 
+商店页的详细描述由维护者手动粘贴更新，文案见 [Chrome 网上应用店商店文案](docs/chrome-web-store-listing.md)。
+
 点击控制面板右上角的齿轮打开设置，可调整主题、浮动控制器和网站启用范围。
 
 ### 备选：手动安装（侧载）
