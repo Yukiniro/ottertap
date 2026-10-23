@@ -1,6 +1,7 @@
 import { i18n } from '#i18n';
 import { isPipFailureKey, lockedMedia } from './media';
 import { nextRate } from './rate';
+import { actualSkipSeconds, hintSkipSeconds } from './skip';
 import { isSkipSeconds, normalizeSkipSeconds, normalizeVolumeStep } from './settings';
 import { steppedVolume } from './volume';
 import type { MediaCommand, MediaState, PageState } from './types';
@@ -111,7 +112,7 @@ export function applyVolumeStep(action: HotkeyAction, step: number): HotkeyActio
   return { type: 'volume', delta: direction * normalizeVolumeStep(step) };
 }
 
-export function commandForHotkey(action: HotkeyAction, media: MediaState, remembered?: number | null, rateStep?: number): MediaCommand | null {
+export function commandForHotkey(action: HotkeyAction, media: MediaState, remembered?: number | null, rateStep?: number, skipWithRate = false): MediaCommand | null {
   if (action.type === 'rate') {
     const value = nextRate(media.rate, action.direction, remembered, rateStep);
     return value === media.rate ? null : { type: 'rate', value };
@@ -119,14 +120,18 @@ export function commandForHotkey(action: HotkeyAction, media: MediaState, rememb
   if (action.type === 'toggle') return { type: media.paused ? 'play' : 'pause' };
   if (action.type === 'mute') return { type: 'mute' };
   if (action.type === 'pip') return { type: 'pip' };
-  if (action.type === 'skip') return isSkipSeconds(Math.abs(action.delta)) ? { type: 'skip', value: action.delta } : null;
+  if (action.type === 'skip') {
+    if (!isSkipSeconds(Math.abs(action.delta))) return null;
+    const seconds = actualSkipSeconds(Math.abs(action.delta), media.rate, skipWithRate);
+    return { type: 'skip', value: action.delta < 0 ? -seconds : seconds };
+  }
   if (!action.delta) return null;
   const max = media.maxVolume * 100;
   return { type: 'volume', value: steppedVolume(shownPercent(media), action.delta, max) / 100 };
 }
 
 export function actionHintText(key: string, seconds?: number) {
-  if (key === 'skipBack' || key === 'skipForward') return i18n.t(key, { seconds: normalizeSkipSeconds(seconds) });
+  if (key === 'skipBack' || key === 'skipForward') return i18n.t(key, { seconds: hintSkipSeconds(seconds) });
   if (key === 'play' || key === 'paused' || key === 'mute' || key === 'unmute' || isPipFailureKey(key)) return i18n.t(key);
   return '';
 }
@@ -142,11 +147,11 @@ export function isFloatingEvent(event: Event) {
   return event.composedPath().some(node => node instanceof Element && node.localName === 'ottertap-controller');
 }
 
-export function planHotkey(page: PageState, action: HotkeyAction, remembered?: number | null, rateStep?: number) {
+export function planHotkey(page: PageState, action: HotkeyAction, remembered?: number | null, rateStep?: number, skipWithRate = false) {
   if (!page.enabled || !page.media.length) return null;
   const media = lockedMedia(page.media, page.selectedId);
   if (!media) return null;
-  const command = commandForHotkey(action, media, remembered, rateStep);
+  const command = commandForHotkey(action, media, remembered, rateStep, skipWithRate);
   return command ? { media, command } : null;
 }
 

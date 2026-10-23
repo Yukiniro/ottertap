@@ -65,6 +65,7 @@ export function normalizeSettings(value: unknown): Settings {
     hoverWheel: typeof source.hoverWheel === 'boolean' ? source.hoverWheel : true,
     singleKey: source.singleKey === true,
     skipSeconds: normalizeSkipSeconds(source.skipSeconds),
+    skipWithRate: source.skipWithRate === true,
     volumeStep: normalizeVolumeStep(source.volumeStep),
     rateStep: normalizeRateStep(source.rateStep)
   };
