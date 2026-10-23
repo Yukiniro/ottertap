@@ -76,7 +76,11 @@ test('后台按住临时倍速不写站点记忆，也不改全局默认倍速',
     const armed = writes.length;
     rate = 1.25;
     await request({ type: 'holdRate', phase: 'start' });
+    const heldTarget = (await fakeBrowser.storage.session.get('ottertap-holds-v1'))['ottertap-holds-v1'] as Record<string, string>;
+    assert.equal(heldTarget[String(tab.id)], '0:1');
     await request({ type: 'holdRate', phase: 'end' });
+    const releasedTarget = (await fakeBrowser.storage.session.get('ottertap-holds-v1'))['ottertap-holds-v1'] as Record<string, string>;
+    assert.equal(releasedTarget[String(tab.id)], undefined);
     assert.deepEqual(holds.map(item => item.phase), ['start', 'end']);
     assert.equal(holds[0]?.rate, 2);
     assert.equal(holds[0]?.frameId, 0);
@@ -98,11 +102,37 @@ test('后台按住临时倍速不写站点记忆，也不改全局默认倍速',
     await request({ type: 'holdRate', phase: 'start' });
     assert.equal(holds[0]?.frameId, 2);
     assert.equal(writes.length, armed);
-    await request({ type: 'holdRate', phase: 'end' });
+    assert.equal(((await fakeBrowser.storage.session.get('ottertap-holds-v1'))['ottertap-holds-v1'] as Record<string, string>)[String(tab.id)], '2:7');
+    await fakeBrowser.tabs.onUpdated.trigger(tab.id!, { status: 'loading' }, tab);
+    assert.equal(((await fakeBrowser.storage.session.get('ottertap-holds-v1'))['ottertap-holds-v1'] as Record<string, string>)[String(tab.id)], undefined);
   } finally {
     storage.get = originalStorage.get;
     storage.set = originalStorage.set;
     storage.remove = originalStorage.remove;
+    sendMessage.mock.restore();
+    fakeBrowser.reset();
+  }
+});
+
+test('service worker 重启后仍能把松开交回按住的媒体', async () => {
+  Object.defineProperty(globalThis, 'browser', { value: fakeBrowser, configurable: true });
+  Object.defineProperty(globalThis, 'defineBackground', { value: defineBackground, configurable: true });
+  const tab = await fakeBrowser.tabs.create({ url: 'https://example.com/watch' });
+  await fakeBrowser.storage.session.set({ 'ottertap-holds-v1': { [String(tab.id)]: '2:7' } });
+  const seen: Array<{ phase?: string; frameId: number; id?: string }> = [];
+  const sendMessage = mock.method(fakeBrowser.tabs, 'sendMessage', async (_tabId: number, message: { type: string; phase?: string; id?: string }, options?: { frameId?: number }) => {
+    if (message.type === 'hold') seen.push({ phase: message.phase, frameId: options?.frameId ?? 0, id: message.id });
+    return { ok: true };
+  });
+  try {
+    const background = await import('../entrypoints/background');
+    background.default.main();
+    await new Promise<unknown>(resolve => {
+      void fakeBrowser.runtime.onMessage.trigger({ namespace: 'ottertap', type: 'holdRate', phase: 'end' }, { id: fakeBrowser.runtime.id, tab, frameId: 0 }, resolve);
+    });
+    assert.deepEqual(seen, [{ phase: 'end', frameId: 2, id: '7' }]);
+    assert.equal(((await fakeBrowser.storage.session.get('ottertap-holds-v1'))['ottertap-holds-v1'] as Record<string, string>)[String(tab.id)], undefined);
+  } finally {
     sendMessage.mock.restore();
     fakeBrowser.reset();
   }

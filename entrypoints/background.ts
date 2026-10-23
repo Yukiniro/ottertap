@@ -108,7 +108,34 @@ export default defineBackground(() => {
     return session;
   };
   const holdTargets = new Map<number, string>();
-  const forget = (tabId: number) => { frames.delete(tabId); mediaKnown.delete(tabId); selectedIds.delete(tabId); gestures.delete(tabId); sitePrefSessions.delete(tabId); holdTargets.delete(tabId); volumes.delete(tabId); clearVolumeTimer(tabId); paintBadge(tabId, Date.now()); persistFrames(); };
+  const holdsKey = 'ottertap-holds-v1';
+  const persistHolds = async () => {
+    const area = browser.storage.session;
+    if (!area) return;
+    const stored: Record<string, string> = {};
+    for (const [tabId, id] of holdTargets) stored[String(tabId)] = id;
+    try { await area.set({ [holdsKey]: stored }); }
+    catch { /* This worker can still release from memory. The next start writes the target again. */ }
+  };
+  // A suspended worker loses the map. The held media id has to be in session storage before keyup arrives at the replacement worker.
+  const holdsReady: Promise<void> = browser.storage.session ? browser.storage.session.get(holdsKey).then(data => {
+    if (holdTargets.size) return;
+    const stored = data[holdsKey];
+    if (!stored || typeof stored !== 'object') return;
+    for (const [id, raw] of Object.entries(stored as Record<string, unknown>)) {
+      if (typeof raw !== 'string' || !/^\d+:\d+$/.test(raw)) continue;
+      const tabId = Number(id);
+      if (!Number.isInteger(tabId)) continue;
+      holdTargets.set(tabId, raw);
+    }
+  }).catch(() => undefined) : Promise.resolve();
+  const sessionReady = Promise.all([framesReady, holdsReady]);
+  const forget = (tabId: number) => {
+    frames.delete(tabId); mediaKnown.delete(tabId); selectedIds.delete(tabId); gestures.delete(tabId); sitePrefSessions.delete(tabId);
+    const held = holdTargets.delete(tabId);
+    volumes.delete(tabId); clearVolumeTimer(tabId); paintBadge(tabId, Date.now()); persistFrames();
+    return held ? persistHolds() : undefined;
+  };
   async function rememberCommand(host: string, command: MediaCommand) {
     if (command.type !== 'volume' && command.type !== 'rate' && command.type !== 'channel') return;
     try {
@@ -129,8 +156,8 @@ export default defineBackground(() => {
     });
     return applied;
   }
-  browser.tabs.onRemoved.addListener(tabId => framesReady.then(() => { forget(tabId); commandTails.delete(tabId); }));
-  browser.tabs.onUpdated.addListener((tabId, change) => change.status === 'loading' ? framesReady.then(() => forget(tabId)) : undefined);
+  browser.tabs.onRemoved.addListener(tabId => sessionReady.then(() => { const pending = forget(tabId); commandTails.delete(tabId); return pending; }));
+  browser.tabs.onUpdated.addListener((tabId, change) => change.status === 'loading' ? sessionReady.then(() => forget(tabId)) : undefined);
   const frameIds = (tabId: number) => new Set([0, ...(frames.get(tabId) ?? [])]);
   const publishSelection = (tabId: number) => {
     const send = browser.tabs.sendMessage;
@@ -215,13 +242,15 @@ export default defineBackground(() => {
     if (!target) return false;
     rememberSelection(tabId, target.id);
     holdTargets.set(tabId, target.id);
+    await persistHolds();
     await deliver(tabId, target.id, 'hold', { phase: 'start', rate });
     showHold(tabId, rate);
     return true;
   }
   async function endHold(tabId: number) {
+    await holdsReady;
     const id = holdTargets.get(tabId);
-    holdTargets.delete(tabId);
+    if (holdTargets.delete(tabId)) await persistHolds();
     showHold(tabId, null);
     if (!id) return false;
     try { await deliver(tabId, id, 'hold', { phase: 'end' }); }
@@ -377,7 +406,7 @@ export default defineBackground(() => {
       }
       if (!Number.isInteger(tabId)) return { error: i18n.t('noTab') };
       try {
-        await framesReady;
+        await sessionReady;
         const url = sender.tab?.url || (await browser.tabs.get(tabId))?.url;
         if (!url || !/^https?:\/\//.test(url)) throw new Error(i18n.t('pageNotAllowed'));
         const settings = await currentSettings();

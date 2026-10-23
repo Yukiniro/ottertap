@@ -38,7 +38,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive hold-boost
 7. 打开 `/keys`，聚焦 `Field`，按住组合键，倍速不变。
 8. 打开单键模式，在夹具空白处按住 `S`，倍速到 1.5×，松开回到约 2。
 
-成功时 `state.json` 的 `ok` 为 `true`。证据写到 `/opt/cursor/artifacts/verify-ottertap/hold-boost/`：`settings-off.png`、`fixture-off.png`、`settings-on.png`、`fixture-hold.png`、`fixture-release.png`、`state.json`、`transcript.txt`。
+成功时 `state.json` 的 `ok` 为 `true`，并分开记下按住时的 `singleHeld` 和松开后的 `singleReleased`。证据写到 `/opt/cursor/artifacts/verify-ottertap/hold-boost/`：`settings-off.png`、`fixture-off.png`、`settings-on.png`、`fixture-hold.png`、`fixture-release.png`、`state.json`、`transcript.txt`。
 
 归一化、键位和锁定共存由 `tests/hold-boost.test.ts` 覆盖。「不写存储」由 `tests/hold-boost-background.test.ts` 覆盖。
 

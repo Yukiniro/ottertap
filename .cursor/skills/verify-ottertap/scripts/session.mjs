@@ -1253,7 +1253,7 @@ async function driveHoldBoost(context, dir, note) {
     const singleReleased = await poll(rateOf.bind(null, keys), near(2), '松开 S 应回到锁定的 2×');
     note(`single-key held=${singleHeld} released=${singleReleased}`);
 
-    const state = { ok: true, stepped, held, released, remembered: restoredMemory, locked, typed: typedAfter, singleHeld: singleReleased };
+    const state = { ok: true, stepped, held, released, remembered: restoredMemory, locked, typed: typedAfter, singleHeld, singleReleased };
     await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
     return state;
   } finally {
