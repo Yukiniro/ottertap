@@ -3,7 +3,7 @@ import { isChannelMode, maxGain } from './amplifier';
 import { normalizeKeybinds } from './keybinds';
 import { clampRate, formatRate, maxRate, minRate, normalizeRatePresets, normalizeRateStep, rateGrid } from './rate';
 export { isRateStep } from './rate';
-import { defaultSettings, skipSteps, volumeSteps, type MediaCommand, type Settings, type SitePref, type SkipSeconds, type VolumeStep } from './types';
+import { defaultSettings, floatingNotes, skipSteps, volumeSteps, type FloatingNote, type MediaCommand, type Settings, type SitePref, type SkipSeconds, type VolumeStep } from './types';
 const matchesSite = (host: string, site: string) => host === site || host.endsWith(`.${site}`);
 
 export function isSkipSeconds(value: unknown): value is SkipSeconds {
@@ -16,6 +16,10 @@ export function normalizeSkipSeconds(value: unknown): SkipSeconds {
 
 export function isVolumeStep(value: unknown): value is VolumeStep {
   return typeof value === 'number' && (volumeSteps as readonly number[]).includes(value);
+}
+
+export function isFloatingNote(value: unknown): value is FloatingNote {
+  return typeof value === 'string' && (floatingNotes as readonly string[]).includes(value);
 }
 
 export function normalizeVolumeStep(value: unknown): VolumeStep {
@@ -62,6 +66,7 @@ export function normalizeSettings(value: unknown): Settings {
     theme: ['light', 'dark', 'system'].includes(source.theme ?? '') ? source.theme! : 'system',
     floating: typeof source.floating === 'boolean' ? source.floating : true,
     floatingPosition: validPosition ? { side: position.side, y: position.y } : { ...defaultSettings.floatingPosition },
+    floatingNote: isFloatingNote(source.floatingNote) ? source.floatingNote : 'volume',
     siteMode: ['all', 'allow', 'exclude'].includes(source.siteMode ?? '') ? source.siteMode! : 'all',
     sites: [...new Set(sites)],
     sitePrefs: normalizeSitePrefs(source.sitePrefs),

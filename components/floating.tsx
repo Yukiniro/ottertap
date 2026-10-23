@@ -11,6 +11,7 @@ import { VolumeSlider } from './volume-slider';
 import { useMedia } from '../hooks/use-media';
 import { dockedPoint, dockSize, dropPosition, nudgePosition, type Viewport } from '../lib/dock';
 import { commandForHotkey, createHotkeySession, rateHintEvent, volumeGestureEvent } from '../lib/hotkey';
+import { floatingEntryNote } from '../lib/floating-note';
 import { formatRate, nextRate, sameRate } from '../lib/rate';
 import { actualSkipSeconds } from '../lib/skip';
 import type { FloatingPosition, MediaClient, MediaState } from '../lib/types';
@@ -21,8 +22,9 @@ const thumbHeight = 10;
 const boostColor = (volume: number, max: number) => `color-mix(in oklch, var(--destructive) ${Math.max(0, Math.min(1, (volume - 100) / (max - 100))) * 100}%, #b57835)`;
 
 export function FloatingController({ client }: { client: MediaClient }) {
-  const { floatingAtom, floatingPositionAtom, loadingAtom, ratePresetsAtom, rateStepAtom, skipSecondsAtom, skipWithRateAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { floatingAtom, floatingNoteAtom, floatingPositionAtom, loadingAtom, ratePresetsAtom, rateStepAtom, skipSecondsAtom, skipWithRateAtom, writeSettingsAtom } = useSettingsAtoms();
   const floating = useAtomValue(floatingAtom);
+  const floatingNote = useAtomValue(floatingNoteAtom);
   const floatingPosition = useAtomValue(floatingPositionAtom);
   const loading = useAtomValue(loadingAtom);
   const ratePresets = useAtomValue(ratePresetsAtom);
@@ -123,6 +125,7 @@ export function FloatingController({ client }: { client: MediaClient }) {
   };
   const boostLimit = max > 100 ? undefined : i18n.t('cannotBoostCrossOrigin');
   const playbackRate = rateDraft ?? selected.rate;
+  const entryNote = floatingEntryNote(floatingNote, volume, playbackRate);
   const jump = actualSkipSeconds(skipSeconds, playbackRate, skipWithRate);
   const ranges = selected.seekable;
   const seekMin = ranges[0]?.start ?? 0;
@@ -208,6 +211,7 @@ export function FloatingController({ client }: { client: MediaClient }) {
         </div>
       </PopoverContent>
     </Popover>
+    {entryNote && !expanded && <span role="status" aria-live="off" data-slot="entry-note" data-kind={entryNote.kind} data-boost={entryNote.boost} aria-label={entryNote.kind === 'volume' ? i18n.t('floatingEntryVolume', { percent: volume }) : i18n.t('floatingEntrySpeed', { rate: formatRate(playbackRate) })} className={`pointer-events-none absolute top-1/2 z-10 -translate-y-1/2 rounded-full border border-border/70 bg-background/90 px-1.5 py-0.5 text-[11px] leading-none font-medium whitespace-nowrap text-muted-foreground tabular-nums shadow-[0_1px_2px_rgb(0_0_0/.12)] data-[boost=true]:font-semibold data-[boost=true]:text-(--volume-boost) ${position.side === 'right' ? 'right-[calc(100%+6px)]' : 'left-[calc(100%+6px)]'}`} style={entryNote.boost ? { '--volume-boost': boostColor(volume, max) } as CSSProperties : undefined}>{entryNote.text}</span>}
     {error && <Alert variant="destructive" className="fixed bottom-2 left-2 w-auto max-w-[min(320px,calc(100vw-16px))] shadow-md"><CircleAlert /><AlertDescription>{error}</AlertDescription></Alert>}
   </aside>;
 }
