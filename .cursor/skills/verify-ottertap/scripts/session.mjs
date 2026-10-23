@@ -10,6 +10,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive extension-pip
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive default-rate
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive hold-boost
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive hold-skip-combo
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -29,7 +30,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -1268,6 +1269,191 @@ async function driveHoldBoost(context, dir, note) {
   }
 }
 
+async function driveHoldSkipCombo(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const near = expected => value => Math.abs(value - expected) < 0.05;
+  const nearRate = expected => value => Math.abs(value - expected) < 0.02;
+  const times = '\u00d7';
+  const siteRate = value => value.sitePrefs?.[host]?.rate;
+  const releaseKeys = async page => {
+    for (const key of ['l', 'j', 'ArrowRight', 'ArrowLeft', 'Period', 'Shift', 'Alt']) await page.keyboard.up(key).catch(() => {});
+  };
+  const settle = async (page, time, rate) => {
+    await page.locator('#media').evaluate(async (element, next) => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+      element.pause();
+      element.currentTime = next.time;
+      element.playbackRate = next.rate;
+    }, { time, rate });
+  };
+
+  let settings;
+  let fixture;
+  let keys;
+  try {
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#playback`, { waitUntil: 'domcontentloaded' });
+    const holdSwitch = settings.getByRole('switch', { name: 'Hold for a temporary speed' });
+    const combo = settings.getByRole('switch', { name: 'Short press skips, hold speeds up' });
+    await holdSwitch.waitFor({ state: 'visible', timeout: 15_000 });
+    await combo.waitFor({ state: 'visible', timeout: 15_000 });
+    if (await holdSwitch.getAttribute('aria-checked') !== 'false') throw new Error('按住临时加速默认应关闭');
+    if (await combo.getAttribute('aria-checked') !== 'false') throw new Error('同键加速默认应关闭');
+    if (!await combo.isDisabled()) throw new Error('按住临时加速关闭时，同键开关应不可用');
+    await settings.getByText('Turn on hold for a temporary speed first.').waitFor({ state: 'visible' });
+    await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-before.png'), animations: 'disabled' });
+    const before = await stored();
+    if (before.holdSkip === true || before.holdBoost === true || before.defaultRate != null || siteRate(before) != null) {
+      throw new Error(`默认不应打开同键加速或写下倍速记忆：${JSON.stringify({ holdSkip: before.holdSkip, holdBoost: before.holdBoost, defaultRate: before.defaultRate })}`);
+    }
+    note('settings hold boost off, same-key switch disabled and off');
+
+    await holdSwitch.click();
+    await poll(() => holdSwitch.getAttribute('aria-checked'), value => value === 'true', '应能打开按住临时加速');
+    await poll(() => combo.isDisabled(), value => value === false, '打开按住临时加速后，同键开关应可点');
+    if (await combo.getAttribute('aria-checked') !== 'false') throw new Error('打开按住临时加速不应顺带打开同键');
+    await settings.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
+    const singleKey = settings.getByRole('switch', { name: 'Single-key mode' });
+    await singleKey.waitFor({ state: 'visible', timeout: 15_000 });
+    if (await singleKey.getAttribute('aria-checked') !== 'false') throw new Error('单键模式默认应关闭');
+    await singleKey.click();
+    await poll(stored, value => value.holdBoost === true && value.holdSkip !== true && value.singleKey === true && value.defaultRate == null, '应只打开按住临时加速和单键模式');
+
+    fixture = await context.newPage();
+    await fixture.goto(`${origin}/long`, { waitUntil: 'domcontentloaded' });
+    await fixture.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    const read = () => fixture.locator('#media').evaluate(element => ({ time: element.currentTime, rate: element.playbackRate }));
+    await settle(fixture, 60, 1);
+    await poll(async () => (await read()).time, near(60), '起点应是 60 秒');
+    await fixture.mouse.click(1000, 600);
+    await fixture.keyboard.down('l');
+    const immediate = await poll(async () => (await read()).time, near(70), '同键关闭时按下 L 应立刻跳到 70 秒');
+    const immediateRate = (await read()).rate;
+    if (!nearRate(1)(immediateRate)) throw new Error(`同键关闭时跳转不应改倍速：${immediateRate}`);
+    await fixture.keyboard.up('l');
+    await fixture.waitForTimeout(400);
+    const afterImmediate = await read();
+    if (!near(70)(afterImmediate.time) || !nearRate(1)(afterImmediate.rate)) throw new Error(`松开后不应再跳或加速：${JSON.stringify(afterImmediate)}`);
+    note(`combo off: keydown L seeked to ${immediate}, rate stayed ${immediateRate}`);
+
+    await settings.bringToFront();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#playback`, { waitUntil: 'domcontentloaded' });
+    const comboOn = settings.getByRole('switch', { name: 'Short press skips, hold speeds up' });
+    await comboOn.waitFor({ state: 'visible', timeout: 15_000 });
+    await poll(() => comboOn.isDisabled(), value => value === false, '同键开关应可点');
+    await comboOn.click();
+    await poll(stored, value => value.holdSkip === true && value.holdBoost === true && value.singleKey === true && value.defaultRate == null && siteRate(value) == null, '应存下 holdSkip，且不写默认倍速或站点记忆');
+    await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-after.png'), animations: 'disabled' });
+    note('same-key switch on');
+
+    await fixture.bringToFront();
+    await fixture.reload({ waitUntil: 'domcontentloaded' });
+    await fixture.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await settle(fixture, 60, 1);
+    await poll(async () => (await read()).time, near(60), '短按前应回到 60 秒');
+    await fixture.mouse.click(1000, 600);
+    await fixture.keyboard.down('l');
+    await fixture.waitForTimeout(80);
+    const tapping = await read();
+    if (!near(60)(tapping.time) || !nearRate(1)(tapping.rate)) throw new Error(`短按过程中不应跳转或加速：${JSON.stringify(tapping)}`);
+    if (await fixture.getByText(/Temporary speed/).isVisible().catch(() => false)) throw new Error('短按不应出现临时倍速提示');
+    await fixture.keyboard.up('l');
+    const tapped = await poll(async () => (await read()).time, near(70), '松开短按应跳到 70 秒');
+    const tappedRate = (await read()).rate;
+    if (!nearRate(1)(tappedRate)) throw new Error(`短按不应改倍速：${tappedRate}`);
+    await fixture.screenshot({ path: path.join(dir, 'fixture-tap.png'), animations: 'disabled' });
+    note(`short L -> ${tapped} at rate ${tappedRate}`);
+
+    await settle(fixture, 60, 1);
+    await poll(async () => (await read()).time, near(60), '长按前应回到 60 秒');
+    await fixture.mouse.click(1000, 600);
+    await fixture.keyboard.down('l');
+    const held = await poll(async () => (await read()).rate, nearRate(2), '按住超过阈值后应到临时 2×');
+    const heldTime = (await read()).time;
+    if (!near(60)(heldTime)) throw new Error(`长按加速不应额外跳进度：${heldTime}`);
+    await fixture.getByText(`Temporary speed 2${times}`, { exact: true }).waitFor({ state: 'visible', timeout: 8_000 });
+    await fixture.screenshot({ path: path.join(dir, 'fixture-hold.png'), animations: 'disabled' });
+    await fixture.keyboard.up('l');
+    const released = await poll(async () => (await read()).rate, nearRate(1), '松开后应回到 1×');
+    const releasedTime = (await read()).time;
+    if (!near(60)(releasedTime)) throw new Error(`松开后不应再跳一段：${releasedTime}`);
+    await fixture.getByText(`Temporary speed 2${times}`, { exact: true }).waitFor({ state: 'hidden', timeout: 8_000 });
+    await fixture.screenshot({ path: path.join(dir, 'fixture-release.png'), animations: 'disabled' });
+    const memory = await stored();
+    if (memory.defaultRate != null || siteRate(memory) != null || memory.holdBoostRate !== 2) {
+      throw new Error(`长按不应写默认倍速或站点记忆：${JSON.stringify({ defaultRate: memory.defaultRate, site: siteRate(memory), holdBoostRate: memory.holdBoostRate })}`);
+    }
+    note(`held rate=${held} time=${heldTime}; released rate=${released} time=${releasedTime}`);
+
+    await settle(fixture, 60, 1);
+    await fixture.mouse.click(1000, 600);
+    await fixture.keyboard.down('j');
+    await fixture.waitForTimeout(80);
+    const backHeld = await read();
+    if (!near(60)(backHeld.time) || !nearRate(1)(backHeld.rate)) throw new Error(`短按 J 过程中不应跳或加速：${JSON.stringify(backHeld)}`);
+    await fixture.keyboard.up('j');
+    const backed = await poll(async () => (await read()).time, near(50), '短按 J 应回到 50 秒');
+    note(`short J -> ${backed}`);
+
+    await settle(fixture, 60, 1);
+    await fixture.mouse.click(1000, 600);
+    await fixture.keyboard.down('ArrowRight');
+    const arrowHeld = await poll(async () => (await read()).rate, nearRate(2), '按住 → 应到临时 2×');
+    const arrowTime = (await read()).time;
+    if (!near(60)(arrowTime)) throw new Error(`按住 → 不应跳进度：${arrowTime}`);
+    await fixture.keyboard.up('ArrowRight');
+    await poll(async () => (await read()).rate, nearRate(1), '松开 → 应回到 1×');
+    const arrowAfter = (await read()).time;
+    if (!near(60)(arrowAfter)) throw new Error(`松开 → 不应再跳：${arrowAfter}`);
+    note(`arrow hold rate=${arrowHeld} time stayed ${arrowAfter}`);
+
+    await fixture.locator('#media').evaluate(element => { element.playbackRate = 1; });
+    await poll(async () => (await read()).rate, nearRate(1), '独立键之前应回到 1×');
+    await fixture.mouse.click(1000, 600);
+    await fixture.keyboard.down('Alt');
+    await fixture.keyboard.down('Shift');
+    await fixture.keyboard.down('Period');
+    const chord = await poll(async () => (await read()).rate, nearRate(2), '独立键 Alt+Shift+. 仍应立刻加速');
+    await fixture.keyboard.up('Period');
+    await fixture.keyboard.up('Shift');
+    await fixture.keyboard.up('Alt');
+    await poll(async () => (await read()).rate, nearRate(1), '松开独立键应回到 1×');
+    note(`dedicated chord held=${chord}`);
+
+    keys = await context.newPage();
+    await keys.goto(`${origin}/keys`, { waitUntil: 'domcontentloaded' });
+    await keys.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await settle(keys, 0.2, 1);
+    const field = keys.getByRole('textbox', { name: 'Field' });
+    await field.click();
+    const keysRead = () => keys.locator('#media').evaluate(element => ({ time: element.currentTime, rate: element.playbackRate }));
+    await poll(async () => (await keysRead()).time, near(0.2), '输入框页的短视频应停在 0.2 秒');
+    await keys.keyboard.down('l');
+    await keys.waitForTimeout(450);
+    const typed = await keysRead();
+    if (!near(0.2)(typed.time) || !nearRate(1)(typed.rate)) throw new Error(`输入框里按住 L 不应跳或加速：${JSON.stringify(typed)}`);
+    await keys.keyboard.up('l');
+    await keys.waitForTimeout(200);
+    const typedAfter = await keysRead();
+    if (!near(0.2)(typedAfter.time) || !nearRate(1)(typedAfter.rate)) throw new Error(`输入框里松开 L 后不应跳或加速：${JSON.stringify(typedAfter)}`);
+    note(`typing left time=${typedAfter.time} rate=${typedAfter.rate}`);
+
+    const state = { ok: true, immediate, tapped, held, heldTime, released, releasedTime, backed, arrowHeld, arrowAfter, chord, typed: typedAfter };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    if (fixture) await releaseKeys(fixture);
+    if (keys) await releaseKeys(keys);
+    await settings?.close().catch(() => {});
+    await fixture?.close().catch(() => {});
+    await keys?.close().catch(() => {});
+  }
+}
+
 const pipButtonState = `(() => {
   const button = [...document.querySelectorAll('button')].find(item => item.getAttribute('aria-label') === 'Picture-in-picture' || item.getAttribute('aria-label') === 'Exit picture-in-picture');
   if (!button) return null;
@@ -1510,7 +1696,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });

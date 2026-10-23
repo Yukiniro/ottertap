@@ -2,7 +2,8 @@ import { i18n } from '#i18n';
 import { createRoot } from 'react-dom/client';
 import { browser } from 'wxt/browser';
 import { createShadowRootUi } from 'wxt/utils/content-script-ui/shadow-root';
-import { createHoldKeySession, holdRateEvent } from '../lib/hold-rate';
+import { createHoldGesture } from '../lib/hold-gesture';
+import { holdRateEvent } from '../lib/hold-rate';
 import { actionHintEvent, actionHintText, createHotkeyInput, isFloatingEvent, isTypingEvent, rateHintEvent, volumeGestureEvent } from '../lib/hotkey';
 import { createMediaController, isMediaCommand, mediaPresenceEvent } from '../lib/media';
 import { rateLockEvent } from '../lib/rate-lock';
@@ -29,7 +30,7 @@ export default defineContentScript({
     let reported: number | null = null;
     let pageUrl = '';
     let watched: Settings | undefined;
-    let contextKeys = { singleKey: defaultSettings.singleKey, hoverWheel: defaultSettings.hoverWheel, skipSeconds: defaultSettings.skipSeconds, volumeStep: defaultSettings.volumeStep, holdBoost: defaultSettings.holdBoost, holdBoostRate: defaultSettings.holdBoostRate };
+    let contextKeys = { singleKey: defaultSettings.singleKey, hoverWheel: defaultSettings.hoverWheel, skipSeconds: defaultSettings.skipSeconds, volumeStep: defaultSettings.volumeStep, holdBoost: defaultSettings.holdBoost, holdBoostRate: defaultSettings.holdBoostRate, holdSkip: defaultSettings.holdSkip };
     let lockedLocalId = '';
     let selectionEpoch = 0;
     let presenceEpoch = 0;
@@ -150,33 +151,74 @@ export default defineContentScript({
       if (!document.hasFocus()) void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'altUsed' }).catch(() => {});
     });
     const shortcutActive = () => enabled && (controller.snapshot().length > 0 || tabHasMedia);
-    const holdKeys = createHoldKeySession();
+    const gesture = createHoldGesture(() => performance.now());
+    let holdTimer = 0;
+    const clearHoldTimer = () => {
+      if (!holdTimer) return;
+      window.clearTimeout(holdTimer);
+      holdTimer = 0;
+    };
+    const sendHold = (phase: 'start' | 'end') => {
+      void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'holdRate', phase }).catch(() => {});
+    };
+    const scheduleHoldSkip = () => {
+      clearHoldTimer();
+      if (!gesture.waiting()) return;
+      const delay = gesture.remaining();
+      holdTimer = window.setTimeout(() => {
+        holdTimer = 0;
+        const effect = gesture.tick();
+        if (effect.type === 'start') sendHold('start');
+        else if (effect.type === 'arm') scheduleHoldSkip();
+      }, delay);
+    };
     const releaseHold = () => {
-      if (!holdKeys.cancel()) return;
-      void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'holdRate', phase: 'end' }).catch(() => {});
+      clearHoldTimer();
+      if (gesture.cancel()) sendHold('end');
     };
     let pointer: { x: number; y: number } | null = null;
+    const finishSkip = (direction: -1 | 1, source: { skipSeconds: number; volumeStep: number }) => {
+      hotkeys.key({
+        type: 'keydown',
+        key: direction < 0 ? 'j' : 'l',
+        code: direction < 0 ? 'KeyJ' : 'KeyL',
+        altKey: false,
+        shiftKey: false,
+        ctrlKey: false,
+        metaKey: false,
+        repeat: false,
+        preventDefault() {},
+        stopPropagation() {},
+        stopImmediatePropagation() {}
+      }, { singleKey: true, skipSeconds: source.skipSeconds, volumeStep: source.volumeStep, target: controller.pointed(pointer, true) });
+    };
     const onPointer = (event: PointerEvent) => { pointer = event.type === 'pointerout' && !event.relatedTarget ? null : { x: event.clientX, y: event.clientY }; };
     const onKey = (event: KeyboardEvent) => {
       // A frame without media, or focus in a text field, still receives the Alt release of a gesture made elsewhere.
       if (event.key === 'Alt') { hotkeys.key(event); return; }
       const source = watched ?? contextKeys;
-      const decision = holdKeys.key(event, source.holdBoost && shortcutActive() && !isTypingEvent(event), source.singleKey);
-      if (decision !== 'ignore') {
+      const boost = source.holdBoost && shortcutActive() && !isTypingEvent(event);
+      const floatingArrow = isFloatingEvent(event) && event.key.startsWith('Arrow');
+      const effect = gesture.key(event, { boost, skip: boost && source.holdSkip && source.singleKey && !floatingArrow, singleKey: source.singleKey });
+      if (effect.type !== 'ignore') {
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
-        if (decision === 'start') {
-          if (event.altKey) hotkeys.arm();
-          void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'holdRate', phase: 'start' }).catch(() => {});
-        } else if (decision === 'end') {
-          void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'holdRate', phase: 'end' }).catch(() => {});
+        if ((effect.type === 'start' || effect.type === 'consume') && effect.armAlt) hotkeys.arm();
+        if (effect.type === 'start') sendHold('start');
+        else if (effect.type === 'end') {
+          if (!gesture.waiting()) clearHoldTimer();
+          sendHold('end');
+        } else if (effect.type === 'arm') scheduleHoldSkip();
+        else if (effect.type === 'skip') {
+          clearHoldTimer();
+          finishSkip(effect.direction, source);
         }
         return;
       }
       if (!shortcutActive() || isTypingEvent(event)) return;
       // Arrows inside the floater belong to its slider and to docking the otter.
-      if (isFloatingEvent(event) && event.key.startsWith('Arrow')) return;
+      if (floatingArrow) return;
       hotkeys.key(event, { singleKey: source.singleKey, skipSeconds: source.skipSeconds, volumeStep: source.volumeStep, target: source.singleKey ? controller.pointed(pointer, true) : undefined });
     };
     const hoverGesture = createHoverWheelGesture();
@@ -226,7 +268,7 @@ export default defineContentScript({
       enabled = result?.enabled === true;
       pageUrl = typeof result?.url === 'string' ? result.url : '';
       contextLock = result?.lockRate === true;
-      contextKeys = { singleKey: result?.singleKey === true, hoverWheel: result?.hoverWheel !== false, skipSeconds: normalizeSkipSeconds(result?.skipSeconds), volumeStep: normalizeVolumeStep(result?.volumeStep), holdBoost: result?.holdBoost === true, holdBoostRate: normalizeHoldRate(result?.holdBoostRate) };
+      contextKeys = { singleKey: result?.singleKey === true, hoverWheel: result?.hoverWheel !== false, skipSeconds: normalizeSkipSeconds(result?.skipSeconds), volumeStep: normalizeVolumeStep(result?.volumeStep), holdBoost: result?.holdBoost === true, holdBoostRate: normalizeHoldRate(result?.holdBoostRate), holdSkip: result?.holdSkip === true };
       // A push that arrives while this request is in flight is newer than the response.
       if (window.top === window && presenceEpoch === epoch) tabHasMedia = result?.hasMedia === true;
       if (selectionEpoch === selectionAtContext) lockedLocalId = typeof result?.selectedLocalId === 'string' && /^\d+$/.test(result.selectedLocalId) ? result.selectedLocalId : '';
