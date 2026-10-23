@@ -60,7 +60,7 @@ test('设置页播放分区用分段选择立即保存步长', async () => {
     const playback = host.querySelector('#playback');
     assert.ok(playback);
     assert.match(playback.textContent ?? '', /快进 \/ 快退步长/);
-    assert.match(playback.textContent ?? '', /弹出面板按钮、页内快捷键和浏览器快捷键都按这个步长跳转/);
+    assert.match(playback.textContent ?? '', /弹出面板、页面浮动入口、页内快捷键和浏览器快捷键都按这个步长跳转/);
     assert.equal(option('10 秒')?.getAttribute('aria-pressed'), 'true');
     await click(option('15 秒')!);
     assert.equal(value.skipSeconds, 15);

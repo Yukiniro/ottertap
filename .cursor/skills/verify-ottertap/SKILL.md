@@ -53,7 +53,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs doctor
 
 ## Drive
 
-脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、倍速增减步长（见 `features/rate-step.md`）、扩展命令画中画（见 `features/extension-pip.md`）、按住临时加速（见 `features/hold-boost.md`）、同键短按跳长按加速（见 `features/hold-skip-combo.md`）、逐帧（见 `features/frame-step.md`）、页内快捷键改键（见 `features/hotkey-remap.md`）和浮动药丸倍速（见 `features/floating-speed.md`）。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
+脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、倍速增减步长（见 `features/rate-step.md`）、扩展命令画中画（见 `features/extension-pip.md`）、按住临时加速（见 `features/hold-boost.md`）、同键短按跳长按加速（见 `features/hold-skip-combo.md`）、逐帧（见 `features/frame-step.md`）、页内快捷键改键（见 `features/hotkey-remap.md`）、浮动药丸倍速（见 `features/floating-speed.md`）和浮动药丸播放跳转（见 `features/floating-playback.md`）。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
 
 ```bash
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
@@ -68,6 +68,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive hold-skip-combo
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive frame-step
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive hotkey-remap
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-speed
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-playback
 ```
 
 `skip-step` 在设置页把 `Skip step` 改成 `30s` 并打开 `Single-key mode`，再看弹出面板进退按钮名和页内 `L` / `J` / `→` / `←` 让 `/long` 夹具的 `currentTime` 跟着步长变；它会改写 profile，同一会话只能跑一次。步骤见 `features/skip-step.md`。
@@ -87,6 +88,8 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-speed
 `hotkey-remap` 在设置页把 `Play or pause` 改成 `P`、`Pause, then next frame` 改成 `E`，先确认录 `J` 时提示被 `Back 10 seconds` 占用，再看不刷新的夹具页上新键立即生效、旧键交给网站，并走一遍导出、恢复默认和导入。它会改写 profile，同一会话只能跑一次。步骤见 `features/hotkey-remap.md`。
 
 `floating-speed` 展开夹具页上的音量药丸，确认音量滑块从 100% 按下方向键仍能调低、静音仍可用，再用加快按钮和 `2× speed` 预设改倍速，看页内 `Speed {rate}×` 提示，并确认没有写入站点记忆。输入框聚焦时仍能打字，`Alt+.` 不改倍速。接着把倍速步长改成 `0.5×`、去掉 `4×` 预设，看同一页上的药丸跟着变，最后把步长和预设恢复。中途失败要 `cleanup`。步骤见 `features/floating-speed.md`。
+
+`floating-playback` 展开 `/long` 上的药丸，确认音量方向键和加快按钮仍可用，再点播放和暂停，并按 `Skip step` 前进后退。把步长改成 `30s` 后跳 30 秒；打开 `Scale skip with speed` 后，2× 时药丸和弹出面板都是 20 秒。`/unseekable` 上跳转按钮禁用并有说明。它会改写 profile，成功时恢复，同一会话只能跑一次，不能接在 `drive skip-step` 或 `drive skip-with-rate` 后面。步骤见 `features/floating-playback.md`。
 
 `popup-playback` 在已启动的会话里做这些事：
 
@@ -113,6 +116,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-speed
 | 打开设置 | `Open settings` |
 | 浮动入口 | `/volume pill/i` |
 | 浮动倍速 | 展开后的 `group` `Speed`。加快 / 减慢与弹出面板同名，预设是 `1.25× speed` 这种 |
+| 浮动播放 | 展开后的 `group` `Playback`。`Play` / `Pause`，以及与弹出面板同名的 `Back {n} seconds` / `Forward {n} seconds`。不可跳转时说明是 `Live streams and media that can't be seeked can't jump.` |
 | 设置页备份 | `chrome-extension://<extensionId>/options.html#backup`，按钮 `Export settings`、`Import settings`、确认 `Replace settings` |
 | 设置页步长 | `chrome-extension://<extensionId>/options.html#playback`，`group` `Skip step` 里的 `button` `5s` / `10s` / `15s` / `30s`，默认 `10s` 按下 |
 | 设置页音量步长 | 同一节的 `group` `Volume step`，`button` `5%` / `10%` / `20%`，默认 `10%` 按下 |
@@ -153,6 +157,8 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-speed
 
 `drive floating-speed` 写入 `floating-speed/`：`fixture-step.png`、`pill-step.png`、`pill-preset.png`、`settings-step.png`、`pill-presets.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
 
+`drive floating-playback` 写入 `floating-playback/`：`pill-playing.png`、`fixture-playing.png`、`pill-30.png`、`pill-20.png`、`popup-20.png`、`pill-unseekable.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
 `launch` 成功后还会留下 `launch-probe.png`（浮动入口已经出现）。失败时同目录可能有 `error.txt`，那不算通过。
 
 换了 `OTTERTAP_VERIFY_ID` 时，文件名变成 `<id>-popup-playback/`。不要把这些截图提交进仓库。
@@ -186,6 +192,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive hold-skip-combo
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive frame-step
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive hotkey-remap
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-speed
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-playback
 node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 ```
 
