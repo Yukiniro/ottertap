@@ -53,11 +53,12 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs doctor
 
 ## Drive
 
-脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、音量调节步长（见 `features/volume-step.md`）、倍速增减步长（见 `features/rate-step.md`）和扩展命令画中画（见 `features/extension-pip.md`）。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
+脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、倍速增减步长（见 `features/rate-step.md`）和扩展命令画中画（见 `features/extension-pip.md`）。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
 
 ```bash
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive skip-step
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive skip-with-rate
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive volume-step
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive rate-step
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive extension-pip
@@ -65,6 +66,8 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive default-rate
 ```
 
 `skip-step` 在设置页把 `Skip step` 改成 `30s` 并打开 `Single-key mode`，再看弹出面板进退按钮名和页内 `L` / `J` / `→` / `←` 让 `/long` 夹具的 `currentTime` 跟着步长变；它会改写 profile，同一会话只能跑一次。步骤见 `features/skip-step.md`。
+
+`skip-with-rate` 先在 2× 下确认开关关闭时仍跳 10 秒，再打开 `Scale skip with speed`，看弹出面板和页内 `L` / `J` 跳 20 秒且提示写 20 秒，并确认 4× 被限制成 30 秒、0.25× 按 0.5× 跳 5 秒。它会改写 profile，同一会话只能跑一次，不能接在 `drive skip-step` 后面。步骤见 `features/skip-with-rate.md`。
 
 `volume-step` 在设置页把 `Volume step` 改成 `5%` 和 `20%`，再看同一夹具页上的悬停滚轮、Alt+滚轮和单键 ↑ ↓ 跟着步长变，并确认跨过 100% 仍先停住。它会改写 profile，同一会话只能跑一次，而且不能接在 `drive wheel-volume` 前面。步骤见 `features/volume-step.md`。
 
@@ -118,6 +121,8 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive default-rate
 
 `drive skip-step` 写入 `skip-step/`：`settings-default.png`、`settings-30.png`、`popup-10.png`、`popup-30.png`、`fixture-start.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
 
+`drive skip-with-rate` 写入 `skip-with-rate/`：`popup-off.png`、`settings-off.png`、`settings-on.png`、`popup-on.png`、`toast-20.png`、`popup-clamped.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
 `drive volume-step` 写入 `volume-step/`：`settings-default.png`、`settings-5.png`、`settings-20.png`、`fixture-10.png`、`fixture-5.png`、`fixture-20.png`、`fixture-snap-100.png`、`fixture-snap-120.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
 
 `drive rate-step` 写入 `rate-step/`：`settings-default.png`、`settings-0.1.png`、`settings-0.5.png`、`fixture-default.png`、`fixture-0.1.png`、`fixture-0.5.png`、`popup-0.1.png`、`popup-limit.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
@@ -147,6 +152,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs launch
 node .cursor/skills/verify-ottertap/scripts/session.mjs doctor
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive skip-step
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive skip-with-rate
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive volume-step
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive rate-step
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive extension-pip

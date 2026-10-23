@@ -14,7 +14,7 @@ const sameSitePrefs = (a: Record<string, SitePref>, b: Record<string, SitePref>)
   const keys = Object.keys(a);
   return keys.length === Object.keys(b).length && keys.every(key => !!b[key] && sameSitePref(a[key]!, b[key]!));
 };
-const sameSettings = (a: Settings, b: Settings) => a.theme === b.theme && a.floating === b.floating && a.defaultRate === b.defaultRate && a.lockRate === b.lockRate && a.hoverWheel === b.hoverWheel && a.singleKey === b.singleKey && a.skipSeconds === b.skipSeconds && a.volumeStep === b.volumeStep && a.rateStep === b.rateStep && a.siteMode === b.siteMode && samePosition(a.floatingPosition, b.floatingPosition) && sameSites(a.sites, b.sites) && sameSitePrefs(a.sitePrefs, b.sitePrefs) && samePresets(a.ratePresets, b.ratePresets);
+const sameSettings = (a: Settings, b: Settings) => a.theme === b.theme && a.floating === b.floating && a.defaultRate === b.defaultRate && a.lockRate === b.lockRate && a.hoverWheel === b.hoverWheel && a.singleKey === b.singleKey && a.skipSeconds === b.skipSeconds && a.skipWithRate === b.skipWithRate && a.volumeStep === b.volumeStep && a.rateStep === b.rateStep && a.siteMode === b.siteMode && samePosition(a.floatingPosition, b.floatingPosition) && sameSites(a.sites, b.sites) && sameSitePrefs(a.sitePrefs, b.sitePrefs) && samePresets(a.ratePresets, b.ratePresets);
 
 function mergeSettings(current: Settings, update: Partial<Settings>): Settings {
   const next = normalizeSettings({ ...current, ...update });
@@ -37,6 +37,7 @@ export interface SettingsAtoms {
   hoverWheelAtom: Atom<boolean>;
   singleKeyAtom: Atom<boolean>;
   skipSecondsAtom: Atom<SkipSeconds>;
+  skipWithRateAtom: Atom<boolean>;
   volumeStepAtom: Atom<VolumeStep>;
   rateStepAtom: Atom<RateStep>;
   floatingPositionAtom: Atom<FloatingPosition>;
@@ -64,6 +65,7 @@ export function createSettingsAtoms(source: SettingsStore, options?: { initialLo
   const hoverWheelAtom = selectAtom(settingsAtom, settings => settings.hoverWheel);
   const singleKeyAtom = selectAtom(settingsAtom, settings => settings.singleKey);
   const skipSecondsAtom = selectAtom(settingsAtom, settings => settings.skipSeconds);
+  const skipWithRateAtom = selectAtom(settingsAtom, settings => settings.skipWithRate);
   const volumeStepAtom = selectAtom(settingsAtom, settings => settings.volumeStep);
   const rateStepAtom = selectAtom(settingsAtom, settings => settings.rateStep);
   const floatingPositionAtom = selectAtom(settingsAtom, settings => settings.floatingPosition);
@@ -159,7 +161,7 @@ export function createSettingsAtoms(source: SettingsStore, options?: { initialLo
   }
 
   return {
-    store, settingsAtom, themeAtom, floatingAtom, defaultRateAtom, lockRateAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, volumeStepAtom, rateStepAtom, floatingPositionAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom, mount, ready,
+    store, settingsAtom, themeAtom, floatingAtom, defaultRateAtom, lockRateAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, rateStepAtom, floatingPositionAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom, mount, ready,
     settled: () => idle
   };
 }

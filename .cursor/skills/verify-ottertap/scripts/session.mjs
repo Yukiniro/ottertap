@@ -4,6 +4,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs doctor
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive skip-step
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive skip-with-rate
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive volume-step
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive rate-step
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive extension-pip
@@ -27,7 +28,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'volume-step', 'rate-step', 'extension-pip', 'default-rate'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'rate-step', 'extension-pip', 'default-rate'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -580,6 +581,121 @@ async function driveSkipStep(context, dir, note) {
     await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
     return state;
   } finally { await changed.fixture.close(); }
+}
+
+async function driveSkipWithRate(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const near = expected => value => Math.abs(value - expected) < 0.05;
+  const scaleCopy = 'When on, each skip is the step times the current speed. A 10s step at 2× jumps about 20s. Speeds outside 0.5×-3× use those limits, and the hint shows the actual seconds.';
+
+  const openLong = async rate => {
+    const fixture = await context.newPage();
+    await fixture.goto(`${origin}/long`, { waitUntil: 'domcontentloaded' });
+    await fixture.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await fixture.locator('#media').evaluate(async (element, nextRate) => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+      element.pause();
+      element.currentTime = 60;
+      element.playbackRate = nextRate;
+    }, rate);
+    const time = () => fixture.locator('#media').evaluate(element => element.currentTime);
+    const speed = () => fixture.locator('#media').evaluate(element => element.playbackRate);
+    await poll(time, near(60), '起点应是 60 秒');
+    await poll(speed, value => Math.abs(value - rate) < 0.01, `倍速应是 ${rate}`);
+    return { fixture, time, speed };
+  };
+  const retarget = async (page, rate) => {
+    await page.fixture.locator('#media').evaluate((element, nextRate) => {
+      element.pause();
+      element.currentTime = 60;
+      element.playbackRate = nextRate;
+    }, rate);
+    await poll(page.time, near(60), '起点应回到 60 秒');
+    await poll(page.speed, value => Math.abs(value - rate) < 0.01, `倍速应改成 ${rate}`);
+  };
+  const popupSkip = async (fixture, time, step, from, shot) => {
+    const popup = await openActionPopup(context, fixture);
+    try {
+      const buttons = await popup.evaluate(skipButtons);
+      const names = [`Back ${step} seconds`, `Forward ${step} seconds`];
+      if (JSON.stringify(buttons.map(item => item.name)) !== JSON.stringify(names) || buttons.some(item => item.disabled || item.badge !== String(step))) {
+        throw new Error(`弹出面板进退按钮应是 ${step} 秒：${JSON.stringify(buttons)}`);
+      }
+      await popup.screenshot(path.join(dir, shot));
+      await popup.click(names[1]);
+      await poll(time, near(from + step), `${names[1]} 后应到 ${from + step} 秒`);
+      await popup.click(names[0]);
+      await poll(time, near(from), `${names[0]} 后应回到 ${from} 秒`);
+      note(`popup ${names[1]} / ${names[0]} moved ${from} -> ${from + step} -> ${from}`);
+      return buttons;
+    } finally { await popup.close().catch(() => {}); }
+  };
+  const press = async (fixture, time, key, expected, hint, shot) => {
+    const status = fixture.getByRole('status').filter({ hasText: hint }).first();
+    const shown = status.waitFor({ state: 'visible', timeout: 4_000 });
+    await fixture.keyboard.press(key);
+    await shown;
+    if (shot) await fixture.screenshot({ path: path.join(dir, shot), animations: 'disabled' });
+    const currentTime = await poll(time, near(expected), `${key} 后应在 ${expected} 秒`);
+    note(`${key} -> ${currentTime}, hint ${hint}`);
+    return { key, currentTime, hint };
+  };
+
+  const off = await openLong(2);
+  let offButtons;
+  try {
+    offButtons = await popupSkip(off.fixture, off.time, 10, 60, 'popup-off.png');
+  } finally { await off.fixture.close(); }
+
+  const settings = await context.newPage();
+  try {
+    await settings.goto(`chrome-extension://${extensionId}/options.html#playback`, { waitUntil: 'domcontentloaded' });
+    const toggle = settings.getByRole('switch', { name: 'Scale skip with speed' });
+    await toggle.waitFor({ state: 'visible', timeout: 15_000 });
+    if (await toggle.getAttribute('aria-checked') !== 'false') throw new Error('随倍速放大默认应关闭');
+    await settings.getByText(scaleCopy, { exact: true }).waitFor({ state: 'visible' });
+    await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-off.png'), animations: 'disabled' });
+    await toggle.click();
+    await poll(() => toggle.getAttribute('aria-checked'), value => value === 'true', '应能打开随倍速放大');
+    await poll(stored, value => value.skipWithRate === true && value.skipSeconds === 10, '设置里应存下 skipWithRate=true，步长仍是 10');
+    await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-on.png'), animations: 'disabled' });
+    note('skipWithRate on, skipSeconds stays 10');
+
+    await settings.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
+    const singleKey = settings.getByRole('switch', { name: 'Single-key mode' });
+    await singleKey.waitFor({ state: 'visible', timeout: 15_000 });
+    if (await singleKey.getAttribute('aria-checked') !== 'false') throw new Error('单键模式默认应关闭');
+    await singleKey.click();
+    await poll(stored, value => value.singleKey === true && value.skipWithRate === true, '设置里应同时打开单键模式');
+    note('single-key mode on');
+  } finally { await settings.close(); }
+
+  const on = await openLong(2);
+  try {
+    const onButtons = await popupSkip(on.fixture, on.time, 20, 60, 'popup-on.png');
+    await on.fixture.bringToFront();
+    await on.fixture.mouse.click(1000, 600);
+    const keys = [
+      await press(on.fixture, on.time, 'l', 80, 'Forward 20 seconds', 'toast-20.png'),
+      await press(on.fixture, on.time, 'j', 60, 'Back 20 seconds')
+    ];
+
+    await retarget(on, 4);
+    const clampedButtons = await popupSkip(on.fixture, on.time, 30, 60, 'popup-clamped.png');
+
+    await retarget(on, 0.25);
+    await on.fixture.bringToFront();
+    await on.fixture.mouse.click(1000, 600);
+    const slow = await press(on.fixture, on.time, 'j', 55, 'Back 5 seconds');
+
+    const state = { ok: true, offButtons, onButtons, keys, clampedButtons, slow };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally { await on.fixture.close(); }
 }
 
 async function driveVolumeStep(context, dir, note) {
@@ -1221,7 +1337,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'volume-step': driveVolumeStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -1412,7 +1528,7 @@ try {
   else if (command === 'drive') await drive(feature);
   else if (command === 'cleanup') await cleanup();
   else {
-    console.error('用法：node .cursor/skills/verify-ottertap/scripts/session.mjs <launch|doctor|drive|cleanup> [popup-playback|wheel-volume|skip-step|volume-step|rate-step|extension-pip|default-rate]');
+    console.error(`用法：node .cursor/skills/verify-ottertap/scripts/session.mjs <launch|doctor|drive|cleanup> [${supportedFeatures.join('|')}]`);
     process.exit(2);
   }
 } catch (error) {

@@ -45,7 +45,7 @@ test('每次按键读取当前步长，提示显示实际秒数', async () => {
     assert.deepEqual(sent, [{ type: 'skip', delta: -5 }, { type: 'skip', delta: -30 }]);
     assert.equal(actionHintText('skipBack', 15), '后退 15 秒');
     assert.equal(actionHintText('skipForward', 5), '前进 5 秒');
-    assert.equal(actionHintText('skipBack', 9), '后退 10 秒');
+    assert.equal(actionHintText('skipBack', 200), '后退 10 秒');
     assert.equal(actionHintText('play'), '播放');
     assert.equal(actionHintText('nope'), '');
   } finally {

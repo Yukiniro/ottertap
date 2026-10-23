@@ -210,7 +210,7 @@ function Row({ title, description, titleId, children }: { title: string; descrip
 }
 
 export function SettingsPage({ back }: { back?: () => void }) {
-  const { themeAtom, floatingAtom, defaultRateAtom, lockRateAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, volumeStepAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { themeAtom, floatingAtom, defaultRateAtom, lockRateAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const theme = useAtomValue(themeAtom);
   const floating = useAtomValue(floatingAtom);
   const defaultRate = useAtomValue(defaultRateAtom);
@@ -218,6 +218,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
   const hoverWheel = useAtomValue(hoverWheelAtom);
   const singleKey = useAtomValue(singleKeyAtom);
   const skipSeconds = useAtomValue(skipSecondsAtom);
+  const skipWithRate = useAtomValue(skipWithRateAtom);
   const volumeStep = useAtomValue(volumeStepAtom);
   const rateStep = useAtomValue(rateStepAtom);
   const siteMode = useAtomValue(siteModeAtom);
@@ -344,6 +345,9 @@ export function SettingsPage({ back }: { back?: () => void }) {
               </ToggleGroup>
             </div>
             <p className="mt-2 text-sm leading-5 text-muted-foreground">{i18n.t('skipSecondsDescription')}</p>
+            <div className="mt-3">
+              <SwitchRow id="settings-skip-with-rate" label={i18n.t('skipWithRate')} description={i18n.t('skipWithRateDescription')} checked={skipWithRate} disabled={disabled} onChange={checked => void save({ skipWithRate: checked })} />
+            </div>
           </div>
           <div className="mt-4">
             <div className="flex flex-col gap-3 rounded-lg bg-muted/50 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">

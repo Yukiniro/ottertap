@@ -244,7 +244,8 @@ export default defineBackground(() => {
     const { media, failed } = await collect(tabId, host);
     const saved = lockedId(tabId, media, failed);
     if (saved && !media.some(item => item.id === saved)) return false;
-    const plan = planHotkey({ host, enabled: true, media, selectedId: saved }, action);
+    const settings = await currentSettings();
+    const plan = planHotkey({ host, enabled: true, media, selectedId: saved }, action, undefined, undefined, settings.skipWithRate);
     if (!plan) return false;
     rememberSelection(tabId, plan.media.id);
     if (plan.command.type === 'mute') gestures.delete(tabId);
@@ -258,7 +259,8 @@ export default defineBackground(() => {
       throw error;
     }
     const key = actionHintKey(action, plan.media);
-    if (key) showAction(tabId, key, action.type === 'skip' ? Math.abs(action.delta) : undefined);
+    const jumped = plan.command.type === 'skip' ? Math.abs(plan.command.value) : undefined;
+    if (key) showAction(tabId, key, action.type === 'skip' ? jumped : undefined);
     return true;
   }
   async function performHotkey(tabId: number, host: string, action: HotkeyAction) {

@@ -17,6 +17,7 @@ import { useMedia } from '../hooks/use-media';
 import { channelModes, isChannelMode } from '../lib/amplifier';
 import { channelLabel, mediaChoiceLabel, pipHint } from '../lib/media';
 import { formatRate, nextRate, sameRate } from '../lib/rate';
+import { actualSkipSeconds } from '../lib/skip';
 import type { SoundingTab, SoundingTabsClient } from '../lib/tabs';
 import { disableSite, enableSite, forgetMatchingSites, isSiteEnabled, rememberSite, sitePrefFor } from '../lib/settings';
 import { defaultSettings, type MediaClient, type MediaState, type PageState, type SitePref } from '../lib/types';
@@ -78,13 +79,14 @@ function OtherPlaying({ client }: { client?: SoundingTabsClient }) {
 }
 export function MediaPanel({ client, openSettings, sounding, initial }: { client: MediaClient; openSettings: () => void; sounding?: SoundingTabsClient; initial?: PageState }) {
   const { page, selected, select, command, refresh, loading, error } = useMedia(client, { initial });
-  const { floatingAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, skipSecondsAtom, rateStepAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { floatingAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, skipSecondsAtom, skipWithRateAtom, rateStepAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const floating = useAtomValue(floatingAtom);
   const siteMode = useAtomValue(siteModeAtom);
   const sites = useAtomValue(sitesAtom);
   const sitePrefs = useAtomValue(sitePrefsAtom);
   const ratePresets = useAtomValue(ratePresetsAtom);
   const skipSeconds = useAtomValue(skipSecondsAtom);
+  const skipWithRate = useAtomValue(skipWithRateAtom);
   const rateStep = useAtomValue(rateStepAtom);
   const settingsLoading = useAtomValue(loadingAtom);
   const settingsError = useAtomValue(errorAtom);
@@ -105,6 +107,7 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
   const rateQueue = useRef(Promise.resolve());
   const remembered = page.host ? sitePrefFor(page.host, sitePrefs) : null;
   const playbackRate = selected ? aimedRate ?? selected.rate : 1;
+  const jump = actualSkipSeconds(skipSeconds, playbackRate, skipWithRate);
   const storePreference = () => {
     if (!selected || !page.host || settingsLoading) return;
     void write({ sitePrefs: rememberSite(sitePrefs, page.host, { ...currentPref(selected), rate: playbackRate }) });
@@ -173,9 +176,9 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
         </div>
         <h1 title={selected.title} className="mt-2 line-clamp-2 text-lg leading-6 font-semibold break-words">{selected.title}</h1>
         <div className="mt-3 grid grid-cols-[minmax(0,1fr)_48px_44px_48px_minmax(0,1fr)] items-center gap-2">
-          <Button variant="ghost" size="sm" className="col-start-2 h-9 w-12 gap-1 px-2 tabular-nums" aria-label={i18n.t('skipBack', { seconds: skipSeconds })} disabled={!canSeek} onClick={() => void command({ type: 'skip', value: -skipSeconds })}><RotateCcw /><span className="text-xs">{skipSeconds}</span></Button>
+          <Button variant="ghost" size="sm" className="col-start-2 h-9 w-12 gap-1 px-2 tabular-nums" aria-label={i18n.t('skipBack', { seconds: jump })} disabled={!canSeek} onClick={() => void command({ type: 'skip', value: -jump })}><RotateCcw /><span className="text-xs">{jump}</span></Button>
           <Button className="size-11 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 [&_svg:not([class*='size-'])]:size-5" aria-label={selected.paused ? i18n.t('play') : i18n.t('pause')} onClick={() => void command({ type: selected.paused ? 'play' : 'pause' })}>{selected.paused ? <Play fill="currentColor" strokeWidth={0} className="ml-0.5" /> : <Pause fill="currentColor" strokeWidth={0} />}</Button>
-          <Button variant="ghost" size="sm" className="h-9 w-12 gap-1 px-2 tabular-nums" aria-label={i18n.t('skipForward', { seconds: skipSeconds })} disabled={!canSeek} onClick={() => void command({ type: 'skip', value: skipSeconds })}><span className="text-xs">{skipSeconds}</span><RotateCw /></Button>
+          <Button variant="ghost" size="sm" className="h-9 w-12 gap-1 px-2 tabular-nums" aria-label={i18n.t('skipForward', { seconds: jump })} disabled={!canSeek} onClick={() => void command({ type: 'skip', value: jump })}><span className="text-xs">{jump}</span><RotateCw /></Button>
           <Button type="button" variant="ghost" size="icon" className="justify-self-end text-muted-foreground aria-pressed:bg-accent aria-pressed:text-primary" aria-pressed={selected.pip} title={selected.pip ? i18n.t('exitPictureInPicture') : i18n.t('pictureInPicture')} aria-label={selected.pip ? i18n.t('exitPictureInPicture') : i18n.t('pictureInPicture')} aria-describedby={hint ? 'pip-hint' : undefined} disabled={!!hint} onClick={() => void command({ type: 'pip' })}><PictureInPicture2 /></Button>
         </div>
         <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground tabular-nums">
