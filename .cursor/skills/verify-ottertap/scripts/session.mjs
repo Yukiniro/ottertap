@@ -1668,10 +1668,11 @@ async function driveFrameStep(context, dir, note) {
     try {
       await settings.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
       await settings.getByRole('heading', { name: 'On-page shortcuts' }).waitFor({ state: 'visible', timeout: 15_000 });
-      await settings.getByText('Pause, then previous frame', { exact: true }).waitFor({ state: 'visible' });
-      await settings.getByText('Pause, then next frame', { exact: true }).waitFor({ state: 'visible' });
+      const pageShortcuts = settings.getByLabel('On-page shortcuts');
+      await pageShortcuts.getByText('Pause, then previous frame', { exact: true }).waitFor({ state: 'visible' });
+      await pageShortcuts.getByText('Pause, then next frame', { exact: true }).waitFor({ state: 'visible' });
+      await pageShortcuts.getByText('Increase speed by 0.25×', { exact: true }).waitFor({ state: 'visible' });
       await settings.getByText("Frame step uses , and . with no extra key. Playback pauses, then moves one frame. Live streams and media that can't be seeked stay put.", { exact: true }).waitFor({ state: 'visible' });
-      await settings.getByText('Increase speed by 0.25×', { exact: true }).waitFor({ state: 'visible' });
       await settings.locator('#shortcuts').screenshot({ path: path.join(dir, 'settings-shortcuts.png'), animations: 'disabled' });
       await settings.locator('#shortcuts').screenshot({ path: path.join(uiDir, 'after-shortcuts.png'), animations: 'disabled' });
       note('settings list , and . without replacing Alt speed keys');
