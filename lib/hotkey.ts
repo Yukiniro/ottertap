@@ -167,6 +167,8 @@ export function createHotkeyInput(send: (action: HotkeyAction, target?: string) 
   let pending: { action: HotkeyAction; target?: string }[] = [];
   let frame = 0;
   let altUsed = false;
+  /** Physical keys whose keydown was taken. Their keyup is taken too, even after Shift is released first. */
+  const held = new Set<string>();
   const useAlt = () => {
     if (altUsed) return;
     altUsed = true;
@@ -200,13 +202,16 @@ export function createHotkeyInput(send: (action: HotkeyAction, target?: string) 
         if (swallow) event.preventDefault();
         return swallow;
       }
-      const action = hotkeyFromKeyboard(event, { singleKey, onMedia: target !== undefined, skipSeconds, volumeStep, keybinds });
-      if (!action) return false;
+      const id = event.code || event.key;
+      const paired = held.delete(id) && event.type === 'keyup';
+      const action = paired ? null : hotkeyFromKeyboard(event, { singleKey, onMedia: target !== undefined, skipSeconds, volumeStep, keybinds });
+      if (!action && !paired) return false;
       // Capture-phase stop keeps the site's own shortcut on the same key from also running.
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation?.();
-      if (event.type === 'keyup') return true;
+      if (!action || event.type === 'keyup') return true;
+      held.add(id);
       if (event.altKey) useAlt();
       queue(action, action.type === 'volume' ? target : undefined);
       return true;
@@ -227,7 +232,7 @@ export function createHotkeyInput(send: (action: HotkeyAction, target?: string) 
     press(action: HotkeyAction) { queue(action); },
     /** Another frame used the current Alt press; this frame may be the one that receives its release. */
     arm() { altUsed = true; },
-    dispose() { window.cancelAnimationFrame(frame); frame = 0; pending = []; }
+    dispose() { window.cancelAnimationFrame(frame); frame = 0; pending = []; held.clear(); }
   };
 }
 

@@ -1,5 +1,6 @@
 import { i18n } from '#i18n';
 import { useRef, useState } from 'react';
+import { Pencil } from 'lucide-react';
 import { Button } from './ui/button';
 import { cn } from '../lib/utils';
 
@@ -32,6 +33,6 @@ export function KeybindButton({ label, keyLabel, disabled, errorId, onKey, onCan
       swallowUp.current = false;
       event.preventDefault();
     }}>
-    {recording ? i18n.t('keybindRecording') : keyLabel}
+    {recording ? i18n.t('keybindRecording') : <>{keyLabel}<Pencil aria-hidden="true" className="size-3 text-muted-foreground" /></>}
   </Button>;
 }

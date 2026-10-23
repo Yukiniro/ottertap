@@ -5,7 +5,7 @@ import { createElement, act } from 'react';
 import { createHoldGesture } from '../lib/hold-gesture';
 import { isHoldRateChord } from '../lib/hold-rate';
 import { skipHoldDirection } from '../lib/hold-skip';
-import { hotkeyFromKeyboard } from '../lib/hotkey';
+import { createHotkeyInput, hotkeyFromKeyboard } from '../lib/hotkey';
 import { defaultKeybinds, type Keybinds } from '../lib/keybinds';
 import { defaultSettings, type Settings, type SettingsStore } from '../lib/types';
 
@@ -57,6 +57,28 @@ describe('页内快捷键改键', () => {
     now = 50;
     assert.deepEqual(gesture.key({ ...none, type: 'keyup', key: 'd', code: 'KeyD' }, input), { type: 'skip', direction: 1 });
     assert.deepEqual(gesture.key({ ...none, type: 'keydown', key: 's', code: 'KeyS' }, input), { type: 'ignore' });
+  });
+
+  test('Shift + 字母的键位先松 Shift 再松字母，松开仍被拦下', async () => {
+    const window = new Window();
+    Object.defineProperty(globalThis, 'window', { value: window, configurable: true, writable: true });
+    Object.defineProperty(window, 'requestAnimationFrame', { value: () => 1 });
+    const input = createHotkeyInput(() => {});
+    const keybinds = { ...defaultKeybinds, toggle: 'K' };
+    const key = (type: string, name: string, shiftKey: boolean) => {
+      let prevented = false;
+      const handled = input.key({ ...none, shiftKey, key: name, code: 'KeyK', type, preventDefault() { prevented = true; }, stopPropagation() {} }, { singleKey: true, keybinds });
+      return { handled, prevented };
+    };
+    try {
+      assert.deepEqual(key('keydown', 'K', true), { handled: true, prevented: true });
+      assert.deepEqual(key('keyup', 'k', false), { handled: true, prevented: true }, '按物理键配对，不看松开时的 Shift');
+      assert.deepEqual(key('keyup', 'k', false), { handled: false, prevented: false }, '配对只用一次');
+      assert.deepEqual(key('keydown', 'k', false), { handled: false, prevented: false }, '不带 Shift 的 k 留给网站');
+    } finally {
+      input.dispose();
+      await window.happyDOM.close();
+    }
   });
 
   test('设置页：点按键再按新键即保存；撞键给出占用者并保持原值；Esc 取消；可恢复默认', async () => {
