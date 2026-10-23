@@ -70,6 +70,7 @@ export function FloatingController({ client, openPanel }: { client: MediaClient;
     }
   }, [selected, rateSettled]);
   const floatingRef = useRef(floating);
+  const expandWhileShown = useRef(true);
   const mediaRef = useRef(selected);
   const clientRef = useRef(client);
   const optimistic = useRef<MediaState | null>(null);
@@ -96,7 +97,7 @@ export function FloatingController({ client, openPanel }: { client: MediaClient;
       optimistic.current = { ...current, volume: percent / 100, muted: percent <= 0 };
       setDraft(Math.round(percent));
     };
-    const open = () => { if (floatingRef.current) setExpanded(true); };
+    const open = () => { if (floatingRef.current && expandWhileShown.current) setExpanded(true); };
     window.addEventListener(volumeGestureEvent, open);
     window.addEventListener('ottertap-volume', onVolume);
     return () => { hotkeys.dispose(); window.removeEventListener(volumeGestureEvent, open); window.removeEventListener('ottertap-volume', onVolume); };
@@ -118,6 +119,7 @@ export function FloatingController({ client, openPanel }: { client: MediaClient;
     now: Date.now()
   });
   playGate.current = playback.gate;
+  expandWhileShown.current = !floatingWhilePlaying || playback.visible;
   const selectedId = selected?.id;
   const selectedPaused = selected?.paused;
   useEffect(() => {
