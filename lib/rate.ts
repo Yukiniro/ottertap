@@ -1,26 +1,39 @@
 export const minRate = 0.25;
 export const maxRate = 4;
-export const rateStep = 0.25;
+export const rateSteps = [0.1, 0.25, 0.5] as const;
+export type RateStep = (typeof rateSteps)[number];
+export const defaultRateStep: RateStep = 0.25;
+/** Default-speed choices stay on this grid. The increment setting does not move it. */
+export const rateGrid = 0.25;
 export const maxRatePresets = 10;
 export const defaultRatePresets = [0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4];
+
+export function isRateStep(value: unknown): value is RateStep {
+  return typeof value === 'number' && (rateSteps as readonly number[]).includes(value);
+}
+
+export function normalizeRateStep(value: unknown): RateStep {
+  return isRateStep(value) ? value : defaultRateStep;
+}
 
 export function clampRate(rate: number) {
   if (!Number.isFinite(rate)) return 1;
   return Math.min(maxRate, Math.max(minRate, rate));
 }
 
-/** Move to the next 0.25 grid point. Off-grid values align before stepping. */
-export function stepRate(current: number, direction: 1 | -1) {
+/** Move to the next grid point of `step`. Off-grid values align before stepping. */
+export function stepRate(current: number, direction: 1 | -1, step: number = defaultRateStep) {
+  const size = normalizeRateStep(step);
   if (!Number.isFinite(current)) return minRate;
-  const steps = current / rateStep;
+  const steps = current / size;
   const nearest = Math.round(steps);
-  const onGrid = Math.abs(current - nearest * rateStep) <= 1e-6;
+  const onGrid = Math.abs(current - nearest * size) <= 1e-6;
   const aligned = onGrid ? nearest + direction : direction > 0 ? Math.ceil(steps - 1e-9) : Math.floor(steps + 1e-9);
-  return clampRate(aligned * rateStep);
+  return clampRate(Number(formatRate(aligned * size)));
 }
 
-export function nextRate(current: number, direction: 1 | -1 | 0, remembered?: number | null) {
-  if (direction !== 0) return stepRate(current, direction);
+export function nextRate(current: number, direction: 1 | -1 | 0, remembered?: number | null, step: number = defaultRateStep) {
+  if (direction !== 0) return stepRate(current, direction, step);
   if (sameRate(current, 1)) {
     const recalled = remembered == null ? null : recallableRate(remembered);
     if (recalled != null) return recalled;

@@ -8,6 +8,7 @@
 | 全局默认倍速 | [default-rate.md](default-rate.md) | 设置页「Playback」的 `Default speed`；陌生网站的新媒体应用一次，站点记住的倍速优先 | `drive default-rate`；`tests/default-rate.test.ts`、`tests/default-rate-background.test.ts` |
 | 滚轮与 Alt 快捷键音量 | [wheel-volume.md](wheel-volume.md) | 网页里的主播放器、静音预览或浮动音量药丸 | `drive wheel-volume`；`e2e/smoke.spec.ts` 中悬停滚轮、静音预览、Alt+滚轮 |
 | 倍速 | [playback-rate.md](playback-rate.md) | 弹出面板倍速按钮，或网页上的 Alt+, / Alt+. / Alt+0 | `e2e/smoke.spec.ts` 中 Alt + , . 0 那条 |
+| 倍速增减步长 | [rate-step.md](rate-step.md) | 设置页「Playback」的 `Speed step`，影响页内 Alt+, / Alt+.、单键 > <、弹出面板加快 / 减慢、扩展命令 `rate-faster` / `rate-slower` | `drive rate-step`；`tests/rate-step.test.ts`、`tests/rate-step-command.test.ts` |
 | 快进 / 快退步长 | [skip-step.md](skip-step.md) | 设置页「Playback」的 `Skip step`，影响弹出面板进退按钮、页内 J / L / ← / →、扩展命令 | `drive skip-step` |
 | 音量调节步长 | [volume-step.md](volume-step.md) | 设置页「Playback」的 `Volume step`，影响悬停滚轮、Alt+滚轮、单键 ↑ ↓、扩展命令 `volume-up` / `volume-down` | `drive volume-step` |
 | 1× 与之前倍速来回切换 | [rate-recall.md](rate-recall.md) | 页内 Alt+0，或扩展命令 rate-reset | `e2e/smoke.spec.ts` 中「1× 与之前的倍速」 |

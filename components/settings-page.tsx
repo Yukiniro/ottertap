@@ -17,8 +17,8 @@ import { cn } from '../lib/utils';
 import { defaultRatePresets, formatRate, maxRatePresets, parseRatePreset, sameRate } from '../lib/rate';
 import { channelLabel } from '../lib/media';
 import { downloadSettingsBackup, parseSettingsBackup, readExtensionVersion, settingsBackupErrors, type SettingsBackupError } from '../lib/settings-backup';
-import { forgetSitePref, isSkipSeconds, isVolumeStep, normalizeDomain } from '../lib/settings';
-import { skipSteps, volumeSteps, type Settings, type SitePref } from '../lib/types';
+import { forgetSitePref, isRateStep, isSkipSeconds, isVolumeStep, normalizeDomain } from '../lib/settings';
+import { rateSteps, skipSteps, volumeSteps, type Settings, type SitePref } from '../lib/types';
 import { useSettingsAtoms } from './theme';
 
 const themes = [{ value: 'light', label: () => i18n.t('themeLight') }, { value: 'dark', label: () => i18n.t('themeDark') }, { value: 'system', label: () => i18n.t('themeSystem') }] as const;
@@ -210,7 +210,7 @@ function Row({ title, description, titleId, children }: { title: string; descrip
 }
 
 export function SettingsPage({ back }: { back?: () => void }) {
-  const { themeAtom, floatingAtom, defaultRateAtom, lockRateAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, volumeStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { themeAtom, floatingAtom, defaultRateAtom, lockRateAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, volumeStepAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const theme = useAtomValue(themeAtom);
   const floating = useAtomValue(floatingAtom);
   const defaultRate = useAtomValue(defaultRateAtom);
@@ -219,6 +219,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
   const singleKey = useAtomValue(singleKeyAtom);
   const skipSeconds = useAtomValue(skipSecondsAtom);
   const volumeStep = useAtomValue(volumeStepAtom);
+  const rateStep = useAtomValue(rateStepAtom);
   const siteMode = useAtomValue(siteModeAtom);
   const sites = useAtomValue(sitesAtom);
   const sitePrefs = useAtomValue(sitePrefsAtom);
@@ -353,6 +354,15 @@ export function SettingsPage({ back }: { back?: () => void }) {
             </div>
             <p className="mt-2 text-sm leading-5 text-muted-foreground">{i18n.t('volumeStepDescription')}</p>
           </div>
+          <div className="mt-4">
+            <div className="flex flex-col gap-3 rounded-lg bg-secondary/60 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <h3 id="rate-step-label" className="text-sm font-medium">{i18n.t('rateStep')}</h3>
+              <ToggleGroup aria-labelledby="rate-step-label" spacing={1} className="grid h-auto w-full grid-cols-3 rounded-lg bg-background/80 p-1 sm:w-auto" value={[String(rateStep)]} disabled={disabled} onValueChange={value => { const next = Number(value[0]); if (isRateStep(next)) void save({ rateStep: next }); }}>
+                {rateSteps.map(step => <ToggleGroupItem key={step} value={String(step)} className="h-8 rounded-md border-0 px-2.5 text-xs text-muted-foreground shadow-none aria-pressed:bg-card aria-pressed:font-semibold aria-pressed:text-foreground aria-pressed:shadow-sm">{i18n.t('rateStepOption', { step: formatRate(step) })}</ToggleGroupItem>)}
+              </ToggleGroup>
+            </div>
+            <p className="mt-2 text-sm leading-5 text-muted-foreground">{i18n.t('rateStepDescription')}</p>
+          </div>
         </div>
       </section>
       <section id="shortcuts" aria-labelledby="shortcuts-heading" className="scroll-mt-32 rounded-xl border bg-card md:scroll-mt-8">
@@ -377,8 +387,8 @@ export function SettingsPage({ back }: { back?: () => void }) {
           <h3 className="mt-6 mb-2 text-sm font-medium">{i18n.t('pageShortcuts')}</h3>
           <ShortcutList label={i18n.t('pageShortcuts')} rows={[
             { id: 'volume-wheel', key: `Alt + ${i18n.t('shortcutWheel')}`, description: i18n.t('shortcutVolumeWheel') },
-            { id: 'speed-up', key: 'Alt + .', description: i18n.t('shortcutSpeedUp') },
-            { id: 'speed-down', key: 'Alt + ,', description: i18n.t('shortcutSpeedDown') },
+            { id: 'speed-up', key: 'Alt + .', description: i18n.t('shortcutSpeedUp', { step: formatRate(rateStep) }) },
+            { id: 'speed-down', key: 'Alt + ,', description: i18n.t('shortcutSpeedDown', { step: formatRate(rateStep) }) },
             { id: 'speed-reset', key: 'Alt + 0', description: i18n.t('shortcutSpeedReset') },
             { id: 'mute', key: 'Alt + M', description: i18n.t('cmdMute') }
           ]} />
@@ -397,8 +407,8 @@ export function SettingsPage({ back }: { back?: () => void }) {
             { id: 'volume-up', key: '↑', description: i18n.t('shortcutVolumeUp', { percent: volumeStep }) },
             { id: 'volume-down', key: '↓', description: i18n.t('shortcutVolumeDown', { percent: volumeStep }) },
             { id: 'mute', key: 'M', description: i18n.t('cmdMute') },
-            { id: 'speed-up', key: '>', description: i18n.t('shortcutSpeedUp') },
-            { id: 'speed-down', key: '<', description: i18n.t('shortcutSpeedDown') }
+            { id: 'speed-up', key: '>', description: i18n.t('shortcutSpeedUp', { step: formatRate(rateStep) }) },
+            { id: 'speed-down', key: '<', description: i18n.t('shortcutSpeedDown', { step: formatRate(rateStep) }) }
           ]} />
           <p className="mt-3 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsSingleKeyArrows')}</p>
         </div>

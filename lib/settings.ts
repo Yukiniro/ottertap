@@ -1,6 +1,7 @@
 import { i18n } from '#i18n';
 import { isChannelMode, maxGain } from './amplifier';
-import { clampRate, formatRate, maxRate, minRate, normalizeRatePresets, rateStep } from './rate';
+import { clampRate, formatRate, maxRate, minRate, normalizeRatePresets, normalizeRateStep, rateGrid } from './rate';
+export { isRateStep } from './rate';
 import { defaultSettings, skipSteps, volumeSteps, type MediaCommand, type Settings, type SitePref, type SkipSeconds, type VolumeStep } from './types';
 const matchesSite = (host: string, site: string) => host === site || host.endsWith(`.${site}`);
 
@@ -23,7 +24,7 @@ export function normalizeVolumeStep(value: unknown): VolumeStep {
 /** `null` follows the page. Other finite numbers snap onto the 0.25 grid inside min–max. */
 export function normalizeDefaultRate(value: unknown): number | null {
   if (value == null || typeof value !== 'number' || !Number.isFinite(value)) return null;
-  const snapped = Number(formatRate(Math.round(clampRate(value) / rateStep) * rateStep));
+  const snapped = Number(formatRate(Math.round(clampRate(value) / rateGrid) * rateGrid));
   return snapped >= minRate && snapped <= maxRate ? snapped : null;
 }
 
@@ -64,7 +65,8 @@ export function normalizeSettings(value: unknown): Settings {
     hoverWheel: typeof source.hoverWheel === 'boolean' ? source.hoverWheel : true,
     singleKey: source.singleKey === true,
     skipSeconds: normalizeSkipSeconds(source.skipSeconds),
-    volumeStep: normalizeVolumeStep(source.volumeStep)
+    volumeStep: normalizeVolumeStep(source.volumeStep),
+    rateStep: normalizeRateStep(source.rateStep)
   };
 }
 

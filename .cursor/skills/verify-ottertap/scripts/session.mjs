@@ -5,6 +5,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive skip-step
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive volume-step
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive rate-step
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive extension-pip
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive default-rate
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
@@ -26,7 +27,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'volume-step', 'extension-pip', 'default-rate'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'volume-step', 'rate-step', 'extension-pip', 'default-rate'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -725,6 +726,158 @@ async function driveVolumeStep(context, dir, note) {
   }
 }
 
+async function driveRateStep(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const near = expected => value => Math.abs(value - expected) < 0.02;
+  const times = '\u00d7';
+  const page = await context.newPage();
+  let settings;
+  const rate = () => page.locator('#media').evaluate(element => element.playbackRate);
+  const setRate = async value => {
+    await page.locator('#media').evaluate((element, next) => { element.playbackRate = next; }, value);
+    await poll(rate, near(value), `应能把倍速设成 ${value}`);
+  };
+  const blank = async () => {
+    await page.bringToFront();
+    await page.mouse.click(800, 400);
+  };
+  try {
+    await page.goto(`${origin}/keys`, { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await page.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+    });
+    await blank();
+    await page.keyboard.press('Alt+Period');
+    const afterDefault = await poll(rate, near(1.25), '默认步长下 Alt+. 应到 1.25');
+    await page.screenshot({ path: path.join(dir, 'fixture-default.png'), animations: 'disabled' });
+    await page.keyboard.press('Alt+Comma');
+    await poll(rate, near(1), 'Alt+, 应回到 1');
+    note(`default alt+. playbackRate=${afterDefault}`);
+
+    settings = await context.newPage();
+    try {
+      await settings.goto(`chrome-extension://${extensionId}/options.html#playback`, { waitUntil: 'domcontentloaded' });
+      const group = settings.getByRole('group', { name: 'Speed step' });
+      await group.waitFor({ state: 'visible', timeout: 15_000 });
+      const steps = await group.getByRole('button').allInnerTexts();
+      const pressedBefore = await group.locator('[aria-pressed="true"]').allInnerTexts();
+      if (steps.join() !== `0.1${times},0.25${times},0.5${times}` || pressedBefore.join() !== `0.25${times}`) {
+        throw new Error(`倍速步长默认值或档位不对：${JSON.stringify({ steps, pressedBefore })}`);
+      }
+      await settings.getByText('On-page shortcuts, the popup faster and slower buttons, and browser extension commands all change speed by this step.', { exact: true }).waitFor({ state: 'visible' });
+      await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-default.png'), animations: 'disabled' });
+      await settings.locator('#playback').screenshot({ path: '/opt/cursor/artifacts/rate-step-ui/settings-playback-after.png', animations: 'disabled' });
+      note(`settings Speed step steps=${steps} pressed=${pressedBefore}`);
+
+      const tenth = group.getByRole('button', { name: `0.1${times}`, exact: true });
+      await tenth.click();
+      await poll(() => tenth.getAttribute('aria-pressed'), value => value === 'true', '点 0.1× 后应按下');
+      await poll(stored, value => value.rateStep === 0.1, '设置里应存下 rateStep=0.1');
+      await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-0.1.png'), animations: 'disabled' });
+      await settings.locator('#playback').screenshot({ path: '/opt/cursor/artifacts/rate-step-ui/settings-playback-0.1.png', animations: 'disabled' });
+      note('saved rateStep=0.1 without reloading the fixture');
+    } finally { /* keep settings open so the fixture is not reloaded */ }
+
+    await page.bringToFront();
+    await setRate(1);
+    await blank();
+    await page.keyboard.press('Alt+Period');
+    const afterTenth = await poll(rate, near(1.1), '改成 0.1× 后同一页 Alt+. 应到 1.1');
+    await page.screenshot({ path: path.join(dir, 'fixture-0.1.png'), animations: 'disabled' });
+    note(`0.1 alt+. playbackRate=${afterTenth}`);
+
+    const popup = await openActionPopup(context, page);
+    let afterPopup;
+    let afterPopupDown;
+    try {
+      await popup.click(`Increase speed by 0.1${times}`);
+      afterPopup = await poll(rate, near(1.2), '弹出面板加快一档应到 1.2');
+      await popup.screenshot(path.join(dir, 'popup-0.1.png'));
+      await popup.click(`Decrease speed by 0.1${times}`);
+      afterPopupDown = await poll(rate, near(1.1), '弹出面板减慢一档应回到 1.1');
+      note(`popup 0.1 up=${afterPopup} down=${afterPopupDown}`);
+    } finally { await popup.close().catch(() => {}); }
+
+    await settings.bringToFront();
+    const half = settings.getByRole('group', { name: 'Speed step' }).getByRole('button', { name: `0.5${times}`, exact: true });
+    await half.click();
+    await poll(() => half.getAttribute('aria-pressed'), value => value === 'true', '点 0.5× 后应按下');
+    await poll(stored, value => value.rateStep === 0.5, '设置里应存下 rateStep=0.5');
+    await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-0.5.png'), animations: 'disabled' });
+    await settings.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
+    const singleKey = settings.getByRole('switch', { name: 'Single-key mode' });
+    if (await singleKey.getAttribute('aria-checked') !== 'false') throw new Error('单键模式默认应关闭');
+    await singleKey.click();
+    await poll(stored, value => value.singleKey === true && value.rateStep === 0.5, '设置里应存下 singleKey=true 且 rateStep=0.5');
+    const upLabel = settings.getByRole('term').filter({ hasText: /^>$/ }).locator('xpath=following-sibling::dd');
+    await poll(() => upLabel.innerText(), value => value === `Increase speed by 0.5${times}`, '快捷键说明应跟着步长变成 0.5×');
+    note('single-key mode on, shortcut list says 0.5×');
+    await settings.close();
+    settings = undefined;
+
+    await page.bringToFront();
+    await setRate(1);
+    await blank();
+    await page.keyboard.press('Shift+Period');
+    const afterHalf = await poll(rate, near(1.5), '单键 > 应按 0.5× 到 1.5');
+    await page.screenshot({ path: path.join(dir, 'fixture-0.5.png'), animations: 'disabled' });
+    note(`0.5 single-key playbackRate=${afterHalf}`);
+
+    await setRate(4);
+    await blank();
+    await page.keyboard.press('Alt+Period');
+    await page.waitForTimeout(400);
+    const capped = await rate();
+    if (!near(4)(capped)) throw new Error(`4× 再加快应停在 4：${capped}`);
+    const limitPopup = await openActionPopup(context, page);
+    let fasterDisabled;
+    let slowerDisabled;
+    try {
+      fasterDisabled = await limitPopup.evaluate(`(() => {
+        const button = [...document.querySelectorAll('button')].find(item => item.getAttribute('aria-label') === ${JSON.stringify(`Increase speed by 0.5${times}`)});
+        return button ? button.disabled : null;
+      })()`);
+      if (fasterDisabled !== true) throw new Error(`4× 时加快按钮应禁用：${fasterDisabled}`);
+      await limitPopup.screenshot(path.join(dir, 'popup-limit.png'));
+    } finally { await limitPopup.close().catch(() => {}); }
+
+    await setRate(0.25);
+    await blank();
+    await page.keyboard.press('Alt+Comma');
+    await page.waitForTimeout(400);
+    const floored = await rate();
+    if (!near(0.25)(floored)) throw new Error(`0.25× 再减慢应停在 0.25：${floored}`);
+    const floorPopup = await openActionPopup(context, page);
+    try {
+      slowerDisabled = await floorPopup.evaluate(`(() => {
+        const button = [...document.querySelectorAll('button')].find(item => item.getAttribute('aria-label') === ${JSON.stringify(`Decrease speed by 0.5${times}`)});
+        return button ? button.disabled : null;
+      })()`);
+      if (slowerDisabled !== true) throw new Error(`0.25× 时减慢按钮应禁用：${slowerDisabled}`);
+    } finally { await floorPopup.close().catch(() => {}); }
+    note(`limits capped=${capped} floored=${floored} fasterDisabled=${fasterDisabled} slowerDisabled=${slowerDisabled}`);
+
+    const state = {
+      ok: true,
+      defaultAlt: afterDefault,
+      step01: afterTenth,
+      popup: { up: afterPopup, down: afterPopupDown },
+      step05: afterHalf,
+      limits: { capped, floored, fasterDisabled, slowerDisabled },
+    };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await settings?.close().catch(() => {});
+    await page.close().catch(() => {});
+  }
+}
+
 async function driveDefaultRate(context, dir, note) {
   await rm(dir, { recursive: true, force: true });
   await mkdir(dir, { recursive: true });
@@ -1070,7 +1223,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'volume-step': driveVolumeStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'volume-step': driveVolumeStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -1261,7 +1414,7 @@ try {
   else if (command === 'drive') await drive(feature);
   else if (command === 'cleanup') await cleanup();
   else {
-    console.error('用法：node .cursor/skills/verify-ottertap/scripts/session.mjs <launch|doctor|drive|cleanup> [popup-playback|wheel-volume|skip-step|volume-step|extension-pip|default-rate]');
+    console.error('用法：node .cursor/skills/verify-ottertap/scripts/session.mjs <launch|doctor|drive|cleanup> [popup-playback|wheel-volume|skip-step|volume-step|rate-step|extension-pip|default-rate]');
     process.exit(2);
   }
 } catch (error) {

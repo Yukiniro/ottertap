@@ -1,7 +1,7 @@
 import { i18n } from '#i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { ChevronDown, Settings2, Settings as SettingsIcon, Volume2, VolumeX, AppWindow, Pause, Play, RotateCcw, RotateCw, Keyboard, CircleAlert, Info, Search, RefreshCw, PictureInPicture2, Headphones } from 'lucide-react';
+import { ChevronDown, Settings2, Settings as SettingsIcon, Volume2, VolumeX, AppWindow, Pause, Play, RotateCcw, RotateCw, Keyboard, CircleAlert, Info, Search, RefreshCw, PictureInPicture2, Headphones, Minus, Plus } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from './ui/dropdown-menu';
@@ -16,7 +16,7 @@ import { Brand } from './brand';
 import { useMedia } from '../hooks/use-media';
 import { channelModes, isChannelMode } from '../lib/amplifier';
 import { channelLabel, mediaChoiceLabel, pipHint } from '../lib/media';
-import { formatRate, sameRate } from '../lib/rate';
+import { formatRate, nextRate, sameRate } from '../lib/rate';
 import type { SoundingTab, SoundingTabsClient } from '../lib/tabs';
 import { disableSite, enableSite, forgetMatchingSites, isSiteEnabled, rememberSite, sitePrefFor } from '../lib/settings';
 import { defaultSettings, type MediaClient, type MediaState, type PageState, type SitePref } from '../lib/types';
@@ -78,13 +78,14 @@ function OtherPlaying({ client }: { client?: SoundingTabsClient }) {
 }
 export function MediaPanel({ client, openSettings, sounding, initial }: { client: MediaClient; openSettings: () => void; sounding?: SoundingTabsClient; initial?: PageState }) {
   const { page, selected, select, command, refresh, loading, error } = useMedia(client, { initial });
-  const { floatingAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, skipSecondsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { floatingAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, skipSecondsAtom, rateStepAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const floating = useAtomValue(floatingAtom);
   const siteMode = useAtomValue(siteModeAtom);
   const sites = useAtomValue(sitesAtom);
   const sitePrefs = useAtomValue(sitePrefsAtom);
   const ratePresets = useAtomValue(ratePresetsAtom);
   const skipSeconds = useAtomValue(skipSecondsAtom);
+  const rateStep = useAtomValue(rateStepAtom);
   const settingsLoading = useAtomValue(loadingAtom);
   const settingsError = useAtomValue(errorAtom);
   const write = useSetAtom(writeSettingsAtom);
@@ -114,6 +115,8 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
   const hint = selected ? pipHint(selected) : '';
   const channelHint = selected && !selected.channelAvailable ? i18n.t('channelCrossOrigin') : '';
   const activePreset = selected ? ratePresets.find(speed => sameRate(speed, selected.rate)) : undefined;
+  const slowerRate = selected ? nextRate(selected.rate, -1, null, rateStep) : 1;
+  const fasterRate = selected ? nextRate(selected.rate, 1, null, rateStep) : 1;
   const showSiteAction = page.enabled && !outOfSync && !!siteAction?.settings;
   return <section className="flex w-[400px] max-w-full flex-col gap-3 bg-background px-4 pt-1 pb-3" aria-label={i18n.t('mediaPanel')}>
     <header className="flex h-10 items-center justify-between">
@@ -161,7 +164,10 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
         <div className="mt-3">
           <div className="mb-2 flex items-center justify-between gap-3">
             <span id="speed-label" className="text-sm font-medium">{i18n.t('speed')}</span>
-            <DropdownMenu>
+            <div className="flex min-w-0 items-center gap-1">
+              <Button type="button" variant="ghost" size="icon-sm" className="text-muted-foreground" aria-label={i18n.t('shortcutSpeedDown', { step: formatRate(rateStep) })} disabled={sameRate(slowerRate, selected.rate)} onClick={() => void adjust({ type: 'rate', value: slowerRate })}><Minus /></Button>
+              <Button type="button" variant="ghost" size="icon-sm" className="text-muted-foreground" aria-label={i18n.t('shortcutSpeedUp', { step: formatRate(rateStep) })} disabled={sameRate(fasterRate, selected.rate)} onClick={() => void adjust({ type: 'rate', value: fasterRate })}><Plus /></Button>
+              <DropdownMenu>
               <DropdownMenuTrigger render={<Button variant="ghost" size="xs" />} disabled={!selected.channelAvailable} title={channelLabel(selected.channel)} aria-label={i18n.t('channelModeLabel', { mode: channelLabel(selected.channel) })} aria-describedby={channelHint ? 'channel-hint' : undefined} data-active={selected.channel !== 'stereo' ? '' : undefined} className="min-w-0 shrink rounded-md px-1 font-normal text-muted-foreground data-active:bg-accent data-active:text-primary">
                 <Headphones data-icon="inline-start" /><span className="truncate">{channelLabel(selected.channel)}</span><ChevronDown data-icon="inline-end" />
               </DropdownMenuTrigger>
@@ -174,6 +180,7 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
                 </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
+            </div>
           </div>
           <ToggleGroup aria-labelledby="speed-label" spacing={1} className="grid h-auto w-full min-w-0 grid-cols-4 gap-1.5" value={activePreset === undefined ? [] : [String(activePreset)]} onValueChange={value => { if (value[0]) void adjust({ type: 'rate', value: Number(value[0]) }); }}>
             {ratePresets.map(speed => <ToggleGroupItem key={speed} value={String(speed)} aria-label={i18n.t('speedOption', { speed: formatRate(speed) })} className="h-8 w-full min-w-0 rounded-md border-0 bg-secondary/60 px-1 text-sm text-muted-foreground shadow-none aria-pressed:bg-primary aria-pressed:font-semibold aria-pressed:text-primary-foreground">{formatRate(speed)}×</ToggleGroupItem>)}

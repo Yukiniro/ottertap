@@ -1,6 +1,6 @@
 # 倍速
 
-把当前媒体的 `playbackRate` 调到 0.25–4。弹出面板给出一排预设；网页上按住 Alt 再按 `,` `.` `0` 按 0.25 步进、加速，或在 1× 与本页上一次非 1× 倍速之间来回切。来回切的细节见 [rate-recall.md](rate-recall.md)。
+把当前媒体的 `playbackRate` 调到 0.25–4。弹出面板给出一排预设；网页上按住 Alt 再按 `,` `.` `0` 按设置里的倍速步长增减（默认 0.25），或在 1× 与本页上一次非 1× 倍速之间来回切。步长见 [rate-step.md](rate-step.md)。来回切的细节见 [rate-recall.md](rate-recall.md)。
 
 ## Sub-features
 
@@ -40,6 +40,6 @@ pnpm exec playwright test e2e/smoke.spec.ts -g "Alt \\+ , \\. 0"
 
 - 快捷键在 `input`、`textarea` 和 `contenteditable` 里不触发。输入框那一步失败时，先确认焦点真的在 `Field` 上。
 - 单键模式默认关。只按 `.` 不应该改倍速。
-- 步进对齐 0.25 的格子。已经是 4 时再加速保持 4；已经是 0.25 时再减速保持 0.25。
+- 步进对齐当前倍速步长的格子，默认 0.25。已经是 4 时再加速保持 4；已经是 0.25 时再减速保持 0.25。改步长后的路径见 [rate-step.md](rate-step.md)。
 - macOS 上 Alt 是 Option，并且 Option 会改写出的字符。回归环境是 Linux Chromium，用 `Alt+Period` 这种物理键。
 - 预设列表可以被设置页改掉。默认八个值是 0.75、1、1.25、1.5、2、2.5、3、4。空的用户目录用这一列。
