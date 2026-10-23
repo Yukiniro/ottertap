@@ -11,6 +11,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive default-rate
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive hold-boost
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive hold-skip-combo
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive frame-step
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -30,7 +31,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -181,6 +182,7 @@ function routedHtml(pathname) {
   if (pathname === '/feed') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="preview" aria-label="Feed preview" src="${wav}" preload="auto" playsinline loop style="display:block;width:240px;height:135px;margin:24px"></video><video id="media" aria-label="Main player" src="${wav}" preload="auto" playsinline loop style="display:block;width:640px;height:360px;margin:24px"></video><div style="height:1600px"></div></body></html>`;
   if (pathname === '/audio') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><audio id="media" aria-label="Fixture audio" src="${wav}" preload="auto"></audio></body></html>`;
   if (pathname === '/pip-off') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" aria-label="Fixture video" src="${wav}" preload="auto" playsinline disablepictureinpicture style="display:block;width:640px;height:360px;margin:48px"></video></body></html>`;
+  if (pathname === '/unseekable') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Unseekable</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" aria-label="Unseekable video" preload="none" style="display:block;width:640px;height:360px;margin:48px"></video></body></html>`;
   return null;
 }
 
@@ -1603,6 +1605,132 @@ async function driveExtensionPip(context, dir, note) {
   return state;
 }
 
+async function driveFrameStep(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const uiDir = '/opt/cursor/artifacts/frame-step-ui';
+  await mkdir(uiDir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const frame = 1 / 30;
+  const near = expected => value => Math.abs(value - expected) < 0.012;
+  const page = await context.newPage();
+  const time = () => page.locator('#media').evaluate(element => element.currentTime);
+  const paused = () => page.locator('#media').evaluate(element => element.paused);
+  const rateOf = () => page.locator('#media').evaluate(element => element.playbackRate);
+  const blank = async () => {
+    await page.bringToFront();
+    await page.mouse.click(12, 12);
+  };
+  try {
+    await page.goto(`${origin}/video`, { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await page.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+      element.pause();
+      element.currentTime = 0.5;
+    });
+    await poll(time, near(0.5), '夹具应停在 0.5 秒');
+    await blank();
+    await page.keyboard.press('Period');
+    const forward = await poll(time, near(0.5 + frame), '. 应前进约一帧');
+    if (await paused() !== true) throw new Error('逐帧后应保持暂停');
+    await page.keyboard.press('Comma');
+    const back = await poll(time, near(0.5), ', 应退回约 0.5 秒');
+    await page.screenshot({ path: path.join(dir, 'fixture-step.png'), animations: 'disabled' });
+    await page.screenshot({ path: path.join(uiDir, 'after-fixture.png'), animations: 'disabled' });
+    note(`step forward=${forward} back=${back}`);
+
+    const popup = await openActionPopup(context, page);
+    let panelStep;
+    try {
+      await popup.click('Next frame');
+      panelStep = await poll(time, near(0.5 + frame), '弹出面板下一帧应再前进约一帧');
+      const hint = await popup.evaluate(`document.querySelector('#frame-step-hint')?.textContent ?? ''`);
+      if (hint !== 'Pauses playback, then moves one frame.') throw new Error(`逐帧说明不对：${hint}`);
+      await popup.screenshot(path.join(dir, 'popup-frame.png'));
+      await popup.screenshot(path.join(uiDir, 'after-popup.png'));
+      note(`popup next=${panelStep} hint=${hint}`);
+    } finally { await popup.close().catch(() => {}); }
+
+    await page.locator('#media').evaluate(element => { element.currentTime = 0.2; return element.play(); });
+    await poll(paused, value => value === false, '应开始播放');
+    const playingAt = await time();
+    await blank();
+    await page.keyboard.press('Period');
+    const stepped = await poll(async () => ({ paused: await paused(), currentTime: await time() }), value => value.paused === true && value.currentTime > playingAt - 0.02 && value.currentTime < playingAt + 0.5, '播放中逐帧应先暂停，并且不按 10 秒跳');
+    note(`pause-then-step from=${playingAt} to=${stepped.currentTime}`);
+    await page.keyboard.press('Alt+Period');
+    const faster = await poll(rateOf, value => Math.abs(value - 1.25) < 0.02, 'Alt+. 仍应按 0.25× 加快到 1.25');
+    note(`alt+. playbackRate=${faster}`);
+
+    const settings = await context.newPage();
+    try {
+      await settings.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
+      await settings.getByRole('heading', { name: 'On-page shortcuts' }).waitFor({ state: 'visible', timeout: 15_000 });
+      const pageShortcuts = settings.getByLabel('On-page shortcuts');
+      await pageShortcuts.getByText('Pause, then previous frame', { exact: true }).waitFor({ state: 'visible' });
+      await pageShortcuts.getByText('Pause, then next frame', { exact: true }).waitFor({ state: 'visible' });
+      await pageShortcuts.getByText('Increase speed by 0.25×', { exact: true }).waitFor({ state: 'visible' });
+      await settings.getByText("Frame step uses , and . with no extra key. Playback pauses, then moves one frame. Live streams and media that can't be seeked stay put.", { exact: true }).waitFor({ state: 'visible' });
+      await settings.locator('#shortcuts').screenshot({ path: path.join(dir, 'settings-shortcuts.png'), animations: 'disabled' });
+      await settings.locator('#shortcuts').screenshot({ path: path.join(uiDir, 'after-shortcuts.png'), animations: 'disabled' });
+      note('settings list , and . without replacing Alt speed keys');
+    } finally { await settings.close().catch(() => {}); }
+
+    const keys = await context.newPage();
+    try {
+      await keys.goto(`${origin}/keys`, { waitUntil: 'domcontentloaded' });
+      await keys.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+      await keys.locator('#media').evaluate(async element => {
+        if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+        element.pause();
+        element.currentTime = 0.4;
+      });
+      const typedAt = await poll(() => keys.locator('#media').evaluate(element => element.currentTime), near(0.4), '输入框页应停在 0.4 秒');
+      await keys.getByRole('textbox', { name: 'Field' }).click();
+      await keys.keyboard.press('Period');
+      await keys.waitForTimeout(400);
+      const typed = await keys.locator('#media').evaluate(element => element.currentTime);
+      if (!near(typedAt)(typed)) throw new Error(`输入框里 . 不应逐帧：${typed}`);
+      note(`typing left currentTime=${typed}`);
+    } finally { await keys.close().catch(() => {}); }
+
+    const blocked = await context.newPage();
+    try {
+      await blocked.goto(`${origin}/unseekable`, { waitUntil: 'domcontentloaded' });
+      await blocked.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+      const blockedPopup = await openActionPopup(context, blocked);
+      try {
+        const state = await blockedPopup.evaluate(`(() => {
+          const back = document.querySelector('button[aria-label="Previous frame"]');
+          const forward = document.querySelector('button[aria-label="Next frame"]');
+          return { back: !!back?.disabled, forward: !!forward?.disabled, hint: document.querySelector('#frame-step-hint')?.textContent ?? '' };
+        })()`);
+        if (!state.back || !state.forward || state.hint !== "Live streams and media that can't be seeked don't support frame step.") {
+          throw new Error(`不可 seek 时按钮或说明不对：${JSON.stringify(state)}`);
+        }
+        await blockedPopup.screenshot(path.join(dir, 'unseekable-popup.png'));
+        await blockedPopup.screenshot(path.join(uiDir, 'after-unseekable.png'));
+        note(`unseekable hint=${state.hint}`);
+      } finally { await blockedPopup.close().catch(() => {}); }
+      await blocked.mouse.click(12, 12);
+      await blocked.keyboard.press('Period');
+      await blocked.getByText("Live streams and media that can't be seeked don't support frame step.", { exact: true }).waitFor({ state: 'visible', timeout: 8_000 });
+      const stuck = await blocked.locator('#media').evaluate(element => element.currentTime);
+      if (stuck !== 0) throw new Error(`不可 seek 时进度被改成 ${stuck}`);
+      await blocked.screenshot({ path: path.join(dir, 'toast-unavailable.png'), animations: 'disabled' });
+      note(`unseekable toast currentTime=${stuck}`);
+    } finally { await blocked.close().catch(() => {}); }
+
+    const state = { ok: true, forward, back, panelStep, pauseThenStep: stepped, rate: faster };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await page.close().catch(() => {});
+  }
+}
+
 async function inspect(context) {
   const worker = await serviceWorker(context);
   const runtime = await worker.evaluate(() => ({
@@ -1696,7 +1824,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });

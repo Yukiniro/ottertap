@@ -4,6 +4,7 @@ import { armRateEcho, createRateLockState, noteDesiredRate, observePlaybackRate,
 import { assignedRateAttribute, assignedRateEvent, installAssignedRateHook } from './assigned-rate';
 import { clampRate, maxRate, minRate, noteRecallRate, readSettledRate, recallableRate, sameRate } from './rate';
 import type { ChannelMode, MediaCommand, MediaState } from './types';
+import { adjacentFrameTime, frameStepSeconds, stopAllPresentedFrames, stopPresentedFrames, watchPresentedFrames } from './frame';
 import { formatTime } from './utils';
 
 export const mediaPresenceEvent = 'ottertap-media';
@@ -164,6 +165,7 @@ export function isMediaCommand(value: unknown): value is MediaCommand {
   const command = value as MediaCommand;
   if (command.type === 'play' || command.type === 'pause' || command.type === 'mute' || command.type === 'pip') return true;
   if (command.type === 'channel') return isChannelMode(command.value);
+  if (command.type === 'frame') return command.direction === 1 || command.direction === -1;
   if (!('value' in command) || !Number.isFinite(command.value)) return false;
   if (command.type === 'volume') return command.value >= 0 && command.value <= maxGain;
   if (command.type === 'rate') return command.value >= minRate && command.value <= maxRate;
@@ -190,17 +192,41 @@ export async function applyMediaCommand(element: HTMLMediaElement, command: Medi
     await amplifier?.setChannel(element, command.value);
     return;
   }
+  if (command.type === 'frame') {
+    if (!elementCanStepFrames(element)) throw new Error(i18n.t('frameStepUnavailable'));
+    if (!element.paused) element.pause();
+    const current = Number.isFinite(element.currentTime) ? element.currentTime : 0;
+    seekWithin(element, adjacentFrameTime(current, command.direction, frameStepSeconds(element)));
+    return;
+  }
   if (!('value' in command)) throw new Error(i18n.t('invalidMediaCommand'));
+  seekWithin(element, command.type === 'skip' ? element.currentTime + command.value : command.value);
+}
+
+function elementCanStepFrames(element: HTMLMediaElement) {
+  if (element.duration === Infinity) return false;
+  const ranges = element.seekable;
+  if (!ranges.length) return false;
+  const start = ranges.start(0);
+  const end = ranges.end(ranges.length - 1);
+  return Number.isFinite(start) && Number.isFinite(end) && end > start;
+}
+
+function seekWithin(element: HTMLMediaElement, target: number) {
   const ranges = element.seekable;
   if (!ranges.length) throw new Error(i18n.t('cannotSeek'));
-  const target = command.type === 'skip' ? element.currentTime + command.value : command.value;
   let closest = ranges.start(0);
   let distance = Infinity;
   for (let index = 0; index < ranges.length; index++) {
     const candidate = Math.max(ranges.start(index), Math.min(target, ranges.end(index)));
-    if (Math.abs(target - candidate) < distance) { closest = candidate; distance = Math.abs(target - candidate); }
+    const gap = Math.abs(target - candidate);
+    if (gap < distance) { closest = candidate; distance = gap; }
   }
   element.currentTime = closest;
+}
+
+export function frameFailureKey(message: string): 'frameStepUnavailable' | '' {
+  return message === i18n.t('frameStepUnavailable') ? 'frameStepUnavailable' : '';
 }
 
 interface RateSlot { state: RateLockState; timer: number; listening: boolean; onEvent: () => void }
@@ -363,6 +389,10 @@ export function createMediaController(document: Document, onChange?: () => void,
     snapshot() {
       refresh();
       if (lockOn) for (const element of elements) listen(element);
+      for (const element of elements) {
+        if (element.paused) stopPresentedFrames(element);
+        else watchPresentedFrames(element);
+      }
       return elements.map(element => {
         noteSeen(element, element.playbackRate);
         const snap = mediaSnapshot(element, idOf(element), document, amplifier);
@@ -478,6 +508,7 @@ export function createMediaController(document: Document, onChange?: () => void,
       observers.clear();
       for (const element of [...slots.keys()]) release(element);
       for (const element of [...rateWatchers]) unwatchRate(element);
+      stopAllPresentedFrames();
       amplifier.dispose();
     }
   };

@@ -48,7 +48,8 @@ export interface MediaState {
 export type MediaCommand =
   | { type: 'play' | 'pause' | 'mute' | 'pip' }
   | { type: 'seek' | 'skip' | 'volume' | 'rate'; value: number }
-  | { type: 'channel'; value: ChannelMode };
+  | { type: 'channel'; value: ChannelMode }
+  | { type: 'frame'; direction: 1 | -1 };
 export interface PageState { host: string; enabled: boolean; media: MediaState[]; selectedId: string }
 export interface MediaClient {
   read(): Promise<PageState>;

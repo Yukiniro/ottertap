@@ -413,6 +413,8 @@ export function SettingsPage({ back }: { back?: () => void }) {
           <h3 className="mt-6 mb-2 text-sm font-medium">{i18n.t('pageShortcuts')}</h3>
           <ShortcutList label={i18n.t('pageShortcuts')} rows={[
             { id: 'volume-wheel', key: `Alt + ${i18n.t('shortcutWheel')}`, description: i18n.t('shortcutVolumeWheel') },
+            { id: 'frame-back', key: ',', description: i18n.t('shortcutFrameBack') },
+            { id: 'frame-forward', key: '.', description: i18n.t('shortcutFrameForward') },
             { id: 'speed-up', key: 'Alt + .', description: i18n.t('shortcutSpeedUp', { step: formatRate(rateStep) }) },
             { id: 'speed-down', key: 'Alt + ,', description: i18n.t('shortcutSpeedDown', { step: formatRate(rateStep) }) },
             { id: 'speed-reset', key: 'Alt + 0', description: i18n.t('shortcutSpeedReset') },
@@ -420,6 +422,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
           ]} />
           <p className="mt-3 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsMac')}</p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsRateKeys')}</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsFrameKeys')}</p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsTyping')}</p>
           <div className="mt-4 flex flex-col gap-2">
             <SwitchRow id="settings-hover-wheel" label={i18n.t('hoverWheel')} description={i18n.t('hoverWheelDescription')} checked={hoverWheel} disabled={disabled} onChange={checked => void save({ hoverWheel: checked })} />

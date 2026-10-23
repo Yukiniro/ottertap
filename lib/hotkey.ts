@@ -12,9 +12,10 @@ export type HotkeyAction =
   | { type: 'toggle' }
   | { type: 'mute' }
   | { type: 'pip' }
-  | { type: 'skip'; delta: number };
+  | { type: 'skip'; delta: number }
+  | { type: 'frame'; direction: 1 | -1 };
 
-export type ActionHintKey = 'play' | 'paused' | 'skipBack' | 'skipForward' | 'mute' | 'unmute';
+export type ActionHintKey = 'play' | 'paused' | 'skipBack' | 'skipForward' | 'mute' | 'unmute' | 'shortcutFrameBack' | 'shortcutFrameForward' | 'frameStepUnavailable';
 
 export const volumeGestureEvent = 'ottertap-volume-gesture';
 export const rateHintEvent = 'ottertap-rate';
@@ -47,6 +48,10 @@ export function hotkeyFromKeyboard(event: KeyInput, { singleKey = false, onMedia
     if (name === '0' || name === ')') return rate(0);
     return name === 'm' ? { type: 'mute' } : null;
   }
+  // Bare , and . step one frame even when single-key mode is off.
+  // Alt+,/. stay speed. Shift+,/. stay the single-key speed chords. J/K/L stay skip.
+  if (!event.shiftKey && name === ',') return { type: 'frame', direction: -1 };
+  if (!event.shiftKey && name === '.') return { type: 'frame', direction: 1 };
   if (!singleKey) return null;
   if (event.shiftKey) {
     if (name === '>' || name === '.') return rate(1);
@@ -91,6 +96,7 @@ export function isHotkeyAction(value: unknown): value is HotkeyAction {
   if (action.type === 'volume') return Number.isFinite(action.delta) && Math.abs(action.delta) <= 150;
   if (action.type === 'rate') return action.direction === 1 || action.direction === -1 || action.direction === 0;
   if (action.type === 'toggle' || action.type === 'mute' || action.type === 'pip') return true;
+  if (action.type === 'frame') return action.direction === 1 || action.direction === -1;
   return action.type === 'skip' && isSkipSeconds(Math.abs(action.delta));
 }
 
@@ -120,6 +126,7 @@ export function commandForHotkey(action: HotkeyAction, media: MediaState, rememb
   if (action.type === 'toggle') return { type: media.paused ? 'play' : 'pause' };
   if (action.type === 'mute') return { type: 'mute' };
   if (action.type === 'pip') return { type: 'pip' };
+  if (action.type === 'frame') return { type: 'frame', direction: action.direction };
   if (action.type === 'skip') {
     if (!isSkipSeconds(Math.abs(action.delta))) return null;
     const seconds = actualSkipSeconds(Math.abs(action.delta), media.rate, skipWithRate);
@@ -132,13 +139,14 @@ export function commandForHotkey(action: HotkeyAction, media: MediaState, rememb
 
 export function actionHintText(key: string, seconds?: number) {
   if (key === 'skipBack' || key === 'skipForward') return i18n.t(key, { seconds: hintSkipSeconds(seconds) });
-  if (key === 'play' || key === 'paused' || key === 'mute' || key === 'unmute' || isPipFailureKey(key)) return i18n.t(key);
+  if (key === 'play' || key === 'paused' || key === 'mute' || key === 'unmute' || key === 'shortcutFrameBack' || key === 'shortcutFrameForward' || key === 'frameStepUnavailable' || isPipFailureKey(key)) return i18n.t(key);
   return '';
 }
 
 export function actionHintKey(action: HotkeyAction, media: MediaState): ActionHintKey | '' {
   if (action.type === 'toggle') return media.paused ? 'play' : 'paused';
   if (action.type === 'skip') return action.delta < 0 ? 'skipBack' : 'skipForward';
+  if (action.type === 'frame') return action.direction < 0 ? 'shortcutFrameBack' : 'shortcutFrameForward';
   if (action.type === 'mute') return media.muted ? 'unmute' : 'mute';
   return '';
 }
