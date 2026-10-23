@@ -10,7 +10,7 @@
 | 倍速 | [playback-rate.md](playback-rate.md) | 弹出面板倍速按钮，或网页上的 Alt+, / Alt+. / Alt+0 | `e2e/smoke.spec.ts` 中 Alt + , . 0 那条 |
 | 倍速增减步长 | [rate-step.md](rate-step.md) | 设置页「Playback」的 `Speed step`，影响页内 Alt+, / Alt+.、单键 > <、弹出面板加快 / 减慢、扩展命令 `rate-faster` / `rate-slower` | `drive rate-step`；`tests/rate-step.test.ts`、`tests/rate-step-command.test.ts` |
 | 按住临时加速 | [hold-boost.md](hold-boost.md) | 设置页「Playback」的 `Hold for a temporary speed`，默认关；打开后按住 Alt+Shift+.（单键模式还可按住 S）用临时档，松开还原。不写站点记忆，不改默认倍速 | `drive hold-boost`；`tests/hold-boost.test.ts`、`tests/hold-boost-background.test.ts` |
-| 同键短按跳、长按加速 | [hold-skip-combo.md](hold-skip-combo.md) | 设置页「Playback」的 `Short press skips, hold speeds up`，默认关，且要先打开按住临时加速。单键模式的 J / L / ← / → 短按仍按步长跳，按住满一会儿用临时档，松开还原且不再跳。Alt+Shift+. 和 S 仍可单独按住 | `drive hold-skip-combo`；`tests/hold-skip-combo.test.ts` |
+| 同键短按跳、长按加速 | [hold-skip-combo.md](hold-skip-combo.md) | 设置页「Playback」的 `Short press skips, hold speeds up`，默认关，且要先打开按住临时加速。单键模式的 J / L / ← / → 短按仍按步长跳，按住满一会儿用临时档，松开还原且不再跳。Alt+Shift+. 和 S 仍可单独按住；已经在临时加速时另一路按住不会再开一段 | `drive hold-skip-combo`；`tests/hold-skip-combo.test.ts`、`tests/hold-overlap.test.ts` |
 | 快进 / 快退步长 | [skip-step.md](skip-step.md) | 设置页「Playback」的 `Skip step`，影响弹出面板进退按钮、页内 J / L / ← / →、扩展命令 | `drive skip-step` |
 | 快进 / 快退随倍速放大 | [skip-with-rate.md](skip-with-rate.md) | 设置页「Playback」的 `Scale skip with speed`，默认关；打开后弹出面板、页内 J / L / ← / →、扩展命令按步长 × 当前倍速跳，提示显示实际秒数 | `drive skip-with-rate`；`tests/skip-with-rate.test.ts` |
 | 音量调节步长 | [volume-step.md](volume-step.md) | 设置页「Playback」的 `Volume step`，影响悬停滚轮、Alt+滚轮、单键 ↑ ↓、扩展命令 `volume-up` / `volume-down` | `drive volume-step` |

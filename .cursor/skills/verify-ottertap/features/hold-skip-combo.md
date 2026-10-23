@@ -6,7 +6,7 @@
 
 - 短按（不到 300ms）：仍按当前步长跳一次。按下时不跳，松手才跳。
 - 按住满 300ms：进入旁边的临时倍速。松开后恢复按住前的倍速，不再额外跳一段。
-- `Alt + Shift + .` 和单键 `S` 仍是立刻按住加速，和这条并存。
+- `Alt + Shift + .` 和单键 `S` 仍是立刻按住加速，和这条并存。同一时间只有一路临时加速：快进键已经按着时，这两键不再开始第二段；独立按住已经生效时，快进键长按也不会再开始一段。松开没有真正开始加速的那一键不会恢复倍速。短按快进键仍只跳一次。
 
 临时倍速只写当前 `playbackRate`。不写入「记住此站点」，不改 `defaultRate`。输入框、文本域和可编辑区域里不触发。关闭时，快进和快退仍是按下就跳，包括按住时的连跳。
 
@@ -46,12 +46,13 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive hold-skip-combo
 
 成功时 `state.json` 的 `ok` 为 `true`。证据写到 `/opt/cursor/artifacts/verify-ottertap/hold-skip-combo/`：`settings-before.png`、`settings-after.png`、`fixture-tap.png`、`fixture-hold.png`、`fixture-release.png`、`state.json`、`transcript.txt`。
 
-归一化、阈值和键位由 `tests/hold-skip-combo.test.ts` 覆盖。按住本身不写存储仍由 `tests/hold-boost-background.test.ts` 覆盖，这条不另起后台状态。
+归一化、阈值和键位由 `tests/hold-skip-combo.test.ts` 覆盖。两路按住重叠时不会提前还原，由 `tests/hold-overlap.test.ts` 覆盖。按住本身不写存储仍由 `tests/hold-boost-background.test.ts` 覆盖，这条不另起后台状态。
 
 ## Gotchas
 
 - 阈值是 300ms。短按断言要停在 80ms 左右再松开，长按要等倍速变成临时档，不要用固定的按键重复间隔。
-- 松开认物理键。先松开别的修饰键再松开 `L` 或方向键，也要还原，并且不再跳。
+- 松开认物理键。先松开别的修饰键再松开 `L` 或方向键，也要还原，并且不再跳。被挡住的 `S` 或 `Alt+Shift+.` 也按物理键吃掉松开，即使修饰键已经先放开。
+- 两路按住互斥。先按住的那一路保持临时倍速，直到它自己松开。后按下的键不开第二段，松开也不发结束。独立按住还在时，快进键超过 300ms 会被丢掉，不再补一次跳转；不到 300ms 松开仍跳一次。
 - 视频要暂停再量进度，否则播放本身会把 `currentTime` 往前推，分不清有没有多跳一段。
 - 提示在开放 shadow root 里，文案来自 `holdRateHint`。乘号是 `×`。
 - 浮动入口上的方向键仍归入口移动，不进这条。
