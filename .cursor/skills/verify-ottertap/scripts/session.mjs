@@ -1427,18 +1427,19 @@ async function driveHoldSkipCombo(context, dir, note) {
     keys = await context.newPage();
     await keys.goto(`${origin}/keys`, { waitUntil: 'domcontentloaded' });
     await keys.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
-    await settle(keys, 40, 1);
+    await settle(keys, 0.2, 1);
     const field = keys.getByRole('textbox', { name: 'Field' });
     await field.click();
     const keysRead = () => keys.locator('#media').evaluate(element => ({ time: element.currentTime, rate: element.playbackRate }));
+    await poll(async () => (await keysRead()).time, near(0.2), '输入框页的短视频应停在 0.2 秒');
     await keys.keyboard.down('l');
     await keys.waitForTimeout(450);
     const typed = await keysRead();
-    if (!near(40)(typed.time) || !nearRate(1)(typed.rate)) throw new Error(`输入框里按住 L 不应跳或加速：${JSON.stringify(typed)}`);
+    if (!near(0.2)(typed.time) || !nearRate(1)(typed.rate)) throw new Error(`输入框里按住 L 不应跳或加速：${JSON.stringify(typed)}`);
     await keys.keyboard.up('l');
     await keys.waitForTimeout(200);
     const typedAfter = await keysRead();
-    if (!near(40)(typedAfter.time) || !nearRate(1)(typedAfter.rate)) throw new Error(`输入框里松开 L 后不应跳或加速：${JSON.stringify(typedAfter)}`);
+    if (!near(0.2)(typedAfter.time) || !nearRate(1)(typedAfter.rate)) throw new Error(`输入框里松开 L 后不应跳或加速：${JSON.stringify(typedAfter)}`);
     note(`typing left time=${typedAfter.time} rate=${typedAfter.rate}`);
 
     const state = { ok: true, immediate, tapped, held, heldTime, released, releasedTime, backed, arrowHeld, arrowAfter, chord, typed: typedAfter };
