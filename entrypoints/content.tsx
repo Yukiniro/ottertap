@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { browser } from 'wxt/browser';
 import { createShadowRootUi } from 'wxt/utils/content-script-ui/shadow-root';
 import { createHoldKeySession, holdRateEvent } from '../lib/hold-rate';
+import { createHoldSkipSession } from '../lib/hold-skip';
 import { actionHintEvent, actionHintText, createHotkeyInput, isFloatingEvent, isTypingEvent, rateHintEvent, volumeGestureEvent } from '../lib/hotkey';
 import { createMediaController, isMediaCommand, mediaPresenceEvent } from '../lib/media';
 import { rateLockEvent } from '../lib/rate-lock';
@@ -29,7 +30,7 @@ export default defineContentScript({
     let reported: number | null = null;
     let pageUrl = '';
     let watched: Settings | undefined;
-    let contextKeys = { singleKey: defaultSettings.singleKey, hoverWheel: defaultSettings.hoverWheel, skipSeconds: defaultSettings.skipSeconds, volumeStep: defaultSettings.volumeStep, holdBoost: defaultSettings.holdBoost, holdBoostRate: defaultSettings.holdBoostRate };
+    let contextKeys = { singleKey: defaultSettings.singleKey, hoverWheel: defaultSettings.hoverWheel, skipSeconds: defaultSettings.skipSeconds, volumeStep: defaultSettings.volumeStep, holdBoost: defaultSettings.holdBoost, holdBoostRate: defaultSettings.holdBoostRate, holdSkip: defaultSettings.holdSkip };
     let lockedLocalId = '';
     let selectionEpoch = 0;
     let presenceEpoch = 0;
@@ -151,11 +152,48 @@ export default defineContentScript({
     });
     const shortcutActive = () => enabled && (controller.snapshot().length > 0 || tabHasMedia);
     const holdKeys = createHoldKeySession();
+    const holdSkip = createHoldSkipSession(() => performance.now());
+    let holdSkipTimer = 0;
+    const clearHoldSkipTimer = () => {
+      if (!holdSkipTimer) return;
+      window.clearTimeout(holdSkipTimer);
+      holdSkipTimer = 0;
+    };
+    const scheduleHoldSkip = () => {
+      clearHoldSkipTimer();
+      if (!holdSkip.holding() || holdSkip.boosted()) return;
+      holdSkipTimer = window.setTimeout(() => {
+        holdSkipTimer = 0;
+        if (holdSkip.tick().phase !== 'boost') {
+          if (holdSkip.holding() && !holdSkip.boosted()) scheduleHoldSkip();
+          return;
+        }
+        void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'holdRate', phase: 'start' }).catch(() => {});
+      }, holdSkip.remaining());
+    };
     const releaseHold = () => {
-      if (!holdKeys.cancel()) return;
+      clearHoldSkipTimer();
+      const skipEnded = holdSkip.cancel().phase === 'release';
+      const dedicated = holdKeys.cancel();
+      if (!skipEnded && !dedicated) return;
       void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'holdRate', phase: 'end' }).catch(() => {});
     };
     let pointer: { x: number; y: number } | null = null;
+    const finishSkip = (direction: -1 | 1, source: { skipSeconds: number; volumeStep: number }) => {
+      hotkeys.key({
+        type: 'keydown',
+        key: direction < 0 ? 'j' : 'l',
+        code: direction < 0 ? 'KeyJ' : 'KeyL',
+        altKey: false,
+        shiftKey: false,
+        ctrlKey: false,
+        metaKey: false,
+        repeat: false,
+        preventDefault() {},
+        stopPropagation() {},
+        stopImmediatePropagation() {}
+      }, { singleKey: true, skipSeconds: source.skipSeconds, volumeStep: source.volumeStep, target: controller.pointed(pointer, true) });
+    };
     const onPointer = (event: PointerEvent) => { pointer = event.type === 'pointerout' && !event.relatedTarget ? null : { x: event.clientX, y: event.clientY }; };
     const onKey = (event: KeyboardEvent) => {
       // A frame without media, or focus in a text field, still receives the Alt release of a gesture made elsewhere.
@@ -174,9 +212,26 @@ export default defineContentScript({
         }
         return;
       }
+      const floatingArrow = isFloatingEvent(event) && event.key.startsWith('Arrow');
+      const skipActive = source.holdBoost && source.holdSkip && source.singleKey && shortcutActive() && !isTypingEvent(event) && !floatingArrow;
+      const skipDecision = holdSkip.key(event, skipActive, source.singleKey);
+      if (skipDecision.phase !== 'ignore') {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        if (skipDecision.phase === 'arm') scheduleHoldSkip();
+        else if (skipDecision.phase === 'skip' && skipDecision.direction) {
+          clearHoldSkipTimer();
+          finishSkip(skipDecision.direction, source);
+        } else if (skipDecision.phase === 'release') {
+          clearHoldSkipTimer();
+          void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'holdRate', phase: 'end' }).catch(() => {});
+        }
+        return;
+      }
       if (!shortcutActive() || isTypingEvent(event)) return;
       // Arrows inside the floater belong to its slider and to docking the otter.
-      if (isFloatingEvent(event) && event.key.startsWith('Arrow')) return;
+      if (floatingArrow) return;
       hotkeys.key(event, { singleKey: source.singleKey, skipSeconds: source.skipSeconds, volumeStep: source.volumeStep, target: source.singleKey ? controller.pointed(pointer, true) : undefined });
     };
     const hoverGesture = createHoverWheelGesture();
@@ -226,7 +281,7 @@ export default defineContentScript({
       enabled = result?.enabled === true;
       pageUrl = typeof result?.url === 'string' ? result.url : '';
       contextLock = result?.lockRate === true;
-      contextKeys = { singleKey: result?.singleKey === true, hoverWheel: result?.hoverWheel !== false, skipSeconds: normalizeSkipSeconds(result?.skipSeconds), volumeStep: normalizeVolumeStep(result?.volumeStep), holdBoost: result?.holdBoost === true, holdBoostRate: normalizeHoldRate(result?.holdBoostRate) };
+      contextKeys = { singleKey: result?.singleKey === true, hoverWheel: result?.hoverWheel !== false, skipSeconds: normalizeSkipSeconds(result?.skipSeconds), volumeStep: normalizeVolumeStep(result?.volumeStep), holdBoost: result?.holdBoost === true, holdBoostRate: normalizeHoldRate(result?.holdBoostRate), holdSkip: result?.holdSkip === true };
       // A push that arrives while this request is in flight is newer than the response.
       if (window.top === window && presenceEpoch === epoch) tabHasMedia = result?.hasMedia === true;
       if (selectionEpoch === selectionAtContext) lockedLocalId = typeof result?.selectedLocalId === 'string' && /^\d+$/.test(result.selectedLocalId) ? result.selectedLocalId : '';

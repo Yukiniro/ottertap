@@ -210,13 +210,14 @@ function Row({ title, description, titleId, children }: { title: string; descrip
 }
 
 export function SettingsPage({ back }: { back?: () => void }) {
-  const { themeAtom, floatingAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { themeAtom, floatingAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const theme = useAtomValue(themeAtom);
   const floating = useAtomValue(floatingAtom);
   const defaultRate = useAtomValue(defaultRateAtom);
   const lockRate = useAtomValue(lockRateAtom);
   const holdBoost = useAtomValue(holdBoostAtom);
   const holdBoostRate = useAtomValue(holdBoostRateAtom);
+  const holdSkip = useAtomValue(holdSkipAtom);
   const hoverWheel = useAtomValue(hoverWheelAtom);
   const singleKey = useAtomValue(singleKeyAtom);
   const skipSeconds = useAtomValue(skipSecondsAtom);
@@ -338,6 +339,9 @@ export function SettingsPage({ back }: { back?: () => void }) {
               <Switch id="settings-hold-boost" aria-label={i18n.t('holdBoost')} checked={holdBoost} disabled={disabled} onCheckedChange={checked => void save({ holdBoost: checked })} />
             </Field>
             <p className="mt-2 text-sm leading-5 text-muted-foreground">{i18n.t('holdBoostDescription')}</p>
+            <div className="mt-3">
+              <SwitchRow id="settings-hold-skip" label={i18n.t('holdSkip')} description={i18n.t('holdSkipDescription')} checked={holdSkip} disabled={disabled || !holdBoost} onChange={checked => void save({ holdSkip: checked })} />
+            </div>
             <div className="mt-4 rounded-lg bg-secondary/60 px-3 py-3">
               <h3 id="hold-boost-rate-label" className="text-sm font-medium">{i18n.t('holdBoostRate')}</h3>
               <ToggleGroup aria-labelledby="hold-boost-rate-label" spacing={1} className="mt-3 flex h-auto w-full flex-wrap justify-start rounded-lg bg-background/80 p-1" value={[String(holdBoostRate)]} disabled={disabled} onValueChange={value => { const rate = Number(value[0]); if (Number.isFinite(rate)) void save({ holdBoostRate: rate }); }}>
