@@ -1,7 +1,7 @@
 import { i18n } from '#i18n';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { CircleAlert, Minus, Pause, Play, Plus, RotateCcw, RotateCw, Volume2, VolumeX } from 'lucide-react';
+import { CircleAlert, Minus, PanelTop, Pause, Play, Plus, RotateCcw, RotateCw, Volume2, VolumeX } from 'lucide-react';
 import otterMark from '../assets/otter-mark';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
@@ -21,7 +21,7 @@ const readViewport = (): Viewport => ({ width: document.documentElement.clientWi
 const thumbHeight = 10;
 const boostColor = (volume: number, max: number) => `color-mix(in oklch, var(--destructive) ${Math.max(0, Math.min(1, (volume - 100) / (max - 100))) * 100}%, #b57835)`;
 
-export function FloatingController({ client }: { client: MediaClient }) {
+export function FloatingController({ client, openPanel }: { client: MediaClient; openPanel?: (mediaId: string) => Promise<boolean> }) {
   const { floatingAtom, floatingNoteAtom, floatingPositionAtom, loadingAtom, ratePresetsAtom, rateStepAtom, skipSecondsAtom, skipWithRateAtom, writeSettingsAtom } = useSettingsAtoms();
   const floating = useAtomValue(floatingAtom);
   const floatingNote = useAtomValue(floatingNoteAtom);
@@ -34,6 +34,8 @@ export function FloatingController({ client }: { client: MediaClient }) {
   const write = useSetAtom(writeSettingsAtom);
   const { page, selected, command, error } = useMedia(client, { pauseWhenEmpty: true });
   const [expanded, setExpanded] = useState(false);
+  const [panelHint, setPanelHint] = useState(false);
+  const [openingPanel, setOpeningPanel] = useState(false);
   const [draft, setDraft] = useState<number | null>(null);
   const [rateDraft, setRateDraft] = useState<number | null>(null);
   const [rateSettled, setRateSettled] = useState(0);
@@ -154,6 +156,19 @@ export function FloatingController({ client }: { client: MediaClient }) {
     });
   };
   const stepPlayback = (direction: 1 | -1) => commitRate(nextRate(aimedRate.current ?? selected.rate, direction, null, rateStep));
+  const requestPanel = async () => {
+    if (!openPanel || openingPanel) return;
+    setOpeningPanel(true);
+    setPanelHint(false);
+    try {
+      const opened = await openPanel(selected.id);
+      if (!opened) setPanelHint(true);
+    } catch {
+      setPanelHint(true);
+    } finally {
+      setOpeningPanel(false);
+    }
+  };
   return <aside ref={container} className="fixed z-2147483647 size-12 transition-[left,top] duration-150 ease-out data-dragging:transition-none" aria-label={i18n.t('floatingController')} data-side={position.side} data-revealed={revealed} data-dragging={dragPoint ? '' : undefined} style={{ left: point.x, top: point.y }} onPointerEnter={() => { window.clearTimeout(hideTimer.current); setHovered(true); }} onPointerLeave={() => { window.clearTimeout(hideTimer.current); hideTimer.current = window.setTimeout(() => setHovered(false), 300); }} onWheelCapture={event => { hotkeys.wheel(event); }}>
     <Popover open={expanded} onOpenChange={setExpanded}>
       <PopoverTrigger render={<Button variant="outline" size="icon" />} className="size-12 cursor-grab touch-none rounded-full bg-background text-primary shadow-[0_2px_8px_rgb(0_0_0/.12)] hover:border-primary hover:bg-background active:cursor-grabbing aria-expanded:border-primary aria-expanded:bg-background dark:bg-background dark:hover:bg-background" aria-label={expanded ? i18n.t('collapsePill') : i18n.t('openPill')} title={i18n.t('pillTitle', { title: selected.title })} onFocus={event => setFocused(event.currentTarget.matches(':focus-visible'))} onBlur={() => setFocused(false)} onClick={event => {
@@ -208,6 +223,10 @@ export function FloatingController({ client }: { client: MediaClient }) {
               {ratePresets.map(speed => <ToggleGroupItem key={speed} value={String(speed)} aria-label={i18n.t('speedOption', { speed: formatRate(speed) })} className="h-7 w-full min-w-0 rounded-md border-0 bg-secondary/60 px-0.5 text-xs text-muted-foreground shadow-none aria-pressed:bg-primary aria-pressed:font-semibold aria-pressed:text-primary-foreground">{formatRate(speed)}×</ToggleGroupItem>)}
             </ToggleGroup>
           </div>
+          {openPanel && <div className="shrink-0 border-t border-border/70 px-1.5 py-1.5">
+            <Button type="button" variant="ghost" size="sm" className="h-auto min-h-8 w-full gap-1 whitespace-normal px-2 py-1 text-xs text-muted-foreground" aria-label={i18n.t('openPanel')} disabled={openingPanel} onClick={() => void requestPanel()}><PanelTop />{i18n.t('openPanel')}</Button>
+            {panelHint && <p role="status" className="px-1 pt-1 text-center text-[11px] leading-4 text-muted-foreground">{i18n.t('openPanelHint')}</p>}
+          </div>}
         </div>
       </PopoverContent>
     </Popover>

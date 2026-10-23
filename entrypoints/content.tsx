@@ -266,6 +266,14 @@ export default defineContentScript({
     reportVolume();
     if (window.top !== window) return;
     const client = createExtensionClient();
+    const openPanel = async (id: string) => {
+      try {
+        const result = await browser.runtime.sendMessage({ namespace: 'ottertap', type: 'openPopup', id });
+        return result?.ok === true;
+      } catch {
+        return false;
+      }
+    };
     const ui = await createShadowRootUi(ctx, {
       name: 'ottertap-controller',
       position: 'overlay',
@@ -275,7 +283,7 @@ export default defineContentScript({
         container.className = 'ottertap-root';
         container.lang = i18n.t('locale');
         const root = createRoot(container);
-        root.render(<ThemeProvider store={extensionStore} target={container}><FloatingController client={client} /><RateHint /><RateLockNotice /></ThemeProvider>);
+        root.render(<ThemeProvider store={extensionStore} target={container}><FloatingController client={client} openPanel={openPanel} /><RateHint /><RateLockNotice /></ThemeProvider>);
         return root;
       },
       onRemove(root) { root?.unmount(); }

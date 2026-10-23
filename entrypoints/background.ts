@@ -387,15 +387,33 @@ export default defineBackground(() => {
   try {
     browser.commands?.onCommand?.addListener((command, tab) => runExtensionCommand(command, tab));
   } catch { /* The build verifier does not provide the commands API. */ }
+  async function openToolbarPopup(windowId: number | undefined) {
+    const open = browser.action?.openPopup;
+    if (typeof open !== 'function') return false;
+    try {
+      await open(typeof windowId === 'number' ? { windowId } : undefined);
+      return true;
+    } catch {
+      return false;
+    }
+  }
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (sender.id !== browser.runtime.id || !message || message.namespace !== 'ottertap') return;
     if (message.type === 'altUsed') {
       if (sender.tab?.id !== undefined) void browser.tabs.sendMessage(sender.tab.id, { namespace: 'ottertap', type: 'altUsed' }).catch(() => {});
       return;
     }
-    if (!['options', 'context', 'register', 'read', 'command', 'select', 'highlight', 'hotkey', 'holdRate', 'soundingTabs', 'focusTab', 'muteTab', 'rateLock'].includes(message.type)) return;
+    if (!['options', 'context', 'register', 'read', 'command', 'select', 'highlight', 'hotkey', 'holdRate', 'soundingTabs', 'focusTab', 'muteTab', 'rateLock', 'openPopup'].includes(message.type)) return;
     const tabId = sender.tab?.id ?? message.tabId;
     async function handle() {
+      if (message.type === 'openPopup') {
+        const tab = sender.tab;
+        const id = tab?.id;
+        if (typeof id !== 'number') return { ok: false };
+        const mediaId = typeof message.id === 'string' && /^\d+:\d+$/.test(message.id) ? message.id : '';
+        if (mediaId) rememberSelection(id, mediaId);
+        return { ok: await openToolbarPopup(typeof tab?.windowId === 'number' ? tab.windowId : undefined) };
+      }
       if (message.type === 'options') { await browser.runtime.openOptionsPage(); return { ok: true }; }
       if (message.type === 'soundingTabs' || message.type === 'focusTab' || message.type === 'muteTab') {
         if (!extensionPage(sender.url)) return { error: i18n.t('extensionMessageFailed') };
