@@ -53,7 +53,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs doctor
 
 ## Drive
 
-脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、倍速增减步长（见 `features/rate-step.md`）和扩展命令画中画（见 `features/extension-pip.md`）。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
+脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、倍速增减步长（见 `features/rate-step.md`）、扩展命令画中画（见 `features/extension-pip.md`）和按住临时加速（见 `features/hold-boost.md`）。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
 
 ```bash
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
@@ -63,6 +63,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive volume-step
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive rate-step
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive extension-pip
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive default-rate
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive hold-boost
 ```
 
 `skip-step` 在设置页把 `Skip step` 改成 `30s` 并打开 `Single-key mode`，再看弹出面板进退按钮名和页内 `L` / `J` / `→` / `←` 让 `/long` 夹具的 `currentTime` 跟着步长变；它会改写 profile，同一会话只能跑一次。步骤见 `features/skip-step.md`。
@@ -74,6 +75,8 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive default-rate
 `rate-step` 在设置页把 `Speed step` 改成 `0.1×` 和 `0.5×`，再看同一夹具页上的 Alt+.、弹出面板加快 / 减慢和单键 `>` 跟着步长变，并确认到 4× 和 0.25× 仍停住。它会改写 profile，同一会话只能跑一次。步骤见 `features/rate-step.md`。
 
 `default-rate` 在设置页确认 `Default speed` 默认是 `Follow the page`，再改成 `1.5×`，看新开的夹具视频被写成 1.5×；记住此站点为 2× 后重新加载，用记住的 2×。它会改写 profile，同一会话只能跑一次。步骤见 `features/default-rate.md`。
+
+`hold-boost` 确认开关默认关闭时 `Alt+Shift+.` 仍只步进，打开后按住用 `Temporary speed`、松开还原，并且不改默认倍速和站点记忆。它会改写 profile，同一会话只能跑一次。步骤见 `features/hold-boost.md`。
 
 `popup-playback` 在已启动的会话里做这些事：
 
@@ -129,6 +132,8 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive default-rate
 
 `drive default-rate` 写入 `default-rate/`：`settings-follow.png`、`fixture-follow.png`、`settings-1.5.png`、`fixture-1.5.png`、`fixture-site.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
 
+`drive hold-boost` 写入 `hold-boost/`：`settings-off.png`、`fixture-off.png`、`settings-on.png`、`fixture-hold.png`、`fixture-release.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
 `launch` 成功后还会留下 `launch-probe.png`（浮动入口已经出现）。失败时同目录可能有 `error.txt`，那不算通过。
 
 换了 `OTTERTAP_VERIFY_ID` 时，文件名变成 `<id>-popup-playback/`。不要把这些截图提交进仓库。
@@ -157,6 +162,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive volume-step
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive rate-step
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive extension-pip
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive default-rate
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive hold-boost
 node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 ```
 

@@ -28,6 +28,11 @@ export function normalizeDefaultRate(value: unknown): number | null {
   return snapped >= minRate && snapped <= maxRate ? snapped : null;
 }
 
+/** Temporary hold speed. Same 0.25 grid as the built-in presets. Missing or unusable values stay at 2×. */
+export function normalizeHoldRate(value: unknown): number {
+  return normalizeDefaultRate(value) ?? defaultSettings.holdBoostRate;
+}
+
 export function normalizeDomain(input: string): string {
   const text = input.trim().toLowerCase();
   if (!text) throw new Error(i18n.t('domainRequired'));
@@ -62,6 +67,8 @@ export function normalizeSettings(value: unknown): Settings {
     ratePresets: normalizeRatePresets(source.ratePresets),
     defaultRate: normalizeDefaultRate(source.defaultRate),
     lockRate: source.lockRate === true,
+    holdBoost: source.holdBoost === true,
+    holdBoostRate: normalizeHoldRate(source.holdBoostRate),
     hoverWheel: typeof source.hoverWheel === 'boolean' ? source.hoverWheel : true,
     singleKey: source.singleKey === true,
     skipSeconds: normalizeSkipSeconds(source.skipSeconds),

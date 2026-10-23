@@ -2,11 +2,12 @@ import { i18n } from '#i18n';
 import { createRoot } from 'react-dom/client';
 import { browser } from 'wxt/browser';
 import { createShadowRootUi } from 'wxt/utils/content-script-ui/shadow-root';
+import { createHoldKeySession, holdRateEvent } from '../lib/hold-rate';
 import { actionHintEvent, actionHintText, createHotkeyInput, isFloatingEvent, isTypingEvent, rateHintEvent, volumeGestureEvent } from '../lib/hotkey';
 import { createMediaController, isMediaCommand, mediaPresenceEvent } from '../lib/media';
 import { rateLockEvent } from '../lib/rate-lock';
 import { maxEffectiveVolume, shouldReportVolume, volumeReportIntervalMs } from '../lib/volume-badge';
-import { isSiteEnabled, normalizeSkipSeconds, normalizeVolumeStep } from '../lib/settings';
+import { isSiteEnabled, normalizeHoldRate, normalizeSkipSeconds, normalizeVolumeStep } from '../lib/settings';
 import { extensionStore } from '../lib/extension-store';
 import { createExtensionClient } from '../lib/extension-client';
 import { defaultSettings, type Settings } from '../lib/types';
@@ -28,7 +29,7 @@ export default defineContentScript({
     let reported: number | null = null;
     let pageUrl = '';
     let watched: Settings | undefined;
-    let contextKeys = { singleKey: defaultSettings.singleKey, hoverWheel: defaultSettings.hoverWheel, skipSeconds: defaultSettings.skipSeconds, volumeStep: defaultSettings.volumeStep };
+    let contextKeys = { singleKey: defaultSettings.singleKey, hoverWheel: defaultSettings.hoverWheel, skipSeconds: defaultSettings.skipSeconds, volumeStep: defaultSettings.volumeStep, holdBoost: defaultSettings.holdBoost, holdBoostRate: defaultSettings.holdBoostRate };
     let lockedLocalId = '';
     let selectionEpoch = 0;
     let presenceEpoch = 0;
@@ -88,7 +89,7 @@ export default defineContentScript({
         lockedLocalId = typeof message.id === 'string' && /^\d+$/.test(message.id) ? message.id : '';
         return;
       }
-      if (!['snapshot', 'command', 'highlight', 'reveal', 'rateHint', 'actionHint', 'rateLockHint'].includes(message.type)) return;
+      if (!['snapshot', 'command', 'highlight', 'reveal', 'rateHint', 'actionHint', 'rateLockHint', 'hold', 'holdHint'].includes(message.type)) return;
       void (async () => {
       if (message.type === 'actionHint') {
         const label = actionHintText(typeof message.key === 'string' ? message.key : '', message.seconds);
@@ -97,6 +98,19 @@ export default defineContentScript({
       }
       if (message.type === 'rateHint') {
         if (typeof message.rate === 'number' && Number.isFinite(message.rate)) window.dispatchEvent(new window.CustomEvent(rateHintEvent, { detail: message.rate }));
+        return { ok: true };
+      }
+      if (message.type === 'holdHint') {
+        const rate = typeof message.rate === 'number' && Number.isFinite(message.rate) ? message.rate : null;
+        window.dispatchEvent(new window.CustomEvent(holdRateEvent, { detail: rate }));
+        return { ok: true };
+      }
+      if (message.type === 'hold') {
+        if (enabled && typeof message.id === 'string') {
+          controller.snapshot();
+          if (message.phase === 'start' && typeof message.rate === 'number') controller.beginHold(message.id, message.rate);
+          else controller.endHold(message.id);
+        }
         return { ok: true };
       }
       if (message.type === 'rateLockHint') {
@@ -136,15 +150,33 @@ export default defineContentScript({
       if (!document.hasFocus()) void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'altUsed' }).catch(() => {});
     });
     const shortcutActive = () => enabled && (controller.snapshot().length > 0 || tabHasMedia);
+    const holdKeys = createHoldKeySession();
+    const releaseHold = () => {
+      if (!holdKeys.cancel()) return;
+      void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'holdRate', phase: 'end' }).catch(() => {});
+    };
     let pointer: { x: number; y: number } | null = null;
     const onPointer = (event: PointerEvent) => { pointer = event.type === 'pointerout' && !event.relatedTarget ? null : { x: event.clientX, y: event.clientY }; };
     const onKey = (event: KeyboardEvent) => {
       // A frame without media, or focus in a text field, still receives the Alt release of a gesture made elsewhere.
       if (event.key === 'Alt') { hotkeys.key(event); return; }
+      const source = watched ?? contextKeys;
+      const decision = holdKeys.key(event, source.holdBoost && shortcutActive() && !isTypingEvent(event), source.singleKey);
+      if (decision !== 'ignore') {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        if (decision === 'start') {
+          if (event.altKey) hotkeys.arm();
+          void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'holdRate', phase: 'start' }).catch(() => {});
+        } else if (decision === 'end') {
+          void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'holdRate', phase: 'end' }).catch(() => {});
+        }
+        return;
+      }
       if (!shortcutActive() || isTypingEvent(event)) return;
       // Arrows inside the floater belong to its slider and to docking the otter.
       if (isFloatingEvent(event) && event.key.startsWith('Arrow')) return;
-      const source = watched ?? contextKeys;
       hotkeys.key(event, { singleKey: source.singleKey, skipSeconds: source.skipSeconds, volumeStep: source.volumeStep, target: source.singleKey ? controller.pointed(pointer, true) : undefined });
     };
     const hoverGesture = createHoverWheelGesture();
@@ -157,6 +189,7 @@ export default defineContentScript({
       if (active) hotkeys.wheel(event, event.altKey ? target : bareTarget, source.volumeStep);
     };
     const onPageHide = () => {
+      releaseHold();
       if (reported == null) return;
       reported = null;
       localPresent = false;
@@ -164,17 +197,24 @@ export default defineContentScript({
       announce();
       void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'register', present: false }).catch(() => {});
     };
+    const onHoldCancel = () => releaseHold();
+    const onVisibility = () => { if (document.visibilityState === 'hidden') releaseHold(); };
     window.addEventListener('keydown', onKey, true);
     window.addEventListener('keyup', onKey, true);
+    window.addEventListener('blur', onHoldCancel);
     window.addEventListener('wheel', onWheel, { capture: true, passive: false });
     window.addEventListener('pointermove', onPointer, { capture: true, passive: true });
     window.addEventListener('pointerout', onPointer, { capture: true, passive: true });
     document.addEventListener('volumechange', reportVolume, true);
     window.addEventListener('pagehide', onPageHide);
+    document.addEventListener('visibilitychange', onVisibility);
     const unwatch = extensionStore.watch(settings => { watched = settings; applyWatched(); });
     ctx.onInvalidated(() => {
+      releaseHold();
       unwatch(); controller.destroy(); if (heartbeat) clearInterval(heartbeat); browser.runtime.onMessage.removeListener(listener); hotkeys.dispose();
       document.removeEventListener('volumechange', reportVolume, true); window.removeEventListener('pagehide', onPageHide);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('blur', onHoldCancel);
       window.removeEventListener('keydown', onKey, true); window.removeEventListener('keyup', onKey, true); window.removeEventListener('wheel', onWheel, true);
       window.removeEventListener('pointermove', onPointer, true); window.removeEventListener('pointerout', onPointer, true);
     });
@@ -186,7 +226,7 @@ export default defineContentScript({
       enabled = result?.enabled === true;
       pageUrl = typeof result?.url === 'string' ? result.url : '';
       contextLock = result?.lockRate === true;
-      contextKeys = { singleKey: result?.singleKey === true, hoverWheel: result?.hoverWheel !== false, skipSeconds: normalizeSkipSeconds(result?.skipSeconds), volumeStep: normalizeVolumeStep(result?.volumeStep) };
+      contextKeys = { singleKey: result?.singleKey === true, hoverWheel: result?.hoverWheel !== false, skipSeconds: normalizeSkipSeconds(result?.skipSeconds), volumeStep: normalizeVolumeStep(result?.volumeStep), holdBoost: result?.holdBoost === true, holdBoostRate: normalizeHoldRate(result?.holdBoostRate) };
       // A push that arrives while this request is in flight is newer than the response.
       if (window.top === window && presenceEpoch === epoch) tabHasMedia = result?.hasMedia === true;
       if (selectionEpoch === selectionAtContext) lockedLocalId = typeof result?.selectedLocalId === 'string' && /^\d+$/.test(result.selectedLocalId) ? result.selectedLocalId : '';

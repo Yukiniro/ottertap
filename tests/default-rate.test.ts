@@ -90,12 +90,14 @@ test('设置页播放分区可以选择跟随网页或默认倍速，并立刻�
     assert.ok(playback);
     assert.match(playback.textContent ?? '', /默认倍速/);
     assert.match(playback.textContent ?? '', /打开还没有记住倍速的网站时，新媒体会应用一次这个倍速/);
+    const defaultGroup = host.querySelector('#default-rate-label')!.parentElement!;
+    const inDefault = (label: string) => [...defaultGroup.querySelectorAll('button')].find(item => item.textContent === label);
     assert.equal(option('跟随网页')?.getAttribute('aria-pressed'), 'true');
-    assert.equal(option('1.5×')?.getAttribute('aria-pressed'), 'false');
-    await click(option('1.5×')!);
+    assert.equal(inDefault('1.5×')?.getAttribute('aria-pressed'), 'false');
+    await click(inDefault('1.5×')!);
     assert.equal(value.defaultRate, 1.5);
     assert.equal(value.lockRate, true);
-    assert.equal(option('1.5×')?.getAttribute('aria-pressed'), 'true');
+    assert.equal(inDefault('1.5×')?.getAttribute('aria-pressed'), 'true');
     assert.equal(option('跟随网页')?.getAttribute('aria-pressed'), 'false');
     await click(option('跟随网页')!);
     assert.equal(value.defaultRate, null);

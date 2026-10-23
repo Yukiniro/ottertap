@@ -2,7 +2,7 @@ import { i18n } from '#i18n';
 import { canAmplify, createAmplifier, isChannelMode, maxGain, splitVolume, type Amplifier } from './amplifier';
 import { armRateEcho, createRateLockState, noteDesiredRate, observePlaybackRate, rateLockEpsilon, type RateLockState } from './rate-lock';
 import { assignedRateAttribute, assignedRateEvent, installAssignedRateHook } from './assigned-rate';
-import { maxRate, minRate, noteRecallRate, readSettledRate, recallableRate, sameRate } from './rate';
+import { clampRate, maxRate, minRate, noteRecallRate, readSettledRate, recallableRate, sameRate } from './rate';
 import type { ChannelMode, MediaCommand, MediaState } from './types';
 import { formatTime } from './utils';
 
@@ -215,6 +215,7 @@ export function createMediaController(document: Document, onChange?: () => void,
   let recall: number | null = null;
   const seenRates = new WeakMap<HTMLMediaElement, number>();
   const slots = new Map<HTMLMediaElement, RateSlot>();
+  const holds = new Map<HTMLMediaElement, { target: number; lock: RateLockState | null }>();
   const view = document.defaultView!;
   installAssignedRateHook(view);
   const amplifier = createAmplifier(view);
@@ -255,7 +256,7 @@ export function createMediaController(document: Document, onChange?: () => void,
   // burst is already back at the final rate by the time that event runs.
   const onAssigned = (event: Event) => {
     const element = event.currentTarget as HTMLMediaElement;
-    if (lockOwnsRate(element)) return;
+    if (holds.has(element) || lockOwnsRate(element)) return;
     const raw = element.getAttribute(assignedRateAttribute);
     if (raw == null) return;
     const rate = Number(raw);
@@ -264,7 +265,7 @@ export function createMediaController(document: Document, onChange?: () => void,
   };
   const onRateChange = (event: Event) => {
     const element = event.currentTarget as HTMLMediaElement;
-    if (lockOwnsRate(element)) return;
+    if (holds.has(element) || lockOwnsRate(element)) return;
     noteSeen(element, element.playbackRate);
   };
   const unwatchRate = (element: HTMLMediaElement) => {
@@ -281,6 +282,7 @@ export function createMediaController(document: Document, onChange?: () => void,
   const release = (element: HTMLMediaElement) => {
     const slot = slots.get(element);
     unwatchRate(element);
+    holds.delete(element);
     if (!slot) return;
     clearTimer(element, slot);
     if (slot.listening) {
@@ -388,6 +390,40 @@ export function createMediaController(document: Document, onChange?: () => void,
         volume: element.volume * amplifier.gain(element),
       }));
       return hoverWheelTarget(idOf(hit), states, selectedLocalId);
+    },
+    /** Apply a temporary speed without changing recall or the lock's saved target. */
+    beginHold(id: string, rate: number) {
+      if (!Number.isFinite(rate)) return false;
+      const element = elements.find(media => ids.get(media) === id && media.isConnected);
+      if (!element) return false;
+      if (holds.has(element)) return true;
+      const next = clampRate(rate);
+      const slot = slots.get(element);
+      const defending = !!(lockOn && slot && slot.state.desired != null && !slot.state.givenUp);
+      const target = defending ? slot!.state.desired! : element.playbackRate;
+      holds.set(element, { target, lock: defending ? slot!.state : null });
+      if (defending && slot) {
+        clearTimer(element, slot);
+        slot.state = noteDesiredRate(slot.state, next);
+        listen(element);
+      }
+      element.playbackRate = next;
+      return true;
+    },
+    /** Restore the speed from before the hold. With lock on, that is the lock target. */
+    endHold(id: string) {
+      const element = elements.find(media => ids.get(media) === id && media.isConnected);
+      if (!element) return false;
+      const held = holds.get(element);
+      if (!held) return false;
+      holds.delete(element);
+      const slot = slots.get(element);
+      if (held.lock && slot) {
+        clearTimer(element, slot);
+        slot.state = noteDesiredRate(slot.state, held.target);
+      }
+      element.playbackRate = held.target;
+      return true;
     },
     setLockRate(enabled: boolean) {
       if (lockOn === enabled) return;

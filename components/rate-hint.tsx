@@ -1,5 +1,6 @@
 import { i18n } from '#i18n';
 import { useEffect, useRef, useState } from 'react';
+import { holdRateEvent } from '../lib/hold-rate';
 import { actionHintEvent, rateHintEvent } from '../lib/hotkey';
 import { rateLockEvent } from '../lib/rate-lock';
 import { formatRate } from '../lib/rate';
@@ -40,14 +41,31 @@ export function RateHint() {
       if (typeof text !== 'string' || !text) return;
       onLabel(text);
     };
+    const onHold = (event: Event) => {
+      const rate = (event as CustomEvent<number | null>).detail;
+      window.clearTimeout(show);
+      window.clearTimeout(hide);
+      window.clearTimeout(clear);
+      if (typeof rate !== 'number' || !Number.isFinite(rate)) {
+        setShown(false);
+        clear = window.setTimeout(() => { current.current = ''; setText(''); }, 200);
+        return;
+      }
+      const label = i18n.t('holdRateHint', { rate: formatRate(rate) });
+      current.current = label;
+      setText(label);
+      setShown(true);
+    };
     window.addEventListener(rateHintEvent, onRate);
     window.addEventListener(actionHintEvent, onAction);
+    window.addEventListener(holdRateEvent, onHold);
     return () => {
       window.clearTimeout(show);
       window.clearTimeout(hide);
       window.clearTimeout(clear);
       window.removeEventListener(rateHintEvent, onRate);
       window.removeEventListener(actionHintEvent, onAction);
+      window.removeEventListener(holdRateEvent, onHold);
     };
   }, []);
   return <p role="status" aria-live="polite" aria-atomic="true" className={cn('pointer-events-none fixed top-6 left-1/2 z-2147483647 -translate-x-1/2 rounded-full border bg-card px-3.5 py-2 text-sm font-medium text-card-foreground tabular-nums shadow-card transition-opacity duration-200', shown && text ? 'opacity-100' : 'opacity-0')}>{text}</p>;
