@@ -8,7 +8,7 @@
 
 - 设置控件。在设置页「Playback」一节（`#playback`，紧挨「Volume step」）。组名 `Speed step`（`h3#rate-step-label` 给 `role="group"` 命名），里面三个按钮 `0.1×`、`0.25×`、`0.5×`，乘号是 `×`（U+00D7），选中的那个 `aria-pressed="true"`，默认是 `0.25×`。说明文案是 `On-page shortcuts, the popup faster and slower buttons, and browser extension commands all change speed by this step.`，存进 `ottertap-settings-v1.rateStep`。
 - 页内快捷键。`Alt+.` 加快，`Alt+,` 减慢，每次这个步长。单键模式打开后，`>` 和 `<` 同样按这个步长。`Alt+0` 仍在 1× 和本页上一次非 1× 倍速之间来回切，不使用这个步长。内容脚本只上报方向，后台每次用当前设置计算，改完不用整页刷新。
-- 弹出面板。倍速标题右侧两个按钮，无障碍名是 `Decrease speed by {step}×` 和 `Increase speed by {step}×`。点一下把当前倍速按这个步长增减。已经是 4× 时加快按钮禁用；已经是 0.25× 时减慢按钮禁用。
+- 弹出面板。倍速标题右侧两个按钮，无障碍名是 `Decrease speed by {step}×` 和 `Increase speed by {step}×`。点一下把当前倍速按这个步长增减。连点不等待上一次刷新，按已经发出的倍速继续走。已经是 4× 时加快按钮禁用；已经是 0.25× 时减慢按钮禁用。
 - 扩展命令。`rate-faster` / `rate-slower` 在命令表里只表示方向。后台每次触发时读当前设置的步长，不需要单键模式。
 - 快捷键说明。设置页「On-page shortcuts」和「Single-key mode keys」里加快 / 减慢的说明带上当前步长。
 

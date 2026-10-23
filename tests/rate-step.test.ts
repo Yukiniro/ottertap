@@ -113,10 +113,12 @@ describe('倍速增减步长', () => {
     const { MediaPanel } = await import('../components/media-panel');
     const media: MediaState = { id: '1', host: 'example.com', label: '', title: '正片', kind: 'video', volume: .5, maxVolume: 1, muted: false, paused: true, rate: 1, currentTime: 10, duration: 120, live: false, seekable: [{ start: 0, end: 120 }], pip: false, pipAvailable: true, pipBlock: '', channel: 'stereo', channelAvailable: true };
     const sent: MediaCommand[] = [];
+    let gate = Promise.resolve();
     const client: MediaClient = {
       async read() { return { enabled: true, host: 'example.com', selectedId: '1', media: [{ ...media }] }; },
       async command(_, command) {
         sent.push(command);
+        await gate;
         if (command.type === 'rate') media.rate = command.value;
       },
       async select() {},
@@ -143,8 +145,16 @@ describe('倍速增减步长', () => {
       assert.ok(faster);
       assert.ok(slower);
       assert.equal(faster.disabled, false);
-      await click(faster);
-      assert.deepEqual(sent.at(-1), { type: 'rate', value: 1.25 });
+      let release = () => {};
+      gate = new Promise(resolve => { release = resolve; });
+      await act(async () => { faster.click(); faster.click(); });
+      assert.deepEqual(sent, [{ type: 'rate', value: 1.25 }], '第二次点击要等第一次下发，但目标倍速已经按 1.25 往下算');
+      release();
+      gate = Promise.resolve();
+      await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)); });
+      assert.deepEqual(sent, [{ type: 'rate', value: 1.25 }, { type: 'rate', value: 1.5 }]);
+      media.rate = 1.25;
+      await show();
       value = { ...value, rateStep: 0.1 };
       await act(async () => { listeners.forEach(listener => listener(value)); });
       const finer = button(`加快 0.1${times}`);

@@ -771,7 +771,6 @@ async function driveRateStep(context, dir, note) {
       }
       await settings.getByText('On-page shortcuts, the popup faster and slower buttons, and browser extension commands all change speed by this step.', { exact: true }).waitFor({ state: 'visible' });
       await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-default.png'), animations: 'disabled' });
-      await settings.locator('#playback').screenshot({ path: '/opt/cursor/artifacts/rate-step-ui/settings-playback-after.png', animations: 'disabled' });
       note(`settings Speed step steps=${steps} pressed=${pressedBefore}`);
 
       const tenth = group.getByRole('button', { name: `0.1${times}`, exact: true });
@@ -779,7 +778,6 @@ async function driveRateStep(context, dir, note) {
       await poll(() => tenth.getAttribute('aria-pressed'), value => value === 'true', '点 0.1× 后应按下');
       await poll(stored, value => value.rateStep === 0.1, '设置里应存下 rateStep=0.1');
       await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-0.1.png'), animations: 'disabled' });
-      await settings.locator('#playback').screenshot({ path: '/opt/cursor/artifacts/rate-step-ui/settings-playback-0.1.png', animations: 'disabled' });
       note('saved rateStep=0.1 without reloading the fixture');
     } finally { /* keep settings open so the fixture is not reloaded */ }
 

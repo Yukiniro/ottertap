@@ -97,15 +97,46 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
   const showMedia = (id: string) => { const media = page.media.find(item => item.id === id); if (media) void client.highlight(media).catch(() => {}); };
   const [seekDraft, setSeekDraft] = useState<number | null>(null);
   const [offerRemember, setOfferRemember] = useState(false);
+  const [aimedRate, setAimedRate] = useState<number | null>(null);
+  const [rateSettled, setRateSettled] = useState(0);
+  const aimedRef = useRef<number | null>(null);
+  const aimedFor = useRef('');
+  const pendingRates = useRef(0);
+  const rateQueue = useRef(Promise.resolve());
   const remembered = page.host ? sitePrefFor(page.host, sitePrefs) : null;
+  const playbackRate = selected ? aimedRate ?? selected.rate : 1;
   const storePreference = () => {
     if (!selected || !page.host || settingsLoading) return;
-    void write({ sitePrefs: rememberSite(sitePrefs, page.host, currentPref(selected)) });
+    void write({ sitePrefs: rememberSite(sitePrefs, page.host, { ...currentPref(selected), rate: playbackRate }) });
   };
   const adjust = (value: Parameters<typeof command>[0]) => {
     if ((value.type === 'volume' || value.type === 'rate' || value.type === 'channel') && !remembered) setOfferRemember(true);
     return command(value);
   };
+  useEffect(() => {
+    if (aimedRef.current == null) return;
+    if (!selected || selected.id !== aimedFor.current || pendingRates.current === 0 || sameRate(selected.rate, aimedRef.current)) {
+      aimedRef.current = null;
+      setAimedRate(null);
+    }
+  }, [selected, rateSettled]);
+  const sendRate = (next: number) => {
+    if (!selected || sameRate(next, aimedRef.current ?? selected.rate)) return;
+    aimedFor.current = selected.id;
+    aimedRef.current = next;
+    setAimedRate(next);
+    pendingRates.current += 1;
+    rateQueue.current = rateQueue.current.then(() => adjust({ type: 'rate', value: next })).then(applied => {
+      if (applied === false && aimedRef.current != null && sameRate(aimedRef.current, next)) {
+        aimedRef.current = null;
+        setAimedRate(null);
+      }
+    }).finally(() => {
+      pendingRates.current -= 1;
+      if (pendingRates.current === 0) setRateSettled(count => count + 1);
+    });
+  };
+  const stepRate = (direction: 1 | -1) => { if (selected) sendRate(nextRate(aimedRef.current ?? selected.rate, direction, null, rateStep)); };
   useEffect(() => { setOfferRemember(false); }, [page.host, selected?.id]);
   const ranges = selected?.seekable ?? [];
   const seekMin = ranges[0]?.start ?? 0;
@@ -114,9 +145,9 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
   const volume = selected ? Math.round((selected.muted ? 0 : selected.volume) * 100) : 0;
   const hint = selected ? pipHint(selected) : '';
   const channelHint = selected && !selected.channelAvailable ? i18n.t('channelCrossOrigin') : '';
-  const activePreset = selected ? ratePresets.find(speed => sameRate(speed, selected.rate)) : undefined;
-  const slowerRate = selected ? nextRate(selected.rate, -1, null, rateStep) : 1;
-  const fasterRate = selected ? nextRate(selected.rate, 1, null, rateStep) : 1;
+  const activePreset = selected ? ratePresets.find(speed => sameRate(speed, playbackRate)) : undefined;
+  const slowerRate = selected ? nextRate(playbackRate, -1, null, rateStep) : 1;
+  const fasterRate = selected ? nextRate(playbackRate, 1, null, rateStep) : 1;
   const showSiteAction = page.enabled && !outOfSync && !!siteAction?.settings;
   return <section className="flex w-[400px] max-w-full flex-col gap-3 bg-background px-4 pt-1 pb-3" aria-label={i18n.t('mediaPanel')}>
     <header className="flex h-10 items-center justify-between">
@@ -165,8 +196,8 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
           <div className="mb-2 flex items-center justify-between gap-3">
             <span id="speed-label" className="text-sm font-medium">{i18n.t('speed')}</span>
             <div className="flex min-w-0 items-center gap-1">
-              <Button type="button" variant="ghost" size="icon-sm" className="text-muted-foreground" aria-label={i18n.t('shortcutSpeedDown', { step: formatRate(rateStep) })} disabled={sameRate(slowerRate, selected.rate)} onClick={() => void adjust({ type: 'rate', value: slowerRate })}><Minus /></Button>
-              <Button type="button" variant="ghost" size="icon-sm" className="text-muted-foreground" aria-label={i18n.t('shortcutSpeedUp', { step: formatRate(rateStep) })} disabled={sameRate(fasterRate, selected.rate)} onClick={() => void adjust({ type: 'rate', value: fasterRate })}><Plus /></Button>
+              <Button type="button" variant="ghost" size="icon-sm" className="text-muted-foreground" aria-label={i18n.t('shortcutSpeedDown', { step: formatRate(rateStep) })} disabled={sameRate(slowerRate, playbackRate)} onClick={() => stepRate(-1)}><Minus /></Button>
+              <Button type="button" variant="ghost" size="icon-sm" className="text-muted-foreground" aria-label={i18n.t('shortcutSpeedUp', { step: formatRate(rateStep) })} disabled={sameRate(fasterRate, playbackRate)} onClick={() => stepRate(1)}><Plus /></Button>
               <DropdownMenu>
               <DropdownMenuTrigger render={<Button variant="ghost" size="xs" />} disabled={!selected.channelAvailable} title={channelLabel(selected.channel)} aria-label={i18n.t('channelModeLabel', { mode: channelLabel(selected.channel) })} aria-describedby={channelHint ? 'channel-hint' : undefined} data-active={selected.channel !== 'stereo' ? '' : undefined} className="min-w-0 shrink rounded-md px-1 font-normal text-muted-foreground data-active:bg-accent data-active:text-primary">
                 <Headphones data-icon="inline-start" /><span className="truncate">{channelLabel(selected.channel)}</span><ChevronDown data-icon="inline-end" />
@@ -182,10 +213,10 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
             </DropdownMenu>
             </div>
           </div>
-          <ToggleGroup aria-labelledby="speed-label" spacing={1} className="grid h-auto w-full min-w-0 grid-cols-4 gap-1.5" value={activePreset === undefined ? [] : [String(activePreset)]} onValueChange={value => { if (value[0]) void adjust({ type: 'rate', value: Number(value[0]) }); }}>
+          <ToggleGroup aria-labelledby="speed-label" spacing={1} className="grid h-auto w-full min-w-0 grid-cols-4 gap-1.5" value={activePreset === undefined ? [] : [String(activePreset)]} onValueChange={value => { if (value[0]) sendRate(Number(value[0])); }}>
             {ratePresets.map(speed => <ToggleGroupItem key={speed} value={String(speed)} aria-label={i18n.t('speedOption', { speed: formatRate(speed) })} className="h-8 w-full min-w-0 rounded-md border-0 bg-secondary/60 px-1 text-sm text-muted-foreground shadow-none aria-pressed:bg-primary aria-pressed:font-semibold aria-pressed:text-primary-foreground">{formatRate(speed)}×</ToggleGroupItem>)}
           </ToggleGroup>
-          {activePreset === undefined && <p className="mt-1 text-xs text-muted-foreground">{i18n.t('currentSpeed', { rate: formatRate(selected.rate) })}</p>}
+          {activePreset === undefined && <p className="mt-1 text-xs text-muted-foreground">{i18n.t('currentSpeed', { rate: formatRate(playbackRate) })}</p>}
           {selected.rateLock === 'given-up' && <p className="mt-1 text-xs leading-5 text-destructive">{i18n.t('rateLockGaveUp')}</p>}
           {offerRemember && !remembered && <Button variant="ghost" size="sm" className="mt-1 h-7 w-full justify-start px-1 text-xs text-primary" disabled={settingsLoading} onClick={storePreference}>{i18n.t('rememberSite')}</Button>}
         </div>
