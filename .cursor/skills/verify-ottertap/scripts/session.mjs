@@ -15,6 +15,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive hotkey-remap
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-speed
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-playback
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-entry-note
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -34,7 +35,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -2180,6 +2181,155 @@ async function driveFloatingPlayback(context, dir, note) {
   }
 }
 
+async function driveFloatingEntryNote(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const times = '\u00d7';
+  const near = expected => value => Math.abs(value - expected) < 0.02;
+  const page = await context.newPage();
+  let settings;
+  const floater = () => page.getByRole('complementary', { name: 'Floating controller' });
+  const toggle = () => page.getByRole('button', { name: /volume pill/i });
+  const entry = () => page.getByRole('status', { name: /^On-page / });
+  const volume = () => page.locator('#media').evaluate(element => element.volume);
+  const rate = () => page.locator('#media').evaluate(element => element.playbackRate);
+  const inside = async label => {
+    const box = await entry().boundingBox();
+    const viewport = page.viewportSize();
+    if (!box || !viewport) throw new Error(`${label}：旁注没有位置`);
+    if (box.x < -1 || box.y < -1 || box.x + box.width > viewport.width + 1 || box.y + box.height > viewport.height + 1) {
+      throw new Error(`${label}：旁注超出视口 ${JSON.stringify({ box, viewport })}`);
+    }
+    return box;
+  };
+  const collapse = async () => {
+    if ((await toggle().getAttribute('aria-expanded')) !== 'true') return;
+    await page.mouse.click(80, 80);
+    await poll(() => toggle().getAttribute('aria-expanded'), value => value !== 'true', '点页面空白应收起药丸');
+  };
+  const wheel = async (deltaY) => {
+    const at = await centerOf(page.locator('#media'));
+    await page.mouse.move(at.x, at.y);
+    await page.keyboard.down('Alt');
+    try { await page.mouse.wheel(0, deltaY); }
+    finally { await page.keyboard.up('Alt'); }
+  };
+  try {
+    await page.goto(`${origin}/keys`, { waitUntil: 'domcontentloaded' });
+    await toggle().waitFor({ state: 'visible', timeout: 15_000 });
+    await page.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+    });
+    await poll(() => entry().innerText(), value => value === '100%', '默认应收起并显示 100%');
+    if ((await toggle().getAttribute('aria-expanded')) === 'true') throw new Error('读旁注时药丸不应展开');
+    if ((await floater().getAttribute('data-revealed')) !== 'false') throw new Error('默认应半隐藏');
+    const hiddenBox = await inside('半隐藏');
+    await page.screenshot({ path: path.join(dir, 'half-hidden.png'), animations: 'disabled' });
+    note(`half-hidden ${JSON.stringify(hiddenBox)} label=${await entry().getAttribute('aria-label')}`);
+
+    const button = await toggle().boundingBox();
+    if (!button) throw new Error('浮动入口没有位置');
+    await page.mouse.move(button.x + Math.min(8, button.width / 4), button.y + button.height / 2);
+    await poll(() => floater().getAttribute('data-revealed'), value => value === 'true', '悬停应完全显示');
+    const hoverBox = await inside('悬停');
+    if ((await entry().innerText()) !== '100%') throw new Error('悬停时旁注不应改成别的状态');
+    await page.screenshot({ path: path.join(dir, 'hover.png'), animations: 'disabled' });
+    await page.mouse.move(80, 80);
+    await poll(() => floater().getAttribute('data-revealed'), value => value === 'false', '离开后应回到半隐藏');
+    note(`hover ${JSON.stringify(hoverBox)}`);
+
+    await page.mouse.click(80, 80);
+    await page.keyboard.press('Alt+Period');
+    const sped = await poll(rate, near(1.25), 'Alt+. 应到 1.25');
+    await poll(() => entry().getAttribute('aria-label'), value => value === `On-page speed 1.25${times}`, '100% 且倍速不是 1× 时应改显页内倍速');
+    if ((await entry().innerText()) !== `1.25${times}`) throw new Error('旁注正文应是 1.25×');
+    if ((await toggle().getAttribute('aria-expanded')) === 'true') throw new Error('改倍速后仍应不展开');
+    await inside('倍速');
+    await page.screenshot({ path: path.join(dir, 'speed.png'), animations: 'disabled' });
+    note(`speed ${sped}`);
+
+    await page.keyboard.press('Alt+Comma');
+    await poll(rate, near(1), 'Alt+, 应回到 1');
+    await poll(() => entry().innerText(), value => value === '100%', '回到 1× 后应恢复音量百分比');
+
+    await wheel(100);
+    const lowered = await poll(volume, near(0.9), 'Alt+滚轮向下应到 90%');
+    await collapse();
+    await poll(() => entry().getAttribute('aria-label'), value => value === 'On-page volume 90%', '离开 100% 后优先音量应显示百分比');
+    await inside('90%');
+    await page.screenshot({ path: path.join(dir, 'volume.png'), animations: 'disabled' });
+    await page.keyboard.press('Alt+Period');
+    await poll(rate, near(1.25), '90% 时再加快应到 1.25');
+    await poll(() => entry().innerText(), value => value === '90%', '音量不是 100% 时优先音量不改显倍速');
+    note(`volume ${lowered}`);
+
+    await wheel(-100);
+    await poll(volume, value => value > 0.98, '从 90% 向上应先回到 100%');
+    await collapse();
+    await poll(() => entry().getAttribute('aria-label'), value => value === `On-page speed 1.25${times}`, '回到 100% 且倍速不是 1× 时应再显示倍速');
+    await wheel(-100);
+    await collapse();
+    await poll(() => entry().getAttribute('aria-label'), value => value === 'On-page volume 110%', '超过 100% 应显示页内音量');
+    if ((await entry().getAttribute('data-boost')) !== 'true') throw new Error('超过 100% 应用强调色');
+    if ((await entry().innerText()) !== '110%') throw new Error('旁注正文应带百分号');
+    const toolbar = await poll(async () => {
+      const url = page.url();
+      return worker.evaluate(async pageUrl => {
+        const tabId = (await chrome.tabs.query({ url: pageUrl })).find(tab => tab.url === pageUrl)?.id;
+        if (tabId == null) return null;
+        const [text, title] = await Promise.all([chrome.action.getBadgeText({ tabId }), chrome.action.getTitle({ tabId })]);
+        return { text, title };
+      }, url);
+    }, value => value?.text === '110' && value.title === 'Volume is boosted to 110%', '工具栏角标应是不带百分号的 110，标题是放大文案');
+    if (toolbar.title === 'On-page volume 110%') throw new Error('工具栏标题不应使用页内旁注文案');
+    await inside('110%');
+    await page.screenshot({ path: path.join(dir, 'boost.png'), animations: 'disabled' });
+    note(`toolbar ${toolbar.text} / ${toolbar.title}`);
+
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#floating`, { waitUntil: 'domcontentloaded' });
+    const group = settings.getByRole('group', { name: 'Entry note' });
+    await group.waitFor({ state: 'visible', timeout: 15_000 });
+    await settings.getByText('This is separate from the toolbar badge above 100%.', { exact: false }).waitFor({ state: 'visible' });
+    const preferVolume = group.getByRole('button', { name: 'Prefer volume', exact: true });
+    const preferSpeed = group.getByRole('button', { name: 'Prefer speed', exact: true });
+    const hide = group.getByRole('button', { name: 'Hide', exact: true });
+    if ((await preferVolume.getAttribute('aria-pressed')) !== 'true') throw new Error('默认应按下优先音量');
+    await settings.locator('#floating').screenshot({ path: path.join(dir, 'settings-volume.png'), animations: 'disabled' });
+    await preferSpeed.click();
+    await poll(stored, value => value.floatingNote === 'rate', '设置里应存下 floatingNote=rate');
+    await settings.locator('#floating').screenshot({ path: path.join(dir, 'settings-rate.png'), animations: 'disabled' });
+    await page.bringToFront();
+    await poll(() => entry().getAttribute('aria-label'), value => value === `On-page speed 1.25${times}`, '优先倍速应显示倍速，即使音量超过 100%');
+    if ((await entry().getAttribute('data-boost')) !== 'false') throw new Error('显示倍速时不用音量强调色');
+    await page.screenshot({ path: path.join(dir, 'prefer-speed.png'), animations: 'disabled' });
+    await settings.bringToFront();
+    await hide.click();
+    await poll(stored, value => value.floatingNote === 'off', '设置里应存下 floatingNote=off');
+    await settings.locator('#floating').screenshot({ path: path.join(dir, 'settings-off.png'), animations: 'disabled' });
+    await page.bringToFront();
+    await poll(() => entry().count(), value => value === 0, '关闭后旁注应消失');
+    if ((await toggle().getAttribute('aria-expanded')) === 'true') throw new Error('关闭旁注不应展开药丸');
+    await page.screenshot({ path: path.join(dir, 'hidden.png'), animations: 'disabled' });
+    await settings.bringToFront();
+    await preferVolume.click();
+    const restored = await poll(stored, value => value.floatingNote === 'volume' && Object.keys(value.sitePrefs ?? {}).length === 0, '应恢复优先音量，且没有站点记忆');
+    await page.bringToFront();
+    await poll(() => entry().getAttribute('aria-label'), value => value === 'On-page volume 110%', '恢复后应回到页内音量');
+    note(`restored floatingNote=${restored.floatingNote}`);
+
+    const state = { ok: true, halfHidden: hiddenBox, hover: hoverBox, speed: sped, volume: lowered, toolbar, floatingNote: restored.floatingNote };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await settings?.close().catch(() => {});
+    await page.close().catch(() => {});
+  }
+}
+
 async function inspect(context) {
   const worker = await serviceWorker(context);
   const runtime = await worker.evaluate(() => ({
@@ -2273,7 +2423,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });

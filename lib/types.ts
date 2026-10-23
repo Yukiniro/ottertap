@@ -6,6 +6,15 @@ export type Theme = 'light' | 'dark' | 'system';
 export type SiteMode = 'all' | 'allow' | 'exclude';
 export type DockSide = 'left' | 'right';
 export interface FloatingPosition { side: DockSide; y: number }
+/**
+ * What the floating entry shows beside the button.
+ * Stored on `ottertap-settings-v1.floatingNote`. Missing or unknown values stay `volume`.
+ * `volume` shows the percent, and shows speed instead when that percent is 100 and speed is not 1×.
+ * `rate` always shows speed. `off` hides the note.
+ * This is not the toolbar badge, which is only the bare number above 100%, and it is not per-site.
+ */
+export const floatingNotes = ['volume', 'rate', 'off'] as const;
+export type FloatingNote = (typeof floatingNotes)[number];
 export type ChannelMode = 'stereo' | 'mono' | 'left' | 'right';
 /** Stereo is the default and is never stored. */
 export interface SitePref { volume?: number; rate?: number; channel?: Exclude<ChannelMode, 'stereo'> }
@@ -13,8 +22,8 @@ export const skipSteps = [5, 10, 15, 30] as const;
 export type SkipSeconds = (typeof skipSteps)[number];
 export const volumeSteps = [5, 10, 20] as const;
 export type VolumeStep = (typeof volumeSteps)[number];
-export interface Settings { theme: Theme; floating: boolean; floatingPosition: FloatingPosition; siteMode: SiteMode; sites: string[]; sitePrefs: Record<string, SitePref>; ratePresets: number[]; defaultRate: number | null; lockRate: boolean; holdBoost: boolean; holdBoostRate: number; holdSkip: boolean; hoverWheel: boolean; singleKey: boolean; skipSeconds: SkipSeconds; skipWithRate: boolean; volumeStep: VolumeStep; rateStep: RateStep; keybinds: Keybinds }
-export const defaultSettings: Settings = { theme: 'system', floating: true, floatingPosition: { side: 'right', y: .8 }, siteMode: 'all', sites: [], sitePrefs: {}, ratePresets: [...defaultRatePresets], defaultRate: null, lockRate: false, holdBoost: false, holdBoostRate: 2, holdSkip: false, hoverWheel: true, singleKey: false, skipSeconds: 10, skipWithRate: false, volumeStep: 10, rateStep: defaultRateStep, keybinds: { ...defaultKeybinds } };
+export interface Settings { theme: Theme; floating: boolean; floatingPosition: FloatingPosition; floatingNote: FloatingNote; siteMode: SiteMode; sites: string[]; sitePrefs: Record<string, SitePref>; ratePresets: number[]; defaultRate: number | null; lockRate: boolean; holdBoost: boolean; holdBoostRate: number; holdSkip: boolean; hoverWheel: boolean; singleKey: boolean; skipSeconds: SkipSeconds; skipWithRate: boolean; volumeStep: VolumeStep; rateStep: RateStep; keybinds: Keybinds }
+export const defaultSettings: Settings = { theme: 'system', floating: true, floatingPosition: { side: 'right', y: .8 }, floatingNote: 'volume', siteMode: 'all', sites: [], sitePrefs: {}, ratePresets: [...defaultRatePresets], defaultRate: null, lockRate: false, holdBoost: false, holdBoostRate: 2, holdSkip: false, hoverWheel: true, singleKey: false, skipSeconds: 10, skipWithRate: false, volumeStep: 10, rateStep: defaultRateStep, keybinds: { ...defaultKeybinds } };
 export interface SettingsStore {
   load(): Promise<Settings>;
   save(settings: Settings): Promise<void>;

@@ -19,7 +19,7 @@ import { defaultRatePresets, formatRate, maxRatePresets, parseRatePreset, sameRa
 import { channelLabel } from '../lib/media';
 import { defaultKeybinds, keybindOwner, keyLabel, recordedKey, sameKeybinds, type KeybindAction, type KeybindOwner } from '../lib/keybinds';
 import { downloadSettingsBackup, parseSettingsBackup, readExtensionVersion, settingsBackupErrors, type SettingsBackupError } from '../lib/settings-backup';
-import { forgetSitePref, isRateStep, isSkipSeconds, isVolumeStep, normalizeDomain } from '../lib/settings';
+import { forgetSitePref, isFloatingNote, isRateStep, isSkipSeconds, isVolumeStep, normalizeDomain } from '../lib/settings';
 import { rateSteps, skipSteps, volumeSteps, type Settings, type SitePref } from '../lib/types';
 import { useSettingsAtoms } from './theme';
 
@@ -217,9 +217,10 @@ function Row({ title, description, titleId, children }: { title: string; descrip
 }
 
 export function SettingsPage({ back }: { back?: () => void }) {
-  const { themeAtom, floatingAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { themeAtom, floatingAtom, floatingNoteAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const theme = useAtomValue(themeAtom);
   const floating = useAtomValue(floatingAtom);
+  const floatingNote = useAtomValue(floatingNoteAtom);
   const defaultRate = useAtomValue(defaultRateAtom);
   const lockRate = useAtomValue(lockRateAtom);
   const holdBoost = useAtomValue(holdBoostAtom);
@@ -348,15 +349,26 @@ export function SettingsPage({ back }: { back?: () => void }) {
         </div>
       </section>
       <section id="floating" aria-labelledby="floating-heading" className="scroll-mt-32 rounded-xl border bg-card md:scroll-mt-8">
-        <div className="grid gap-4 px-5 py-5 sm:grid-cols-[160px_1fr] sm:items-center sm:gap-8 sm:px-6">
+        <div className="grid gap-4 px-5 py-5 sm:grid-cols-[160px_1fr] sm:items-start sm:gap-8 sm:px-6">
           <div className="min-w-0">
             <h2 id="floating-heading" className="text-base font-semibold">{i18n.t('floatingController')}</h2>
             <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('floatingDescription')}</p>
           </div>
-          <Field orientation="horizontal" className="justify-between gap-4 rounded-lg bg-secondary/60 px-3 py-3">
-            <FieldLabel htmlFor="settings-floating" className="text-sm font-normal">{i18n.t('showFloating')}</FieldLabel>
-            <Switch id="settings-floating" aria-label={i18n.t('floatingController')} checked={floating} disabled={disabled} onCheckedChange={checked => void save({ floating: checked })} />
-          </Field>
+          <div className="flex min-w-0 flex-col gap-3">
+            <Field orientation="horizontal" className="justify-between gap-4 rounded-lg bg-secondary/60 px-3 py-3">
+              <FieldLabel htmlFor="settings-floating" className="text-sm font-normal">{i18n.t('showFloating')}</FieldLabel>
+              <Switch id="settings-floating" aria-label={i18n.t('floatingController')} checked={floating} disabled={disabled} onCheckedChange={checked => void save({ floating: checked })} />
+            </Field>
+            <div className="rounded-lg bg-secondary/60 px-3 py-3">
+              <h3 id="floating-note-label" className="text-sm font-medium">{i18n.t('floatingNote')}</h3>
+              <ToggleGroup aria-labelledby="floating-note-label" spacing={1} className="mt-3 grid h-auto w-full grid-cols-3 rounded-lg bg-background/80 p-1" value={[floatingNote]} disabled={disabled} onValueChange={value => { const next = value[0]; if (isFloatingNote(next)) void save({ floatingNote: next }); }}>
+                <ToggleGroupItem value="volume" className="h-8 rounded-md border-0 px-2 text-xs text-muted-foreground shadow-none aria-pressed:bg-card aria-pressed:font-semibold aria-pressed:text-foreground aria-pressed:shadow-sm">{i18n.t('floatingNoteVolume')}</ToggleGroupItem>
+                <ToggleGroupItem value="rate" className="h-8 rounded-md border-0 px-2 text-xs text-muted-foreground shadow-none aria-pressed:bg-card aria-pressed:font-semibold aria-pressed:text-foreground aria-pressed:shadow-sm">{i18n.t('floatingNoteRate')}</ToggleGroupItem>
+                <ToggleGroupItem value="off" className="h-8 rounded-md border-0 px-2 text-xs text-muted-foreground shadow-none aria-pressed:bg-card aria-pressed:font-semibold aria-pressed:text-foreground aria-pressed:shadow-sm">{i18n.t('floatingNoteOff')}</ToggleGroupItem>
+              </ToggleGroup>
+              <p className="mt-2 text-sm leading-5 text-muted-foreground">{i18n.t('floatingNoteDescription')}</p>
+            </div>
+          </div>
         </div>
       </section>
       <section id="playback" aria-labelledby="playback-heading" className="scroll-mt-32 rounded-xl border bg-card md:scroll-mt-8">
