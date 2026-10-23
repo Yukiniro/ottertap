@@ -1,6 +1,6 @@
 # 逐帧前进 / 后退
 
-页内 `,` 后退一帧，`.` 前进一帧。不需要打开单键模式。播放中会先暂停，再移动一帧。弹出面板在进度条下有 `Previous frame` 和 `Next frame`，说明同一句话。
+页内 `,` 后退一帧，`.` 前进一帧。不需要打开单键模式。播放中会先暂停，再移动一帧。弹出面板把 `Previous frame` 和 `Next frame` 放在播放键两侧。可 seek 时「先暂停再走一帧」写在按钮的 `title` 和屏幕阅读说明里，避免把面板撑过现有高度。不可 seek 时同一句禁用说明显示在进度条下。
 
 直播（`duration` 为无限）和还不能 seek 的媒体不移动。按钮禁用，快捷键弹出说明：`Live streams and media that can't be seeked don't support frame step.`
 
@@ -12,7 +12,7 @@
 
 - 页内快捷键。`,` 上一帧，`.` 下一帧。单键模式开或关都生效。输入框里不生效。`Alt+,` / `Alt+.` 仍改倍速。
 - 先暂停。正在播放时按 `.`，媒体变为暂停，进度大约前进一帧，不会按快进秒数跳。
-- 弹出面板。`Previous frame` / `Next frame`。可 seek 时说明是 `Pauses playback, then moves one frame.` 点一下发出一帧。
+- 弹出面板。播放键左侧是 `Previous frame`，右侧是 `Next frame`。可 seek 时 `#frame-step-hint` 仍是 `Pauses playback, then moves one frame.`，只给辅助技术读，悬停按钮也能看到。点一下发出一帧。
 - 不可用。直播或没有可 seek 范围时两个按钮 `disabled`，说明是 `Live streams and media that can't be seeked don't support frame step.` 页内按键弹出同一句，进度不变。
 - 快捷键说明。设置页「On-page shortcuts」里有 `,` 和 `.`，说明是 `Pause, then previous frame` / `Pause, then next frame`。下面一段写明先暂停，以及直播和不可 seek 时不动。
 
@@ -20,7 +20,7 @@
 
 1. 打开有视频的网页，点页面空白处。
 2. 按 `.` 前进一帧，按 `,` 后退一帧。如果正在播放，会先停住。
-3. 打开弹出面板，点 `Next frame` 或 `Previous frame`。
+3. 打开弹出面板，点播放键旁边的 `Next frame` 或 `Previous frame`。悬停能看到会先暂停。
 4. 直播或还不能拖动进度的媒体上，按钮是灰的，并有一句说明。
 
 ## Driving it with Playwright
@@ -32,7 +32,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive frame-step
 会话已经 `launch` 且 `doctor` 通过之后跑。它不改设置，同一会话可以再跑。旅程用夹具 `/video`、`/keys` 和 `/unseekable`：
 
 1. `/video` 暂停在 0.5 秒。按 `.` 大约到 0.5 + 1/30 秒，仍暂停。再按 `,` 回到约 0.5 秒。截 `fixture-step.png`。
-2. 打开弹出面板，点 `Next frame`，再前进大约一帧。截 `popup-frame.png`。
+2. 打开弹出面板，点 `Next frame`，再前进大约一帧。`#frame-step-hint` 是 `Pauses playback, then moves one frame.`。截 `popup-frame.png`。
 3. 播放后按 `.`，应变为暂停，进度只挪一小步，不是快进的 10 秒。`Alt+.` 仍把倍速从 1 加到 1.25。
 4. 设置页「On-page shortcuts」能看到 `,` 和 `.`，以及先暂停的说明。`Alt + .` 仍是加快。截 `settings-shortcuts.png`。
 5. `/keys` 聚焦 `Field` 再按 `.`，进度不变。

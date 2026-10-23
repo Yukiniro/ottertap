@@ -178,21 +178,23 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
         </div>
         <h1 title={selected.title} className="mt-2 line-clamp-2 text-lg leading-6 font-semibold break-words">{selected.title}</h1>
         <div className="mt-3 grid grid-cols-[minmax(0,1fr)_48px_44px_48px_minmax(0,1fr)] items-center gap-2">
-          <Button variant="ghost" size="sm" className="col-start-2 h-9 w-12 gap-1 px-2 tabular-nums" aria-label={i18n.t('skipBack', { seconds: jump })} disabled={!canSeek} onClick={() => void command({ type: 'skip', value: -jump })}><RotateCcw /><span className="text-xs">{jump}</span></Button>
+          <div className="flex justify-end">
+            <Button type="button" variant="ghost" size="icon" className="text-muted-foreground" aria-label={i18n.t('frameBack')} title={canStep ? i18n.t('frameStepHint') : i18n.t('frameStepUnavailable')} aria-describedby="frame-step-hint" disabled={!canStep} onClick={() => void command({ type: 'frame', direction: -1 })}><StepBack /></Button>
+          </div>
+          <Button variant="ghost" size="sm" className="h-9 w-12 gap-1 px-2 tabular-nums" aria-label={i18n.t('skipBack', { seconds: jump })} disabled={!canSeek} onClick={() => void command({ type: 'skip', value: -jump })}><RotateCcw /><span className="text-xs">{jump}</span></Button>
           <Button className="size-11 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 [&_svg:not([class*='size-'])]:size-5" aria-label={selected.paused ? i18n.t('play') : i18n.t('pause')} onClick={() => void command({ type: selected.paused ? 'play' : 'pause' })}>{selected.paused ? <Play fill="currentColor" strokeWidth={0} className="ml-0.5" /> : <Pause fill="currentColor" strokeWidth={0} />}</Button>
           <Button variant="ghost" size="sm" className="h-9 w-12 gap-1 px-2 tabular-nums" aria-label={i18n.t('skipForward', { seconds: jump })} disabled={!canSeek} onClick={() => void command({ type: 'skip', value: jump })}><span className="text-xs">{jump}</span><RotateCw /></Button>
-          <Button type="button" variant="ghost" size="icon" className="justify-self-end text-muted-foreground aria-pressed:bg-accent aria-pressed:text-primary" aria-pressed={selected.pip} title={selected.pip ? i18n.t('exitPictureInPicture') : i18n.t('pictureInPicture')} aria-label={selected.pip ? i18n.t('exitPictureInPicture') : i18n.t('pictureInPicture')} aria-describedby={hint ? 'pip-hint' : undefined} disabled={!!hint} onClick={() => void command({ type: 'pip' })}><PictureInPicture2 /></Button>
+          <div className="flex items-center justify-between">
+            <Button type="button" variant="ghost" size="icon" className="text-muted-foreground" aria-label={i18n.t('frameForward')} title={canStep ? i18n.t('frameStepHint') : i18n.t('frameStepUnavailable')} aria-describedby="frame-step-hint" disabled={!canStep} onClick={() => void command({ type: 'frame', direction: 1 })}><StepForward /></Button>
+            <Button type="button" variant="ghost" size="icon" className="text-muted-foreground aria-pressed:bg-accent aria-pressed:text-primary" aria-pressed={selected.pip} title={selected.pip ? i18n.t('exitPictureInPicture') : i18n.t('pictureInPicture')} aria-label={selected.pip ? i18n.t('exitPictureInPicture') : i18n.t('pictureInPicture')} aria-describedby={hint ? 'pip-hint' : undefined} disabled={!!hint} onClick={() => void command({ type: 'pip' })}><PictureInPicture2 /></Button>
+          </div>
         </div>
         <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground tabular-nums">
           <span className="shrink-0">{formatTime(seekDraft ?? selected.currentTime)}</span>
           <Slider aria-label={i18n.t('seek')} className="min-w-0 flex-1 py-2" min={seekMin} max={Math.max(seekMin + 1, seekMax)} step={1} value={[seekDraft ?? selected.currentTime]} disabled={!canSeek} onValueChange={value => setSeekDraft(first(value) ?? null)} onValueCommitted={value => { void command({ type: 'seek', value: first(value) ?? seekMin }).finally(() => setSeekDraft(null)); }} />
           <span className="shrink-0">{selected.duration === null ? selected.live ? i18n.t('live') : '--:--' : formatTime(selected.duration)}</span>
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <Button type="button" variant="ghost" size="sm" className="h-8 gap-1 px-2" aria-label={i18n.t('frameBack')} aria-describedby="frame-step-hint" disabled={!canStep} onClick={() => void command({ type: 'frame', direction: -1 })}><StepBack /><span className="text-xs">{i18n.t('frameBack')}</span></Button>
-          <Button type="button" variant="ghost" size="sm" className="h-8 gap-1 px-2" aria-label={i18n.t('frameForward')} aria-describedby="frame-step-hint" disabled={!canStep} onClick={() => void command({ type: 'frame', direction: 1 })}><span className="text-xs">{i18n.t('frameForward')}</span><StepForward /></Button>
-        </div>
-        <p id="frame-step-hint" className="mt-1 text-xs text-muted-foreground">{canStep ? i18n.t('frameStepHint') : i18n.t('frameStepUnavailable')}</p>
+        <p id="frame-step-hint" className={canStep ? 'sr-only' : 'mt-1 text-xs text-muted-foreground'}>{canStep ? i18n.t('frameStepHint') : i18n.t('frameStepUnavailable')}</p>
         {hint ? <p id="pip-hint" className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
       </div>
       <div className="border-b pb-3">
