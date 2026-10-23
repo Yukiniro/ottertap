@@ -51,7 +51,10 @@ test('设置页改键后已打开的网页立即换键，撞键有提示，可�
   const context = browser!;
   const worker = context.serviceWorkers()[0] ?? await context.waitForEvent('serviceworker');
   const extensionId = new URL(worker.url()).host;
-  const stored = () => worker.evaluate(async key => (await chrome.storage.local.get(key))[key] as { singleKey?: boolean; keybinds?: Record<string, string> } | undefined, settingsKey);
+  const stored = () => worker.evaluate(async key => {
+    const storage = (globalThis as unknown as { chrome: { storage: { local: { get: (key: string) => Promise<Record<string, unknown>> } } } }).chrome.storage.local;
+    return (await storage.get(key))[key] as { singleKey?: boolean; keybinds?: Record<string, string> } | undefined;
+  }, settingsKey);
 
   const page = await context.newPage();
   await page.goto(`${origin}/remap`);
