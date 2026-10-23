@@ -12,6 +12,7 @@ import { useMedia } from '../hooks/use-media';
 import { dockedPoint, dockSize, dropPosition, nudgePosition, type Viewport } from '../lib/dock';
 import { commandForHotkey, createHotkeySession, rateHintEvent, volumeGestureEvent } from '../lib/hotkey';
 import { floatingEntryNote } from '../lib/floating-note';
+import { createFloatingWhilePlayingGate, floatingWhilePlayingHideMs, stepFloatingWhilePlaying } from '../lib/floating-play';
 import { formatRate, nextRate, sameRate } from '../lib/rate';
 import { actualSkipSeconds } from '../lib/skip';
 import type { FloatingPosition, MediaClient, MediaState } from '../lib/types';
@@ -22,9 +23,10 @@ const thumbHeight = 10;
 const boostColor = (volume: number, max: number) => `color-mix(in oklch, var(--destructive) ${Math.max(0, Math.min(1, (volume - 100) / (max - 100))) * 100}%, #b57835)`;
 
 export function FloatingController({ client, openPanel }: { client: MediaClient; openPanel?: (mediaId: string) => Promise<boolean> }) {
-  const { floatingAtom, floatingNoteAtom, floatingPositionAtom, loadingAtom, ratePresetsAtom, rateStepAtom, skipSecondsAtom, skipWithRateAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { floatingAtom, floatingNoteAtom, floatingPositionAtom, floatingWhilePlayingAtom, loadingAtom, ratePresetsAtom, rateStepAtom, skipSecondsAtom, skipWithRateAtom, writeSettingsAtom } = useSettingsAtoms();
   const floating = useAtomValue(floatingAtom);
   const floatingNote = useAtomValue(floatingNoteAtom);
+  const floatingWhilePlaying = useAtomValue(floatingWhilePlayingAtom);
   const floatingPosition = useAtomValue(floatingPositionAtom);
   const loading = useAtomValue(loadingAtom);
   const ratePresets = useAtomValue(ratePresetsAtom);
@@ -68,6 +70,7 @@ export function FloatingController({ client, openPanel }: { client: MediaClient;
     }
   }, [selected, rateSettled]);
   const floatingRef = useRef(floating);
+  const expandWhileShown = useRef(true);
   const mediaRef = useRef(selected);
   const clientRef = useRef(client);
   const optimistic = useRef<MediaState | null>(null);
@@ -94,7 +97,7 @@ export function FloatingController({ client, openPanel }: { client: MediaClient;
       optimistic.current = { ...current, volume: percent / 100, muted: percent <= 0 };
       setDraft(Math.round(percent));
     };
-    const open = () => { if (floatingRef.current) setExpanded(true); };
+    const open = () => { if (floatingRef.current && expandWhileShown.current) setExpanded(true); };
     window.addEventListener(volumeGestureEvent, open);
     window.addEventListener('ottertap-volume', onVolume);
     return () => { hotkeys.dispose(); window.removeEventListener(volumeGestureEvent, open); window.removeEventListener('ottertap-volume', onVolume); };
@@ -107,8 +110,30 @@ export function FloatingController({ client, openPanel }: { client: MediaClient;
     optimistic.current = null;
     setDraft(value => value === shown ? null : value);
   }, [selected]);
+  const playGate = useRef(createFloatingWhilePlayingGate());
+  const [playClock, setPlayClock] = useState(0);
+  const playback = stepFloatingWhilePlaying(playGate.current, {
+    whilePlaying: floatingWhilePlaying,
+    selected: !!selected,
+    playing: !!selected && !selected.paused,
+    now: Date.now()
+  });
+  playGate.current = playback.gate;
+  expandWhileShown.current = !floatingWhilePlaying || playback.visible;
+  const selectedId = selected?.id;
+  const selectedPaused = selected?.paused;
+  useEffect(() => {
+    if (loading || !floatingWhilePlaying || !selectedId || selectedPaused !== true || !playback.visible) return;
+    const since = playGate.current.hiddenSince ?? Date.now();
+    const wait = floatingWhilePlayingHideMs - (Date.now() - since);
+    const timer = window.setTimeout(() => setPlayClock(clock => clock + 1), Math.max(0, wait));
+    return () => window.clearTimeout(timer);
+  }, [loading, floatingWhilePlaying, playback.visible, playClock, selectedId, selectedPaused]);
+  useEffect(() => {
+    if (floatingWhilePlaying && !playback.visible) setExpanded(false);
+  }, [floatingWhilePlaying, playback.visible]);
 
-  if (loading || !floating || !page.enabled || !selected) return null;
+  if (loading || !floating || !page.enabled || !selected || (floatingWhilePlaying && !playback.visible)) return null;
   const position = moved ?? floatingPosition;
   const revealed = hovered || focused || expanded || !!dragPoint;
   const point = dragPoint ?? dockedPoint(position, viewport, revealed);

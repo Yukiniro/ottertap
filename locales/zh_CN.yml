@@ -66,6 +66,8 @@ floatingNoteDescription: "优先音量时，在网页上的浮动入口旁显示
 floatingNoteOff: "关闭"
 floatingNoteRate: "优先倍速"
 floatingNoteVolume: "优先音量"
+floatingWhilePlaying: "仅在选中媒体播放时显示"
+floatingWhilePlayingDescription: "开启后，只有当前选中的媒体正在播放时才显示浮动入口。暂停一小会儿后才隐藏，避免快速暂停再播放时入口闪掉而点不到。没有选中媒体时马上隐藏。默认关闭，关闭时和现在一样。不影响悬停在主播放区用滚轮调音量。"
 forgetSite: "忘记 {site}"
 frameBack: "上一帧"
 frameForward: "下一帧"

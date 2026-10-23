@@ -66,6 +66,8 @@ floatingNoteDescription: "音量優先では、ページ上のボタンの横に
 floatingNoteOff: "非表示"
 floatingNoteRate: "速度を優先"
 floatingNoteVolume: "音量を優先"
+floatingWhilePlaying: "選択中のメディアの再生中だけ表示"
+floatingWhilePlayingDescription: "オンにすると、選択中のメディアが再生しているあいだだけフローティングボタンを表示します。一時停止は少し待ってから隠すので、すばやく一時停止と再生を繰り返してもボタンが消えて押せなくなることはありません。何も選択していないときはすぐ隠します。既定はオフで、オフのときはいままでどおりです。メインの再生エリアでホイールを回して音量を調整する動作は変わりません。"
 forgetSite: "{site} を忘れる"
 frameBack: "前のフレーム"
 frameForward: "次のフレーム"
