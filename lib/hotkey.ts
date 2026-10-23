@@ -1,4 +1,5 @@
 import { i18n } from '#i18n';
+import { defaultKeybinds, pressedKey, type KeyPress, type Keybinds } from './keybinds';
 import { isPipFailureKey, lockedMedia } from './media';
 import { nextRate } from './rate';
 import { actualSkipSeconds, hintSkipSeconds } from './skip';
@@ -21,49 +22,44 @@ export const volumeGestureEvent = 'ottertap-volume-gesture';
 export const rateHintEvent = 'ottertap-rate';
 export const actionHintEvent = 'ottertap-action-hint';
 
-interface KeyInput { key: string; code?: string; altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }
+type KeyInput = KeyPress;
 /** `onMedia`: the pointer is over a media element or one has focus. Single-key ↑/↓ need it so page scrolling keeps the arrows. */
-export interface KeyContext { singleKey?: boolean; onMedia?: boolean; skipSeconds?: number; volumeStep?: number }
+export interface KeyContext { singleKey?: boolean; onMedia?: boolean; skipSeconds?: number; volumeStep?: number; keybinds?: Keybinds }
 
-const typedKeys = new Set([',', '.', '0', '<', '>', ')', 'm', 'k', 'j', 'l']);
-const physicalKeys: Record<string, string> = { Comma: ',', Period: '.', Digit0: '0', KeyM: 'm', KeyK: 'k', KeyJ: 'j', KeyL: 'l' };
+const altTypedKeys = new Set([',', '.', '0', '<', '>', ')', 'm']);
+const altPhysicalKeys: Record<string, string> = { Comma: ',', Period: '.', Digit0: '0', KeyM: 'm' };
 
-function keyName(event: KeyInput) {
-  // The typed glyph wins, so AZERTY keeps its printed keys. macOS Option rewrites key (Option+M types µ), so fall back to code.
+function altKeyName(event: KeyInput) {
+  // macOS Option rewrites key (Option+M types µ), so fall back to code.
   const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
-  if (typedKeys.has(key) || key.startsWith('Arrow')) return key;
-  return physicalKeys[event.code ?? ''] ?? key;
+  if (altTypedKeys.has(key)) return key;
+  return altPhysicalKeys[event.code ?? ''] ?? key;
 }
 
 const rate = (direction: 1 | -1 | 0): HotkeyAction => ({ type: 'rate', direction });
 
-export function hotkeyFromKeyboard(event: KeyInput, { singleKey = false, onMedia = false, skipSeconds = 10, volumeStep = 10 }: KeyContext = {}): HotkeyAction | null {
+export function hotkeyFromKeyboard(event: KeyInput, { singleKey = false, onMedia = false, skipSeconds = 10, volumeStep = 10, keybinds = defaultKeybinds }: KeyContext = {}): HotkeyAction | null {
   const step = normalizeSkipSeconds(skipSeconds);
   const volume = normalizeVolumeStep(volumeStep);
   if (event.ctrlKey || event.metaKey) return null;
-  const name = keyName(event);
   if (event.altKey) {
+    const name = altKeyName(event);
     if (name === '.' || name === '>') return rate(1);
     if (name === ',' || name === '<') return rate(-1);
     if (name === '0' || name === ')') return rate(0);
     return name === 'm' ? { type: 'mute' } : null;
   }
-  // Bare , and . step one frame even when single-key mode is off.
-  // Alt+,/. stay speed. Shift+,/. stay the single-key speed chords. J/K/L stay skip.
-  if (!event.shiftKey && name === ',') return { type: 'frame', direction: -1 };
-  if (!event.shiftKey && name === '.') return { type: 'frame', direction: 1 };
+  const name = pressedKey(event, keybinds);
+  // Frame keys work even when single-key mode is off.
+  if (name === keybinds.frameBack) return { type: 'frame', direction: -1 };
+  if (name === keybinds.frameForward) return { type: 'frame', direction: 1 };
   if (!singleKey) return null;
-  if (event.shiftKey) {
-    if (name === '>' || name === '.') return rate(1);
-    if (name === '<' || name === ',') return rate(-1);
-    return null;
-  }
-  if (name === '>') return rate(1);
-  if (name === '<') return rate(-1);
-  if (name === 'k') return { type: 'toggle' };
-  if (name === 'm') return { type: 'mute' };
-  if (name === 'j' || name === 'ArrowLeft') return { type: 'skip', delta: -step };
-  if (name === 'l' || name === 'ArrowRight') return { type: 'skip', delta: step };
+  if (name === keybinds.rateUp) return rate(1);
+  if (name === keybinds.rateDown) return rate(-1);
+  if (name === keybinds.toggle) return { type: 'toggle' };
+  if (name === keybinds.mute) return { type: 'mute' };
+  if (name === keybinds.skipBack || name === 'ArrowLeft') return { type: 'skip', delta: -step };
+  if (name === keybinds.skipForward || name === 'ArrowRight') return { type: 'skip', delta: step };
   if (!onMedia) return null;
   if (name === 'ArrowUp') return { type: 'volume', delta: volume };
   if (name === 'ArrowDown') return { type: 'volume', delta: -volume };
@@ -171,6 +167,8 @@ export function createHotkeyInput(send: (action: HotkeyAction, target?: string) 
   let pending: { action: HotkeyAction; target?: string }[] = [];
   let frame = 0;
   let altUsed = false;
+  /** Physical keys whose keydown was taken. Their keyup is taken too, even after Shift is released first. */
+  const held = new Set<string>();
   const useAlt = () => {
     if (altUsed) return;
     altUsed = true;
@@ -192,7 +190,7 @@ export function createHotkeyInput(send: (action: HotkeyAction, target?: string) 
     if (!frame) frame = window.requestAnimationFrame(flush);
   };
   return {
-    key(event: KeyInput & { type?: string; repeat?: boolean; preventDefault(): void; stopPropagation(): void; stopImmediatePropagation?(): void }, { singleKey = false, skipSeconds = 10, volumeStep = 10, target }: { singleKey?: boolean; skipSeconds?: number; volumeStep?: number; target?: string } = {}) {
+    key(event: KeyInput & { type?: string; repeat?: boolean; preventDefault(): void; stopPropagation(): void; stopImmediatePropagation?(): void }, { singleKey = false, skipSeconds = 10, volumeStep = 10, keybinds, target }: Omit<KeyContext, 'onMedia'> & { target?: string } = {}) {
       if (event.key === 'Alt') {
         // Windows Chrome focuses its menu on an Alt release the page leaves unhandled, even after the page used Alt+wheel or Alt+key.
         if (event.type !== 'keyup') {
@@ -204,13 +202,16 @@ export function createHotkeyInput(send: (action: HotkeyAction, target?: string) 
         if (swallow) event.preventDefault();
         return swallow;
       }
-      const action = hotkeyFromKeyboard(event, { singleKey, onMedia: target !== undefined, skipSeconds, volumeStep });
-      if (!action) return false;
+      const id = event.code || event.key;
+      const paired = held.delete(id) && event.type === 'keyup';
+      const action = paired ? null : hotkeyFromKeyboard(event, { singleKey, onMedia: target !== undefined, skipSeconds, volumeStep, keybinds });
+      if (!action && !paired) return false;
       // Capture-phase stop keeps the site's own shortcut on the same key from also running.
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation?.();
-      if (event.type === 'keyup') return true;
+      if (!action || event.type === 'keyup') return true;
+      held.add(id);
       if (event.altKey) useAlt();
       queue(action, action.type === 'volume' ? target : undefined);
       return true;
@@ -227,9 +228,11 @@ export function createHotkeyInput(send: (action: HotkeyAction, target?: string) 
       queue({ type: 'volume', delta }, target);
       return true;
     },
+    /** An action decided outside the keyboard path, such as a short tap on a hold-to-skip key. */
+    press(action: HotkeyAction) { queue(action); },
     /** Another frame used the current Alt press; this frame may be the one that receives its release. */
     arm() { altUsed = true; },
-    dispose() { window.cancelAnimationFrame(frame); frame = 0; pending = []; }
+    dispose() { window.cancelAnimationFrame(frame); frame = 0; pending = []; held.clear(); }
   };
 }
 

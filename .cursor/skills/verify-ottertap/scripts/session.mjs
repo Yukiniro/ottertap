@@ -12,6 +12,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive hold-boost
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive hold-skip-combo
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive frame-step
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive hotkey-remap
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -31,7 +32,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -1731,6 +1732,145 @@ async function driveFrameStep(context, dir, note) {
   }
 }
 
+async function driveHotkeyRemap(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const frame = 1 / 30;
+  const near = expected => value => Math.abs(value - expected) < 0.012;
+  const keyButton = action => settings.getByRole('button', { name: new RegExp(`^Change the key for ${action.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\. Now `) });
+  const recording = () => settings.getByRole('button', { name: 'Press a key', exact: true });
+  const reset = () => settings.getByRole('button', { name: 'Restore default keys', exact: true });
+  const shortcuts = () => settings.locator('#shortcuts');
+  const paused = () => fixture.locator('#media').evaluate(element => element.paused);
+  const time = () => fixture.locator('#media').evaluate(element => element.currentTime);
+  const focusFixture = async () => {
+    await fixture.bringToFront();
+    await fixture.mouse.click(12, 12);
+  };
+  const expectToggle = async (key, label) => {
+    await focusFixture();
+    const before = await paused();
+    await fixture.keyboard.press(key);
+    return poll(paused, value => value === !before, label);
+  };
+  const expectIgnored = async (key, label) => {
+    await focusFixture();
+    const before = { paused: await paused(), currentTime: await time() };
+    await fixture.keyboard.press(key);
+    await fixture.waitForTimeout(400);
+    const after = { paused: await paused(), currentTime: await time() };
+    if (after.paused !== before.paused || !near(before.currentTime)(after.currentTime)) throw new Error(`${label}：${JSON.stringify({ before, after })}`);
+    return after;
+  };
+  let settings;
+  let fixture;
+  try {
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
+    await keyButton('Play or pause').waitFor({ state: 'visible', timeout: 15_000 });
+    const defaults = {};
+    for (const [action, label] of [['Play or pause', 'K'], ['Back 10 seconds', 'J'], ['Forward 10 seconds', 'L'], ['Mute or unmute', 'M'], ['Increase speed by 0.25×', '>'], ['Decrease speed by 0.25×', '<'], ['Hold for a temporary speed', 'S'], ['Pause, then previous frame', ','], ['Pause, then next frame', '.']]) {
+      const text = (await keyButton(action).innerText()).trim();
+      if (text !== label) throw new Error(`${action} 默认键应是 ${label}，实际 ${text}`);
+      defaults[action] = text;
+    }
+    if (!await reset().isDisabled()) throw new Error('默认键位时「Restore default keys」应禁用');
+    await shortcuts().getByText('Changes apply right away on open pages.', { exact: false }).waitFor({ state: 'visible' });
+    await settings.getByRole('switch', { name: 'Single-key mode' }).click();
+    await poll(stored, value => value.singleKey === true, '应打开单键模式');
+    await shortcuts().screenshot({ path: path.join(dir, 'settings-default.png'), animations: 'disabled' });
+    note(`defaults ${JSON.stringify(defaults)}; single-key mode on`);
+
+    fixture = await context.newPage();
+    await fixture.goto(`${origin}/video`, { waitUntil: 'domcontentloaded' });
+    await fixture.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await fixture.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+      element.pause();
+      element.currentTime = 0.5;
+    });
+    await expectToggle('KeyK', '默认 K 应开始播放');
+    await expectToggle('KeyK', '默认 K 应暂停');
+    note('default K toggles playback on /video');
+
+    await settings.bringToFront();
+    await keyButton('Play or pause').click();
+    await recording().waitFor({ state: 'visible' });
+    await settings.keyboard.press('KeyJ');
+    const conflict = (await settings.locator('#keybind-error').innerText()).trim();
+    const conflictCopy = 'J is already used for “Back 10 seconds”. Press another key, or change that one first.';
+    if (conflict !== conflictCopy) throw new Error(`撞键提示不对：${conflict}`);
+    if ((await stored()).keybinds?.toggle !== 'k') throw new Error('撞键时不应保存');
+    if (!await recording().isVisible()) throw new Error('撞键后应继续等待新键');
+    await shortcuts().screenshot({ path: path.join(dir, 'settings-conflict.png'), animations: 'disabled' });
+    note(`conflict tip: ${conflict}`);
+    await settings.keyboard.press('KeyP');
+    await poll(stored, value => value.keybinds?.toggle === 'p' && value.singleKey === true, '应保存 Play or pause = p，且单键模式仍开');
+    await keyButton('Pause, then next frame').click();
+    await settings.keyboard.press('KeyE');
+    const remapped = await poll(stored, value => value.keybinds?.frameForward === 'e', '应保存 Pause, then next frame = e');
+    if (await settings.locator('#keybind-error').count()) throw new Error('改键成功后不应留着冲突提示');
+    await keyButton('Play or pause').filter({ hasText: 'P' }).waitFor({ state: 'visible' });
+    await shortcuts().getByText('Frame step uses , and E with no extra key.', { exact: false }).waitFor({ state: 'visible' });
+    await shortcuts().screenshot({ path: path.join(dir, 'settings-remapped.png'), animations: 'disabled' });
+    note(`saved keybinds ${JSON.stringify(remapped.keybinds)}`);
+
+    await expectIgnored('KeyK', '改键后 K 应留给网站，不再播放');
+    await expectToggle('KeyP', '未刷新页面，P 应立即开始播放');
+    await expectToggle('KeyP', 'P 应暂停');
+    await fixture.locator('#media').evaluate(element => { element.pause(); element.currentTime = 0.5; });
+    await poll(time, near(0.5), '夹具应停在 0.5 秒');
+    await expectIgnored('Period', '改键后 . 不应逐帧');
+    await focusFixture();
+    await fixture.keyboard.press('KeyE');
+    const stepped = await poll(time, near(0.5 + frame), 'E 应前进约一帧');
+    await fixture.screenshot({ path: path.join(dir, 'fixture-remapped.png'), animations: 'disabled' });
+    note(`live on open page: K ignored, P toggles, . ignored, E steps to ${stepped}`);
+
+    await settings.bringToFront();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#backup`, { waitUntil: 'domcontentloaded' });
+    const [download] = await Promise.all([settings.waitForEvent('download'), settings.getByRole('button', { name: 'Export settings', exact: true }).click()]);
+    const exportPath = path.join(dir, 'export.json');
+    await download.saveAs(exportPath);
+    const exported = JSON.parse(await readFile(exportPath, 'utf8'));
+    if (exported.settings?.keybinds?.toggle !== 'p' || exported.settings?.keybinds?.frameForward !== 'e') throw new Error(`导出文件应带自定义键位：${JSON.stringify(exported.settings?.keybinds)}`);
+    note(`export keybinds ${JSON.stringify(exported.settings.keybinds)}`);
+
+    await settings.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
+    await keyButton('Mute or unmute').click();
+    await settings.keyboard.press('Escape');
+    if (await recording().count()) throw new Error('Esc 应取消录键');
+    await reset().click();
+    const restored = await poll(stored, value => value.keybinds?.toggle === 'k' && value.keybinds?.frameForward === '.', '恢复默认后应回到 K 和 .');
+    await keyButton('Play or pause').filter({ hasText: 'K' }).waitFor({ state: 'visible' });
+    if (!await reset().isDisabled()) throw new Error('恢复默认后按钮应禁用');
+    await shortcuts().screenshot({ path: path.join(dir, 'settings-restored.png'), animations: 'disabled' });
+    await expectToggle('KeyK', '恢复默认后 K 应立即播放');
+    await expectToggle('KeyK', '恢复默认后 K 应暂停');
+    await expectIgnored('KeyP', '恢复默认后 P 应留给网站');
+    note(`restored ${JSON.stringify(restored.keybinds)}; K toggles again, P ignored`);
+
+    await settings.bringToFront();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#backup`, { waitUntil: 'domcontentloaded' });
+    await settings.locator('#backup input[type="file"]').setInputFiles(exportPath);
+    await settings.getByRole('button', { name: 'Replace settings', exact: true }).click();
+    const imported = await poll(stored, value => value.keybinds?.toggle === 'p' && value.keybinds?.frameForward === 'e', '导入后应回到自定义键位');
+    await expectToggle('KeyP', '导入后 P 应播放');
+    await expectToggle('KeyP', '导入后 P 应暂停');
+    note(`import restored keybinds ${JSON.stringify(imported.keybinds)}`);
+
+    const state = { ok: true, defaults, conflict, remapped: remapped.keybinds, steppedTo: stepped, exported: exported.settings.keybinds, restored: restored.keybinds, imported: imported.keybinds };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await fixture?.close().catch(() => {});
+    await settings?.close().catch(() => {});
+  }
+}
+
 async function inspect(context) {
   const worker = await serviceWorker(context);
   const runtime = await worker.evaluate(() => ({
@@ -1824,7 +1964,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });

@@ -1,5 +1,6 @@
 import { i18n } from '#i18n';
 import { isChannelMode, maxGain } from './amplifier';
+import { normalizeKeybinds } from './keybinds';
 import { clampRate, formatRate, maxRate, minRate, normalizeRatePresets, normalizeRateStep, rateGrid } from './rate';
 export { isRateStep } from './rate';
 import { defaultSettings, skipSteps, volumeSteps, type MediaCommand, type Settings, type SitePref, type SkipSeconds, type VolumeStep } from './types';
@@ -48,7 +49,7 @@ export function normalizeDomain(input: string): string {
 }
 
 export function normalizeSettings(value: unknown): Settings {
-  if (!value || typeof value !== 'object') return { ...defaultSettings, sites: [], sitePrefs: {}, ratePresets: [...defaultSettings.ratePresets] };
+  if (!value || typeof value !== 'object') return { ...defaultSettings, sites: [], sitePrefs: {}, ratePresets: [...defaultSettings.ratePresets], keybinds: { ...defaultSettings.keybinds } };
   const source = value as Partial<Settings>;
   const sites: string[] = [];
   if (Array.isArray(source.sites)) for (const site of source.sites) {
@@ -75,7 +76,8 @@ export function normalizeSettings(value: unknown): Settings {
     skipSeconds: normalizeSkipSeconds(source.skipSeconds),
     skipWithRate: source.skipWithRate === true,
     volumeStep: normalizeVolumeStep(source.volumeStep),
-    rateStep: normalizeRateStep(source.rateStep)
+    rateStep: normalizeRateStep(source.rateStep),
+    keybinds: normalizeKeybinds(source.keybinds)
   };
 }
 
