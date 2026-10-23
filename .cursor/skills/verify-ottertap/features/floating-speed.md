@@ -26,7 +26,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-speed
 
 会话已经 `launch` 且 `doctor` 通过之后跑。旅程用夹具 `/keys`。它会改设置里的倍速步长和预设，成功结束时再改回去。中途失败就要 `cleanup` 再 `launch`，不要接在依赖默认 0.25× 或默认预设的旅程后面。
 
-1. 打开 `/keys`，把音量设成 50%，展开药丸。音量滑块按上方向键到约 51%。点 `Mute` 再点 `Unmute`，音量仍约 51%。
+1. 打开 `/keys`，展开药丸。音量滑块先显示 100%，按下方向键后 `#media.volume` 约为 0.99。点 `Mute` 再点 `Unmute`，音量仍约 0.99。
 2. `Speed` 组里能看到默认预设 `0.75× speed` 到 `4× speed`，`1× speed` 按下。点 `Increase speed by 0.25×`，`#media.playbackRate` 约为 1.25，状态提示是 `Speed 1.25×`。
 3. 点 `2× speed`，倍速约为 2，提示是 `Speed 2×`。存储里 `sitePrefs` 仍是空的。
 4. 聚焦 `Field`，输入 `hi`。字符进输入框。再按 `Alt+Period`，倍速保持约 2。

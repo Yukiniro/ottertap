@@ -1929,17 +1929,18 @@ async function driveFloatingSpeed(context, dir, note) {
     await page.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
     await page.locator('#media').evaluate(async element => {
       if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
-      element.volume = 0.5;
     });
-    await poll(volume, near(0.5), '应能把音量设成 50%');
     await openPill();
-    await dialog().getByRole('slider', { name: 'Volume' }).press('ArrowUp');
-    const afterVolume = await poll(volume, near(0.51), '展开后音量滑块上方向键仍应调高音量');
+    const shown = () => dialog().getByRole('slider', { name: 'Volume' }).getAttribute('aria-valuenow').then(value => Number(value));
+    const beforeVolume = await poll(shown, value => value === 100, '药丸应先显示 100%');
+    await dialog().getByRole('slider', { name: 'Volume' }).press('ArrowDown');
+    const afterVolume = await poll(volume, near(0.99), '展开后音量滑块下方向键仍应调低音量');
+    if (beforeVolume !== 100) throw new Error(`音量起点不是 100%：${beforeVolume}`);
     await dialog().getByRole('button', { name: 'Mute', exact: true }).click();
     await poll(() => page.locator('#media').evaluate(element => element.muted), value => value === true, '药丸静音按钮仍应静音');
     await dialog().getByRole('button', { name: 'Unmute', exact: true }).click();
     await poll(() => page.locator('#media').evaluate(element => element.muted), value => value === false, '取消静音后应恢复出声');
-    if (!near(0.51)(await volume())) throw new Error('取消静音不应把音量改掉');
+    if (!near(0.99)(await volume())) throw new Error('取消静音不应把音量改掉');
     note(`volume path still works, volume=${afterVolume}`);
 
     const speedGroup = dialog().getByRole('group', { name: 'Speed' });

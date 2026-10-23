@@ -31,6 +31,7 @@ export function FloatingController({ client }: { client: MediaClient }) {
   const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState<number | null>(null);
   const [rateDraft, setRateDraft] = useState<number | null>(null);
+  const [rateSettled, setRateSettled] = useState(0);
   const [viewport, setViewport] = useState(readViewport);
   const [moved, setMoved] = useState<FloatingPosition | null>(null);
   const [dragPoint, setDragPoint] = useState<{ x: number; y: number } | null>(null);
@@ -41,6 +42,7 @@ export function FloatingController({ client }: { client: MediaClient }) {
   const dragged = useRef(false);
   const hideTimer = useRef(0);
   const aimedRate = useRef<number | null>(null);
+  const pendingRates = useRef(0);
   const rateQueue = useRef(Promise.resolve());
   const commandRef = useRef(command);
   commandRef.current = command;
@@ -52,10 +54,12 @@ export function FloatingController({ client }: { client: MediaClient }) {
   }, []);
   useEffect(() => { setDraft(null); aimedRate.current = null; setRateDraft(null); }, [selected?.id]);
   useEffect(() => {
-    if (aimedRate.current == null || !selected || !sameRate(selected.rate, aimedRate.current)) return;
-    aimedRate.current = null;
-    setRateDraft(null);
-  }, [selected]);
+    if (aimedRate.current == null) return;
+    if (!selected || pendingRates.current === 0 || sameRate(selected.rate, aimedRate.current)) {
+      aimedRate.current = null;
+      setRateDraft(null);
+    }
+  }, [selected, rateSettled]);
   const floatingRef = useRef(floating);
   const mediaRef = useRef(selected);
   const clientRef = useRef(client);
@@ -125,6 +129,7 @@ export function FloatingController({ client }: { client: MediaClient }) {
     aimedRate.current = next;
     setRateDraft(next);
     const target = next;
+    pendingRates.current += 1;
     rateQueue.current = rateQueue.current.then(async () => {
       const ok = await commandRef.current({ type: 'rate', value: target });
       if (ok) window.dispatchEvent(new CustomEvent(rateHintEvent, { detail: target }));
@@ -132,6 +137,9 @@ export function FloatingController({ client }: { client: MediaClient }) {
         aimedRate.current = null;
         setRateDraft(null);
       }
+    }).finally(() => {
+      pendingRates.current -= 1;
+      if (pendingRates.current === 0) setRateSettled(count => count + 1);
     });
   };
   const stepPlayback = (direction: 1 | -1) => commitRate(nextRate(aimedRate.current ?? selected.rate, direction, null, rateStep));

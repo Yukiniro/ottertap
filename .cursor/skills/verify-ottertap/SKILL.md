@@ -86,7 +86,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-speed
 
 `hotkey-remap` 在设置页把 `Play or pause` 改成 `P`、`Pause, then next frame` 改成 `E`，先确认录 `J` 时提示被 `Back 10 seconds` 占用，再看不刷新的夹具页上新键立即生效、旧键交给网站，并走一遍导出、恢复默认和导入。它会改写 profile，同一会话只能跑一次。步骤见 `features/hotkey-remap.md`。
 
-`floating-speed` 展开夹具页上的音量药丸，确认音量滑块和静音仍可用，再用加快按钮和 `2× speed` 预设改倍速，看页内 `Speed {rate}×` 提示，并确认没有写入站点记忆。输入框聚焦时仍能打字，`Alt+.` 不改倍速。接着把倍速步长改成 `0.5×`、去掉 `4×` 预设，看同一页上的药丸跟着变，最后把步长和预设恢复。中途失败要 `cleanup`。步骤见 `features/floating-speed.md`。
+`floating-speed` 展开夹具页上的音量药丸，确认音量滑块从 100% 按下方向键仍能调低、静音仍可用，再用加快按钮和 `2× speed` 预设改倍速，看页内 `Speed {rate}×` 提示，并确认没有写入站点记忆。输入框聚焦时仍能打字，`Alt+.` 不改倍速。接着把倍速步长改成 `0.5×`、去掉 `4×` 预设，看同一页上的药丸跟着变，最后把步长和预设恢复。中途失败要 `cleanup`。步骤见 `features/floating-speed.md`。
 
 `popup-playback` 在已启动的会话里做这些事：
 
