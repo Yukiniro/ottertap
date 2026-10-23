@@ -53,7 +53,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs doctor
 
 ## Drive
 
-脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、倍速增减步长（见 `features/rate-step.md`）、扩展命令画中画（见 `features/extension-pip.md`）、按住临时加速（见 `features/hold-boost.md`）、同键短按跳长按加速（见 `features/hold-skip-combo.md`）和逐帧（见 `features/frame-step.md`）。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
+脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、倍速增减步长（见 `features/rate-step.md`）、扩展命令画中画（见 `features/extension-pip.md`）、按住临时加速（见 `features/hold-boost.md`）、同键短按跳长按加速（见 `features/hold-skip-combo.md`）、逐帧（见 `features/frame-step.md`）和页内快捷键改键（见 `features/hotkey-remap.md`）。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
 
 ```bash
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
@@ -66,6 +66,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive default-rate
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive hold-boost
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive hold-skip-combo
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive frame-step
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive hotkey-remap
 ```
 
 `skip-step` 在设置页把 `Skip step` 改成 `30s` 并打开 `Single-key mode`，再看弹出面板进退按钮名和页内 `L` / `J` / `→` / `←` 让 `/long` 夹具的 `currentTime` 跟着步长变；它会改写 profile，同一会话只能跑一次。步骤见 `features/skip-step.md`。
@@ -81,6 +82,8 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive frame-step
 `hold-boost` 确认开关默认关闭时 `Alt+Shift+.` 仍只步进，打开后按住用 `Temporary speed`、松开还原，并且不改默认倍速和站点记忆。它会改写 profile，同一会话只能跑一次。步骤见 `features/hold-boost.md`。
 
 `frame-step` 在暂停的夹具上用 `,` / `.` 和弹出面板的 `Previous frame` / `Next frame` 移动约 1/30 秒，播放中先暂停，并确认 `Alt+.` 仍加快。不可 seek 的夹具上按钮禁用，页内按键弹出说明。它不改 profile。步骤见 `features/frame-step.md`。
+
+`hotkey-remap` 在设置页把 `Play or pause` 改成 `P`、`Pause, then next frame` 改成 `E`，先确认录 `J` 时提示被 `Back 10 seconds` 占用，再看不刷新的夹具页上新键立即生效、旧键交给网站，并走一遍导出、恢复默认和导入。它会改写 profile，同一会话只能跑一次。步骤见 `features/hotkey-remap.md`。
 
 `popup-playback` 在已启动的会话里做这些事：
 
@@ -142,6 +145,8 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive frame-step
 
 `drive hold-skip-combo` 写入 `hold-skip-combo/`：`settings-before.png`、`settings-after.png`、`fixture-tap.png`、`fixture-hold.png`、`fixture-release.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。它会改写 profile，同一会话只能跑一次。步骤见 `features/hold-skip-combo.md`。
 
+`drive hotkey-remap` 写入 `hotkey-remap/`：`settings-default.png`、`settings-conflict.png`、`settings-remapped.png`、`fixture-remapped.png`、`settings-restored.png`、`export.json`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
 `launch` 成功后还会留下 `launch-probe.png`（浮动入口已经出现）。失败时同目录可能有 `error.txt`，那不算通过。
 
 换了 `OTTERTAP_VERIFY_ID` 时，文件名变成 `<id>-popup-playback/`。不要把这些截图提交进仓库。
@@ -173,6 +178,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive default-rate
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive hold-boost
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive hold-skip-combo
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive frame-step
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive hotkey-remap
 node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 ```
 
