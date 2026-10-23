@@ -17,6 +17,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-playback
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-entry-note
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-open-panel
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-while-playing
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -36,7 +37,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -2409,6 +2410,124 @@ async function driveFloatingOpenPanel(context, dir, note) {
   }
 }
 
+async function driveFloatingWhilePlaying(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const pill = page => page.getByRole('button', { name: /volume pill/i });
+  const pausedOf = page => page.locator('#media').evaluate(element => element.paused);
+  const volumeOf = page => page.locator('#media').evaluate(element => element.volume);
+  const play = async page => {
+    await page.locator('#media').evaluate(async element => { await element.play(); });
+    await poll(() => pausedOf(page), value => value === false, '媒体应开始播放');
+  };
+  const pause = async page => {
+    await page.locator('#media').evaluate(element => { element.pause(); });
+    await poll(() => pausedOf(page), value => value === true, '媒体应暂停');
+  };
+  let settings;
+  let fixture;
+  try {
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#floating`, { waitUntil: 'domcontentloaded' });
+    const toggle = settings.getByRole('switch', { name: 'Show only while the selected media is playing' });
+    await toggle.waitFor({ state: 'visible', timeout: 15_000 });
+    if (await toggle.getAttribute('aria-checked') !== 'false') throw new Error('仅播放时显示默认应关闭');
+    await settings.getByText('quick pause and play').waitFor({ state: 'visible' });
+    await settings.getByText('Scrolling over the main player').waitFor({ state: 'visible' });
+    const hover = settings.getByRole('switch', { name: 'Scroll over the main player to change volume' });
+    if (await hover.getAttribute('aria-checked') !== 'true') throw new Error('悬停滚轮应仍默认开启');
+    await settings.locator('#floating').screenshot({ path: path.join(dir, 'settings-off.png'), animations: 'disabled' });
+    const offStored = await stored();
+    if (offStored.floatingWhilePlaying === true || offStored.hoverWheel === false || offStored.floating === false) {
+      throw new Error(`关闭时不应改浮动或悬停滚轮：${JSON.stringify({ floatingWhilePlaying: offStored.floatingWhilePlaying, hoverWheel: offStored.hoverWheel, floating: offStored.floating })}`);
+    }
+    note('settings off, hover wheel still on');
+
+    fixture = await context.newPage();
+    await fixture.goto(`${origin}/video`, { waitUntil: 'domcontentloaded' });
+    await pill(fixture).waitFor({ state: 'visible', timeout: 15_000 });
+    await fixture.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+    });
+    if (await pausedOf(fixture) !== true) throw new Error('夹具视频开头应是暂停，开关关闭时入口仍应在');
+    await fixture.screenshot({ path: path.join(dir, 'fixture-paused-off.png'), animations: 'disabled' });
+    note('paused with setting off, floater visible');
+    await fixture.locator('#media').click({ position: { x: 24, y: 24 } });
+    await play(fixture);
+    await pill(fixture).waitFor({ state: 'visible' });
+    note('playing with setting off, floater still visible');
+
+    await settings.bringToFront();
+    await toggle.click();
+    await poll(() => toggle.getAttribute('aria-checked'), value => value === 'true', '应能打开仅播放时显示');
+    const onStored = await poll(stored, value => value.floatingWhilePlaying === true && value.hoverWheel !== false && value.floating !== false, '存储里应打开 floatingWhilePlaying，且不关掉浮动和悬停滚轮');
+    await settings.locator('#floating').screenshot({ path: path.join(dir, 'settings-on.png'), animations: 'disabled' });
+    note(`saved floatingWhilePlaying=${onStored.floatingWhilePlaying} hoverWheel=${onStored.hoverWheel}`);
+
+    await fixture.bringToFront();
+    await play(fixture);
+    await pill(fixture).waitFor({ state: 'visible', timeout: 8_000 });
+    await fixture.screenshot({ path: path.join(dir, 'fixture-playing.png'), animations: 'disabled' });
+    note('playing shows the floater');
+
+    const hideStarted = Date.now();
+    await pause(fixture);
+    await fixture.waitForTimeout(180);
+    if (!(await pill(fixture).isVisible())) throw new Error('暂停后短时间内入口不应马上消失');
+    await pill(fixture).waitFor({ state: 'hidden', timeout: 8_000 });
+    const hideMs = Date.now() - hideStarted;
+    await fixture.screenshot({ path: path.join(dir, 'fixture-paused.png'), animations: 'disabled' });
+    note(`paused hid the floater after ${hideMs}ms`);
+
+    await fixture.locator('#media').evaluate(element => { element.volume = 0.5; });
+    const at = await centerOf(fixture.locator('#media'));
+    await fixture.mouse.move(at.x, at.y);
+    await fixture.waitForTimeout(320);
+    await fixture.mouse.wheel(0, -100);
+    const wheeled = await poll(() => volumeOf(fixture), value => Math.abs(value - 0.6) < 0.02, '入口隐藏时，主播放区悬停滚轮仍应调音量');
+    if (await pill(fixture).isVisible()) throw new Error('调音量时暂停中的入口不应出现');
+    const wheelStored = await stored();
+    if (wheelStored.hoverWheel === false || wheelStored.floatingWhilePlaying !== true) throw new Error('滚轮不应改这两个开关');
+    note(`hover wheel while hidden volume=${wheeled}`);
+
+    await play(fixture);
+    await pill(fixture).waitFor({ state: 'visible', timeout: 8_000 });
+    await fixture.screenshot({ path: path.join(dir, 'fixture-playing-again.png'), animations: 'disabled' });
+    note('play brings the floater back');
+
+    const samples = await fixture.locator('#media').evaluate(async element => {
+      const visible = () => {
+        const host = document.querySelector('ottertap-controller');
+        return !!host?.shadowRoot?.querySelector('aside');
+      };
+      const seen = [];
+      for (let index = 0; index < 4; index += 1) {
+        element.pause();
+        await new Promise(resolve => setTimeout(resolve, 250));
+        seen.push(visible());
+        await element.play();
+        await new Promise(resolve => setTimeout(resolve, 120));
+        seen.push(visible());
+      }
+      return seen;
+    });
+    if (samples.some(value => value !== true)) throw new Error(`快速暂停/播放时入口闪掉了：${JSON.stringify(samples)}`);
+    if (await pausedOf(fixture) !== false) throw new Error('快速切换应停在播放');
+    await pill(fixture).waitFor({ state: 'visible' });
+    note(`rapid pause/play stayed visible ${JSON.stringify(samples)}`);
+
+    const state = { ok: true, hideMs, wheeled, rapid: samples };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await settings?.close().catch(() => {});
+    await fixture?.close().catch(() => {});
+  }
+}
+
 async function inspect(context) {
   const worker = await serviceWorker(context);
   const runtime = await worker.evaluate(() => ({
@@ -2502,7 +2621,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });

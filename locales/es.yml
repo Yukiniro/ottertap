@@ -66,6 +66,8 @@ floatingNoteDescription: "Preferir volumen muestra el porcentaje junto al botón
 floatingNoteOff: "Ocultar"
 floatingNoteRate: "Preferir velocidad"
 floatingNoteVolume: "Preferir volumen"
+floatingWhilePlaying: "Mostrar solo mientras se reproduce el medio seleccionado"
+floatingWhilePlayingDescription: "Si está activado, el botón flotante aparece solo mientras el medio seleccionado se reproduce. Al pausar se oculta tras un momento breve, para que pausar y reanudar rápido no lo haga parpadear hasta quedar fuera de alcance. Si no hay nada seleccionado, se oculta al momento. Desactivado de forma predeterminada, así se conserva el comportamiento actual. Cambiar el volumen con la rueda sobre el reproductor principal sigue aparte."
 forgetSite: "Olvidar {site}"
 frameBack: "Fotograma anterior"
 frameForward: "Fotograma siguiente"

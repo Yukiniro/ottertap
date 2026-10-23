@@ -217,10 +217,11 @@ function Row({ title, description, titleId, children }: { title: string; descrip
 }
 
 export function SettingsPage({ back }: { back?: () => void }) {
-  const { themeAtom, floatingAtom, floatingNoteAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const theme = useAtomValue(themeAtom);
   const floating = useAtomValue(floatingAtom);
   const floatingNote = useAtomValue(floatingNoteAtom);
+  const floatingWhilePlaying = useAtomValue(floatingWhilePlayingAtom);
   const defaultRate = useAtomValue(defaultRateAtom);
   const lockRate = useAtomValue(lockRateAtom);
   const holdBoost = useAtomValue(holdBoostAtom);
@@ -359,6 +360,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
               <FieldLabel htmlFor="settings-floating" className="text-sm font-normal">{i18n.t('showFloating')}</FieldLabel>
               <Switch id="settings-floating" aria-label={i18n.t('floatingController')} checked={floating} disabled={disabled} onCheckedChange={checked => void save({ floating: checked })} />
             </Field>
+            <SwitchRow id="settings-floating-while-playing" label={i18n.t('floatingWhilePlaying')} description={i18n.t('floatingWhilePlayingDescription')} checked={floatingWhilePlaying} disabled={disabled} onChange={checked => void save({ floatingWhilePlaying: checked })} />
             <div className="rounded-lg bg-secondary/60 px-3 py-3">
               <h3 id="floating-note-label" className="text-sm font-medium">{i18n.t('floatingNote')}</h3>
               <ToggleGroup aria-labelledby="floating-note-label" spacing={1} className="mt-3 grid h-auto w-full grid-cols-3 rounded-lg bg-background/80 p-1" value={[floatingNote]} disabled={disabled} onValueChange={value => { const next = value[0]; if (isFloatingNote(next)) void save({ floatingNote: next }); }}>

@@ -66,6 +66,8 @@ floatingNoteDescription: "Prefer volume shows the percent beside the on-page but
 floatingNoteOff: "Hide"
 floatingNoteRate: "Prefer speed"
 floatingNoteVolume: "Prefer volume"
+floatingWhilePlaying: "Show only while the selected media is playing"
+floatingWhilePlayingDescription: "When on, the floating button appears only while the selected media is playing. Pausing hides it after a short moment, so a quick pause and play does not flicker the button out of reach. Nothing selected hides it immediately. Off by default, which keeps the button as it is today. Scrolling over the main player to change volume stays separate."
 forgetSite: "Forget {site}"
 frameBack: "Previous frame"
 frameForward: "Next frame"

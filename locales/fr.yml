@@ -66,6 +66,8 @@ floatingNoteDescription: "Préférer le volume affiche le pourcentage à côté 
 floatingNoteOff: "Masquer"
 floatingNoteRate: "Préférer la vitesse"
 floatingNoteVolume: "Préférer le volume"
+floatingWhilePlaying: "Afficher seulement pendant la lecture du média sélectionné"
+floatingWhilePlayingDescription: "Activé, le bouton flottant n'apparaît que pendant la lecture du média sélectionné. Une pause le masque après un court instant, pour qu'un enchaînement rapide pause et lecture ne le fasse pas clignoter jusqu'à le rendre hors d'atteinte. Sans sélection, il disparaît tout de suite. Désactivé par défaut, le comportement actuel est conservé. Régler le volume à la molette sur le lecteur principal reste à part."
 forgetSite: "Oublier {site}"
 frameBack: "Image précédente"
 frameForward: "Image suivante"

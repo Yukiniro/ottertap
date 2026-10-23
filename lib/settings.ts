@@ -67,6 +67,7 @@ export function normalizeSettings(value: unknown): Settings {
     floating: typeof source.floating === 'boolean' ? source.floating : true,
     floatingPosition: validPosition ? { side: position.side, y: position.y } : { ...defaultSettings.floatingPosition },
     floatingNote: isFloatingNote(source.floatingNote) ? source.floatingNote : 'volume',
+    floatingWhilePlaying: source.floatingWhilePlaying === true,
     siteMode: ['all', 'allow', 'exclude'].includes(source.siteMode ?? '') ? source.siteMode! : 'all',
     sites: [...new Set(sites)],
     sitePrefs: normalizeSitePrefs(source.sitePrefs),

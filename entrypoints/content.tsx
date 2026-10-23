@@ -238,10 +238,29 @@ export default defineContentScript({
     document.addEventListener('volumechange', reportVolume, true);
     window.addEventListener('pagehide', onPageHide);
     document.addEventListener('visibilitychange', onVisibility);
-    const unwatch = extensionStore.watch(settings => { watched = settings; applyWatched(); });
+    let floatingWhilePlaying = false;
+    let floatingWhilePlayingEpoch = 0;
+    const noteFloatingWhilePlaying = (value: boolean) => {
+      floatingWhilePlayingEpoch += 1;
+      floatingWhilePlaying = value;
+    };
+    const onPlayback = (event: Event) => {
+      if (window.top !== window || floatingWhilePlaying !== true) return;
+      if (!(event.target instanceof HTMLMediaElement)) return;
+      window.dispatchEvent(new CustomEvent(mediaPresenceEvent));
+    };
+    document.addEventListener('play', onPlayback, true);
+    document.addEventListener('pause', onPlayback, true);
+    const unwatch = extensionStore.watch(settings => { watched = settings; noteFloatingWhilePlaying(settings.floatingWhilePlaying); applyWatched(); });
+    const floatingWhilePlayingLoad = floatingWhilePlayingEpoch;
+    void extensionStore.load().then(settings => {
+      if (floatingWhilePlayingEpoch !== floatingWhilePlayingLoad) return;
+      floatingWhilePlaying = settings.floatingWhilePlaying;
+    }).catch(() => {});
     ctx.onInvalidated(() => {
       releaseHold();
       unwatch(); controller.destroy(); if (heartbeat) clearInterval(heartbeat); browser.runtime.onMessage.removeListener(listener); hotkeys.dispose();
+      document.removeEventListener('play', onPlayback, true); document.removeEventListener('pause', onPlayback, true);
       document.removeEventListener('volumechange', reportVolume, true); window.removeEventListener('pagehide', onPageHide);
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('blur', onHoldCancel);

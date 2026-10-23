@@ -66,6 +66,8 @@ floatingNoteDescription: "음량 우선은 페이지 위 버튼 옆에 현재 �
 floatingNoteOff: "숨기기"
 floatingNoteRate: "배속 우선"
 floatingNoteVolume: "음량 우선"
+floatingWhilePlaying: "선택한 미디어가 재생 중일 때만 표시"
+floatingWhilePlayingDescription: "켜면 선택한 미디어가 재생 중일 때만 플로팅 버튼을 표시합니다. 일시정지는 잠시 뒤에 숨겨서, 빠르게 일시정지와 재생을 반복해도 버튼이 깜빡이며 사라지지 않습니다. 선택한 미디어가 없으면 바로 숨깁니다. 기본값은 꺼짐이며, 꺼져 있으면 지금과 같습니다. 메인 재생 영역에서 휠로 음량을 조절하는 동작은 바뀌지 않습니다."
 forgetSite: "{site} 지우기"
 frameBack: "이전 프레임"
 frameForward: "다음 프레임"
