@@ -1,6 +1,6 @@
 # OtterTap 功能地图
 
-验证主界面是扩展本身。索引里的每一条都要能从用户路径走到可观察的结束状态。`scripts/session.mjs` 目前脚本化了弹出面板播放、滚轮音量、快进快退步长、快进快退随倍速放大、音量调节步长、倍速增减步长、扩展命令画中画、全局默认倍速、按住临时加速、同键短按跳长按加速、逐帧、页内快捷键改键、浮动药丸倍速、浮动药丸播放跳转和浮动入口旁注；其余条目的选择器和断言已经写在各自文件里，用同一次 `launch` 的 Chromium（或 `pnpm e2e` 里点名的那条测试）来驱动。一条失败就报告失败原因，写进该文件的 Gotchas，不要把旅程改容易。
+验证主界面是扩展本身。索引里的每一条都要能从用户路径走到可观察的结束状态。`scripts/session.mjs` 目前脚本化了弹出面板播放、滚轮音量、快进快退步长、快进快退随倍速放大、音量调节步长、倍速增减步长、扩展命令画中画、全局默认倍速、按住临时加速、同键短按跳长按加速、逐帧、页内快捷键改键、浮动药丸倍速、浮动药丸播放跳转、浮动入口旁注和从音量药丸打开弹出面板；其余条目的选择器和断言已经写在各自文件里，用同一次 `launch` 的 Chromium（或 `pnpm e2e` 里点名的那条测试）来驱动。一条失败就报告失败原因，写进该文件的 Gotchas，不要把旅程改容易。
 
 | 功能 | 文件 | 用户从哪里进入 | 现成回归 |
 | --- | --- | --- | --- |
@@ -23,3 +23,4 @@
 | 扩展命令 → 画中画 | [extension-pip.md](extension-pip.md) | 设置页「Keyboard shortcuts」的扩展命令列表；绑定后对活动标签页里当前媒体切换画中画 | `drive extension-pip`；命令分发见 `tests/pip-command.test.ts`；面板按钮见 `e2e/smoke.spec.ts` 中画中画那条 |
 | 页内快捷键改键 | [hotkey-remap.md](hotkey-remap.md) | 设置页「Keyboard shortcuts」里带铅笔图标的按键按钮：播放暂停、快进快退、倍速增减、静音、按住临时加速、逐帧。点一下再按新键，已打开的网页立即生效；撞键时提示被谁占用；`Restore default keys` 恢复默认 | `drive hotkey-remap`；`tests/keybinds.test.ts`、`tests/hotkey-remap.test.ts` |
 | 浮动入口旁注 | [floating-entry-note.md](floating-entry-note.md) | 收起或半隐藏的浮动入口旁边。默认显示页内音量百分比；100% 且倍速不是 1× 时改显倍速。设置页「Floating controller」的 `Entry note` 可选优先音量、优先倍速或关闭 | `drive floating-entry-note`；`tests/floating-note.test.ts` |
+| 从音量药丸打开弹出面板 | [floating-open-panel.md](floating-open-panel.md) | 展开页面边缘的音量药丸，倍速下面的 `Open panel`。打开工具栏弹出面板并沿用当前媒体；浏览器拒绝时显示 `Click the toolbar icon`。不替换工具栏按钮 | `drive floating-open-panel`；`tests/floating-open-panel.test.ts`、`tests/open-popup-background.test.ts` |

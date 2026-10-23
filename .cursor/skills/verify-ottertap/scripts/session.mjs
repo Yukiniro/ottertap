@@ -16,6 +16,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-speed
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-playback
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-entry-note
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-open-panel
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -35,7 +36,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -258,14 +259,17 @@ function clickLabel(label) {
   })()`;
 }
 
-async function openActionPopup(context, fixture) {
+async function openActionPopup(context, fixture, options = {}) {
+  const timeout = options.timeout ?? 8_000;
   await fixture.bringToFront();
-  const worker = await serviceWorker(context);
   const cdp = await context.newCDPSession(fixture);
-  await worker.evaluate(async () => { await chrome.action.openPopup(); });
+  if (!options.alreadyOpen) {
+    const worker = await serviceWorker(context);
+    await worker.evaluate(async () => { await chrome.action.openPopup(); });
+  }
   let targetId = '';
   let targets = [];
-  const deadline = Date.now() + 8_000;
+  const deadline = Date.now() + timeout;
   while (Date.now() < deadline) {
     const listed = await cdp.send('Target.getTargets');
     targets = listed.targetInfos ?? [];
@@ -275,6 +279,7 @@ async function openActionPopup(context, fixture) {
   }
   if (!targetId) {
     await cdp.detach().catch(() => {});
+    if (options.alreadyOpen) return null;
     const brief = targets.map(item => ({ type: item.type, url: item.url }));
     throw new Error(`chrome.action.openPopup() 没有打开 popup.html。targets=${JSON.stringify(brief)}。不要改用地址栏打开 popup.html，那会把弹出面板变成活动标签。`);
   }
@@ -2330,6 +2335,80 @@ async function driveFloatingEntryNote(context, dir, note) {
   }
 }
 
+async function driveFloatingOpenPanel(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const page = await context.newPage();
+  const dialog = () => page.getByRole('dialog', { name: 'Volume pill' });
+  const trigger = () => page.getByRole('button', { name: /volume pill/i });
+  const hint = () => dialog().getByRole('status').filter({ hasText: 'Click the toolbar icon' });
+  const toolbarPopup = async () => {
+    const url = await worker.evaluate(async () => chrome.action.getPopup({}));
+    if (typeof url !== 'string' || !url.endsWith('/popup.html')) throw new Error(`工具栏弹出页被换掉了：${String(url)}`);
+    return url;
+  };
+  try {
+    const beforePopup = await toolbarPopup();
+    note(`toolbar popup before ${beforePopup}`);
+    await page.goto(`${origin}/feed`, { waitUntil: 'domcontentloaded' });
+    await trigger().waitFor({ state: 'visible', timeout: 15_000 });
+    await page.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+    });
+    const mediaTitle = await poll(async () => (await trigger().getAttribute('title'))?.split(' · ')[0] ?? '', name => name === 'Feed preview' || name === 'Main player', '浮动入口应绑定 Feed preview 或 Main player');
+    const other = mediaTitle === 'Feed preview' ? 'Main player' : 'Feed preview';
+    const box = await trigger().boundingBox();
+    if (!box) throw new Error('浮动入口没有位置');
+    await page.mouse.move(box.x + Math.min(8, box.width / 4), box.y + box.height / 2);
+    await trigger().click();
+    const openButton = dialog().getByRole('button', { name: 'Open panel', exact: true });
+    await openButton.waitFor({ state: 'visible', timeout: 5_000 });
+    if (await hint().count() && await hint().isVisible()) throw new Error('还没点就出现了降级提示');
+    await dialog().screenshot({ path: path.join(dir, 'pill-button.png'), animations: 'disabled' });
+    await page.screenshot({ path: path.join(dir, 'fixture.png'), animations: 'disabled' });
+    note(`pill controls ${mediaTitle}`);
+    await openButton.click();
+    const popup = await openActionPopup(context, page, { alreadyOpen: true, timeout: 6_000 });
+    let mode = 'hint';
+    let heading = '';
+    if (popup) {
+      mode = 'opened';
+      heading = popup.seen?.heading ?? (await popup.view()).heading;
+      if (heading !== mediaTitle) throw new Error(`弹出面板标题是 ${heading}，药丸绑定的是 ${mediaTitle}`);
+      if (heading === other) throw new Error(`弹出面板选中了另一条媒体 ${other}`);
+      if (!popup.seen?.region) throw new Error('弹出面板没有 Media controls');
+      if (await hint().count() && await hint().isVisible()) throw new Error('面板已经打开时不应再提示点工具栏');
+      if (await openButton.isVisible() !== true) throw new Error('打开面板按钮不应消失');
+      await popup.screenshot(path.join(dir, 'popup-selected.png'));
+      await popup.close();
+      note(`opened popup heading=${heading}`);
+    } else {
+      await hint().waitFor({ state: 'visible', timeout: 2_000 });
+      const text = (await hint().innerText()).trim();
+      if (text !== 'Click the toolbar icon') throw new Error(`降级文案不是 Click the toolbar icon：${text}`);
+      if (await openButton.isVisible() !== true) throw new Error('打开面板按钮不应消失');
+      await dialog().screenshot({ path: path.join(dir, 'pill-hint.png'), animations: 'disabled' });
+      const direct = await worker.evaluate(async () => {
+        try {
+          await chrome.action.openPopup();
+          return 'opened';
+        } catch (error) {
+          return error instanceof Error ? error.message : String(error);
+        }
+      }).catch(error => error instanceof Error ? error.message : String(error));
+      note(`degraded; direct openPopup => ${direct}`);
+    }
+    const afterPopup = await toolbarPopup();
+    const state = { ok: true, mode, mediaTitle, heading, toolbarPopup: beforePopup, toolbarPopupAfter: afterPopup };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    note(`mode=${mode} toolbar still ${afterPopup}`);
+    return state;
+  } finally {
+    await page.close().catch(() => {});
+  }
+}
+
 async function inspect(context) {
   const worker = await serviceWorker(context);
   const runtime = await worker.evaluate(() => ({
@@ -2423,7 +2502,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
