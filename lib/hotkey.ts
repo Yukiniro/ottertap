@@ -111,9 +111,9 @@ export function applyVolumeStep(action: HotkeyAction, step: number): HotkeyActio
   return { type: 'volume', delta: direction * normalizeVolumeStep(step) };
 }
 
-export function commandForHotkey(action: HotkeyAction, media: MediaState, remembered?: number | null): MediaCommand | null {
+export function commandForHotkey(action: HotkeyAction, media: MediaState, remembered?: number | null, rateStep?: number): MediaCommand | null {
   if (action.type === 'rate') {
-    const value = nextRate(media.rate, action.direction, remembered);
+    const value = nextRate(media.rate, action.direction, remembered, rateStep);
     return value === media.rate ? null : { type: 'rate', value };
   }
   if (action.type === 'toggle') return { type: media.paused ? 'play' : 'pause' };
@@ -142,11 +142,11 @@ export function isFloatingEvent(event: Event) {
   return event.composedPath().some(node => node instanceof Element && node.localName === 'ottertap-controller');
 }
 
-export function planHotkey(page: PageState, action: HotkeyAction, remembered?: number | null) {
+export function planHotkey(page: PageState, action: HotkeyAction, remembered?: number | null, rateStep?: number) {
   if (!page.enabled || !page.media.length) return null;
   const media = lockedMedia(page.media, page.selectedId);
   if (!media) return null;
-  const command = commandForHotkey(action, media, remembered);
+  const command = commandForHotkey(action, media, remembered, rateStep);
   return command ? { media, command } : null;
 }
 

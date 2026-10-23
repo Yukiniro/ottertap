@@ -73,12 +73,13 @@ export function createDemo(document: Document, { src, title, store }: { src: str
     let singleKey = false;
     let skipSeconds = defaultSettings.skipSeconds;
     let volumeStep = defaultSettings.volumeStep;
-    const apply = (settings: Settings) => { on = isSiteEnabled(demoUrl, settings); singleKey = settings.singleKey; skipSeconds = settings.skipSeconds; volumeStep = settings.volumeStep; };
+    let rateStep = defaultSettings.rateStep;
+    const apply = (settings: Settings) => { on = isSiteEnabled(demoUrl, settings); singleKey = settings.singleKey; skipSeconds = settings.skipSeconds; volumeStep = settings.volumeStep; rateStep = settings.rateStep; };
     void store.load().then(apply);
     const unwatch = store.watch(apply);
     const hotkeys = createHotkeySession(async (action: HotkeyAction) => {
       const page = await client.read();
-      const plan = planHotkey(page, action, controller.recallRate());
+      const plan = planHotkey(page, action, controller.recallRate(), rateStep);
       if (!plan) return;
       if (plan.media.id !== page.selectedId) await client.select(plan.media.id);
       await client.command(plan.media, plan.command);

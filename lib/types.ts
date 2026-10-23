@@ -1,4 +1,5 @@
-import { defaultRatePresets } from './rate';
+import { defaultRatePresets, defaultRateStep, type RateStep } from './rate';
+export { rateSteps, type RateStep } from './rate';
 
 export type Theme = 'light' | 'dark' | 'system';
 export type SiteMode = 'all' | 'allow' | 'exclude';
@@ -11,8 +12,8 @@ export const skipSteps = [5, 10, 15, 30] as const;
 export type SkipSeconds = (typeof skipSteps)[number];
 export const volumeSteps = [5, 10, 20] as const;
 export type VolumeStep = (typeof volumeSteps)[number];
-export interface Settings { theme: Theme; floating: boolean; floatingPosition: FloatingPosition; siteMode: SiteMode; sites: string[]; sitePrefs: Record<string, SitePref>; ratePresets: number[]; defaultRate: number | null; lockRate: boolean; hoverWheel: boolean; singleKey: boolean; skipSeconds: SkipSeconds; volumeStep: VolumeStep }
-export const defaultSettings: Settings = { theme: 'system', floating: true, floatingPosition: { side: 'right', y: .8 }, siteMode: 'all', sites: [], sitePrefs: {}, ratePresets: [...defaultRatePresets], defaultRate: null, lockRate: false, hoverWheel: true, singleKey: false, skipSeconds: 10, volumeStep: 10 };
+export interface Settings { theme: Theme; floating: boolean; floatingPosition: FloatingPosition; siteMode: SiteMode; sites: string[]; sitePrefs: Record<string, SitePref>; ratePresets: number[]; defaultRate: number | null; lockRate: boolean; hoverWheel: boolean; singleKey: boolean; skipSeconds: SkipSeconds; volumeStep: VolumeStep; rateStep: RateStep }
+export const defaultSettings: Settings = { theme: 'system', floating: true, floatingPosition: { side: 'right', y: .8 }, siteMode: 'all', sites: [], sitePrefs: {}, ratePresets: [...defaultRatePresets], defaultRate: null, lockRate: false, hoverWheel: true, singleKey: false, skipSeconds: 10, volumeStep: 10, rateStep: defaultRateStep };
 export interface SettingsStore {
   load(): Promise<Settings>;
   save(settings: Settings): Promise<void>;

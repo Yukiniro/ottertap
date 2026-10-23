@@ -51,9 +51,9 @@ export function useMedia(client: MediaClient, options?: { pauseWhenEmpty?: boole
   }, [client, picked, selectedId, page.selectedId]);
   const select = (id: string) => { setPicked(id); void client.select(id).finally(() => { void refresh(); }); };
   const command = async (value: MediaCommand) => {
-    if (!selected) return;
-    try { await client.command(selected, value); setError(''); await refresh(); }
-    catch (err) { setError(err instanceof Error ? err.message : i18n.t('actionFailed')); }
+    if (!selected) return false;
+    try { await client.command(selected, value); setError(''); await refresh(); return true; }
+    catch (err) { setError(err instanceof Error ? err.message : i18n.t('actionFailed')); return false; }
   };
   return { page, selected, selectedId, select, command, refresh, loading, error };
 }

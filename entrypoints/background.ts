@@ -232,7 +232,8 @@ export default defineBackground(() => {
     if (!target) return;
     rememberSelection(tabId, target.id);
     const frameId = Number(target.id.split(':')[0]);
-    const next = nextRate(target.rate, direction, recall.get(frameId) ?? null);
+    const settings = await currentSettings();
+    const next = nextRate(target.rate, direction, recall.get(frameId) ?? null, settings.rateStep);
     if (next === target.rate) return target.rate;
     const result = await deliver(tabId, target.id, 'command', { type: 'rate', value: next });
     await rememberCommand(host, { type: 'rate', value: next });
