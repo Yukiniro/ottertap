@@ -122,7 +122,7 @@ pageUnavailable: "Diese Seite lässt sich gerade nicht steuern. Laden Sie sie ne
 pause: "Pause"
 paused: "Pausiert"
 pictureInPicture: "Bild-in-Bild"
-pillTitle: "{title} · Klicken für Lautstärke, ziehen zum Verschieben"
+pillTitle: "{title} · Klicken für Lautstärke und Tempo, ziehen zum Verschieben"
 pipDisabledBySite: "Diese Website hat Bild-in-Bild ausgeschaltet."
 pipFailed: "Bild-in-Bild konnte nicht umgeschaltet werden. Versuchen Sie es erneut."
 pipNeedsGesture: "Der Browser hat diesen Klick nicht gezählt. Versuchen Sie es erneut."

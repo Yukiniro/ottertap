@@ -122,7 +122,7 @@ pageUnavailable: "This page cannot be controlled right now. Refresh and try agai
 pause: "Pause"
 paused: "Paused"
 pictureInPicture: "Picture-in-picture"
-pillTitle: "{title} · Click to adjust volume, drag to move"
+pillTitle: "{title} · Click to adjust volume and speed, drag to move"
 pipDisabledBySite: "This site has turned off picture-in-picture."
 pipFailed: "Couldn't switch picture-in-picture. Try again."
 pipNeedsGesture: "The browser blocked picture-in-picture for this click. Try again."

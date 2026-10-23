@@ -122,7 +122,7 @@ pageUnavailable: "このページは現在操作できません。再読み込�
 pause: "一時停止"
 paused: "一時停止中"
 pictureInPicture: "ピクチャーインピクチャー"
-pillTitle: "{title} · クリックで音量、ドラッグで移動"
+pillTitle: "{title} · クリックで音量と速度、ドラッグで移動"
 pipDisabledBySite: "このサイトはピクチャーインピクチャーを無効にしています。"
 pipFailed: "ピクチャーインピクチャーを切り替えられませんでした。もう一度お試しください。"
 pipNeedsGesture: "ブラウザがこのクリックを受け付けなかったため、ピクチャーインピクチャーを開始できません。もう一度お試しください。"

@@ -1,6 +1,6 @@
 # 倍速
 
-把当前媒体的 `playbackRate` 调到 0.25–4。弹出面板给出一排预设；网页上按住 Alt 再按 `,` `.` `0` 按设置里的倍速步长增减（默认 0.25），或在 1× 与本页上一次非 1× 倍速之间来回切。步长见 [rate-step.md](rate-step.md)。来回切的细节见 [rate-recall.md](rate-recall.md)。
+把当前媒体的 `playbackRate` 调到 0.25–4。弹出面板给出一排预设；展开后的浮动药丸用同一份预设和设置里的倍速步长，见 [floating-speed.md](floating-speed.md)。网页上按住 Alt 再按 `,` `.` `0` 按设置里的倍速步长增减（默认 0.25），或在 1× 与本页上一次非 1× 倍速之间来回切。步长见 [rate-step.md](rate-step.md)。来回切的细节见 [rate-recall.md](rate-recall.md)。
 
 ## Sub-features
 
