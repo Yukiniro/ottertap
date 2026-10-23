@@ -107,7 +107,8 @@ export default defineBackground(() => {
     if (!session) sitePrefSessions.set(tabId, session = createSitePrefSession());
     return session;
   };
-  const forget = (tabId: number) => { frames.delete(tabId); mediaKnown.delete(tabId); selectedIds.delete(tabId); gestures.delete(tabId); sitePrefSessions.delete(tabId); volumes.delete(tabId); clearVolumeTimer(tabId); paintBadge(tabId, Date.now()); persistFrames(); };
+  const holdTargets = new Map<number, string>();
+  const forget = (tabId: number) => { frames.delete(tabId); mediaKnown.delete(tabId); selectedIds.delete(tabId); gestures.delete(tabId); sitePrefSessions.delete(tabId); holdTargets.delete(tabId); volumes.delete(tabId); clearVolumeTimer(tabId); paintBadge(tabId, Date.now()); persistFrames(); };
   async function rememberCommand(host: string, command: MediaCommand) {
     if (command.type !== 'volume' && command.type !== 'rate' && command.type !== 'channel') return;
     try {
@@ -203,6 +204,30 @@ export default defineBackground(() => {
   const showRateLock = (tabId: number) => {
     void browser.tabs.sendMessage(tabId, { namespace: 'ottertap', type: 'rateLockHint' }, { frameId: 0 }).catch(() => {});
   };
+  const showHold = (tabId: number, rate: number | null) => {
+    void browser.tabs.sendMessage(tabId, { namespace: 'ottertap', type: 'holdHint', rate }, { frameId: 0 }).catch(() => {});
+  };
+  async function startHold(tabId: number, host: string, rate: number) {
+    const { media, failed } = await collect(tabId, host);
+    const saved = lockedId(tabId, media, failed);
+    if (saved && !media.some(item => item.id === saved)) return false;
+    const target = lockedMedia(media, saved);
+    if (!target) return false;
+    rememberSelection(tabId, target.id);
+    holdTargets.set(tabId, target.id);
+    await deliver(tabId, target.id, 'hold', { phase: 'start', rate });
+    showHold(tabId, rate);
+    return true;
+  }
+  async function endHold(tabId: number) {
+    const id = holdTargets.get(tabId);
+    holdTargets.delete(tabId);
+    showHold(tabId, null);
+    if (!id) return false;
+    try { await deliver(tabId, id, 'hold', { phase: 'end' }); }
+    catch { /* The frame navigated away before the key came up. */ }
+    return true;
+  }
   async function applyVolume(tabId: number, host: string, delta: number) {
     let gesture = gestures.get(tabId);
     const selected = selectedIds.get(tabId);
@@ -315,9 +340,13 @@ export default defineBackground(() => {
     const updated = await browser.tabs.update(tabId, { muted });
     return { ok: true, muted: updated?.mutedInfo?.muted === true };
   }
-  async function deliver(tabId: number, id: string, type: 'command' | 'highlight', command?: unknown) {
+  async function deliver(tabId: number, id: string, type: 'command' | 'highlight' | 'hold', command?: unknown) {
     const [frame, localId] = id.split(':');
-    const message = type === 'highlight' ? { namespace: 'ottertap', type, id: localId } : { namespace: 'ottertap', type, id: localId, command };
+    const message = type === 'highlight'
+      ? { namespace: 'ottertap', type, id: localId }
+      : type === 'hold'
+        ? { namespace: 'ottertap', type, id: localId, ...(command as { phase: 'start' | 'end'; rate?: number }) }
+        : { namespace: 'ottertap', type, id: localId, command };
     const result = await browser.tabs.sendMessage(tabId, message, { frameId: Number(frame) });
     if (result?.error) throw new Error(result.error);
     return result;
@@ -331,7 +360,7 @@ export default defineBackground(() => {
       if (sender.tab?.id !== undefined) void browser.tabs.sendMessage(sender.tab.id, { namespace: 'ottertap', type: 'altUsed' }).catch(() => {});
       return;
     }
-    if (!['options', 'context', 'register', 'read', 'command', 'select', 'highlight', 'hotkey', 'soundingTabs', 'focusTab', 'muteTab', 'rateLock'].includes(message.type)) return;
+    if (!['options', 'context', 'register', 'read', 'command', 'select', 'highlight', 'hotkey', 'holdRate', 'soundingTabs', 'focusTab', 'muteTab', 'rateLock'].includes(message.type)) return;
     const tabId = sender.tab?.id ?? message.tabId;
     async function handle() {
       if (message.type === 'options') { await browser.runtime.openOptionsPage(); return { ok: true }; }
@@ -354,7 +383,7 @@ export default defineBackground(() => {
         const settings = await currentSettings();
         const enabled = isSiteEnabled(url, settings);
         const host = new URL(url).hostname;
-        if (message.type === 'context') return { enabled, host, url, hasMedia: hasMedia(tabId), lockRate: settings.lockRate, singleKey: settings.singleKey, hoverWheel: settings.hoverWheel, skipSeconds: settings.skipSeconds, volumeStep: settings.volumeStep, ...localSelection(tabId, sender.frameId ?? 0) };
+        if (message.type === 'context') return { enabled, host, url, hasMedia: hasMedia(tabId), lockRate: settings.lockRate, holdBoost: settings.holdBoost, holdBoostRate: settings.holdBoostRate, singleKey: settings.singleKey, hoverWheel: settings.hoverWheel, skipSeconds: settings.skipSeconds, volumeStep: settings.volumeStep, ...localSelection(tabId, sender.frameId ?? 0) };
         if (message.type === 'rateLock') { showRateLock(tabId); return { ok: true }; }
         if (message.type === 'register' && sender.tab) {
           const frameId = sender.frameId ?? 0;
@@ -391,6 +420,7 @@ export default defineBackground(() => {
           }
           return { host, enabled, media, selectedId };
         }
+        if (message.type === 'holdRate' && message.phase === 'end') { await endHold(tabId); return { ok: true }; }
         if (!enabled) throw new Error(i18n.t('siteDisabled'));
         if (message.type === 'select') {
           if (!mediaId) throw new Error(i18n.t('invalidCommand'));
@@ -403,6 +433,10 @@ export default defineBackground(() => {
           if (!mediaId) throw new Error(i18n.t('invalidCommand'));
           await deliver(tabId, mediaId, 'highlight');
           return { ok: true };
+        }
+        if (message.type === 'holdRate') {
+          if (!settings.holdBoost) return { handled: false };
+          return { handled: await startHold(tabId, host, settings.holdBoostRate) };
         }
         if (message.type === 'hotkey') {
           if (!isHotkeyAction(message.action)) throw new Error(i18n.t('invalidCommand'));
@@ -423,7 +457,7 @@ export default defineBackground(() => {
       } catch (error) { return { error: error instanceof Error ? error.message : i18n.t('pageUnavailable') }; }
     }
     // Chain before the first await so a later command cannot pass an earlier one.
-    const run = (message.type === 'command' || message.type === 'hotkey') && Number.isInteger(tabId) ? enqueueCommand(tabId, () => handle()) : handle();
+    const run = (message.type === 'command' || message.type === 'hotkey' || message.type === 'holdRate') && Number.isInteger(tabId) ? enqueueCommand(tabId, () => handle()) : handle();
     // Keep the channel open on Chromium versions without Promise listener support.
     void run.then(sendResponse, () => sendResponse({ error: i18n.t('extensionMessageFailed') }));
     return true;

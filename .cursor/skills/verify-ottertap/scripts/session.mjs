@@ -9,6 +9,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive rate-step
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive extension-pip
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive default-rate
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive hold-boost
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -28,7 +29,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'rate-step', 'extension-pip', 'default-rate'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -1095,6 +1096,178 @@ async function driveDefaultRate(context, dir, note) {
   }
 }
 
+async function driveHoldBoost(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const near = expected => value => Math.abs(value - expected) < 0.02;
+  const times = '\u00d7';
+  const rateOf = fixture => fixture.locator('#media').evaluate(element => element.playbackRate);
+  const siteRate = value => value.sitePrefs?.[host]?.rate;
+  const temporaryVisible = fixture => fixture.getByText(/Temporary speed/).isVisible().catch(() => false);
+  const downChord = async fixture => {
+    await fixture.keyboard.down('Alt');
+    await fixture.keyboard.down('Shift');
+    await fixture.keyboard.down('Period');
+  };
+  const upChord = async fixture => {
+    await fixture.keyboard.up('Period').catch(() => {});
+    await fixture.keyboard.up('Shift').catch(() => {});
+    await fixture.keyboard.up('Alt').catch(() => {});
+  };
+  const focusMedia = async fixture => {
+    await fixture.bringToFront();
+    await fixture.mouse.click(8, 8);
+  };
+  let settings;
+  let fixture;
+  let keys;
+  try {
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#playback`, { waitUntil: 'domcontentloaded' });
+    const holdSwitch = settings.getByRole('switch', { name: 'Hold for a temporary speed' });
+    await holdSwitch.waitFor({ state: 'visible', timeout: 15_000 });
+    if (await holdSwitch.getAttribute('aria-checked') !== 'false') throw new Error('按住临时加速默认应关闭');
+    const temporary = settings.getByRole('group', { name: 'Temporary speed' });
+    const pressed = await temporary.locator('[aria-pressed="true"]').allInnerTexts();
+    if (pressed.join() !== `2${times}`) throw new Error(`临时倍速默认应按下 2×：${JSON.stringify(pressed)}`);
+    const defaults = settings.getByRole('group', { name: 'Default speed' });
+    const defaultPressed = await defaults.locator('[aria-pressed="true"]').allInnerTexts();
+    if (defaultPressed.join() !== 'Follow the page') throw new Error(`默认倍速应仍是跟随网页：${JSON.stringify(defaultPressed)}`);
+    await settings.getByText('hold Alt + Shift + .').waitFor({ state: 'visible' });
+    await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-off.png'), animations: 'disabled' });
+    const offStored = await stored();
+    if (offStored.holdBoost === true || offStored.defaultRate != null || siteRate(offStored) != null) {
+      throw new Error(`关闭时不应写下临时加速或倍速记忆：${JSON.stringify({ holdBoost: offStored.holdBoost, defaultRate: offStored.defaultRate, site: siteRate(offStored) })}`);
+    }
+    note('settings hold boost off, temporary speed 2×, default follows the page');
+
+    fixture = await context.newPage();
+    await fixture.goto(`${origin}/video`, { waitUntil: 'domcontentloaded' });
+    await fixture.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await fixture.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+    });
+    await focusMedia(fixture);
+    const initial = await poll(rateOf.bind(null, fixture), near(1), '夹具初始倍速应是 1');
+    await downChord(fixture);
+    await upChord(fixture);
+    const stepped = await poll(rateOf.bind(null, fixture), near(1.25), '关闭时 Alt+Shift+. 仍应步进到 1.25');
+    if (await temporaryVisible(fixture)) throw new Error('关闭时不应出现临时倍速提示');
+    const afterStep = await stored();
+    if (afterStep.holdBoost === true || afterStep.defaultRate != null || siteRate(afterStep) != null) {
+      throw new Error(`步进不应打开临时加速或写入记忆：${JSON.stringify({ holdBoost: afterStep.holdBoost, defaultRate: afterStep.defaultRate, site: siteRate(afterStep) })}`);
+    }
+    await fixture.screenshot({ path: path.join(dir, 'fixture-off.png'), animations: 'disabled' });
+    note(`off chord stepped ${initial} -> ${stepped}`);
+
+    await settings.bringToFront();
+    await holdSwitch.click();
+    await poll(() => holdSwitch.getAttribute('aria-checked'), value => value === 'true', '应能打开按住临时加速');
+    const choice = temporary.getByRole('button', { name: `1.5${times}`, exact: true });
+    await choice.click();
+    await poll(() => choice.getAttribute('aria-pressed'), value => value === 'true', '临时倍速应改成 1.5×');
+    const armed = await poll(stored, value => value.holdBoost === true && value.holdBoostRate === 1.5 && value.defaultRate == null, '存储里应是 holdBoost 开、临时档 1.5、默认倍速仍空');
+    await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-on.png'), animations: 'disabled' });
+    note(`saved holdBoost=${armed.holdBoost} holdBoostRate=${armed.holdBoostRate}`);
+
+    await focusMedia(fixture);
+    await fixture.locator('#media').evaluate(element => { element.playbackRate = 1; });
+    await poll(rateOf.bind(null, fixture), near(1), '应按住前把倍速设回 1');
+    await downChord(fixture);
+    const held = await poll(rateOf.bind(null, fixture), near(1.5), '按住后应立刻变成临时 1.5×');
+    await fixture.getByText(`Temporary speed 1.5${times}`, { exact: true }).waitFor({ state: 'visible', timeout: 8_000 });
+    const during = await stored();
+    if (during.defaultRate != null || siteRate(during) != null || during.holdBoostRate !== 1.5) {
+      throw new Error(`按住不应写默认倍速或站点记忆：${JSON.stringify({ defaultRate: during.defaultRate, site: siteRate(during), holdBoostRate: during.holdBoostRate })}`);
+    }
+    await fixture.screenshot({ path: path.join(dir, 'fixture-hold.png'), animations: 'disabled' });
+    await upChord(fixture);
+    const released = await poll(rateOf.bind(null, fixture), near(1), '松开后应回到按住前的 1×');
+    await fixture.getByText(`Temporary speed 1.5${times}`, { exact: true }).waitFor({ state: 'hidden', timeout: 8_000 });
+    await fixture.screenshot({ path: path.join(dir, 'fixture-release.png'), animations: 'disabled' });
+    note(`held=${held} released=${released}`);
+
+    await worker.evaluate(async () => {
+      const key = 'ottertap-settings-v1';
+      const current = (await chrome.storage.local.get(key))[key] ?? {};
+      const sitePrefs = { ...(current.sitePrefs ?? {}) };
+      sitePrefs['media.ottertap.test'] = { ...(sitePrefs['media.ottertap.test'] ?? {}), rate: 2 };
+      await chrome.storage.local.set({ [key]: { ...current, defaultRate: 1.25, sitePrefs } });
+    });
+    await poll(stored, value => value.defaultRate === 1.25 && siteRate(value) === 2 && value.holdBoostRate === 1.5, '应写入站点 2× 和默认 1.25×，临时档仍是 1.5');
+    await fixture.reload({ waitUntil: 'domcontentloaded' });
+    await fixture.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    const remembered = await poll(rateOf.bind(null, fixture), near(2), '重新加载应使用站点记住的 2×');
+    await focusMedia(fixture);
+    await downChord(fixture);
+    await poll(rateOf.bind(null, fixture), near(1.5), '记住 2× 后按住仍应是临时 1.5×');
+    await fixture.keyboard.up('Shift');
+    await fixture.keyboard.up('Period');
+    await fixture.keyboard.up('Alt');
+    const restoredMemory = await poll(rateOf.bind(null, fixture), near(2), '先松开 Shift 再松开 . 也应回到站点的 2×');
+    const memoryStored = await poll(stored, value => value.defaultRate === 1.25 && siteRate(value) === 2 && value.holdBoostRate === 1.5 && value.holdBoost === true, '按住前后站点倍速和默认倍速都不应被改写');
+    note(`remembered=${remembered} restored=${restoredMemory} storedDefault=${memoryStored.defaultRate} storedSite=${siteRate(memoryStored)}`);
+
+    await settings.bringToFront();
+    const lock = settings.getByRole('switch', { name: 'Lock playback speed' });
+    if (await lock.getAttribute('aria-checked') !== 'false') throw new Error('锁定倍速此时应仍关闭');
+    await lock.click();
+    await poll(() => lock.getAttribute('aria-checked'), value => value === 'true', '应能打开锁定倍速');
+    await poll(stored, value => value.lockRate === true && siteRate(value) === 2, '锁定不应改站点记住的 2×');
+    await focusMedia(fixture);
+    await fixture.locator('#media').evaluate(element => { element.playbackRate = 1; });
+    const locked = await poll(rateOf.bind(null, fixture), near(2), '锁定开着时站点改成 1 应写回 2×');
+    await downChord(fixture);
+    await poll(rateOf.bind(null, fixture), near(1.5), '锁定开着时按住应改用临时 1.5×');
+    await upChord(fixture);
+    await poll(rateOf.bind(null, fixture), near(2), '松开应回到锁定目标 2×，而不是刚才的 1×');
+    note(`locked rewrite back to ${locked}`);
+
+    keys = await context.newPage();
+    await keys.goto(`${origin}/keys`, { waitUntil: 'domcontentloaded' });
+    await keys.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    const typedRate = await poll(rateOf.bind(null, keys), near(2), '同一站点的输入框页也应先用记住的 2×');
+    const field = keys.getByRole('textbox', { name: 'Field' });
+    await field.click();
+    await downChord(keys);
+    await keys.waitForTimeout(300);
+    const typed = await rateOf(keys);
+    if (!near(typedRate)(typed)) throw new Error(`输入框里按住不应改倍速：${typed}`);
+    await upChord(keys);
+    const typedAfter = await rateOf(keys);
+    if (!near(typedRate)(typedAfter)) throw new Error(`输入框里松开后倍速变了：${typedAfter}`);
+    note(`typing left playbackRate=${typedAfter}`);
+
+    await settings.bringToFront();
+    const singleKey = settings.getByRole('switch', { name: 'Single-key mode' });
+    await singleKey.click();
+    await poll(stored, value => value.singleKey === true && value.holdBoost === true && value.holdBoostRate === 1.5 && value.lockRate === true && value.defaultRate === 1.25 && siteRate(value) === 2, '单键模式应打开，其余倍速设置保持不变');
+    await keys.waitForTimeout(400);
+    await focusMedia(keys);
+    await keys.keyboard.down('s');
+    const singleHeld = await poll(rateOf.bind(null, keys), near(1.5), '单键模式按住 S 应到临时 1.5×');
+    await keys.keyboard.up('s');
+    const singleReleased = await poll(rateOf.bind(null, keys), near(2), '松开 S 应回到锁定的 2×');
+    note(`single-key held=${singleHeld} released=${singleReleased}`);
+
+    const state = { ok: true, stepped, held, released, remembered: restoredMemory, locked, typed: typedAfter, singleHeld: singleReleased };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    if (fixture) await upChord(fixture);
+    if (keys) {
+      await keys.keyboard.up('s').catch(() => {});
+      await upChord(keys);
+    }
+    await settings?.close().catch(() => {});
+    await fixture?.close().catch(() => {});
+    await keys?.close().catch(() => {});
+  }
+}
+
 const pipButtonState = `(() => {
   const button = [...document.querySelectorAll('button')].find(item => item.getAttribute('aria-label') === 'Picture-in-picture' || item.getAttribute('aria-label') === 'Exit picture-in-picture');
   if (!button) return null;
@@ -1337,7 +1510,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });

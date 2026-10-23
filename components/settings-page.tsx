@@ -210,11 +210,13 @@ function Row({ title, description, titleId, children }: { title: string; descrip
 }
 
 export function SettingsPage({ back }: { back?: () => void }) {
-  const { themeAtom, floatingAtom, defaultRateAtom, lockRateAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { themeAtom, floatingAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const theme = useAtomValue(themeAtom);
   const floating = useAtomValue(floatingAtom);
   const defaultRate = useAtomValue(defaultRateAtom);
   const lockRate = useAtomValue(lockRateAtom);
+  const holdBoost = useAtomValue(holdBoostAtom);
+  const holdBoostRate = useAtomValue(holdBoostRateAtom);
   const hoverWheel = useAtomValue(hoverWheelAtom);
   const singleKey = useAtomValue(singleKeyAtom);
   const skipSeconds = useAtomValue(skipSecondsAtom);
@@ -271,6 +273,9 @@ export function SettingsPage({ back }: { back?: () => void }) {
   const defaultRateChoices = defaultRate != null && !defaultRatePresets.some(rate => sameRate(rate, defaultRate))
     ? [...defaultRatePresets, defaultRate].sort((a, b) => a - b)
     : defaultRatePresets;
+  const holdRateChoices = defaultRatePresets.some(rate => sameRate(rate, holdBoostRate))
+    ? defaultRatePresets
+    : [...defaultRatePresets, holdBoostRate].sort((a, b) => a - b);
 
   return <div className="min-h-screen bg-secondary/30 md:grid md:grid-cols-[220px_1fr]">
     <aside className="sticky top-0 z-20 flex flex-col border-b bg-background md:h-screen md:self-start md:border-r">
@@ -327,6 +332,19 @@ export function SettingsPage({ back }: { back?: () => void }) {
             <FieldLabel htmlFor="settings-lock-rate" className="text-sm font-normal">{i18n.t('lockRate')}</FieldLabel>
             <Switch id="settings-lock-rate" aria-label={i18n.t('lockRate')} checked={lockRate} disabled={disabled} onCheckedChange={checked => void save({ lockRate: checked })} />
           </Field>
+          <div className="mt-4">
+            <Field orientation="horizontal" className="justify-between gap-4 rounded-lg bg-secondary/60 px-3 py-3">
+              <FieldLabel htmlFor="settings-hold-boost" className="text-sm font-normal">{i18n.t('holdBoost')}</FieldLabel>
+              <Switch id="settings-hold-boost" aria-label={i18n.t('holdBoost')} checked={holdBoost} disabled={disabled} onCheckedChange={checked => void save({ holdBoost: checked })} />
+            </Field>
+            <p className="mt-2 text-sm leading-5 text-muted-foreground">{i18n.t('holdBoostDescription')}</p>
+            <div className="mt-4 rounded-lg bg-secondary/60 px-3 py-3">
+              <h3 id="hold-boost-rate-label" className="text-sm font-medium">{i18n.t('holdBoostRate')}</h3>
+              <ToggleGroup aria-labelledby="hold-boost-rate-label" spacing={1} className="mt-3 flex h-auto w-full flex-wrap justify-start rounded-lg bg-background/80 p-1" value={[String(holdBoostRate)]} disabled={disabled} onValueChange={value => { const rate = Number(value[0]); if (Number.isFinite(rate)) void save({ holdBoostRate: rate }); }}>
+                {holdRateChoices.map(rate => <ToggleGroupItem key={rate} value={String(rate)} className="h-8 rounded-md border-0 px-2.5 text-xs text-muted-foreground shadow-none aria-pressed:bg-card aria-pressed:font-semibold aria-pressed:text-foreground aria-pressed:shadow-sm">{i18n.t('defaultRateOption', { rate: formatRate(rate) })}</ToggleGroupItem>)}
+              </ToggleGroup>
+            </div>
+          </div>
           <div className="mt-4">
             <div className="rounded-lg bg-secondary/60 px-3 py-3">
               <h3 id="default-rate-label" className="text-sm font-medium">{i18n.t('defaultRate')}</h3>
