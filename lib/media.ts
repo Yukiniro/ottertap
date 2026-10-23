@@ -56,6 +56,27 @@ export function hoverWheelTarget(pointedId: string | undefined, media: readonly 
   return hoverPrimaryId(media, selectedId) === pointedId ? pointedId : undefined;
 }
 
+/**
+ * Bare hover-wheel needs a main stage: both sides at least a third of the viewport.
+ * A feed card is about a fifth, so the page keeps scrolling there.
+ */
+export function isMainStageSize(rect: { width: number; height: number }, viewport: { width: number; height: number }) {
+  if (!(viewport.width > 0) || !(viewport.height > 0)) return false;
+  return rect.width * 3 >= viewport.width && rect.height * 3 >= viewport.height;
+}
+
+type StageView = { innerWidth: number; innerHeight: number; top: StageView | null };
+
+/** Top viewport when it is readable. A same-origin embed is judged against the page, not the frame. */
+export function stageViewport(view: StageView | null | undefined) {
+  if (!view) return { width: 0, height: 0 };
+  try {
+    const top = view.top;
+    if (top) return { width: top.innerWidth, height: top.innerHeight };
+  } catch { /* A cross-origin frame cannot read the top viewport. */ }
+  return { width: view.innerWidth, height: view.innerHeight };
+}
+
 export function mediaAtPoint<T extends Element>(elements: readonly T[], x: number, y: number) {
   return elements.find(element => {
     const rect = element.getBoundingClientRect();
@@ -407,8 +428,8 @@ export function createMediaController(document: Document, onChange?: () => void,
       const element = (point ? mediaAtPoint(live, point.x, point.y) : undefined) ?? (focus ? focusedMedia(live, document) : undefined);
       return element ? idOf(element) : undefined;
     },
-    /** Hover-wheel target: the element under the point, and only when it is the primary media. */
-    hoverTarget(point: { x: number; y: number }, selectedLocalId = '') {
+    /** Primary under the point, and whether that element is large enough for a bare hover-wheel. */
+    hoverAt(point: { x: number; y: number }, selectedLocalId = '') {
       refresh();
       const live = elements.filter(element => element.isConnected);
       const hit = mediaAtPoint(live, point.x, point.y);
@@ -419,7 +440,18 @@ export function createMediaController(document: Document, onChange?: () => void,
         muted: element.muted,
         volume: element.volume * amplifier.gain(element),
       }));
-      return hoverWheelTarget(idOf(hit), states, selectedLocalId);
+      const id = hoverWheelTarget(idOf(hit), states, selectedLocalId);
+      if (!id) return undefined;
+      return { id, stage: isMainStageSize(hit.getBoundingClientRect(), stageViewport(document.defaultView)) };
+    },
+    /** Hover-wheel target: the element under the point, and only when it is the primary media. */
+    hoverTarget(point: { x: number; y: number }, selectedLocalId = '') {
+      return this.hoverAt(point, selectedLocalId)?.id;
+    },
+    /** Bare hover-wheel: the primary under the point, and only when it covers the main stage. */
+    bareHoverTarget(point: { x: number; y: number }, selectedLocalId = '') {
+      const hit = this.hoverAt(point, selectedLocalId);
+      return hit?.stage ? hit.id : undefined;
     },
     /** Apply a temporary speed without changing recall or the lock's saved target. */
     beginHold(id: string, rate: number) {

@@ -179,6 +179,37 @@ test('悬停滚轮目标必须是主媒体：静音预览不命中，有声播�
       assert.equal(controller.hoverTarget({ x: 80, y: 280 }), byLabel.get('main'), '有声主播放器仍接受悬停滚轮');
       assert.equal(controller.hoverTarget({ x: 40, y: 40 }, byLabel.get('preview')), undefined, '锁定静音预览也不会拦截页面滚动');
       assert.equal(controller.hoverTarget({ x: 80, y: 280 }, byLabel.get('preview')), byLabel.get('main'));
+      assert.equal(controller.bareHoverTarget({ x: 80, y: 280 }), byLabel.get('main'), '640×360 在默认视口里仍是主播放区');
+      assert.equal(controller.bareHoverTarget({ x: 40, y: 40 }), undefined);
+    } finally { controller.destroy(); }
+  } finally { await window.happyDOM.close(); }
+});
+
+test('列表小卡片即使是唯一有声视频也不接受裸滚轮，够大的主播放器才接受', async () => {
+  const window = new Window({ url: 'https://bilibili.com', width: 1280, height: 720 });
+  const document = window.document;
+  try {
+    const rect = (x: number, y: number, width: number, height: number) => () => new window.DOMRect(x, y, width, height);
+    const card = document.createElement('video');
+    card.getBoundingClientRect = rect(16, 16, 240, 135);
+    card.muted = false;
+    card.volume = 0.5;
+    document.body.append(card);
+    const controller = createMediaController(document as unknown as Document);
+    try {
+      await card.play();
+      const id = controller.snapshot()[0]!.id;
+      assert.equal(card.paused, false);
+      assert.equal(controller.hoverTarget({ x: 40, y: 40 }), id, '主媒体闸门仍命中唯一有声卡片');
+      assert.equal(controller.bareHoverTarget({ x: 40, y: 40 }), undefined, '卡片不到视口三分之一，裸滚轮留给页面');
+      card.volume = 0;
+      assert.equal(controller.hoverTarget({ x: 40, y: 40 }), id, '未置 muted、音量为 0 的唯一视频仍算主媒体');
+      assert.equal(controller.bareHoverTarget({ x: 40, y: 40 }), undefined);
+      card.volume = 0.5;
+      card.getBoundingClientRect = rect(16, 16, 640, 360);
+      assert.equal(controller.bareHoverTarget({ x: 80, y: 80 }), id, '够大的主播放器仍接受裸滚轮');
+      card.pause();
+      assert.equal(controller.bareHoverTarget({ x: 80, y: 80 }), id, '暂停的大播放器仍接受裸滚轮');
     } finally { controller.destroy(); }
   } finally { await window.happyDOM.close(); }
 });

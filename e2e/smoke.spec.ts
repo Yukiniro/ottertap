@@ -133,8 +133,9 @@ const pages: Record<string, string> = {
   '/frame': documentHtml('<iframe title="embedded media" src="/embed" style="width:320px;height:180px;border:0"></iframe>'),
   '/embed': documentHtml(`<video id="media" src="${wav}" preload="auto" playsinline></video>`),
   '/video': documentHtml(`<video id="media" src="${wav}" preload="auto" playsinline></video>`),
-  '/keys': documentHtml(`<video id="media" src="${wav}" preload="auto" playsinline style="display:block;width:320px;height:180px"></video><input id="field" aria-label="Field" style="margin-top:1200px">`),
+  '/keys': documentHtml(`<video id="media" src="${wav}" preload="auto" playsinline style="display:block;width:640px;height:360px;margin-top:320px"></video><input id="field" aria-label="Field" style="margin-top:1200px">`),
   '/feed': documentHtml(`<video id="preview" aria-label="Feed preview" src="${wav}" preload="auto" playsinline loop style="display:block;width:240px;height:135px"></video><video id="media" aria-label="Main player" src="${wav}" preload="auto" playsinline loop style="display:block;width:640px;height:360px;margin-top:24px"></video><div style="height:1600px"></div>`),
+  '/cards': documentHtml(`<video id="card" aria-label="Feed card" src="${wav}" preload="auto" playsinline loop style="display:block;width:240px;height:135px"></video><div style="height:1600px"></div>`),
   '/pip-off': documentHtml(`<video id="media" src="${wav}" preload="auto" playsinline disablepictureinpicture></video>`),
   '/other': documentHtml(`<audio id="media" src="${wav}" preload="auto"></audio>`, 'Other tab'),
   '/stereo': documentHtml(`<audio id="media" src="${tone}" preload="auto" loop></audio>`),
@@ -656,6 +657,41 @@ test('悬停滚轮只作用在有声主播放器，静音信息流预览不拦�
     await page.mouse.wheel(0, -100);
     await expect.poll(() => main.evaluate((element: HTMLMediaElement) => element.volume), '有声主播放器上裸滚轮调音量').toBeCloseTo(0.6, 2);
     expect(await page.evaluate(() => window.scrollY), '主播放器上滚轮不滚动页面').toBe(0);
+  });
+});
+
+test('列表小视频即使有声播放也不拦截页面滚动，Alt+滚轮仍可调音量', async () => {
+  await withPage(async page => {
+    await openFixture(page, '/cards');
+    const card = page.locator('#card');
+    await expect.poll(() => card.evaluate((element: HTMLMediaElement) => element.readyState)).toBeGreaterThanOrEqual(1);
+    await card.evaluate(async (element: HTMLMediaElement) => {
+      element.muted = true;
+      await element.play();
+      element.muted = false;
+      element.volume = 0.5;
+    });
+    await expect.poll(() => card.evaluate((element: HTMLMediaElement) => ({ paused: element.paused, muted: element.muted, volume: element.volume }))).toEqual({ paused: false, muted: false, volume: 0.5 });
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const box = await card.boundingBox();
+    if (!box) throw new Error('小卡片没有位置');
+    expect(box.width).toBeLessThan(1280 / 3);
+    expect(box.height).toBeLessThan(720 / 3);
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.screenshot({ path: test.info().outputPath('card-before.png') });
+    await page.mouse.wheel(0, 120);
+    await expect.poll(() => page.evaluate(() => window.scrollY), '小卡片上裸滚轮应滚动页面').toBeGreaterThan(0);
+    expect(await card.evaluate((element: HTMLMediaElement) => element.volume), '小卡片音量不变').toBeCloseTo(0.5, 2);
+    await page.screenshot({ path: test.info().outputPath('card-scrolled.png') });
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const again = await card.boundingBox();
+    if (!again) throw new Error('小卡片没有位置');
+    await page.mouse.move(again.x + again.width / 2, again.y + again.height / 2);
+    await page.keyboard.down('Alt');
+    try { await page.mouse.wheel(0, -100); }
+    finally { await page.keyboard.up('Alt'); }
+    await expect.poll(() => card.evaluate((element: HTMLMediaElement) => element.volume), '小卡片上 Alt+滚轮仍调音量').toBeCloseTo(0.6, 2);
+    expect(await page.evaluate(() => window.scrollY), 'Alt+滚轮不滚动页面').toBe(0);
   });
 });
 

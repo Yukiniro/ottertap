@@ -6,7 +6,7 @@
 | --- | --- | --- | --- |
 | 弹出面板播放控制 | [popup-playback.md](popup-playback.md) | 工具栏弹出面板 | `drive popup-playback` |
 | 全局默认倍速 | [default-rate.md](default-rate.md) | 设置页「Playback」的 `Default speed`；陌生网站的新媒体应用一次，站点记住的倍速优先 | `drive default-rate`；`tests/default-rate.test.ts`、`tests/default-rate-background.test.ts` |
-| 滚轮与 Alt 快捷键音量 | [wheel-volume.md](wheel-volume.md) | 网页里的主播放器、静音预览或浮动音量药丸 | `drive wheel-volume`；`e2e/smoke.spec.ts` 中悬停滚轮、静音预览、Alt+滚轮 |
+| 滚轮与 Alt 快捷键音量 | [wheel-volume.md](wheel-volume.md) | 网页里的主播放器、静音预览、列表小卡片或浮动音量药丸 | `drive wheel-volume`；`e2e/smoke.spec.ts` 中悬停滚轮、静音预览、小卡片、Alt+滚轮 |
 | 倍速 | [playback-rate.md](playback-rate.md) | 弹出面板倍速按钮，或网页上的 Alt+, / Alt+. / Alt+0 | `e2e/smoke.spec.ts` 中 Alt + , . 0 那条 |
 | 倍速增减步长 | [rate-step.md](rate-step.md) | 设置页「Playback」的 `Speed step`，影响页内 Alt+, / Alt+.、单键 > <、弹出面板加快 / 减慢、扩展命令 `rate-faster` / `rate-slower` | `drive rate-step`；`tests/rate-step.test.ts`、`tests/rate-step-command.test.ts` |
 | 按住临时加速 | [hold-boost.md](hold-boost.md) | 设置页「Playback」的 `Hold for a temporary speed`，默认关；打开后按住 Alt+Shift+.（单键模式还可按住 S）用临时档，松开还原。不写站点记忆，不改默认倍速 | `drive hold-boost`；`tests/hold-boost.test.ts`、`tests/hold-boost-background.test.ts` |

@@ -177,9 +177,10 @@ function fixtureHtml() {
 
 function routedHtml(pathname) {
   if (pathname === '/video') return fixtureHtml();
-  if (pathname === '/keys') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" src="${wav}" preload="auto" playsinline style="display:block;width:320px;height:180px;margin:24px"></video><input id="field" aria-label="Field" style="margin-top:1200px"></body></html>`;
+  if (pathname === '/keys') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" src="${wav}" preload="auto" playsinline style="display:block;width:640px;height:360px;margin:24px"></video><input id="field" aria-label="Field" style="margin-top:1200px"></body></html>`;
   if (pathname === '/long') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" aria-label="Long video" src="${longWav}" preload="auto" playsinline style="display:block;width:640px;height:360px;margin:48px"></video></body></html>`;
   if (pathname === '/feed') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="preview" aria-label="Feed preview" src="${wav}" preload="auto" playsinline loop style="display:block;width:240px;height:135px;margin:24px"></video><video id="media" aria-label="Main player" src="${wav}" preload="auto" playsinline loop style="display:block;width:640px;height:360px;margin:24px"></video><div style="height:1600px"></div></body></html>`;
+  if (pathname === '/cards') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="card" aria-label="Feed card" src="${wav}" preload="auto" playsinline loop style="display:block;width:240px;height:135px;margin:24px"></video><div style="height:1600px"></div></body></html>`;
   if (pathname === '/audio') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><audio id="media" aria-label="Fixture audio" src="${wav}" preload="auto"></audio></body></html>`;
   if (pathname === '/pip-off') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" aria-label="Fixture video" src="${wav}" preload="auto" playsinline disablepictureinpicture style="display:block;width:640px;height:360px;margin:48px"></video></body></html>`;
   if (pathname === '/unseekable') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Unseekable</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" aria-label="Unseekable video" preload="none" style="display:block;width:640px;height:360px;margin:48px"></video></body></html>`;
@@ -402,6 +403,31 @@ async function driveWheelVolume(context, dir, note) {
     await page.screenshot({ path: path.join(dir, 'feed-main-after.png'), animations: 'disabled' });
     note(`main player volume ${mainVolume} scrollY ${mainScroll}`);
 
+    await page.goto(`${origin}/cards`, { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await play('#card', false, 0.5);
+    await poll(() => readMedia('#card'), value => value.paused === false && value.muted === false && Math.abs(value.volume - 0.5) < 0.02, '小卡片应有声播放');
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const cardAt = await centerOf(page.locator('#card'));
+    await page.mouse.move(cardAt.x, cardAt.y);
+    await page.screenshot({ path: path.join(dir, 'cards-before.png'), animations: 'disabled' });
+    await page.mouse.wheel(0, 120);
+    const cardScroll = await poll(() => page.evaluate(() => window.scrollY), value => value > 0, '小卡片上裸滚轮应滚动页面');
+    const cardVolume = await page.locator('#card').evaluate(element => element.volume);
+    if (Math.abs(cardVolume - 0.5) > 0.02) throw new Error(`小卡片改变了音量 ${cardVolume}`);
+    await page.screenshot({ path: path.join(dir, 'cards-scrolled.png'), animations: 'disabled' });
+    note(`small card scrolled to ${cardScroll} volume ${cardVolume}`);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const cardAltAt = await centerOf(page.locator('#card'));
+    await page.mouse.move(cardAltAt.x, cardAltAt.y);
+    await page.keyboard.down('Alt');
+    try { await page.mouse.wheel(0, -100); }
+    finally { await page.keyboard.up('Alt'); }
+    const cardAlt = await poll(() => page.locator('#card').evaluate(element => element.volume), value => Math.abs(value - 0.6) < 0.02, '小卡片上 Alt+滚轮仍应调音量');
+    const cardAltScroll = await page.evaluate(() => window.scrollY);
+    if (cardAltScroll !== 0) throw new Error(`小卡片上 Alt+滚轮滚动了页面 scrollY=${cardAltScroll}`);
+    note(`small card alt volume ${cardAlt} scrollY ${cardAltScroll}`);
+
     await page.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
     const off = page.getByRole('switch', { name: 'Scroll over the main player to change volume' });
     await off.waitFor({ state: 'visible', timeout: 15_000 });
@@ -422,7 +448,7 @@ async function driveWheelVolume(context, dir, note) {
     finally { await page.keyboard.up('Alt'); }
     const alt = await poll(() => page.locator('#media').evaluate(element => element.volume), value => Math.abs(value - 0.6) < 0.02, '关闭悬停后 Alt+滚轮仍应调音量');
     note(`hover off bare ${bare} alt ${alt}`);
-    const state = { ok: true, preview: afterPreview, main: { volume: mainVolume, scrollY: mainScroll }, hoverOff: { bare, alt } };
+    const state = { ok: true, preview: afterPreview, main: { volume: mainVolume, scrollY: mainScroll }, card: { volume: cardVolume, scrollY: cardScroll, alt: cardAlt }, hoverOff: { bare, alt } };
     await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
     return state;
   } finally { await page.close(); }
