@@ -122,7 +122,7 @@ pageUnavailable: "Esta página no se puede controlar ahora. Actualízala e inté
 pause: "Pausa"
 paused: "En pausa"
 pictureInPicture: "Imagen en imagen"
-pillTitle: "{title} · Clic para el volumen, arrastra para mover"
+pillTitle: "{title} · Clic para el volumen y la velocidad, arrastra para mover"
 pipDisabledBySite: "Este sitio ha desactivado la imagen en imagen."
 pipFailed: "No se pudo cambiar la imagen en imagen. Inténtalo de nuevo."
 pipNeedsGesture: "El navegador no aceptó este clic. Inténtalo de nuevo."

@@ -13,12 +13,13 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive hold-skip-combo
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive frame-step
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive hotkey-remap
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-speed
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { createServer } from 'node:http';
-import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { openSync, closeSync, readFileSync, readlinkSync, readdirSync, unlinkSync } from 'node:fs';
 import { createServer as createNetServer } from 'node:net';
 import path from 'node:path';
@@ -32,7 +33,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -1897,6 +1898,136 @@ async function driveHotkeyRemap(context, dir, note) {
   }
 }
 
+async function driveFloatingSpeed(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  await mkdir('/opt/cursor/artifacts/floating-speed-ui', { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const near = expected => value => Math.abs(value - expected) < 0.02;
+  const times = '\u00d7';
+  const page = await context.newPage();
+  let settings;
+  const rate = () => page.locator('#media').evaluate(element => element.playbackRate);
+  const volume = () => page.locator('#media').evaluate(element => element.volume);
+  const dialog = () => page.getByRole('dialog', { name: 'Volume pill' });
+  const hint = (text) => page.getByRole('status').filter({ hasText: text });
+  const openPill = async () => {
+    const slider = dialog().getByRole('slider', { name: 'Volume' });
+    if (!(await slider.isVisible())) {
+      const toggle = page.getByRole('button', { name: /volume pill/i });
+      const box = await toggle.boundingBox();
+      if (!box) throw new Error('浮动入口没有位置');
+      await page.mouse.move(box.x + Math.min(8, box.width / 4), box.y + box.height / 2);
+      await toggle.click();
+    }
+    await slider.waitFor({ state: 'visible', timeout: 5_000 });
+  };
+  try {
+    await page.goto(`${origin}/keys`, { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await page.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+      element.volume = 0.5;
+    });
+    await poll(volume, near(0.5), '应能把音量设成 50%');
+    await openPill();
+    await dialog().getByRole('slider', { name: 'Volume' }).press('ArrowUp');
+    const afterVolume = await poll(volume, near(0.51), '展开后音量滑块上方向键仍应调高音量');
+    await dialog().getByRole('button', { name: 'Mute', exact: true }).click();
+    await poll(() => page.locator('#media').evaluate(element => element.muted), value => value === true, '药丸静音按钮仍应静音');
+    await dialog().getByRole('button', { name: 'Unmute', exact: true }).click();
+    await poll(() => page.locator('#media').evaluate(element => element.muted), value => value === false, '取消静音后应恢复出声');
+    if (!near(0.51)(await volume())) throw new Error('取消静音不应把音量改掉');
+    note(`volume path still works, volume=${afterVolume}`);
+
+    const speedGroup = dialog().getByRole('group', { name: 'Speed' });
+    await speedGroup.waitFor({ state: 'visible' });
+    const presets = ['0.75', '1', '1.25', '1.5', '2', '2.5', '3', '4'];
+    for (const preset of presets) await speedGroup.getByRole('button', { name: `${preset}${times} speed`, exact: true }).waitFor({ state: 'visible' });
+    if (await speedGroup.getByRole('button', { name: `1${times} speed`, exact: true }).getAttribute('aria-pressed') !== 'true') throw new Error('默认 1× 预设应按下');
+    await speedGroup.getByRole('button', { name: `Increase speed by 0.25${times}`, exact: true }).click();
+    const stepped = await poll(rate, near(1.25), '加快一档应到 1.25');
+    await hint(`Speed 1.25${times}`).waitFor({ state: 'visible', timeout: 5_000 });
+    await page.screenshot({ path: path.join(dir, 'fixture-step.png'), animations: 'disabled' });
+    await dialog().screenshot({ path: path.join(dir, 'pill-step.png'), animations: 'disabled' });
+    await copyFile(path.join(dir, 'pill-step.png'), '/opt/cursor/artifacts/floating-speed-ui/after-expanded.png');
+    await copyFile(path.join(dir, 'fixture-step.png'), '/opt/cursor/artifacts/floating-speed-ui/after-page.png');
+    note(`step + playbackRate=${stepped}`);
+
+    await speedGroup.getByRole('button', { name: `2${times} speed`, exact: true }).click();
+    const presetRate = await poll(rate, near(2), '点 2× 预设应到 2');
+    await hint(`Speed 2${times}`).waitFor({ state: 'visible', timeout: 5_000 });
+    await dialog().screenshot({ path: path.join(dir, 'pill-preset.png'), animations: 'disabled' });
+    const prefs = (await stored()).sitePrefs ?? {};
+    if (Object.keys(prefs).length) throw new Error(`改倍速不应记住站点：${JSON.stringify(prefs)}`);
+    note(`preset playbackRate=${presetRate}, sitePrefs empty`);
+
+    const field = page.locator('#field');
+    await field.focus();
+    await page.keyboard.type('hi');
+    if (await field.inputValue() !== 'hi') throw new Error(`输入框聚焦时应能打字：${await field.inputValue()}`);
+    await page.keyboard.press('Alt+Period');
+    await page.waitForTimeout(400);
+    const whileTyping = await rate();
+    if (!near(2)(whileTyping)) throw new Error(`输入框聚焦时 Alt+. 不应改倍速：${whileTyping}`);
+    note('typing in Field is not blocked and does not change speed');
+
+    settings = await context.newPage();
+    try {
+      await settings.goto(`chrome-extension://${extensionId}/options.html#playback`, { waitUntil: 'domcontentloaded' });
+      const half = settings.getByRole('group', { name: 'Speed step' }).getByRole('button', { name: `0.5${times}`, exact: true });
+      await half.click();
+      await poll(stored, value => value.rateStep === 0.5, '设置里应存下 rateStep=0.5');
+      await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-step.png'), animations: 'disabled' });
+      note('saved rateStep=0.5 without reloading the fixture');
+    } finally { /* keep settings open so the fixture is not reloaded */ }
+
+    await page.bringToFront();
+    await openPill();
+    await dialog().getByRole('button', { name: `Increase speed by 0.5${times}`, exact: true }).click();
+    const halfStep = await poll(rate, near(2.5), '同一页加快应按 0.5× 到 2.5');
+    await page.locator('#media').evaluate(element => { element.playbackRate = 4; });
+    await poll(() => dialog().getByRole('button', { name: `Increase speed by 0.5${times}`, exact: true }).isDisabled(), value => value === true, '4× 时加快按钮应禁用');
+    note(`0.5 step playbackRate=${halfStep}, increase disabled at 4`);
+
+    await settings.bringToFront();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#presets`, { waitUntil: 'domcontentloaded' });
+    await settings.getByRole('button', { name: `Remove 4${times}`, exact: true }).click();
+    await poll(stored, value => Array.isArray(value.ratePresets) && !value.ratePresets.includes(4), '设置里应去掉 4× 预设');
+    await page.bringToFront();
+    await openPill();
+    if (await dialog().getByRole('button', { name: `4${times} speed`, exact: true }).count()) throw new Error('去掉的预设不应还出现在浮动药丸里');
+    await dialog().screenshot({ path: path.join(dir, 'pill-presets.png'), animations: 'disabled' });
+    note('removed 4× preset disappeared from the pill');
+
+    await settings.bringToFront();
+    await settings.getByRole('button', { name: 'Restore defaults', exact: true }).click();
+    await poll(stored, value => Array.isArray(value.ratePresets) && value.ratePresets.includes(4), '应恢复默认预设');
+    await settings.goto(`chrome-extension://${extensionId}/options.html#playback`, { waitUntil: 'domcontentloaded' });
+    await settings.getByRole('group', { name: 'Speed step' }).getByRole('button', { name: `0.25${times}`, exact: true }).click();
+    const restored = await poll(stored, value => value.rateStep === 0.25 && Array.isArray(value.ratePresets) && value.ratePresets.includes(4) && Object.keys(value.sitePrefs ?? {}).length === 0, '应恢复默认步长和预设，且没有站点记忆');
+    note(`restored rateStep=${restored.rateStep}`);
+
+    const state = {
+      ok: true,
+      volume: afterVolume,
+      step: stepped,
+      preset: presetRate,
+      typed: 'hi',
+      whileTyping,
+      halfStep,
+      remembered: false,
+    };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await settings?.close().catch(() => {});
+    await page.close().catch(() => {});
+  }
+}
+
 async function inspect(context) {
   const worker = await serviceWorker(context);
   const runtime = await worker.evaluate(() => ({
@@ -1990,7 +2121,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });

@@ -1,15 +1,17 @@
 import { i18n } from '#i18n';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { CircleAlert, Volume2, VolumeX } from 'lucide-react';
+import { CircleAlert, Minus, Plus, Volume2, VolumeX } from 'lucide-react';
 import otterMark from '../assets/otter-mark';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 import { VolumeSlider } from './volume-slider';
 import { useMedia } from '../hooks/use-media';
 import { dockedPoint, dockSize, dropPosition, nudgePosition, type Viewport } from '../lib/dock';
-import { commandForHotkey, createHotkeySession, volumeGestureEvent } from '../lib/hotkey';
+import { commandForHotkey, createHotkeySession, rateHintEvent, volumeGestureEvent } from '../lib/hotkey';
+import { formatRate, nextRate, sameRate } from '../lib/rate';
 import type { FloatingPosition, MediaClient, MediaState } from '../lib/types';
 import { useSettingsAtoms } from './theme';
 
@@ -18,14 +20,17 @@ const thumbHeight = 10;
 const boostColor = (volume: number, max: number) => `color-mix(in oklch, var(--destructive) ${Math.max(0, Math.min(1, (volume - 100) / (max - 100))) * 100}%, #b57835)`;
 
 export function FloatingController({ client }: { client: MediaClient }) {
-  const { floatingAtom, floatingPositionAtom, loadingAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { floatingAtom, floatingPositionAtom, loadingAtom, ratePresetsAtom, rateStepAtom, writeSettingsAtom } = useSettingsAtoms();
   const floating = useAtomValue(floatingAtom);
   const floatingPosition = useAtomValue(floatingPositionAtom);
   const loading = useAtomValue(loadingAtom);
+  const ratePresets = useAtomValue(ratePresetsAtom);
+  const rateStep = useAtomValue(rateStepAtom);
   const write = useSetAtom(writeSettingsAtom);
   const { page, selected, command, error } = useMedia(client, { pauseWhenEmpty: true });
   const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState<number | null>(null);
+  const [rateDraft, setRateDraft] = useState<number | null>(null);
   const [viewport, setViewport] = useState(readViewport);
   const [moved, setMoved] = useState<FloatingPosition | null>(null);
   const [dragPoint, setDragPoint] = useState<{ x: number; y: number } | null>(null);
@@ -35,13 +40,22 @@ export function FloatingController({ client }: { client: MediaClient }) {
   const drag = useRef<{ x: number; y: number; startX: number; startY: number } | null>(null);
   const dragged = useRef(false);
   const hideTimer = useRef(0);
+  const aimedRate = useRef<number | null>(null);
+  const rateQueue = useRef(Promise.resolve());
+  const commandRef = useRef(command);
+  commandRef.current = command;
 
   useEffect(() => {
     const resize = () => setViewport(readViewport());
     window.addEventListener('resize', resize);
     return () => { window.removeEventListener('resize', resize); window.clearTimeout(hideTimer.current); };
   }, []);
-  useEffect(() => { setDraft(null); }, [selected?.id]);
+  useEffect(() => { setDraft(null); aimedRate.current = null; setRateDraft(null); }, [selected?.id]);
+  useEffect(() => {
+    if (aimedRate.current == null || !selected || !sameRate(selected.rate, aimedRate.current)) return;
+    aimedRate.current = null;
+    setRateDraft(null);
+  }, [selected]);
   const floatingRef = useRef(floating);
   const mediaRef = useRef(selected);
   const clientRef = useRef(client);
@@ -101,6 +115,26 @@ export function FloatingController({ client }: { client: MediaClient }) {
     if (commit) void done.finally(() => setDraft(null));
   };
   const boostLimit = max > 100 ? undefined : i18n.t('cannotBoostCrossOrigin');
+  const playbackRate = rateDraft ?? selected.rate;
+  const activePreset = ratePresets.find(speed => sameRate(speed, playbackRate));
+  const slowerRate = nextRate(playbackRate, -1, null, rateStep);
+  const fasterRate = nextRate(playbackRate, 1, null, rateStep);
+  const commitRate = (next: number) => {
+    const current = aimedRate.current ?? selected.rate;
+    if (sameRate(next, current)) return;
+    aimedRate.current = next;
+    setRateDraft(next);
+    const target = next;
+    rateQueue.current = rateQueue.current.then(async () => {
+      const ok = await commandRef.current({ type: 'rate', value: target });
+      if (ok) window.dispatchEvent(new CustomEvent(rateHintEvent, { detail: target }));
+      else if (aimedRate.current != null && sameRate(aimedRate.current, target)) {
+        aimedRate.current = null;
+        setRateDraft(null);
+      }
+    });
+  };
+  const stepPlayback = (direction: 1 | -1) => commitRate(nextRate(aimedRate.current ?? selected.rate, direction, null, rateStep));
   return <aside ref={container} className="fixed z-2147483647 size-12 transition-[left,top] duration-150 ease-out data-dragging:transition-none" aria-label={i18n.t('floatingController')} data-side={position.side} data-revealed={revealed} data-dragging={dragPoint ? '' : undefined} style={{ left: point.x, top: point.y }} onPointerEnter={() => { window.clearTimeout(hideTimer.current); setHovered(true); }} onPointerLeave={() => { window.clearTimeout(hideTimer.current); hideTimer.current = window.setTimeout(() => setHovered(false), 300); }} onWheelCapture={event => { hotkeys.wheel(event); }}>
     <Popover open={expanded} onOpenChange={setExpanded}>
       <PopoverTrigger render={<Button variant="outline" size="icon" />} className="size-12 cursor-grab touch-none rounded-full bg-background text-primary shadow-[0_2px_8px_rgb(0_0_0/.12)] hover:border-primary hover:bg-background active:cursor-grabbing aria-expanded:border-primary aria-expanded:bg-background dark:bg-background dark:hover:bg-background" aria-label={expanded ? i18n.t('collapsePill') : i18n.t('openPill')} title={i18n.t('pillTitle', { title: selected.title })} onFocus={event => setFocused(event.currentTarget.matches(':focus-visible'))} onBlur={() => setFocused(false)} onClick={event => {
@@ -128,11 +162,24 @@ export function FloatingController({ client }: { client: MediaClient }) {
         const next = nudgePosition(position, event.key, viewport);
         if (next) { event.preventDefault(); move(next); }
       }}><img src={otterMark} alt="" aria-hidden="true" className="pointer-events-none size-[34px] object-contain" /></PopoverTrigger>
-      <PopoverContent container={container} side={position.side === 'right' ? 'left' : 'right'} sideOffset={8} aria-label={i18n.t('volumePill')} title={boostLimit} className="group/pill relative w-[60px] gap-0 rounded-full p-0 shadow-[0_4px_16px_rgb(0_0_0/.16)] ring-0" style={{ height: pillHeight, '--volume-boost': max > 100 ? boostColor(volume, max) : undefined } as CSSProperties}>
-        <VolumeSlider size="pill" orientation="vertical" aria-label={i18n.t('volume')} aria-description={boostLimit} data-boost={volume > 100} format={{ style: 'unit', unit: 'percent' }} className="size-full rounded-[inherit]" max={max} value={volume} onValueChange={value => setVolume(value, false)} onValueCommitted={value => setVolume(value, true)} />
-        {max > 100 && <span aria-hidden="true" data-slot="volume-limit-mark" className="pointer-events-none absolute inset-x-2 h-px bg-foreground/35" style={{ bottom: `calc(${thumbHeight / 2}px + (100% - ${thumbHeight}px) * ${100 / max})` }} />}
-        <span aria-hidden="true" className="pointer-events-none absolute top-6 left-1/2 -translate-x-1/2 rounded-lg bg-background px-1 text-sm font-semibold tabular-nums transition-colors text-primary data-[boost=true]:text-(--volume-boost)" data-boost={volume > 100}>{volume}%</span>
-        <Button variant="ghost" size="icon" className="absolute bottom-2 left-1/2 size-11 -translate-x-1/2 rounded-full text-primary-foreground hover:bg-transparent hover:text-primary-foreground data-[low-volume=true]:text-foreground data-[low-volume=true]:hover:text-foreground dark:hover:bg-transparent [&_svg:not([class*='size-'])]:size-[23px]" data-low-volume={volume / max * pillHeight < 40} aria-label={selected.muted ? i18n.t('unmute') : i18n.t('mute')} aria-pressed={selected.muted} onClick={() => { setDraft(null); void command({ type: 'mute' }); }}>{selected.muted || volume === 0 ? <VolumeX /> : <Volume2 />}</Button>
+      <PopoverContent container={container} side={position.side === 'right' ? 'left' : 'right'} sideOffset={8} aria-label={i18n.t('volumePill')} className="h-auto w-auto flex-row items-center gap-2 bg-transparent p-0 shadow-none ring-0 data-[side=left]:flex-row-reverse" style={{ height: pillHeight }}>
+        <div className="group/pill pointer-events-auto relative h-full w-[60px] shrink-0 overflow-hidden rounded-full bg-popover shadow-[0_4px_16px_rgb(0_0_0/.16)]" title={boostLimit} style={{ '--volume-boost': max > 100 ? boostColor(volume, max) : undefined } as CSSProperties}>
+          <VolumeSlider size="pill" orientation="vertical" aria-label={i18n.t('volume')} aria-description={boostLimit} data-boost={volume > 100} format={{ style: 'unit', unit: 'percent' }} className="size-full rounded-[inherit]" max={max} value={volume} onValueChange={value => setVolume(value, false)} onValueCommitted={value => setVolume(value, true)} />
+          {max > 100 && <span aria-hidden="true" data-slot="volume-limit-mark" className="pointer-events-none absolute inset-x-2 h-px bg-foreground/35" style={{ bottom: `calc(${thumbHeight / 2}px + (100% - ${thumbHeight}px) * ${100 / max})` }} />}
+          <span aria-hidden="true" className="pointer-events-none absolute top-6 left-1/2 -translate-x-1/2 rounded-lg bg-background px-1 text-sm font-semibold tabular-nums transition-colors text-primary data-[boost=true]:text-(--volume-boost)" data-boost={volume > 100}>{volume}%</span>
+          <Button variant="ghost" size="icon" className="absolute bottom-2 left-1/2 size-11 -translate-x-1/2 rounded-full text-primary-foreground hover:bg-transparent hover:text-primary-foreground data-[low-volume=true]:text-foreground data-[low-volume=true]:hover:text-foreground dark:hover:bg-transparent [&_svg:not([class*='size-'])]:size-[23px]" data-low-volume={volume / max * pillHeight < 40} aria-label={selected.muted ? i18n.t('unmute') : i18n.t('mute')} aria-pressed={selected.muted} onClick={() => { setDraft(null); void command({ type: 'mute' }); }}>{selected.muted || volume === 0 ? <VolumeX /> : <Volume2 />}</Button>
+        </div>
+        <div role="group" aria-labelledby="floating-speed-label" className="pointer-events-auto flex max-h-full min-h-0 w-[148px] shrink-0 flex-col gap-1.5 self-center overflow-hidden rounded-[28px] bg-popover p-2 shadow-[0_4px_16px_rgb(0_0_0/.16)]">
+          <p id="floating-speed-label" className="text-center text-xs font-medium text-muted-foreground">{i18n.t('speed')}</p>
+          <div className="flex items-center justify-between gap-0.5">
+            <Button type="button" variant="ghost" size="icon-sm" className="text-muted-foreground" aria-label={i18n.t('shortcutSpeedDown', { step: formatRate(rateStep) })} disabled={sameRate(slowerRate, playbackRate)} onClick={() => stepPlayback(-1)}><Minus /></Button>
+            <span className="min-w-0 truncate text-sm font-semibold text-primary tabular-nums">{formatRate(playbackRate)}×</span>
+            <Button type="button" variant="ghost" size="icon-sm" className="text-muted-foreground" aria-label={i18n.t('shortcutSpeedUp', { step: formatRate(rateStep) })} disabled={sameRate(fasterRate, playbackRate)} onClick={() => stepPlayback(1)}><Plus /></Button>
+          </div>
+          <ToggleGroup spacing={1} className="grid min-h-0 grid-cols-2 content-start gap-1 overflow-y-auto" value={activePreset === undefined ? [] : [String(activePreset)]} onValueChange={value => { const picked = value[0]; if (picked) commitRate(Number(picked)); }}>
+            {ratePresets.map(speed => <ToggleGroupItem key={speed} value={String(speed)} aria-label={i18n.t('speedOption', { speed: formatRate(speed) })} className="h-7 w-full min-w-0 rounded-md border-0 bg-secondary/60 px-0.5 text-xs text-muted-foreground shadow-none aria-pressed:bg-primary aria-pressed:font-semibold aria-pressed:text-primary-foreground">{formatRate(speed)}×</ToggleGroupItem>)}
+          </ToggleGroup>
+        </div>
       </PopoverContent>
     </Popover>
     {error && <Alert variant="destructive" className="fixed bottom-2 left-2 w-auto max-w-[min(320px,calc(100vw-16px))] shadow-md"><CircleAlert /><AlertDescription>{error}</AlertDescription></Alert>}
