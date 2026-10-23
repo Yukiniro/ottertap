@@ -14,6 +14,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive frame-step
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive hotkey-remap
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-speed
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-playback
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -33,7 +34,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -572,7 +573,7 @@ async function driveSkipStep(context, dir, note) {
     const steps = await group.getByRole('button').allInnerTexts();
     const pressedBefore = await group.locator('[aria-pressed="true"]').allInnerTexts();
     if (steps.join() !== '5s,10s,15s,30s' || pressedBefore.join() !== '10s') throw new Error(`步长默认值或档位不对：${JSON.stringify({ steps, pressedBefore })}`);
-    await settings.getByText('Popup buttons, on-page shortcuts, and browser shortcuts all jump by this step.', { exact: true }).waitFor({ state: 'visible' });
+    await settings.getByText('Popup buttons, the on-page floater, page shortcuts, and browser shortcuts all jump by this step.', { exact: true }).waitFor({ state: 'visible' });
     await group.screenshot({ path: path.join(dir, 'settings-default.png'), animations: 'disabled' });
     note(`settings Skip step steps=${steps} pressed=${pressedBefore}`);
 
@@ -2029,6 +2030,156 @@ async function driveFloatingSpeed(context, dir, note) {
   }
 }
 
+async function driveFloatingPlayback(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  await mkdir('/opt/cursor/artifacts/floating-playback-ui', { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const near = expected => value => Math.abs(value - expected) < 0.05;
+  const nearRate = expected => value => Math.abs(value - expected) < 0.02;
+  const times = '\u00d7';
+  const page = await context.newPage();
+  let settings;
+  let blocked;
+  let popup;
+  const time = () => page.locator('#media').evaluate(element => element.currentTime);
+  const paused = () => page.locator('#media').evaluate(element => element.paused);
+  const rate = () => page.locator('#media').evaluate(element => element.playbackRate);
+  const dialog = () => page.getByRole('dialog', { name: 'Volume pill' });
+  const openPill = async () => {
+    const play = dialog().getByRole('button', { name: 'Play', exact: true }).or(dialog().getByRole('button', { name: 'Pause', exact: true }));
+    if (!(await play.isVisible())) {
+      const toggle = page.getByRole('button', { name: /volume pill/i });
+      const box = await toggle.boundingBox();
+      if (!box) throw new Error('浮动入口没有位置');
+      await page.mouse.move(box.x + Math.min(8, box.width / 4), box.y + box.height / 2);
+      await toggle.click();
+    }
+    await play.waitFor({ state: 'visible', timeout: 5_000 });
+  };
+  const park = async (seconds) => {
+    await page.locator('#media').evaluate((element, next) => { element.pause(); element.currentTime = next; }, seconds);
+    await poll(time, near(seconds), `夹具应停在 ${seconds} 秒`);
+    await poll(paused, value => value === true, '夹具应暂停');
+  };
+  try {
+    await page.goto(`${origin}/long`, { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await page.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+      element.pause();
+    });
+    await openPill();
+    const volume = () => page.locator('#media').evaluate(element => element.volume);
+    await dialog().getByRole('slider', { name: 'Volume' }).press('ArrowDown');
+    const afterVolume = await poll(volume, value => value < 1 && Math.abs(value - 0.99) < 0.02, '展开后音量滑块下方向键仍应调低音量');
+    await dialog().getByRole('button', { name: `Increase speed by 0.25${times}`, exact: true }).click();
+    const stepped = await poll(rate, nearRate(1.25), '加快一档应到 1.25');
+    await page.getByRole('status').filter({ hasText: `Speed 1.25${times}` }).waitFor({ state: 'visible', timeout: 5_000 });
+    await dialog().getByRole('button', { name: `1${times} speed`, exact: true }).click();
+    await poll(rate, nearRate(1), '点 1× 应回到 1');
+    note(`volume=${afterVolume}, speed step=${stepped}, restored to 1`);
+
+    await dialog().getByRole('button', { name: 'Play', exact: true }).click();
+    await poll(paused, value => value === false, '点播放后应开始播放');
+    const moved = await poll(time, value => value > 0.2, '播放后进度应前进');
+    await page.screenshot({ path: path.join(dir, 'fixture-playing.png'), animations: 'disabled' });
+    await dialog().screenshot({ path: path.join(dir, 'pill-playing.png'), animations: 'disabled' });
+    await copyFile(path.join(dir, 'pill-playing.png'), '/opt/cursor/artifacts/floating-playback-ui/after-expanded.png');
+    await copyFile(path.join(dir, 'fixture-playing.png'), '/opt/cursor/artifacts/floating-playback-ui/after-page.png');
+    await dialog().getByRole('button', { name: 'Pause', exact: true }).click();
+    await poll(paused, value => value === true, '点暂停后应停住');
+    const held = await time();
+    await page.waitForTimeout(400);
+    const still = await time();
+    if (Math.abs(still - held) > 0.05) throw new Error(`暂停后进度仍在走：${held} -> ${still}`);
+    note(`played to ${moved}, paused at ${still}`);
+
+    await park(40);
+    await openPill();
+    await dialog().getByRole('button', { name: 'Forward 10 seconds', exact: true }).click();
+    const forwarded = await poll(time, near(50), '默认应前进 10 秒');
+    await dialog().getByRole('button', { name: 'Back 10 seconds', exact: true }).click();
+    const backed = await poll(time, near(40), '默认应后退 10 秒');
+    note(`default skip forward=${forwarded} back=${backed}`);
+
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#playback`, { waitUntil: 'domcontentloaded' });
+    await settings.getByRole('group', { name: 'Skip step' }).getByRole('button', { name: '30s', exact: true }).click();
+    await poll(stored, value => value.skipSeconds === 30, '设置里应存下 skipSeconds=30');
+    await page.bringToFront();
+    await openPill();
+    await dialog().getByRole('button', { name: 'Forward 30 seconds', exact: true }).waitFor({ state: 'visible' });
+    await dialog().screenshot({ path: path.join(dir, 'pill-30.png'), animations: 'disabled' });
+    await park(40);
+    await dialog().getByRole('button', { name: 'Forward 30 seconds', exact: true }).click();
+    const jumped = await poll(time, near(70), '30 秒步长应前进到 70 秒');
+    note(`30s skip landed at ${jumped}`);
+
+    await settings.bringToFront();
+    await settings.getByRole('group', { name: 'Skip step' }).getByRole('button', { name: '10s', exact: true }).click();
+    await settings.getByRole('switch', { name: 'Scale skip with speed' }).click();
+    await poll(stored, value => value.skipSeconds === 10 && value.skipWithRate === true, '应回到 10 秒并打开步长随倍速');
+    await page.bringToFront();
+    await openPill();
+    await dialog().getByRole('button', { name: `2${times} speed`, exact: true }).click();
+    await poll(rate, nearRate(2), '点 2× 预设应到 2');
+    await dialog().getByRole('button', { name: 'Forward 20 seconds', exact: true }).waitFor({ state: 'visible' });
+    await dialog().screenshot({ path: path.join(dir, 'pill-20.png'), animations: 'disabled' });
+    await park(40);
+    await dialog().getByRole('button', { name: 'Forward 20 seconds', exact: true }).click();
+    const scaled = await poll(time, near(60), '2× 打开随倍速后应前进 20 秒');
+    note(`scaled skip landed at ${scaled}`);
+    popup = await openActionPopup(context, page);
+    const popupLabels = await poll(
+      () => popup.evaluate(`(() => [...document.querySelectorAll('button')].map(button => button.getAttribute('aria-label')).filter(Boolean))()`),
+      value => Array.isArray(value) && value.includes('Forward 20 seconds') && value.includes('Back 20 seconds'),
+      '弹出面板在 2× 且步长随倍速打开时也应是 20 秒',
+    );
+    await popup.screenshot(path.join(dir, 'popup-20.png'));
+    await popup.close();
+    popup = undefined;
+    note(`popup labels include 20s: ${popupLabels.filter(label => String(label).includes('20 seconds')).join(', ')}`);
+
+    blocked = await context.newPage();
+    await blocked.goto(`${origin}/unseekable`, { waitUntil: 'domcontentloaded' });
+    const blockedDialog = blocked.getByRole('dialog', { name: 'Volume pill' });
+    const blockedToggle = blocked.getByRole('button', { name: /volume pill/i });
+    await blockedToggle.waitFor({ state: 'visible', timeout: 15_000 });
+    const box = await blockedToggle.boundingBox();
+    if (!box) throw new Error('不可跳转页的浮动入口没有位置');
+    await blocked.mouse.move(box.x + Math.min(8, box.width / 4), box.y + box.height / 2);
+    await blockedToggle.click();
+    const unavailable = 'Live streams and media that can\'t be seeked can\'t jump.';
+    const forward = blockedDialog.getByRole('button', { name: 'Forward 10 seconds', exact: true });
+    const back = blockedDialog.getByRole('button', { name: 'Back 10 seconds', exact: true });
+    await forward.waitFor({ state: 'visible', timeout: 5_000 });
+    if (!(await forward.isDisabled()) || !(await back.isDisabled())) throw new Error('不可跳转时前进和后退应禁用');
+    await blockedDialog.getByText(unavailable, { exact: true }).waitFor({ state: 'visible' });
+    const stuck = await blocked.locator('#media').evaluate(element => element.currentTime);
+    if (stuck !== 0) throw new Error(`不可跳转页进度应停在 0：${stuck}`);
+    await blockedDialog.screenshot({ path: path.join(dir, 'pill-unseekable.png'), animations: 'disabled' });
+    await copyFile(path.join(dir, 'pill-unseekable.png'), '/opt/cursor/artifacts/floating-playback-ui/after-unseekable.png');
+    note(`unseekable hint visible, currentTime=${stuck}`);
+
+    await settings.bringToFront();
+    await settings.getByRole('switch', { name: 'Scale skip with speed' }).click();
+    const restored = await poll(stored, value => value.skipSeconds === 10 && value.skipWithRate === false && Object.keys(value.sitePrefs ?? {}).length === 0, '应关闭步长随倍速，且没有站点记忆');
+    note(`restored skipSeconds=${restored.skipSeconds} skipWithRate=${restored.skipWithRate}`);
+
+    const state = { ok: true, volume: afterVolume, speed: stepped, playedTo: moved, pausedAt: still, forwarded, backed, thirty: jumped, scaled, popup: ['Back 20 seconds', 'Forward 20 seconds'], unseekable: stuck, remembered: false };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await popup?.close().catch(() => {});
+    await blocked?.close().catch(() => {});
+    await settings?.close().catch(() => {});
+    await page.close().catch(() => {});
+  }
+}
+
 async function inspect(context) {
   const worker = await serviceWorker(context);
   const runtime = await worker.evaluate(() => ({
@@ -2122,7 +2273,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });

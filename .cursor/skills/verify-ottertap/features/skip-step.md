@@ -1,10 +1,10 @@
 # 快进 / 快退步长
 
-设置页的「Skip step」决定弹出面板的进退按钮、页内快捷键 `J` `L` `←` `→` 和扩展命令 `skip-back` / `skip-forward` 一次跳多少秒。档位是 5、10、15、30 秒，默认 10 秒。存储里不是这四个值时按 10 秒处理。
+设置页的「Skip step」决定弹出面板的进退按钮、展开后的浮动药丸、页内快捷键 `J` `L` `←` `→` 和扩展命令 `skip-back` / `skip-forward` 一次跳多少秒。档位是 5、10、15、30 秒，默认 10 秒。存储里不是这四个值时按 10 秒处理。
 
 ## Sub-features
 
-- 设置控件。在设置页「Playback」一节（`#playback`，与「Lock playback speed」同节）。组名 `Skip step`（`h3#skip-seconds-label` 给 `role="group"` 命名），里面四个按钮 `5s`、`10s`、`15s`、`30s`，选中的那个 `aria-pressed="true"`，默认是 `10s`。控件没有自己的 id。说明文案是 `Popup buttons, on-page shortcuts, and browser shortcuts all jump by this step.`，存进 `ottertap-settings-v1.skipSeconds`。
+- 设置控件。在设置页「Playback」一节（`#playback`，与「Lock playback speed」同节）。组名 `Skip step`（`h3#skip-seconds-label` 给 `role="group"` 命名），里面四个按钮 `5s`、`10s`、`15s`、`30s`，选中的那个 `aria-pressed="true"`，默认是 `10s`。控件没有自己的 id。说明文案是 `Popup buttons, the on-page floater, page shortcuts, and browser shortcuts all jump by this step.`，存进 `ottertap-settings-v1.skipSeconds`。
 - 弹出面板。后退 / 前进按钮的无障碍名是 `Back {n} seconds` / `Forward {n} seconds`，按钮上的小数字就是 `{n}`。点一下 `currentTime` 变化 `{n}` 秒，到头尾时夹在可 seek 的范围内（`lib/media.ts`）。
 - 页内快捷键。`J` 和 `←` 后退，`L` 和 `→` 前进，每次 `{n}` 秒。这四个键只在「Single-key mode」打开后才生效（设置页「Shortcuts」，开关 id 是 `settings-single-key`，默认关）。设置页「Single-key mode keys」那张表里 `J / ←`、`L / →` 的说明也带 `{n}`。
 - 扩展命令。`skip-back`（建议键 `Ctrl+Shift+Comma`）和 `skip-forward`（建议键 `Ctrl+Shift+Period`），名字是 `Skip back` / `Skip forward`。后台每次触发时读当前设置的步长，不需要单键模式。

@@ -1,7 +1,7 @@
 import { i18n } from '#i18n';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { CircleAlert, Minus, Plus, Volume2, VolumeX } from 'lucide-react';
+import { CircleAlert, Minus, Pause, Play, Plus, RotateCcw, RotateCw, Volume2, VolumeX } from 'lucide-react';
 import otterMark from '../assets/otter-mark';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
@@ -12,6 +12,7 @@ import { useMedia } from '../hooks/use-media';
 import { dockedPoint, dockSize, dropPosition, nudgePosition, type Viewport } from '../lib/dock';
 import { commandForHotkey, createHotkeySession, rateHintEvent, volumeGestureEvent } from '../lib/hotkey';
 import { formatRate, nextRate, sameRate } from '../lib/rate';
+import { actualSkipSeconds } from '../lib/skip';
 import type { FloatingPosition, MediaClient, MediaState } from '../lib/types';
 import { useSettingsAtoms } from './theme';
 
@@ -20,12 +21,14 @@ const thumbHeight = 10;
 const boostColor = (volume: number, max: number) => `color-mix(in oklch, var(--destructive) ${Math.max(0, Math.min(1, (volume - 100) / (max - 100))) * 100}%, #b57835)`;
 
 export function FloatingController({ client }: { client: MediaClient }) {
-  const { floatingAtom, floatingPositionAtom, loadingAtom, ratePresetsAtom, rateStepAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { floatingAtom, floatingPositionAtom, loadingAtom, ratePresetsAtom, rateStepAtom, skipSecondsAtom, skipWithRateAtom, writeSettingsAtom } = useSettingsAtoms();
   const floating = useAtomValue(floatingAtom);
   const floatingPosition = useAtomValue(floatingPositionAtom);
   const loading = useAtomValue(loadingAtom);
   const ratePresets = useAtomValue(ratePresetsAtom);
   const rateStep = useAtomValue(rateStepAtom);
+  const skipSeconds = useAtomValue(skipSecondsAtom);
+  const skipWithRate = useAtomValue(skipWithRateAtom);
   const write = useSetAtom(writeSettingsAtom);
   const { page, selected, command, error } = useMedia(client, { pauseWhenEmpty: true });
   const [expanded, setExpanded] = useState(false);
@@ -120,6 +123,11 @@ export function FloatingController({ client }: { client: MediaClient }) {
   };
   const boostLimit = max > 100 ? undefined : i18n.t('cannotBoostCrossOrigin');
   const playbackRate = rateDraft ?? selected.rate;
+  const jump = actualSkipSeconds(skipSeconds, playbackRate, skipWithRate);
+  const ranges = selected.seekable;
+  const seekMin = ranges[0]?.start ?? 0;
+  const seekMax = ranges[ranges.length - 1]?.end ?? 0;
+  const canSeek = seekMax > seekMin;
   const activePreset = ratePresets.find(speed => sameRate(speed, playbackRate));
   const slowerRate = nextRate(playbackRate, -1, null, rateStep);
   const fasterRate = nextRate(playbackRate, 1, null, rateStep);
@@ -177,16 +185,26 @@ export function FloatingController({ client }: { client: MediaClient }) {
           <span aria-hidden="true" className="pointer-events-none absolute top-6 left-1/2 -translate-x-1/2 rounded-lg bg-background px-1 text-sm font-semibold tabular-nums transition-colors text-primary data-[boost=true]:text-(--volume-boost)" data-boost={volume > 100}>{volume}%</span>
           <Button variant="ghost" size="icon" className="absolute bottom-2 left-1/2 size-11 -translate-x-1/2 rounded-full text-primary-foreground hover:bg-transparent hover:text-primary-foreground data-[low-volume=true]:text-foreground data-[low-volume=true]:hover:text-foreground dark:hover:bg-transparent [&_svg:not([class*='size-'])]:size-[23px]" data-low-volume={volume / max * pillHeight < 40} aria-label={selected.muted ? i18n.t('unmute') : i18n.t('mute')} aria-pressed={selected.muted} onClick={() => { setDraft(null); void command({ type: 'mute' }); }}>{selected.muted || volume === 0 ? <VolumeX /> : <Volume2 />}</Button>
         </div>
-        <div role="group" aria-labelledby="floating-speed-label" className="pointer-events-auto flex max-h-full min-h-0 w-[148px] shrink-0 flex-col gap-1.5 self-center overflow-hidden rounded-[28px] bg-popover p-2 shadow-[0_4px_16px_rgb(0_0_0/.16)]">
-          <p id="floating-speed-label" className="text-center text-xs font-medium text-muted-foreground">{i18n.t('speed')}</p>
-          <div className="flex items-center justify-between gap-0.5">
-            <Button type="button" variant="ghost" size="icon-sm" className="text-muted-foreground" aria-label={i18n.t('shortcutSpeedDown', { step: formatRate(rateStep) })} disabled={sameRate(slowerRate, playbackRate)} onClick={() => stepPlayback(-1)}><Minus /></Button>
-            <span className="min-w-0 truncate text-sm font-semibold text-primary tabular-nums">{formatRate(playbackRate)}×</span>
-            <Button type="button" variant="ghost" size="icon-sm" className="text-muted-foreground" aria-label={i18n.t('shortcutSpeedUp', { step: formatRate(rateStep) })} disabled={sameRate(fasterRate, playbackRate)} onClick={() => stepPlayback(1)}><Plus /></Button>
+        <div className="pointer-events-auto flex max-h-full min-h-0 w-[148px] shrink-0 flex-col self-center overflow-hidden rounded-[28px] bg-popover shadow-[0_4px_16px_rgb(0_0_0/.16)]">
+          <div role="group" aria-label={i18n.t('playback')} className="shrink-0 border-b border-border/70 px-1.5 pt-1.5 pb-1.5">
+            <div className="flex items-center justify-between gap-0.5">
+              <Button type="button" variant="ghost" size="sm" className="h-9 min-w-0 flex-1 gap-0.5 px-1 text-muted-foreground tabular-nums" aria-label={i18n.t('skipBack', { seconds: jump })} title={canSeek ? undefined : i18n.t('skipUnavailable')} aria-describedby={canSeek ? undefined : 'floating-skip-hint'} disabled={!canSeek} onClick={() => void command({ type: 'skip', value: -jump })}><RotateCcw /><span className="text-xs">{jump}</span></Button>
+              <Button type="button" className="size-10 shrink-0 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 [&_svg:not([class*='size-'])]:size-5" aria-label={selected.paused ? i18n.t('play') : i18n.t('pause')} onClick={() => void command({ type: selected.paused ? 'play' : 'pause' })}>{selected.paused ? <Play fill="currentColor" strokeWidth={0} className="ml-0.5" /> : <Pause fill="currentColor" strokeWidth={0} />}</Button>
+              <Button type="button" variant="ghost" size="sm" className="h-9 min-w-0 flex-1 gap-0.5 px-1 text-muted-foreground tabular-nums" aria-label={i18n.t('skipForward', { seconds: jump })} title={canSeek ? undefined : i18n.t('skipUnavailable')} aria-describedby={canSeek ? undefined : 'floating-skip-hint'} disabled={!canSeek} onClick={() => void command({ type: 'skip', value: jump })}><span className="text-xs">{jump}</span><RotateCw /></Button>
+            </div>
+            {!canSeek && <p id="floating-skip-hint" className="px-1 pt-1 text-center text-[11px] leading-4 text-muted-foreground">{i18n.t('skipUnavailable')}</p>}
           </div>
-          <ToggleGroup spacing={1} className="grid min-h-0 grid-cols-2 content-start gap-1 overflow-y-auto" value={activePreset === undefined ? [] : [String(activePreset)]} onValueChange={value => { const picked = value[0]; if (picked) commitRate(Number(picked)); }}>
-            {ratePresets.map(speed => <ToggleGroupItem key={speed} value={String(speed)} aria-label={i18n.t('speedOption', { speed: formatRate(speed) })} className="h-7 w-full min-w-0 rounded-md border-0 bg-secondary/60 px-0.5 text-xs text-muted-foreground shadow-none aria-pressed:bg-primary aria-pressed:font-semibold aria-pressed:text-primary-foreground">{formatRate(speed)}×</ToggleGroupItem>)}
-          </ToggleGroup>
+          <div role="group" aria-labelledby="floating-speed-label" className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-hidden p-2">
+            <p id="floating-speed-label" className="text-center text-xs font-medium text-muted-foreground">{i18n.t('speed')}</p>
+            <div className="flex items-center justify-between gap-0.5">
+              <Button type="button" variant="ghost" size="icon-sm" className="text-muted-foreground" aria-label={i18n.t('shortcutSpeedDown', { step: formatRate(rateStep) })} disabled={sameRate(slowerRate, playbackRate)} onClick={() => stepPlayback(-1)}><Minus /></Button>
+              <span className="min-w-0 truncate text-sm font-semibold text-primary tabular-nums">{formatRate(playbackRate)}×</span>
+              <Button type="button" variant="ghost" size="icon-sm" className="text-muted-foreground" aria-label={i18n.t('shortcutSpeedUp', { step: formatRate(rateStep) })} disabled={sameRate(fasterRate, playbackRate)} onClick={() => stepPlayback(1)}><Plus /></Button>
+            </div>
+            <ToggleGroup spacing={1} className="grid min-h-0 grid-cols-2 content-start gap-1 overflow-y-auto" value={activePreset === undefined ? [] : [String(activePreset)]} onValueChange={value => { const picked = value[0]; if (picked) commitRate(Number(picked)); }}>
+              {ratePresets.map(speed => <ToggleGroupItem key={speed} value={String(speed)} aria-label={i18n.t('speedOption', { speed: formatRate(speed) })} className="h-7 w-full min-w-0 rounded-md border-0 bg-secondary/60 px-0.5 text-xs text-muted-foreground shadow-none aria-pressed:bg-primary aria-pressed:font-semibold aria-pressed:text-primary-foreground">{formatRate(speed)}×</ToggleGroupItem>)}
+            </ToggleGroup>
+          </div>
         </div>
       </PopoverContent>
     </Popover>
