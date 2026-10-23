@@ -1,6 +1,7 @@
 import { i18n } from '#i18n';
 import { atom, createStore, type Atom, type WritableAtom } from 'jotai';
 import { selectAtom } from 'jotai/utils';
+import { sameKeybinds, type Keybinds } from './keybinds';
 import { normalizeSettings } from './settings';
 import { defaultSettings, type FloatingPosition, type RateStep, type Settings, type SettingsStore, type SiteMode, type SitePref, type SkipSeconds, type Theme, type VolumeStep } from './types';
 
@@ -14,7 +15,7 @@ const sameSitePrefs = (a: Record<string, SitePref>, b: Record<string, SitePref>)
   const keys = Object.keys(a);
   return keys.length === Object.keys(b).length && keys.every(key => !!b[key] && sameSitePref(a[key]!, b[key]!));
 };
-const sameSettings = (a: Settings, b: Settings) => a.theme === b.theme && a.floating === b.floating && a.defaultRate === b.defaultRate && a.lockRate === b.lockRate && a.holdBoost === b.holdBoost && a.holdBoostRate === b.holdBoostRate && a.holdSkip === b.holdSkip && a.hoverWheel === b.hoverWheel && a.singleKey === b.singleKey && a.skipSeconds === b.skipSeconds && a.skipWithRate === b.skipWithRate && a.volumeStep === b.volumeStep && a.rateStep === b.rateStep && a.siteMode === b.siteMode && samePosition(a.floatingPosition, b.floatingPosition) && sameSites(a.sites, b.sites) && sameSitePrefs(a.sitePrefs, b.sitePrefs) && samePresets(a.ratePresets, b.ratePresets);
+const sameSettings = (a: Settings, b: Settings) => a.theme === b.theme && a.floating === b.floating && a.defaultRate === b.defaultRate && a.lockRate === b.lockRate && a.holdBoost === b.holdBoost && a.holdBoostRate === b.holdBoostRate && a.holdSkip === b.holdSkip && a.hoverWheel === b.hoverWheel && a.singleKey === b.singleKey && a.skipSeconds === b.skipSeconds && a.skipWithRate === b.skipWithRate && a.volumeStep === b.volumeStep && a.rateStep === b.rateStep && a.siteMode === b.siteMode && samePosition(a.floatingPosition, b.floatingPosition) && sameSites(a.sites, b.sites) && sameSitePrefs(a.sitePrefs, b.sitePrefs) && samePresets(a.ratePresets, b.ratePresets) && sameKeybinds(a.keybinds, b.keybinds);
 
 function mergeSettings(current: Settings, update: Partial<Settings>): Settings {
   const next = normalizeSettings({ ...current, ...update });
@@ -23,7 +24,8 @@ function mergeSettings(current: Settings, update: Partial<Settings>): Settings {
     floatingPosition: samePosition(current.floatingPosition, next.floatingPosition) ? current.floatingPosition : next.floatingPosition,
     sites: sameSites(current.sites, next.sites) ? current.sites : next.sites,
     sitePrefs: sameSitePrefs(current.sitePrefs, next.sitePrefs) ? current.sitePrefs : next.sitePrefs,
-    ratePresets: samePresets(current.ratePresets, next.ratePresets) ? current.ratePresets : next.ratePresets
+    ratePresets: samePresets(current.ratePresets, next.ratePresets) ? current.ratePresets : next.ratePresets,
+    keybinds: sameKeybinds(current.keybinds, next.keybinds) ? current.keybinds : next.keybinds
   };
 }
 
@@ -48,6 +50,7 @@ export interface SettingsAtoms {
   sitesAtom: Atom<string[]>;
   sitePrefsAtom: Atom<Record<string, SitePref>>;
   ratePresetsAtom: Atom<number[]>;
+  keybindsAtom: Atom<Keybinds>;
   loadingAtom: Atom<boolean>;
   errorAtom: Atom<string>;
   writeSettingsAtom: WritableAtom<null, [Partial<Settings>], Promise<boolean>>;
@@ -79,6 +82,7 @@ export function createSettingsAtoms(source: SettingsStore, options?: { initialLo
   const sitesAtom = selectAtom(settingsAtom, settings => settings.sites);
   const sitePrefsAtom = selectAtom(settingsAtom, settings => settings.sitePrefs);
   const ratePresetsAtom = selectAtom(settingsAtom, settings => settings.ratePresets);
+  const keybindsAtom = selectAtom(settingsAtom, settings => settings.keybinds);
   let writeQueue = Promise.resolve();
   let writeVersion = 0;
   let pendingWrites = 0;
@@ -167,7 +171,7 @@ export function createSettingsAtoms(source: SettingsStore, options?: { initialLo
   }
 
   return {
-    store, settingsAtom, themeAtom, floatingAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, rateStepAtom, floatingPositionAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom, mount, ready,
+    store, settingsAtom, themeAtom, floatingAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, rateStepAtom, floatingPositionAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom, mount, ready,
     settled: () => idle
   };
 }

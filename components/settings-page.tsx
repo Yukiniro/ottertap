@@ -13,9 +13,11 @@ import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Switch } from './ui/switch';
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 import { Brand } from './brand';
+import { KeybindButton } from './keybind-button';
 import { cn } from '../lib/utils';
 import { defaultRatePresets, formatRate, maxRatePresets, parseRatePreset, sameRate } from '../lib/rate';
 import { channelLabel } from '../lib/media';
+import { defaultKeybinds, keybindOwner, keyLabel, recordedKey, sameKeybinds, type KeybindAction, type KeybindOwner } from '../lib/keybinds';
 import { downloadSettingsBackup, parseSettingsBackup, readExtensionVersion, settingsBackupErrors, type SettingsBackupError } from '../lib/settings-backup';
 import { forgetSitePref, isRateStep, isSkipSeconds, isVolumeStep, normalizeDomain } from '../lib/settings';
 import { rateSteps, skipSteps, volumeSteps, type Settings, type SitePref } from '../lib/types';
@@ -162,10 +164,15 @@ function ShortcutKey({ shortcut }: { shortcut: string }) {
   return <kbd className="inline-block rounded-md border bg-background px-2 py-1 font-mono text-xs whitespace-nowrap">{shortcut}</kbd>;
 }
 
-function ShortcutList({ label, rows }: { label: string; rows: { id: string; key: string; description: string }[] }) {
+function Kbd({ children }: { children: React.ReactNode }) {
+  return <kbd className="inline-block rounded-md border bg-background px-2 py-1 font-mono text-xs whitespace-nowrap">{children}</kbd>;
+}
+
+/** A string key is fixed. A node key is an editable keybind. */
+function ShortcutList({ label, rows }: { label: string; rows: { id: string; key: React.ReactNode; description: string }[] }) {
   return <dl aria-label={label} className="divide-y rounded-lg bg-secondary/60 px-3">
     {rows.map(row => <div key={row.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 text-sm">
-      <dt><kbd className="inline-block rounded-md border bg-background px-2 py-1 font-mono text-xs whitespace-nowrap">{row.key}</kbd></dt>
+      <dt>{typeof row.key === 'string' ? <Kbd>{row.key}</Kbd> : row.key}</dt>
       <dd className="text-muted-foreground">{row.description}</dd>
     </div>)}
   </dl>;
@@ -210,7 +217,7 @@ function Row({ title, description, titleId, children }: { title: string; descrip
 }
 
 export function SettingsPage({ back }: { back?: () => void }) {
-  const { themeAtom, floatingAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { themeAtom, floatingAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const theme = useAtomValue(themeAtom);
   const floating = useAtomValue(floatingAtom);
   const defaultRate = useAtomValue(defaultRateAtom);
@@ -228,6 +235,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
   const sites = useAtomValue(sitesAtom);
   const sitePrefs = useAtomValue(sitePrefsAtom);
   const ratePresets = useAtomValue(ratePresetsAtom);
+  const keybinds = useAtomValue(keybindsAtom);
   const loading = useAtomValue(loadingAtom);
   const error = useAtomValue(errorAtom);
   const write = useSetAtom(writeSettingsAtom);
@@ -236,6 +244,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [active, setActive] = useState<(typeof nav)[number]['id']>('appearance');
+  const [keyError, setKeyError] = useState<{ action: KeybindAction; message: string } | null>(null);
   const commandRows = useCommandBindings();
   useEffect(() => {
     if (typeof IntersectionObserver === 'undefined') return;
@@ -270,6 +279,31 @@ export function SettingsPage({ back }: { back?: () => void }) {
     } catch (err) { setInputError(err instanceof Error ? err.message : i18n.t('domainRejected')); }
   };
   const disabled = loading || saving;
+  const keyText = (key: string) => keyLabel(key, i18n.t('keySpace'));
+  const ownerLabels: Record<KeybindOwner, string> = {
+    toggle: i18n.t('cmdPlayPause'),
+    skipBack: i18n.t('skipBack', { seconds: skipSeconds }),
+    skipForward: i18n.t('skipForward', { seconds: skipSeconds }),
+    rateUp: i18n.t('shortcutSpeedUp', { step: formatRate(rateStep) }),
+    rateDown: i18n.t('shortcutSpeedDown', { step: formatRate(rateStep) }),
+    mute: i18n.t('cmdMute'),
+    holdBoost: i18n.t('holdBoost'),
+    frameBack: i18n.t('shortcutFrameBack'),
+    frameForward: i18n.t('shortcutFrameForward'),
+    volumeUp: i18n.t('shortcutVolumeUp', { percent: volumeStep }),
+    volumeDown: i18n.t('shortcutVolumeDown', { percent: volumeStep })
+  };
+  const recordKey = (action: KeybindAction, event: KeyboardEvent) => {
+    const key = recordedKey(event);
+    if (!key) { setKeyError({ action, message: i18n.t('keybindUnsupported') }); return false; }
+    const owner = keybindOwner(keybinds, key, action);
+    if (owner) { setKeyError({ action, message: i18n.t('keybindConflict', { key: keyText(key), action: ownerLabels[owner] }) }); return false; }
+    setKeyError(null);
+    if (key !== keybinds[action]) void save({ keybinds: { ...keybinds, [action]: key } });
+    return true;
+  };
+  const keyButton = (action: KeybindAction) => <KeybindButton label={ownerLabels[action]} keyLabel={keyText(keybinds[action])} disabled={loading} errorId="keybind-error" onKey={event => recordKey(action, event)} onCancel={() => setKeyError(current => current?.action === action ? null : current)} />;
+  const keyErrorFor = (actions: readonly KeybindAction[]) => keyError && actions.includes(keyError.action) ? <p id="keybind-error" role="alert" className="mt-2 text-sm leading-5 text-destructive">{keyError.message}</p> : null;
   const status = <SaveStatus loading={loading} saving={saving} error={error} saved={saved} />;
   const defaultRateChoices = defaultRate != null && !defaultRatePresets.some(rate => sameRate(rate, defaultRate))
     ? [...defaultRatePresets, defaultRate].sort((a, b) => a - b)
@@ -338,9 +372,9 @@ export function SettingsPage({ back }: { back?: () => void }) {
               <FieldLabel htmlFor="settings-hold-boost" className="text-sm font-normal">{i18n.t('holdBoost')}</FieldLabel>
               <Switch id="settings-hold-boost" aria-label={i18n.t('holdBoost')} checked={holdBoost} disabled={disabled} onCheckedChange={checked => void save({ holdBoost: checked })} />
             </Field>
-            <p className="mt-2 text-sm leading-5 text-muted-foreground">{i18n.t('holdBoostDescription')}</p>
+            <p className="mt-2 text-sm leading-5 text-muted-foreground">{i18n.t('holdBoostDescription', { key: keyText(keybinds.holdBoost) })}</p>
             <div className="mt-3">
-              <SwitchRow id="settings-hold-skip" label={i18n.t('holdSkip')} description={i18n.t('holdSkipDescription')} checked={holdSkip} disabled={disabled || !holdBoost} onChange={checked => void save({ holdSkip: checked })} />
+              <SwitchRow id="settings-hold-skip" label={i18n.t('holdSkip')} description={i18n.t('holdSkipDescription', { back: keyText(keybinds.skipBack), forward: keyText(keybinds.skipForward), hold: keyText(keybinds.holdBoost) })} checked={holdSkip} disabled={disabled || !holdBoost} onChange={checked => void save({ holdSkip: checked })} />
             </div>
             <div className="mt-4 rounded-lg bg-secondary/60 px-3 py-3">
               <h3 id="hold-boost-rate-label" className="text-sm font-medium">{i18n.t('holdBoostRate')}</h3>
@@ -410,19 +444,21 @@ export function SettingsPage({ back }: { back?: () => void }) {
               <dd className="text-muted-foreground">{i18n.t(command.message)}</dd>
             </div>)}
           </dl>
-          <h3 className="mt-6 mb-2 text-sm font-medium">{i18n.t('pageShortcuts')}</h3>
+          <h3 className="mt-6 text-sm font-medium">{i18n.t('pageShortcuts')}</h3>
+          <p className="mt-1 mb-2 text-xs leading-5 text-muted-foreground">{i18n.t('keybindsDescription')}</p>
           <ShortcutList label={i18n.t('pageShortcuts')} rows={[
             { id: 'volume-wheel', key: `Alt + ${i18n.t('shortcutWheel')}`, description: i18n.t('shortcutVolumeWheel') },
-            { id: 'frame-back', key: ',', description: i18n.t('shortcutFrameBack') },
-            { id: 'frame-forward', key: '.', description: i18n.t('shortcutFrameForward') },
+            { id: 'frame-back', key: keyButton('frameBack'), description: ownerLabels.frameBack },
+            { id: 'frame-forward', key: keyButton('frameForward'), description: ownerLabels.frameForward },
             { id: 'speed-up', key: 'Alt + .', description: i18n.t('shortcutSpeedUp', { step: formatRate(rateStep) }) },
             { id: 'speed-down', key: 'Alt + ,', description: i18n.t('shortcutSpeedDown', { step: formatRate(rateStep) }) },
             { id: 'speed-reset', key: 'Alt + 0', description: i18n.t('shortcutSpeedReset') },
             { id: 'mute', key: 'Alt + M', description: i18n.t('cmdMute') }
           ]} />
+          {keyErrorFor(['frameBack', 'frameForward'])}
           <p className="mt-3 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsMac')}</p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsRateKeys')}</p>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsFrameKeys')}</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsFrameKeys', { back: keyText(keybinds.frameBack), forward: keyText(keybinds.frameForward) })}</p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsTyping')}</p>
           <div className="mt-4 flex flex-col gap-2">
             <SwitchRow id="settings-hover-wheel" label={i18n.t('hoverWheel')} description={i18n.t('hoverWheelDescription')} checked={hoverWheel} disabled={disabled} onChange={checked => void save({ hoverWheel: checked })} />
@@ -430,16 +466,19 @@ export function SettingsPage({ back }: { back?: () => void }) {
           </div>
           <h3 className="mt-6 mb-2 text-sm font-medium">{i18n.t('singleKeyShortcuts')}</h3>
           <ShortcutList label={i18n.t('singleKeyShortcuts')} rows={[
-            { id: 'toggle', key: 'K', description: i18n.t('cmdPlayPause') },
-            { id: 'skip-back', key: 'J / ←', description: i18n.t('skipBack', { seconds: skipSeconds }) },
-            { id: 'skip-forward', key: 'L / →', description: i18n.t('skipForward', { seconds: skipSeconds }) },
-            { id: 'volume-up', key: '↑', description: i18n.t('shortcutVolumeUp', { percent: volumeStep }) },
-            { id: 'volume-down', key: '↓', description: i18n.t('shortcutVolumeDown', { percent: volumeStep }) },
-            { id: 'mute', key: 'M', description: i18n.t('cmdMute') },
-            { id: 'speed-up', key: '>', description: i18n.t('shortcutSpeedUp', { step: formatRate(rateStep) }) },
-            { id: 'speed-down', key: '<', description: i18n.t('shortcutSpeedDown', { step: formatRate(rateStep) }) }
+            { id: 'toggle', key: keyButton('toggle'), description: ownerLabels.toggle },
+            { id: 'skip-back', key: <span className="flex items-center gap-1.5">{keyButton('skipBack')}<span aria-hidden="true" className="text-muted-foreground">/</span><Kbd>←</Kbd></span>, description: ownerLabels.skipBack },
+            { id: 'skip-forward', key: <span className="flex items-center gap-1.5">{keyButton('skipForward')}<span aria-hidden="true" className="text-muted-foreground">/</span><Kbd>→</Kbd></span>, description: ownerLabels.skipForward },
+            { id: 'volume-up', key: '↑', description: ownerLabels.volumeUp },
+            { id: 'volume-down', key: '↓', description: ownerLabels.volumeDown },
+            { id: 'mute', key: keyButton('mute'), description: ownerLabels.mute },
+            { id: 'speed-up', key: keyButton('rateUp'), description: ownerLabels.rateUp },
+            { id: 'speed-down', key: keyButton('rateDown'), description: ownerLabels.rateDown },
+            { id: 'hold-boost', key: keyButton('holdBoost'), description: ownerLabels.holdBoost }
           ]} />
+          {keyErrorFor(['toggle', 'skipBack', 'skipForward', 'mute', 'rateUp', 'rateDown', 'holdBoost'])}
           <p className="mt-3 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsSingleKeyArrows')}</p>
+          <Button variant="outline" className="mt-4" disabled={loading || sameKeybinds(keybinds, defaultKeybinds)} onClick={() => { setKeyError(null); void save({ keybinds: { ...defaultKeybinds } }); }}>{i18n.t('resetKeybinds')}</Button>
         </div>
       </section>
       <RatePresetsSection presets={ratePresets} disabled={disabled} save={async next => save({ ratePresets: next })} />

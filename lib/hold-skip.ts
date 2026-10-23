@@ -1,5 +1,6 @@
 import { hotkeyFromKeyboard } from './hotkey';
 import type { HoldKeyEvent } from './hold-rate';
+import type { Keybinds } from './keybinds';
 
 /**
  * Tap-or-hold on the skip keys. A press shorter than this stays a skip.
@@ -17,8 +18,8 @@ export interface HoldSkipDecision {
 }
 
 /** The same keys single-key mode already uses to skip. Other chords stay with their own handlers. */
-export function skipHoldDirection(event: HoldKeyEvent, singleKey: boolean): -1 | 1 | null {
-  const action = hotkeyFromKeyboard(event, { singleKey });
+export function skipHoldDirection(event: HoldKeyEvent, singleKey: boolean, keybinds?: Keybinds): -1 | 1 | null {
+  const action = hotkeyFromKeyboard(event, { singleKey, keybinds });
   if (action?.type !== 'skip') return null;
   return action.delta < 0 ? -1 : 1;
 }
@@ -42,7 +43,7 @@ export function createHoldSkipSession(now: () => number = () => Date.now()) {
      * The keyup for the key that armed the press still finishes it when `active` is false,
      * so releasing the key cannot leave a temporary speed on or skip a second time.
      */
-    key(event: HoldKeyEvent, active: boolean, singleKey: boolean): HoldSkipDecision {
+    key(event: HoldKeyEvent, active: boolean, singleKey: boolean, keybinds?: Keybinds): HoldSkipDecision {
       const id = physical(event);
       if (code && event.type === 'keyup' && id === code) {
         const phase: HoldSkipPhase = boosted ? 'release' : 'skip';
@@ -54,7 +55,7 @@ export function createHoldSkipSession(now: () => number = () => Date.now()) {
       if (code && id === code && event.type !== 'keyup') return { phase: 'repeat' };
       if (code) return { phase: 'ignore' };
       if (!active || event.type === 'keyup' || event.repeat) return { phase: 'ignore' };
-      const next = skipHoldDirection(event, singleKey);
+      const next = skipHoldDirection(event, singleKey, keybinds);
       if (next == null) return { phase: 'ignore' };
       code = id;
       direction = next;

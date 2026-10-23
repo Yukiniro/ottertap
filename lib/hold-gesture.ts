@@ -1,5 +1,6 @@
 import { createHoldKeySession, isHoldRateChord, type HoldKeyEvent } from './hold-rate';
 import { createHoldSkipSession } from './hold-skip';
+import type { Keybinds } from './keybinds';
 
 export interface HoldGestureInput {
   /** Hold-to-boost is on, the page has media, and the event is outside a text field. */
@@ -7,6 +8,7 @@ export interface HoldGestureInput {
   /** The combo switch and single-key mode are on, and this is not a floater arrow. */
   skip: boolean;
   singleKey: boolean;
+  keybinds?: Keybinds;
 }
 
 export type HoldGestureEffect =
@@ -35,7 +37,7 @@ export function createHoldGesture(now: () => number = () => Date.now()) {
     waiting() { return skip.holding() && !skip.boosted(); },
     remaining() { return skip.remaining(); },
     key(event: HoldKeyEvent, input: HoldGestureInput): HoldGestureEffect {
-      const decision = keys.key(event, input.boost && !skip.holding(), input.singleKey);
+      const decision = keys.key(event, input.boost && !skip.holding(), input.singleKey, input.keybinds);
       if (decision === 'start') return { type: 'start', armAlt: event.altKey };
       if (decision === 'end') return { type: 'end' };
       if (decision === 'repeat') return { type: 'consume', armAlt: false };
@@ -44,11 +46,11 @@ export function createHoldGesture(now: () => number = () => Date.now()) {
         if (event.type === 'keyup') blocked.delete(id);
         return { type: 'consume', armAlt: false };
       }
-      if (skip.holding() && input.boost && event.type !== 'keyup' && !event.repeat && isHoldRateChord(event, input.singleKey)) {
+      if (skip.holding() && input.boost && event.type !== 'keyup' && !event.repeat && isHoldRateChord(event, input.singleKey, input.keybinds)) {
         blocked.add(id);
         return { type: 'consume', armAlt: event.altKey };
       }
-      const next = skip.key(event, input.skip, input.singleKey);
+      const next = skip.key(event, input.skip, input.singleKey, input.keybinds);
       if (next.phase === 'arm') {
         armedId = id;
         return { type: 'arm' };

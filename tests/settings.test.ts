@@ -48,10 +48,10 @@ test('设置同页展示全部项，保存只改对应字段，失败时不误�
     assert.deepEqual(value.sites, ['bilibili.com']);
     assert.match(host.querySelector('[role="list"][aria-label="网站列表"]')!.textContent!, /bilibili.com/);
     assert.doesNotMatch(host.querySelector('#shortcuts')!.textContent!, /Shift/);
-    const pageKeys = [...host.querySelectorAll('dl[aria-label="页内快捷键"] kbd')].map(node => node.textContent);
+    const pageKeys = [...host.querySelectorAll('dl[aria-label="页内快捷键"] dt')].map(node => node.textContent);
     assert.deepEqual(pageKeys, ['Alt + 滚轮', ',', '.', 'Alt + .', 'Alt + ,', 'Alt + 0', 'Alt + M']);
-    const singleKeys = [...host.querySelectorAll('dl[aria-label="单键模式按键"] kbd')].map(node => node.textContent);
-    assert.deepEqual(singleKeys, ['K', 'J / ←', 'L / →', '↑', '↓', 'M', '>', '<']);
+    const singleKeys = [...host.querySelectorAll('dl[aria-label="单键模式按键"] dt')].map(node => node.textContent);
+    assert.deepEqual(singleKeys, ['K', 'J/←', 'L/→', '↑', '↓', 'M', '>', '<', 'S']);
     assert.match(host.textContent!, /输入框或可编辑区域/);
     for (const [label, key, initial] of [['悬停在主播放区直接用滚轮调音量', 'hoverWheel', true], ['单键模式', 'singleKey', false]] as const) {
       const toggle = host.querySelector(`[role="switch"][aria-label="${label}"]`);

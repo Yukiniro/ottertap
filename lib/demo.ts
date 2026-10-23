@@ -75,7 +75,8 @@ export function createDemo(document: Document, { src, title, store }: { src: str
     let skipWithRate = defaultSettings.skipWithRate;
     let volumeStep = defaultSettings.volumeStep;
     let rateStep = defaultSettings.rateStep;
-    const apply = (settings: Settings) => { on = isSiteEnabled(demoUrl, settings); singleKey = settings.singleKey; skipSeconds = settings.skipSeconds; skipWithRate = settings.skipWithRate; volumeStep = settings.volumeStep; rateStep = settings.rateStep; };
+    let keybinds = defaultSettings.keybinds;
+    const apply = (settings: Settings) => { on = isSiteEnabled(demoUrl, settings); singleKey = settings.singleKey; skipSeconds = settings.skipSeconds; skipWithRate = settings.skipWithRate; volumeStep = settings.volumeStep; rateStep = settings.rateStep; keybinds = settings.keybinds; };
     void store.load().then(apply);
     const unwatch = store.watch(apply);
     const hotkeys = createHotkeySession(async (action: HotkeyAction) => {
@@ -86,7 +87,7 @@ export function createDemo(document: Document, { src, title, store }: { src: str
       await client.command(plan.media, plan.command);
     });
     const allow = () => on && controller.snapshot().length > 0;
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Alt' || (allow() && !isTypingEvent(event))) hotkeys.key(event, { singleKey, skipSeconds, volumeStep }); };
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Alt' || (allow() && !isTypingEvent(event))) hotkeys.key(event, { singleKey, skipSeconds, volumeStep, keybinds }); };
     const onWheel = (event: WheelEvent) => { if (allow()) hotkeys.wheel(event, undefined, volumeStep); };
     window.addEventListener('keydown', onKey, true);
     window.addEventListener('wheel', onWheel, { capture: true, passive: false });
