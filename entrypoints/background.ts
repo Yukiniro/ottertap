@@ -2,7 +2,7 @@ import { i18n } from '#i18n';
 import { browser } from 'wxt/browser';
 import { extensionStore } from '../lib/extension-store';
 import { createSitePrefSession, isSiteEnabled, withRememberedCommand } from '../lib/settings';
-import { isMediaCommand, pipFailureKey } from '../lib/media';
+import { frameFailureKey, isMediaCommand, pipFailureKey } from '../lib/media';
 import { actionForCommand } from '../lib/commands';
 import { actionHintKey, applySkipStep, applyVolumeStep, isHotkeyAction, planHotkey, shownPercent, type HotkeyAction } from '../lib/hotkey';
 import { nextRate } from '../lib/rate';
@@ -308,6 +308,10 @@ export default defineBackground(() => {
     } catch (error) {
       if (plan.command.type === 'pip' && error instanceof Error) {
         const key = pipFailureKey(error.message);
+        if (key) { showAction(tabId, key); return true; }
+      }
+      if (plan.command.type === 'frame' && error instanceof Error) {
+        const key = frameFailureKey(error.message);
         if (key) { showAction(tabId, key); return true; }
       }
       throw error;

@@ -26,7 +26,8 @@ test('Alt/Option 键位：, . 0 调倍速、M 静音，认 Option 改写后的 c
   }
   assert.equal(key('.', 'Period', { ctrlKey: true }), null, 'AltGr 与 Ctrl+Alt 留给系统输入');
   assert.equal(key('m', 'KeyM', { metaKey: true }), null);
-  assert.equal(hotkeyFromKeyboard({ ...none, key: '.', code: 'Period' }), null);
+  assert.deepEqual(hotkeyFromKeyboard({ ...none, key: '.', code: 'Period' }), { type: 'frame', direction: 1 });
+  assert.deepEqual(hotkeyFromKeyboard({ ...none, key: ',', code: 'Comma' }), { type: 'frame', direction: -1 });
   assert.equal(hotkeyFromKeyboard({ ...none, key: 'm', code: 'KeyM' }), null, '单键模式关闭时裸键不触发');
 });
 
@@ -40,8 +41,8 @@ test('单键模式：K 播放暂停、J/L 与 ←/→ 跳 10 秒、M 静音、< 
   assert.deepEqual(single('m', 'KeyM'), { type: 'mute' });
   assert.deepEqual(single('>', 'Period', { shiftKey: true }), { type: 'rate', direction: 1 });
   assert.deepEqual(single('<', 'Comma', { shiftKey: true }), { type: 'rate', direction: -1 });
-  assert.equal(single('.', 'Period'), null);
-  assert.equal(single(',', 'Comma'), null);
+  assert.deepEqual(single('.', 'Period'), { type: 'frame', direction: 1 });
+  assert.deepEqual(single(',', 'Comma'), { type: 'frame', direction: -1 });
   assert.equal(single('ArrowUp', 'ArrowUp'), null, '不在视频上时 ↑ 留给页面滚动');
   assert.equal(single('ArrowDown', 'ArrowDown'), null);
   assert.deepEqual(single('ArrowUp', 'ArrowUp', {}, true), { type: 'volume', delta: 10 });

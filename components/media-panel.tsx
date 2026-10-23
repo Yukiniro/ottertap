@@ -1,7 +1,7 @@
 import { i18n } from '#i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { ChevronDown, Settings2, Settings as SettingsIcon, Volume2, VolumeX, AppWindow, Pause, Play, RotateCcw, RotateCw, Keyboard, CircleAlert, Info, Search, RefreshCw, PictureInPicture2, Headphones, Minus, Plus } from 'lucide-react';
+import { ChevronDown, Settings2, Settings as SettingsIcon, Volume2, VolumeX, AppWindow, Pause, Play, RotateCcw, RotateCw, Keyboard, CircleAlert, Info, Search, RefreshCw, PictureInPicture2, Headphones, Minus, Plus, StepBack, StepForward } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from './ui/dropdown-menu';
@@ -15,6 +15,7 @@ import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 import { Brand } from './brand';
 import { useMedia } from '../hooks/use-media';
 import { channelModes, isChannelMode } from '../lib/amplifier';
+import { canStepFrames } from '../lib/frame';
 import { channelLabel, mediaChoiceLabel, pipHint } from '../lib/media';
 import { formatRate, nextRate, sameRate } from '../lib/rate';
 import { actualSkipSeconds } from '../lib/skip';
@@ -145,6 +146,7 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
   const seekMin = ranges[0]?.start ?? 0;
   const seekMax = ranges[ranges.length - 1]?.end ?? 0;
   const canSeek = seekMax > seekMin;
+  const canStep = selected ? canStepFrames(selected) : false;
   const volume = selected ? Math.round((selected.muted ? 0 : selected.volume) * 100) : 0;
   const hint = selected ? pipHint(selected) : '';
   const channelHint = selected && !selected.channelAvailable ? i18n.t('channelCrossOrigin') : '';
@@ -186,6 +188,11 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
           <Slider aria-label={i18n.t('seek')} className="min-w-0 flex-1 py-2" min={seekMin} max={Math.max(seekMin + 1, seekMax)} step={1} value={[seekDraft ?? selected.currentTime]} disabled={!canSeek} onValueChange={value => setSeekDraft(first(value) ?? null)} onValueCommitted={value => { void command({ type: 'seek', value: first(value) ?? seekMin }).finally(() => setSeekDraft(null)); }} />
           <span className="shrink-0">{selected.duration === null ? selected.live ? i18n.t('live') : '--:--' : formatTime(selected.duration)}</span>
         </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <Button type="button" variant="ghost" size="sm" className="h-8 gap-1 px-2" aria-label={i18n.t('frameBack')} aria-describedby="frame-step-hint" disabled={!canStep} onClick={() => void command({ type: 'frame', direction: -1 })}><StepBack /><span className="text-xs">{i18n.t('frameBack')}</span></Button>
+          <Button type="button" variant="ghost" size="sm" className="h-8 gap-1 px-2" aria-label={i18n.t('frameForward')} aria-describedby="frame-step-hint" disabled={!canStep} onClick={() => void command({ type: 'frame', direction: 1 })}><span className="text-xs">{i18n.t('frameForward')}</span><StepForward /></Button>
+        </div>
+        <p id="frame-step-hint" className="mt-1 text-xs text-muted-foreground">{canStep ? i18n.t('frameStepHint') : i18n.t('frameStepUnavailable')}</p>
         {hint ? <p id="pip-hint" className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
       </div>
       <div className="border-b pb-3">
