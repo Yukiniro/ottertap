@@ -217,3 +217,13 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 `launch` 内部会再拉起同一个文件的 `serve` 子进程来托住浏览器。不要单独依赖 `serve`，也不要把 `session.json` 里的令牌打到日志以外的地方。控制接口只绑在 `127.0.0.1`，请求要带这个令牌；doctor 和 drive 会自己读会话文件。
 
 功能索引在 `features/README.md`。
+
+## 按站点隐藏浮动入口
+
+```bash
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-hidden-sites
+```
+
+`floating-hidden-sites` 在 `/video` 上展开药丸，点 `Open panel` 旁的 `Hide floating on this site`。入口消失，存储里 `floatingHiddenSites` 只多出 `media.ottertap.test`，`floating`、`siteMode`、`sites` 不变。隐藏后和刷新后 `Alt+.` 仍生效，弹出面板仍能播放暂停，面板里同名开关为打开。临时拦截的 `https://elsewhere.test/video` 上入口照常出现。再走一遍导出、设置页撤销、导入、弹出面板撤销。它会改写 profile，成功时名单清空。步骤见 `features/floating-hidden-sites.md`。
+
+写入 `floating-hidden-sites/`：`settings-empty.png`、`pill-hide-button.png`、`fixture-hidden.png`、`popup-hidden.png`、`other-site.png`、`export.json`、`settings-listed.png`、`fixture-restored.png`、`popup-restored.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
