@@ -3,7 +3,7 @@ import { isChannelMode, maxGain } from './amplifier';
 import { normalizeKeybinds } from './keybinds';
 import { clampRate, formatRate, maxRate, minRate, normalizeRatePresets, normalizeRateStep, rateGrid } from './rate';
 export { isRateStep } from './rate';
-import { defaultSettings, floatingNotes, skipSteps, volumeSteps, type FloatingNote, type MediaCommand, type Settings, type SitePref, type SkipSeconds, type VolumeStep } from './types';
+import { defaultSettings, floatingNotes, skipSteps, volumeSteps, wheelDirections, type FloatingNote, type MediaCommand, type Settings, type SitePref, type SkipSeconds, type VolumeStep, type WheelDirection } from './types';
 const matchesSite = (host: string, site: string) => host === site || host.endsWith(`.${site}`);
 
 export function isSkipSeconds(value: unknown): value is SkipSeconds {
@@ -24,6 +24,15 @@ export function isFloatingNote(value: unknown): value is FloatingNote {
 
 export function normalizeVolumeStep(value: unknown): VolumeStep {
   return isVolumeStep(value) ? value : 10;
+}
+
+export function isWheelDirection(value: unknown): value is WheelDirection {
+  return typeof value === 'string' && (wheelDirections as readonly string[]).includes(value);
+}
+
+/** Missing or unusable values stay scroll-up raises volume. */
+export function normalizeWheelDirection(value: unknown): WheelDirection {
+  return isWheelDirection(value) ? value : 'up';
 }
 
 /** `null` follows the page. Other finite numbers snap onto the 0.25 grid inside min–max. */
@@ -88,6 +97,7 @@ export function normalizeSettings(value: unknown): Settings {
     skipWithRate: source.skipWithRate === true,
     volumeStep: normalizeVolumeStep(source.volumeStep),
     fineWheel: typeof source.fineWheel === 'boolean' ? source.fineWheel : true,
+    wheelDirection: normalizeWheelDirection(source.wheelDirection),
     rateStep: normalizeRateStep(source.rateStep),
     keybinds: normalizeKeybinds(source.keybinds)
   };

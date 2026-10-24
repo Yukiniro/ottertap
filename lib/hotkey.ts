@@ -5,7 +5,7 @@ import { nextRate } from './rate';
 import { actualSkipSeconds, hintSkipSeconds } from './skip';
 import { isSkipSeconds, normalizeSkipSeconds, normalizeVolumeStep } from './settings';
 import { steppedVolume, volumeStepForWheel } from './volume';
-import type { MediaCommand, MediaState, PageState } from './types';
+import type { MediaCommand, MediaState, PageState, WheelDirection } from './types';
 
 export type HotkeyAction =
   | { type: 'volume'; delta: number }
@@ -81,10 +81,15 @@ export function isTypingEvent(event: Event) {
   return isTypingTarget(event.composedPath()[0]);
 }
 
-/** Signed wheel notches. Pixel mode treats 100 as one notch; line and page modes use the raw delta. */
+/** Signed wheel notches. Pixel mode treats 100 as one notch; line and page modes use the raw delta. Scroll-up is positive. */
 export function wheelNotches(delta: number, deltaMode: number) {
   if (!delta) return 0;
   return -(deltaMode === 0 ? delta / 100 : delta);
+}
+
+/** `up` keeps scroll-up as volume-up. `down` flips the notch sign. Arrow keys and the slider do not use this. */
+export function directedWheelNotches(notches: number, direction: WheelDirection = 'up') {
+  return direction === 'down' ? -notches : notches;
 }
 
 export function wheelVolumeDelta(deltaY: number, deltaMode: number, volumeStep = 10) {
@@ -126,7 +131,7 @@ export function applyVolumeStep(action: HotkeyAction, step: number): HotkeyActio
   return { type: 'volume', delta: direction * normalizeVolumeStep(step) };
 }
 
-export function commandForHotkey(action: HotkeyAction, media: MediaState, remembered?: number | null, rateStep?: number, skipWithRate = false, volumeStep = 10, fineWheel = true): MediaCommand | null {
+export function commandForHotkey(action: HotkeyAction, media: MediaState, remembered?: number | null, rateStep?: number, skipWithRate = false, volumeStep = 10, fineWheel = true, wheelDirection: WheelDirection = 'up'): MediaCommand | null {
   if (action.type === 'rate') {
     const value = nextRate(media.rate, action.direction, remembered, rateStep);
     return value === media.rate ? null : { type: 'rate', value };
@@ -142,7 +147,7 @@ export function commandForHotkey(action: HotkeyAction, media: MediaState, rememb
   }
   if (action.type !== 'volume') return null;
   const percent = shownPercent(media);
-  const delta = 'notches' in action ? action.notches * volumeStepForWheel(percent, volumeStep, fineWheel) : action.delta;
+  const delta = 'notches' in action ? directedWheelNotches(action.notches, wheelDirection) * volumeStepForWheel(percent, volumeStep, fineWheel) : action.delta;
   if (!delta) return null;
   const max = media.maxVolume * 100;
   return { type: 'volume', value: steppedVolume(percent, delta, max) / 100 };
@@ -166,11 +171,11 @@ export function isFloatingEvent(event: Event) {
   return event.composedPath().some(node => node instanceof Element && node.localName === 'ottertap-controller');
 }
 
-export function planHotkey(page: PageState, action: HotkeyAction, remembered?: number | null, rateStep?: number, skipWithRate = false, volumeStep = 10, fineWheel = true) {
+export function planHotkey(page: PageState, action: HotkeyAction, remembered?: number | null, rateStep?: number, skipWithRate = false, volumeStep = 10, fineWheel = true, wheelDirection: WheelDirection = 'up') {
   if (!page.enabled || !page.media.length) return null;
   const media = lockedMedia(page.media, page.selectedId);
   if (!media) return null;
-  const command = commandForHotkey(action, media, remembered, rateStep, skipWithRate, volumeStep, fineWheel);
+  const command = commandForHotkey(action, media, remembered, rateStep, skipWithRate, volumeStep, fineWheel, wheelDirection);
   return command ? { media, command } : null;
 }
 
