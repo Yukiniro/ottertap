@@ -74,16 +74,17 @@ export function createDemo(document: Document, { src, title, store }: { src: str
     let skipSeconds = defaultSettings.skipSeconds;
     let skipWithRate = defaultSettings.skipWithRate;
     let volumeStep = defaultSettings.volumeStep;
+    let coarseVolumeStep = defaultSettings.coarseVolumeStep;
     let fineWheel = defaultSettings.fineWheel;
     let wheelDirection = defaultSettings.wheelDirection;
     let rateStep = defaultSettings.rateStep;
     let keybinds = defaultSettings.keybinds;
-    const apply = (settings: Settings) => { on = isSiteEnabled(demoUrl, settings); singleKey = settings.singleKey; skipSeconds = settings.skipSeconds; skipWithRate = settings.skipWithRate; volumeStep = settings.volumeStep; fineWheel = settings.fineWheel; wheelDirection = settings.wheelDirection; rateStep = settings.rateStep; keybinds = settings.keybinds; };
+    const apply = (settings: Settings) => { on = isSiteEnabled(demoUrl, settings); singleKey = settings.singleKey; skipSeconds = settings.skipSeconds; skipWithRate = settings.skipWithRate; volumeStep = settings.volumeStep; coarseVolumeStep = settings.coarseVolumeStep; fineWheel = settings.fineWheel; wheelDirection = settings.wheelDirection; rateStep = settings.rateStep; keybinds = settings.keybinds; };
     void store.load().then(apply);
     const unwatch = store.watch(apply);
     const hotkeys = createHotkeySession(async (action: HotkeyAction) => {
       const page = await client.read();
-      const plan = planHotkey(page, action, controller.recallRate(), rateStep, skipWithRate, volumeStep, fineWheel, wheelDirection);
+      const plan = planHotkey(page, action, controller.recallRate(), rateStep, skipWithRate, volumeStep, fineWheel, wheelDirection, coarseVolumeStep);
       if (!plan) return;
       if (plan.media.id !== page.selectedId) await client.select(plan.media.id);
       await client.command(plan.media, plan.command);

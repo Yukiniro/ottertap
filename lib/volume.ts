@@ -1,4 +1,4 @@
-import { normalizeVolumeStep } from './settings';
+import { normalizeCoarseVolumeStep, normalizeVolumeStep } from './settings';
 
 /** Shown percent below which hover-wheel and Alt+wheel take a 1% step. */
 export const fineWheelThreshold = 25;
@@ -8,9 +8,10 @@ export const fineWheelStep = 1;
 /**
  * Percentage points for one hover-wheel or Alt+wheel notch.
  * Compares the rounded percent the floater and panel show, so 25% on screen uses the saved step.
- * A coarse/fine modifier (#113) wins by choosing the step before this runs; skip this function while that modifier is held.
+ * Holding Shift uses the coarse step and skips the under-25% fine step.
  */
-export function volumeStepForWheel(percent: number, volumeStep: number, fineWheel: boolean) {
+export function volumeStepForWheel(percent: number, volumeStep: number, fineWheel: boolean, coarse = false, coarseVolumeStep = 50) {
+  if (coarse) return normalizeCoarseVolumeStep(coarseVolumeStep);
   const step = normalizeVolumeStep(volumeStep);
   if (fineWheel && Math.round(percent) < fineWheelThreshold) return fineWheelStep;
   return step;

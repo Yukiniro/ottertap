@@ -1,6 +1,6 @@
 # OtterTap 功能地图
 
-验证主界面是扩展本身。索引里的每一条都要能从用户路径走到可观察的结束状态。`scripts/session.mjs` 目前脚本化了弹出面板播放、滚轮音量、快进快退步长、快进快退随倍速放大、音量调节步长、低音量滚轮细步长、倍速增减步长、扩展命令画中画、全局默认倍速、按住临时加速、同键短按跳长按加速、逐帧、页内快捷键改键、浮动药丸倍速、浮动药丸播放跳转、浮动入口旁注、从音量药丸打开弹出面板、仅在播放时显示浮动入口和滚轮方向；其余条目的选择器和断言已经写在各自文件里，用同一次 `launch` 的 Chromium（或 `pnpm e2e` 里点名的那条测试）来驱动。一条失败就报告失败原因，写进该文件的 Gotchas，不要把旅程改容易。
+验证主界面是扩展本身。索引里的每一条都要能从用户路径走到可观察的结束状态。`scripts/session.mjs` 目前脚本化了弹出面板播放、滚轮音量、快进快退步长、快进快退随倍速放大、音量调节步长、低音量滚轮细步长、滚轮粗调步长、倍速增减步长、扩展命令画中画、全局默认倍速、按住临时加速、同键短按跳长按加速、逐帧、页内快捷键改键、浮动药丸倍速、浮动药丸播放跳转、浮动入口旁注、从音量药丸打开弹出面板、仅在播放时显示浮动入口和滚轮方向；其余条目的选择器和断言已经写在各自文件里，用同一次 `launch` 的 Chromium（或 `pnpm e2e` 里点名的那条测试）来驱动。一条失败就报告失败原因，写进该文件的 Gotchas，不要把旅程改容易。
 
 | 功能 | 文件 | 用户从哪里进入 | 现成回归 |
 | --- | --- | --- | --- |
@@ -18,6 +18,7 @@
 | 快进 / 快退随倍速放大 | [skip-with-rate.md](skip-with-rate.md) | 设置页「Playback」的 `Scale skip with speed`，默认关；打开后弹出面板、浮动药丸、页内 J / L / ← / →、扩展命令按步长 × 当前倍速跳，提示显示实际秒数 | `drive skip-with-rate`；`tests/skip-with-rate.test.ts` |
 | 音量调节步长 | [volume-step.md](volume-step.md) | 设置页「Playback」的 `Volume step`，影响悬停滚轮、Alt+滚轮、单键 ↑ ↓、扩展命令 `volume-up` / `volume-down` | `drive volume-step` |
 | 低音量滚轮细步长 | [fine-wheel.md](fine-wheel.md) | 设置页「Playback」的 `Finer wheel steps below 25%`，默认开。低于 25% 时悬停滚轮和 Alt+滚轮用 1%，以上用音量步长。方向键、扩展命令和滑块不变 | `drive fine-wheel`；`tests/fine-wheel.test.ts`、`tests/fine-wheel-background.test.ts` |
+| 滚轮粗调步长 | [coarse-wheel.md](coarse-wheel.md) | 设置页「Playback」的 `Coarse step`，默认 50%。按住 Shift 滚动用这一档，松开回到音量步长或低于 25% 的 1%。Shift 优先于自动细档。不在主播放器上仍滚动页面；Alt+滚轮仍可在任意位置调音 | `drive coarse-wheel`；`tests/coarse-wheel.test.ts`、`tests/coarse-wheel-background.test.ts` |
 | 1× 与之前倍速来回切换 | [rate-recall.md](rate-recall.md) | 页内 Alt+0，或扩展命令 rate-reset | `e2e/smoke.spec.ts` 中「1× 与之前的倍速」 |
 | 设置导出导入 | [settings-backup.md](settings-backup.md) | 设置页「Backup and restore」 | 无 e2e；格式见 `tests/settings-backup.test.ts` |
 | 单声道与左右声道 | [channel-mode.md](channel-mode.md) | 弹出面板音量区的声道菜单 | `e2e/smoke.spec.ts` 中声道三条 |

@@ -9,7 +9,7 @@ import type { MediaCommand, MediaState, PageState, WheelDirection } from './type
 
 export type HotkeyAction =
   | { type: 'volume'; delta: number }
-  | { type: 'volume'; notches: number }
+  | { type: 'volume'; notches: number; shift?: true }
   | { type: 'rate'; direction: 1 | -1 | 0 }
   | { type: 'toggle' }
   | { type: 'mute' }
@@ -100,10 +100,12 @@ export function isHotkeyAction(value: unknown): value is HotkeyAction {
   if (!value || typeof value !== 'object') return false;
   const action = value as HotkeyAction;
   if (action.type === 'volume') {
-    const record = action as { delta?: unknown; notches?: unknown };
+    const record = action as { delta?: unknown; notches?: unknown; shift?: unknown };
     const notches = 'notches' in action;
     const delta = 'delta' in action;
     if (notches === delta) return false;
+    if ('shift' in action && record.shift !== true) return false;
+    if (record.shift === true && !notches) return false;
     const amount = notches ? record.notches : record.delta;
     return typeof amount === 'number' && Number.isFinite(amount) && Math.abs(amount) <= 150;
   }
@@ -131,7 +133,7 @@ export function applyVolumeStep(action: HotkeyAction, step: number): HotkeyActio
   return { type: 'volume', delta: direction * normalizeVolumeStep(step) };
 }
 
-export function commandForHotkey(action: HotkeyAction, media: MediaState, remembered?: number | null, rateStep?: number, skipWithRate = false, volumeStep = 10, fineWheel = true, wheelDirection: WheelDirection = 'up'): MediaCommand | null {
+export function commandForHotkey(action: HotkeyAction, media: MediaState, remembered?: number | null, rateStep?: number, skipWithRate = false, volumeStep = 10, fineWheel = true, wheelDirection: WheelDirection = 'up', coarseVolumeStep = 50): MediaCommand | null {
   if (action.type === 'rate') {
     const value = nextRate(media.rate, action.direction, remembered, rateStep);
     return value === media.rate ? null : { type: 'rate', value };
@@ -147,7 +149,7 @@ export function commandForHotkey(action: HotkeyAction, media: MediaState, rememb
   }
   if (action.type !== 'volume') return null;
   const percent = shownPercent(media);
-  const delta = 'notches' in action ? directedWheelNotches(action.notches, wheelDirection) * volumeStepForWheel(percent, volumeStep, fineWheel) : action.delta;
+  const delta = 'notches' in action ? directedWheelNotches(action.notches, wheelDirection) * volumeStepForWheel(percent, volumeStep, fineWheel, action.shift === true, coarseVolumeStep) : action.delta;
   if (!delta) return null;
   const max = media.maxVolume * 100;
   return { type: 'volume', value: steppedVolume(percent, delta, max) / 100 };
@@ -171,11 +173,11 @@ export function isFloatingEvent(event: Event) {
   return event.composedPath().some(node => node instanceof Element && node.localName === 'ottertap-controller');
 }
 
-export function planHotkey(page: PageState, action: HotkeyAction, remembered?: number | null, rateStep?: number, skipWithRate = false, volumeStep = 10, fineWheel = true, wheelDirection: WheelDirection = 'up') {
+export function planHotkey(page: PageState, action: HotkeyAction, remembered?: number | null, rateStep?: number, skipWithRate = false, volumeStep = 10, fineWheel = true, wheelDirection: WheelDirection = 'up', coarseVolumeStep = 50) {
   if (!page.enabled || !page.media.length) return null;
   const media = lockedMedia(page.media, page.selectedId);
   if (!media) return null;
-  const command = commandForHotkey(action, media, remembered, rateStep, skipWithRate, volumeStep, fineWheel, wheelDirection);
+  const command = commandForHotkey(action, media, remembered, rateStep, skipWithRate, volumeStep, fineWheel, wheelDirection, coarseVolumeStep);
   return command ? { media, command } : null;
 }
 
@@ -201,7 +203,10 @@ export function createHotkeyInput(send: (action: HotkeyAction, target?: string) 
     if (steps.some(step => step.action.type === 'volume')) window.dispatchEvent(new window.CustomEvent(volumeGestureEvent));
     // Keep event boundaries so the input after landing on 100% can leave it.
     for (const { action, target } of steps) {
-      if (action.type === 'volume' && 'notches' in action) send({ type: 'volume', notches: Math.max(-150, Math.min(150, action.notches)) }, target);
+      if (action.type === 'volume' && 'notches' in action) {
+        const notches = Math.max(-150, Math.min(150, action.notches));
+        send(action.shift ? { type: 'volume', notches, shift: true } : { type: 'volume', notches }, target);
+      }
       else if (action.type === 'volume') send({ type: 'volume', delta: Math.max(-150, Math.min(150, action.delta)) }, target);
       else send(action, target);
     }
@@ -239,15 +244,16 @@ export function createHotkeyInput(send: (action: HotkeyAction, target?: string) 
     },
     wheel(event: { deltaX: number; deltaY: number; deltaMode: number; altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean; preventDefault(): void; stopPropagation(): void }, target?: string) {
       if (event.ctrlKey || event.metaKey) return false;
-      if (!event.altKey && (target === undefined || event.shiftKey)) return false;
+      // Shift changes the step, not where the wheel works. Off the player it still scrolls the page.
+      if (!event.altKey && target === undefined) return false;
       // Alt+wheel keeps the horizontal axis for macOS. A bare hover wheel leaves sideways swipes to the page.
-      // Notches stay unscaled. The applier picks 1% or the saved step from the volume at that moment.
+      // Notches stay unscaled. The applier picks the coarse step, 1%, or the saved step.
       const notches = wheelNotches(event.altKey ? event.deltaY || event.deltaX : event.deltaY, event.deltaMode);
       if (!notches) return false;
       event.preventDefault();
       event.stopPropagation();
       if (event.altKey) useAlt();
-      queue({ type: 'volume', notches }, target);
+      queue(event.shiftKey ? { type: 'volume', notches, shift: true } : { type: 'volume', notches }, target);
       return true;
     },
     /** An action decided outside the keyboard path, such as a short tap on a hold-to-skip key. */

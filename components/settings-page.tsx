@@ -19,8 +19,8 @@ import { defaultRatePresets, formatRate, maxRatePresets, parseRatePreset, sameRa
 import { channelLabel } from '../lib/media';
 import { defaultKeybinds, keybindOwner, keyLabel, recordedKey, sameKeybinds, type KeybindAction, type KeybindOwner } from '../lib/keybinds';
 import { downloadSettingsBackup, parseSettingsBackup, readExtensionVersion, settingsBackupErrors, type SettingsBackupError } from '../lib/settings-backup';
-import { forgetSitePref, isFloatingNote, isRateStep, isSkipSeconds, isVolumeStep, isWheelDirection, normalizeDomain } from '../lib/settings';
-import { rateSteps, skipSteps, volumeSteps, type Settings, type SitePref } from '../lib/types';
+import { forgetSitePref, isCoarseVolumeStep, isFloatingNote, isRateStep, isSkipSeconds, isVolumeStep, isWheelDirection, normalizeDomain } from '../lib/settings';
+import { coarseVolumeSteps, rateSteps, skipSteps, volumeSteps, type Settings, type SitePref } from '../lib/types';
 import { useSettingsAtoms } from './theme';
 
 const themes = [{ value: 'light', label: () => i18n.t('themeLight') }, { value: 'dark', label: () => i18n.t('themeDark') }, { value: 'system', label: () => i18n.t('themeSystem') }] as const;
@@ -217,7 +217,7 @@ function Row({ title, description, titleId, children }: { title: string; descrip
 }
 
 export function SettingsPage({ back }: { back?: () => void }) {
-  const { themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, floatingHiddenSitesAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, fineWheelAtom, wheelDirectionAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, floatingHiddenSitesAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, coarseVolumeStepAtom, fineWheelAtom, wheelDirectionAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const theme = useAtomValue(themeAtom);
   const floating = useAtomValue(floatingAtom);
   const floatingNote = useAtomValue(floatingNoteAtom);
@@ -233,6 +233,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
   const skipSeconds = useAtomValue(skipSecondsAtom);
   const skipWithRate = useAtomValue(skipWithRateAtom);
   const volumeStep = useAtomValue(volumeStepAtom);
+  const coarseVolumeStep = useAtomValue(coarseVolumeStepAtom);
   const fineWheel = useAtomValue(fineWheelAtom);
   const wheelDirection = useAtomValue(wheelDirectionAtom);
   const rateStep = useAtomValue(rateStepAtom);
@@ -441,6 +442,13 @@ export function SettingsPage({ back }: { back?: () => void }) {
               </ToggleGroup>
             </div>
             <p className="mt-2 text-sm leading-5 text-muted-foreground">{i18n.t('volumeStepDescription')}</p>
+            <div className="mt-4 flex flex-col gap-3 rounded-lg bg-secondary/60 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <h3 id="coarse-volume-step-label" className="text-sm font-medium">{i18n.t('coarseVolumeStep')}</h3>
+              <ToggleGroup id="settings-coarse-volume-step" aria-labelledby="coarse-volume-step-label" spacing={1} className="grid h-auto w-full grid-cols-2 rounded-lg bg-background/80 p-1 sm:w-auto" value={[String(coarseVolumeStep)]} disabled={disabled} onValueChange={value => { const next = Number(value[0]); if (isCoarseVolumeStep(next)) void save({ coarseVolumeStep: next }); }}>
+                {coarseVolumeSteps.map(percent => <ToggleGroupItem key={percent} value={String(percent)} className="h-8 rounded-md border-0 px-2.5 text-xs text-muted-foreground shadow-none aria-pressed:bg-card aria-pressed:font-semibold aria-pressed:text-foreground aria-pressed:shadow-sm">{i18n.t('volumeStepOption', { percent })}</ToggleGroupItem>)}
+              </ToggleGroup>
+            </div>
+            <p className="mt-2 text-sm leading-5 text-muted-foreground">{i18n.t('coarseVolumeStepDescription')}</p>
             <div className="mt-3">
               <SwitchRow id="settings-fine-wheel" label={i18n.t('fineWheel')} description={i18n.t('fineWheelDescription')} checked={fineWheel} disabled={disabled} onChange={checked => void save({ fineWheel: checked })} />
             </div>

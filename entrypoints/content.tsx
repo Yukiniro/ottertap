@@ -4,7 +4,7 @@ import { browser } from 'wxt/browser';
 import { createShadowRootUi } from 'wxt/utils/content-script-ui/shadow-root';
 import { createHoldGesture } from '../lib/hold-gesture';
 import { holdRateEvent } from '../lib/hold-rate';
-import { actionHintEvent, actionHintText, createHotkeyInput, isFloatingEvent, isTypingEvent, rateHintEvent, volumeGestureEvent } from '../lib/hotkey';
+import { actionHintEvent, actionHintText, createHotkeyInput, isFloatingEvent, isTypingEvent, isTypingTarget, rateHintEvent, volumeGestureEvent } from '../lib/hotkey';
 import { createMediaController, isMediaCommand, mediaPresenceEvent } from '../lib/media';
 import { rateLockEvent } from '../lib/rate-lock';
 import { maxEffectiveVolume, shouldReportVolume, volumeReportIntervalMs } from '../lib/volume-badge';
@@ -13,7 +13,7 @@ import { normalizeKeybinds } from '../lib/keybinds';
 import { extensionStore } from '../lib/extension-store';
 import { createExtensionClient } from '../lib/extension-client';
 import { defaultSettings, type Settings } from '../lib/types';
-import { createHoverWheelGesture } from '../lib/hover-wheel';
+import { createHoverWheelGesture, hoverWheelTrackTarget } from '../lib/hover-wheel';
 import { FloatingController } from '../components/floating';
 import { RateHint, RateLockNotice } from '../components/rate-hint';
 import { ThemeProvider } from '../components/theme';
@@ -215,7 +215,8 @@ export default defineContentScript({
       const hover = source.hoverWheel;
       const pointed = active && hover ? controller.hoverAt({ x: event.clientX, y: event.clientY }, lockedLocalId) : undefined;
       const target = pointed?.id;
-      const bareTarget = hoverGesture(!event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey && event.deltaY && pointed?.stage ? target : undefined, event.timeStamp);
+      const typing = isTypingTarget(document.activeElement) || isTypingEvent(event);
+      const bareTarget = hoverGesture(hoverWheelTrackTarget(event, target, pointed?.stage === true, typing), event.timeStamp);
       if (active) hotkeys.wheel(event, event.altKey ? target : bareTarget);
     };
     const onPageHide = () => {

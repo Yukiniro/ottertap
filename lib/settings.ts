@@ -3,7 +3,7 @@ import { isChannelMode, maxGain } from './amplifier';
 import { normalizeKeybinds } from './keybinds';
 import { clampRate, formatRate, maxRate, minRate, normalizeRatePresets, normalizeRateStep, rateGrid } from './rate';
 export { isRateStep } from './rate';
-import { defaultSettings, floatingNotes, skipSteps, volumeSteps, wheelDirections, type FloatingNote, type MediaCommand, type Settings, type SitePref, type SkipSeconds, type VolumeStep, type WheelDirection } from './types';
+import { coarseVolumeSteps, defaultSettings, floatingNotes, skipSteps, volumeSteps, wheelDirections, type CoarseVolumeStep, type FloatingNote, type MediaCommand, type Settings, type SitePref, type SkipSeconds, type VolumeStep, type WheelDirection } from './types';
 const matchesSite = (host: string, site: string) => host === site || host.endsWith(`.${site}`);
 
 export function isSkipSeconds(value: unknown): value is SkipSeconds {
@@ -24,6 +24,15 @@ export function isFloatingNote(value: unknown): value is FloatingNote {
 
 export function normalizeVolumeStep(value: unknown): VolumeStep {
   return isVolumeStep(value) ? value : 10;
+}
+
+export function isCoarseVolumeStep(value: unknown): value is CoarseVolumeStep {
+  return typeof value === 'number' && (coarseVolumeSteps as readonly number[]).includes(value);
+}
+
+/** Missing or unusable values stay at the larger coarse step. */
+export function normalizeCoarseVolumeStep(value: unknown): CoarseVolumeStep {
+  return isCoarseVolumeStep(value) ? value : 50;
 }
 
 export function isWheelDirection(value: unknown): value is WheelDirection {
@@ -96,6 +105,7 @@ export function normalizeSettings(value: unknown): Settings {
     skipSeconds: normalizeSkipSeconds(source.skipSeconds),
     skipWithRate: source.skipWithRate === true,
     volumeStep: normalizeVolumeStep(source.volumeStep),
+    coarseVolumeStep: normalizeCoarseVolumeStep(source.coarseVolumeStep),
     fineWheel: typeof source.fineWheel === 'boolean' ? source.fineWheel : true,
     wheelDirection: normalizeWheelDirection(source.wheelDirection),
     rateStep: normalizeRateStep(source.rateStep),

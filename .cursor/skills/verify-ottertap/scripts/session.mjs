@@ -7,6 +7,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive skip-with-rate
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive volume-step
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive fine-wheel
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive coarse-wheel
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive rate-step
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive extension-pip
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive default-rate
@@ -40,7 +41,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-wheel', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -2916,7 +2917,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-wheel': driveCoarseWheel, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -3181,6 +3182,172 @@ async function driveWheelDirection(context, dir, note) {
     await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
     return state;
   } finally {
+    await settings?.close().catch(() => {});
+    await page.close().catch(() => {});
+  }
+}
+
+async function driveCoarseWheel(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const near = expected => value => Math.abs(value - expected) < 0.02;
+  const page = await context.newPage();
+  let settings;
+  const volume = () => page.locator('#media').evaluate(element => element.volume);
+  const scrollY = () => page.evaluate(() => window.scrollY);
+  const settle = async value => {
+    await page.locator('#media').evaluate((element, next) => { element.volume = next; element.muted = false; }, value);
+    await poll(volume, near(value), `应能把音量设成 ${value}`);
+    await page.waitForTimeout(400);
+  };
+  const pointOf = async locator => {
+    const at = await centerOf(locator);
+    await page.mouse.move(at.x, at.y);
+    await page.waitForTimeout(350);
+    return at;
+  };
+  const hover = async deltaY => {
+    await pointOf(page.locator('#media'));
+    await page.mouse.wheel(0, deltaY);
+  };
+  const chord = async (mods, deltaY) => {
+    await pointOf(page.locator('#media'));
+    if (mods.includes('Alt')) await page.keyboard.down('Alt');
+    if (mods.includes('Shift')) await page.keyboard.down('Shift');
+    try { await page.mouse.wheel(0, deltaY); }
+    finally {
+      if (mods.includes('Shift')) await page.keyboard.up('Shift');
+      if (mods.includes('Alt')) await page.keyboard.up('Alt');
+    }
+  };
+  const below = async mods => {
+    const box = await page.locator('#media').boundingBox();
+    if (!box) throw new Error('视频没有位置');
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height + 80);
+    await page.waitForTimeout(350);
+    if (mods.includes('Alt')) await page.keyboard.down('Alt');
+    if (mods.includes('Shift')) await page.keyboard.down('Shift');
+    try { await page.mouse.wheel(0, mods.includes('Alt') ? -100 : 120); }
+    finally {
+      if (mods.includes('Shift')) await page.keyboard.up('Shift');
+      if (mods.includes('Alt')) await page.keyboard.up('Alt');
+    }
+  };
+  try {
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#playback`, { waitUntil: 'domcontentloaded' });
+    const coarse = settings.getByRole('group', { name: 'Coarse step' });
+    await coarse.waitFor({ state: 'visible', timeout: 15_000 });
+    const steps = await coarse.getByRole('button').allInnerTexts();
+    const fifty = coarse.getByRole('button', { name: '50%', exact: true });
+    const twenty = coarse.getByRole('button', { name: '20%', exact: true });
+    if (steps.join() !== '20%,50%') throw new Error(`粗调档位不对：${steps.join()}`);
+    if (await fifty.getAttribute('aria-pressed') !== 'true' || await twenty.getAttribute('aria-pressed') !== 'false') throw new Error('粗调步长默认应是 50%');
+    await settings.getByText('The scroll wheel, single-key arrow keys, and browser extension commands all change volume by this step.', { exact: true }).waitFor({ state: 'visible' });
+    await settings.getByText('Hold Shift while scrolling to change volume by this larger step. Let go and the wheel returns to the volume step, or to 1% below 25% when finer wheel steps are on. Shift wins over that finer step. Alt + Shift + wheel still changes volume anywhere. A focused text field is left alone. Arrow keys, extension commands, and the volume slider stay on the volume step.', { exact: true }).waitFor({ state: 'visible' });
+    await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-default.png'), animations: 'disabled' });
+    note('coarse step defaults to 50%, both descriptions visible');
+
+    await page.goto(`${origin}/keys`, { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await page.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+    });
+    await settle(0.1);
+    const scrollBefore = await scrollY();
+    await hover(-100);
+    const fine = await poll(volume, near(0.11), '10% 上不按 Shift 应只加 1%');
+    if (await scrollY() !== scrollBefore) throw new Error('低音量悬停滚轮不该滚动页面');
+    await page.screenshot({ path: path.join(dir, 'fixture-fine.png'), animations: 'disabled' });
+    note(`fine volume=${fine}`);
+    await chord(['Shift'], -100);
+    const coarseHit = await poll(volume, near(0.61), '按住 Shift 应从 11% 按 50% 到 61%');
+    await page.screenshot({ path: path.join(dir, 'fixture-coarse.png'), animations: 'disabled' });
+    note(`shift coarse volume=${coarseHit}`);
+    await hover(-100);
+    const released = await poll(volume, near(0.71), '松开 Shift 后 61% 应按音量步长到 71%');
+    await page.screenshot({ path: path.join(dir, 'fixture-release.png'), animations: 'disabled' });
+    note(`released volume=${released}`);
+
+    await settings.bringToFront();
+    await twenty.click();
+    await poll(() => twenty.getAttribute('aria-pressed'), value => value === 'true', '点 20% 后应按下');
+    await poll(stored, value => value.coarseVolumeStep === 20 && value.volumeStep === 10, '应存下 coarseVolumeStep=20，音量步长仍是 10');
+    await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-20.png'), animations: 'disabled' });
+    note('saved coarseVolumeStep=20');
+
+    await page.bringToFront();
+    await settle(0.04);
+    await chord(['Shift'], -100);
+    const stillLow = await poll(volume, near(0.24), '粗档 20% 应从 4% 到 24%');
+    await hover(-100);
+    const fineAgain = await poll(volume, near(0.25), '24% 上松开 Shift 应回到 1%');
+    note(`20% coarse under 25: ${stillLow} then ${fineAgain}`);
+    await settle(0.4);
+    await hover(-100);
+    const normal = await poll(volume, near(0.5), '40% 上不按 Shift 应按 10% 到 50%');
+    await chord(['Shift'], -100);
+    const coarse20 = await poll(volume, near(0.7), '40% 上按住 Shift 应按 20% 到 70%');
+    await page.screenshot({ path: path.join(dir, 'fixture-20.png'), animations: 'disabled' });
+    note(`normal=${normal} coarse20=${coarse20}`);
+
+    const loud = await volume();
+    const pageDown = await scrollY();
+    await below(['Shift']);
+    const scrolled = await poll(scrollY, value => value > pageDown + 20, '播放器外的 Shift+滚轮应让页面往下走');
+    const held = await volume();
+    if (Math.abs(held - loud) > 0.02) throw new Error(`播放器外的 Shift+滚轮改了音量 ${loud} -> ${held}`);
+    await page.screenshot({ path: path.join(dir, 'page-scroll.png'), animations: 'disabled' });
+    note(`off-player shift scroll ${pageDown}->${scrolled} volume=${held}`);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await poll(scrollY, value => value === 0, '应滚回顶部');
+    await page.waitForTimeout(400);
+    await below(['Alt']);
+    const altOnly = await poll(volume, near(0.8), '播放器外的 Alt+滚轮应按 10% 到 80%');
+    if (await scrollY() !== 0) throw new Error('Alt+滚轮不该滚动页面');
+    await below(['Alt', 'Shift']);
+    const altShift = await poll(volume, near(1), '播放器外的 Alt+Shift+滚轮应按 20% 到 100%');
+    if (await scrollY() !== 0) throw new Error('Alt+Shift+滚轮不该滚动页面');
+    note(`off-player alt=${altOnly} altShift=${altShift}`);
+
+    await settle(0.4);
+    await page.locator('#field').focus();
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await poll(scrollY, value => value === 0, '聚焦输入框后应回到顶部');
+    await page.waitForTimeout(400);
+    const focused = await page.evaluate(() => document.activeElement?.id);
+    if (focused !== 'field') throw new Error(`输入框没有保持焦点：${focused}`);
+    await chord(['Shift'], -100);
+    const typed = await volume();
+    if (Math.abs(typed - 0.4) > 0.02) throw new Error(`输入框聚焦时 Shift+滚轮改了音量：${typed}`);
+    await page.screenshot({ path: path.join(dir, 'fixture-typing.png'), animations: 'disabled' });
+    note(`focused shift volume=${typed}`);
+    await chord(['Alt'], -100);
+    const typedAlt = await poll(volume, near(0.5), '输入框聚焦时 Alt+滚轮仍应按 10% 到 50%');
+    await chord(['Alt', 'Shift'], -100);
+    const typedAltShift = await poll(volume, near(0.7), '输入框聚焦时 Alt+Shift+滚轮仍应按 20% 到 70%');
+    note(`focused alt=${typedAlt} altShift=${typedAltShift}`);
+
+    const state = {
+      ok: true,
+      fine,
+      coarse: coarseHit,
+      released,
+      stillLow,
+      fineAgain,
+      normal,
+      coarse20,
+      offPlayer: { scroll: scrolled - pageDown, alt: altOnly, altShift },
+      focused: { shift: typed, alt: typedAlt, altShift: typedAltShift }
+    };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await page.keyboard.up('Shift').catch(() => {});
+    await page.keyboard.up('Alt').catch(() => {});
     await settings?.close().catch(() => {});
     await page.close().catch(() => {});
   }
