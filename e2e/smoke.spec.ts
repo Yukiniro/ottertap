@@ -755,6 +755,7 @@ test('盖住主画面的侧栏聊天和文档大纲上，裸滚轮滚动列表�
     finally { await page.keyboard.up('Alt'); }
     await expect.poll(() => media.evaluate((element: HTMLMediaElement) => element.volume), '聊天上的 Alt+滚轮仍调音量').toBeCloseTo(0.8, 2);
     expect(await chat.evaluate((element: HTMLElement) => element.scrollTop), 'Alt+滚轮不滚动聊天').toBe(chatScroll);
+    await page.waitForTimeout(350);
     await page.keyboard.down('Shift');
     try { await page.mouse.wheel(0, -100); }
     finally { await page.keyboard.up('Shift'); }

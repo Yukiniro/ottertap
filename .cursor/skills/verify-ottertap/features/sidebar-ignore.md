@@ -34,8 +34,8 @@ pnpm exec playwright test e2e/smoke.spec.ts -g "盖住主画面的侧栏聊天"
 3. 光标移到 `#outline` 中心，再停至少 300ms，向下滚。大纲 `scrollTop > 20`，音量仍约 0.5，聊天滚动位置不变。截图。
 4. 光标移到画面中心，再停至少 300ms，`mouse.wheel(0, -100)`。音量约 0.6，页面和聊天都不动。截图。
 5. 光标移到 `#overlay` 中心，再停至少 300ms，向上滚。音量约 0.7。这块没有已知选择器，所以仍是主画面。截图。
-6. 回到聊天，按住 Alt 向上滚。音量约 0.8，聊天 `scrollTop` 不变。截图。
-7. 仍在聊天上，按住 Shift 向上滚。音量约 1（默认粗调 20%），聊天 `scrollTop` 不变。截图。
+6. 回到聊天，再停至少 300ms，按住 Alt 向上滚。音量约 0.8，聊天 `scrollTop` 不变。截图。
+7. 仍在聊天上，再停至少 300ms，按住 Shift 向上滚。音量约 1（默认粗调 20%），聊天 `scrollTop` 不变。截图。紧挨着上一次滚轮会落进连续手势，停不够时 Shift 也不会调音。
 
 成功时 `state.json` 的 `ok` 为 `true`。证据写到 `/opt/cursor/artifacts/verify-ottertap/sidebar-ignore/`：`chat-before.png`、`chat-scrolled.png`、`outline-scrolled.png`、`player-after.png`、`overlay-after.png`、`chat-alt.png`、`chat-shift.png`、`state.json`、`transcript.txt`。
 

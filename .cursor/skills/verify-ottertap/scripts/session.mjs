@@ -545,6 +545,7 @@ async function driveSidebarIgnore(context, dir, note) {
     await page.screenshot({ path: path.join(dir, 'chat-alt.png'), animations: 'disabled' });
     note(`chat alt volume ${altVolume}`);
 
+    await page.waitForTimeout(350);
     await page.keyboard.down('Shift');
     try { await page.mouse.wheel(0, -100); }
     finally { await page.keyboard.up('Shift'); }
