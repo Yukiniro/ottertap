@@ -1108,18 +1108,32 @@ async function driveCoarseStep(context, dir, note) {
 
     const box = await page.locator('#media').boundingBox();
     if (!box) throw new Error('视频没有位置');
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height + 80);
+    const offPlayer = { x: box.x + box.width / 2, y: box.y + box.height + 80 };
+    await page.mouse.move(offPlayer.x, offPlayer.y);
     await page.waitForTimeout(350);
     const beforeScroll = await scrollY();
+    await page.mouse.wheel(0, 120);
+    const afterScroll = await poll(scrollY, value => value > beforeScroll + 20, '视频外向下滚轮应让页面往下走');
+    const heldOff = await volume();
+    if (!near(shifted)(heldOff)) throw new Error(`视频外滚动改了音量 ${shifted} -> ${heldOff}`);
+    note(`off-player scroll ${beforeScroll} -> ${afterScroll}`);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await poll(scrollY, value => value === 0, '应滚回顶部');
+    await page.evaluate(() => {
+      window.__otterWheel = null;
+      window.addEventListener('wheel', event => {
+        window.__otterWheel = { x: event.deltaX, y: event.deltaY, shift: event.shiftKey, prevented: event.defaultPrevented };
+      }, { capture: true });
+    });
+    await page.mouse.move(offPlayer.x, offPlayer.y);
+    await page.waitForTimeout(350);
     await page.keyboard.down('Shift');
     try { await page.mouse.wheel(0, 120); }
     finally { await page.keyboard.up('Shift'); }
-    const afterScroll = await poll(scrollY, value => value > beforeScroll + 20, '视频外的 Shift+滚轮应让页面往下走');
-    const heldOff = await volume();
-    if (!near(shifted)(heldOff)) throw new Error(`视频外的 Shift+滚轮改了音量 ${shifted} -> ${heldOff}`);
-    note(`off-player shift scroll ${beforeScroll} -> ${afterScroll}`);
-    await page.evaluate(() => window.scrollTo(0, 0));
-    await poll(scrollY, value => value === 0, '应滚回顶部');
+    const seen = await page.evaluate(() => window.__otterWheel);
+    if (!seen?.shift || seen.prevented) throw new Error(`视频外的 Shift+滚轮不应被取消：${JSON.stringify(seen)}`);
+    const shiftOff = await unchanged(shifted, '视频外的 Shift+滚轮不应改音量');
+    note(`off-player shift wheel=${JSON.stringify(seen)} volume=${shiftOff}`);
 
     await settle(0.1);
     await hoverUp();

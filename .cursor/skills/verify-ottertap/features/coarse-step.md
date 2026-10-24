@@ -29,7 +29,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive coarse-step
 1. 打开设置页 `#playback`。`Volume step` 只有 `10%` 按下，`Coarse step` 只有 `20%` 按下。两段说明都可见。截图。
 2. 打开 `/keys`，把音量设成 0.5，等手势间隔过去，光标在视频上 `mouse.wheel(0, -100)`。音量约 0.6，页面不滚动。
 3. 按住 Shift 再 `mouse.wheel(0, -100)`。音量约 0.8。
-4. 光标移到视频下方，按住 Shift 向下滚。`scrollY` 增加，音量仍约 0.8。滚回顶部。
+4. 光标移到视频下方，不按 Shift 向下滚。`scrollY` 增加，音量仍约 0.8。滚回顶部后，同一位置按住 Shift 再向下滚。页面收到这次滚轮且没有被取消，音量仍约 0.8。浏览器若把 Shift+滚轮改成横向，`scrollY` 可以不动。
 5. 把音量设成 0.1。悬停滚轮向上到约 0.11。再按住 Shift 向上到约 0.31。
 6. `focus({ preventScroll: true })` 点到 `#field`。按住 Shift 在视频上向上滚，音量仍约 0.31。
 7. 输入框仍聚焦，按住 Alt 和 Shift 在视频上向上滚。音量约 0.51。
