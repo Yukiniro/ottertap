@@ -8,7 +8,7 @@ export const fineWheelStep = 1;
 /**
  * Percentage points for one hover-wheel or Alt+wheel notch.
  * Compares the rounded percent the floater and panel show, so 25% on screen uses the saved step.
- * A coarse/fine modifier (#113) wins by choosing the step before this runs; skip this function while that modifier is held.
+ * Shift chooses the coarse step before this runs. Skip this function while Shift is held.
  */
 export function volumeStepForWheel(percent: number, volumeStep: number, fineWheel: boolean) {
   const step = normalizeVolumeStep(volumeStep);

@@ -2,7 +2,7 @@
 
 音量已经很低时，固定的音量步长一格跳得太多。设置页「Playback」里的 `Finer wheel steps below 25%` 默认开启。当前音量按浮动入口和弹出面板显示的百分数四舍五入后低于 25% 时，悬停滚轮和 Alt+滚轮一格改 1%。达到或超过 25% 时，仍用「Volume step」里的 5%、10% 或 20%。关掉开关后，滚轮全程用那个步长。
 
-单键模式的 ↑ ↓、扩展命令 `volume-up` / `volume-down`，以及弹出面板和音量药丸上的滑块，都不看这个开关。滑块仍是 1% 一档。以后如果加上按住修饰键切换粗细（#113），修饰键优先于这里的自动细档；现在还没有这个修饰键。
+单键模式的 ↑ ↓、扩展命令 `volume-up` / `volume-down`，以及弹出面板和音量药丸上的滑块，都不看这个开关。滑块仍是 1% 一档。按住 Shift 滚动时改用粗调步长，优先于这里的自动细档。见 [coarse-step.md](coarse-step.md)。
 
 ## Sub-features
 
@@ -47,3 +47,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive fine-wheel
 - 单键 ↑ ↓ 必须先打开单键模式，并且指针在视频上。滑块上的方向键属于药丸，不走单键音量。
 - 滚轮会把乐观百分数留在已展开的药丸上。之后用脚本改元素音量，药丸不会跟着改，方向键会从那个旧百分数起步。测滑块前要重新加载页面。
 - 这个开关和单键模式都写进 profile。用完 `cleanup` 再 `launch`。同一会话里先跑过 `drive volume-step` 会把步长和单键模式改掉。
+
+## Shift 粗调优先
+
+按住 Shift 时不再走这里的 1%。步长在调用 `volumeStepForWheel` 之前就选定。见 [coarse-step.md](coarse-step.md)。本条旅程不按 Shift。

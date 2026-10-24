@@ -3,13 +3,13 @@ import { defaultKeybinds, pressedKey, type KeyPress, type Keybinds } from './key
 import { isPipFailureKey, lockedMedia } from './media';
 import { nextRate } from './rate';
 import { actualSkipSeconds, hintSkipSeconds } from './skip';
-import { isSkipSeconds, normalizeSkipSeconds, normalizeVolumeStep } from './settings';
+import { isSkipSeconds, normalizeCoarseStep, normalizeSkipSeconds, normalizeVolumeStep } from './settings';
 import { steppedVolume, volumeStepForWheel } from './volume';
 import type { MediaCommand, MediaState, PageState, WheelDirection } from './types';
 
 export type HotkeyAction =
   | { type: 'volume'; delta: number }
-  | { type: 'volume'; notches: number }
+  | { type: 'volume'; notches: number; coarse?: boolean }
   | { type: 'rate'; direction: 1 | -1 | 0 }
   | { type: 'toggle' }
   | { type: 'mute' }
@@ -81,6 +81,25 @@ export function isTypingEvent(event: Event) {
   return isTypingTarget(event.composedPath()[0]);
 }
 
+/** Focus inside a text field, including an open shadow root. Wheel events target the element under the pointer, not the field. */
+export function isTypingFocus(root: { activeElement: unknown } | null | undefined = typeof document === 'undefined' ? undefined : document): boolean {
+  const node = root?.activeElement as { shadowRoot?: { activeElement: unknown } | null } | null | undefined;
+  if (!node) return false;
+  if (node.shadowRoot?.activeElement) return isTypingFocus(node.shadowRoot);
+  return isTypingTarget(node);
+}
+
+/** A focused text field keeps Shift+wheel. Alt+wheel still adjusts volume there. */
+export function keepShiftWheel(event: { altKey: boolean; shiftKey: boolean }, typing: boolean) {
+  return typing && event.shiftKey && !event.altKey;
+}
+
+/** Hover wheel over the main player. Shift may arrive as a horizontal delta after the browser remaps it. Sideways swipes without Shift stay with the page. */
+export function bareVolumeWheel(event: { altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean; deltaX: number; deltaY: number }, overStage: boolean) {
+  if (event.altKey || event.ctrlKey || event.metaKey || !overStage) return false;
+  return Boolean(event.deltaY || (event.shiftKey && event.deltaX));
+}
+
 /** Signed wheel notches. Pixel mode treats 100 as one notch; line and page modes use the raw delta. Scroll-up is positive. */
 export function wheelNotches(delta: number, deltaMode: number) {
   if (!delta) return 0;
@@ -131,7 +150,7 @@ export function applyVolumeStep(action: HotkeyAction, step: number): HotkeyActio
   return { type: 'volume', delta: direction * normalizeVolumeStep(step) };
 }
 
-export function commandForHotkey(action: HotkeyAction, media: MediaState, remembered?: number | null, rateStep?: number, skipWithRate = false, volumeStep = 10, fineWheel = true, wheelDirection: WheelDirection = 'up'): MediaCommand | null {
+export function commandForHotkey(action: HotkeyAction, media: MediaState, remembered?: number | null, rateStep?: number, skipWithRate = false, volumeStep = 10, fineWheel = true, wheelDirection: WheelDirection = 'up', coarseStep = 20): MediaCommand | null {
   if (action.type === 'rate') {
     const value = nextRate(media.rate, action.direction, remembered, rateStep);
     return value === media.rate ? null : { type: 'rate', value };
@@ -147,7 +166,10 @@ export function commandForHotkey(action: HotkeyAction, media: MediaState, rememb
   }
   if (action.type !== 'volume') return null;
   const percent = shownPercent(media);
-  const delta = 'notches' in action ? directedWheelNotches(action.notches, wheelDirection) * volumeStepForWheel(percent, volumeStep, fineWheel) : action.delta;
+  // Shift already picked the coarse step. Skip the 1% rule for that gesture.
+  const delta = 'notches' in action
+    ? directedWheelNotches(action.notches, wheelDirection) * (action.coarse ? normalizeCoarseStep(coarseStep) : volumeStepForWheel(percent, volumeStep, fineWheel))
+    : action.delta;
   if (!delta) return null;
   const max = media.maxVolume * 100;
   return { type: 'volume', value: steppedVolume(percent, delta, max) / 100 };
@@ -171,11 +193,11 @@ export function isFloatingEvent(event: Event) {
   return event.composedPath().some(node => node instanceof Element && node.localName === 'ottertap-controller');
 }
 
-export function planHotkey(page: PageState, action: HotkeyAction, remembered?: number | null, rateStep?: number, skipWithRate = false, volumeStep = 10, fineWheel = true, wheelDirection: WheelDirection = 'up') {
+export function planHotkey(page: PageState, action: HotkeyAction, remembered?: number | null, rateStep?: number, skipWithRate = false, volumeStep = 10, fineWheel = true, wheelDirection: WheelDirection = 'up', coarseStep = 20) {
   if (!page.enabled || !page.media.length) return null;
   const media = lockedMedia(page.media, page.selectedId);
   if (!media) return null;
-  const command = commandForHotkey(action, media, remembered, rateStep, skipWithRate, volumeStep, fineWheel, wheelDirection);
+  const command = commandForHotkey(action, media, remembered, rateStep, skipWithRate, volumeStep, fineWheel, wheelDirection, coarseStep);
   return command ? { media, command } : null;
 }
 
@@ -201,7 +223,7 @@ export function createHotkeyInput(send: (action: HotkeyAction, target?: string) 
     if (steps.some(step => step.action.type === 'volume')) window.dispatchEvent(new window.CustomEvent(volumeGestureEvent));
     // Keep event boundaries so the input after landing on 100% can leave it.
     for (const { action, target } of steps) {
-      if (action.type === 'volume' && 'notches' in action) send({ type: 'volume', notches: Math.max(-150, Math.min(150, action.notches)) }, target);
+      if (action.type === 'volume' && 'notches' in action) send({ type: 'volume', notches: Math.max(-150, Math.min(150, action.notches)), ...(action.coarse ? { coarse: true } : {}) }, target);
       else if (action.type === 'volume') send({ type: 'volume', delta: Math.max(-150, Math.min(150, action.delta)) }, target);
       else send(action, target);
     }
@@ -239,15 +261,16 @@ export function createHotkeyInput(send: (action: HotkeyAction, target?: string) 
     },
     wheel(event: { deltaX: number; deltaY: number; deltaMode: number; altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean; preventDefault(): void; stopPropagation(): void }, target?: string) {
       if (event.ctrlKey || event.metaKey) return false;
-      if (!event.altKey && (target === undefined || event.shiftKey)) return false;
-      // Alt+wheel keeps the horizontal axis for macOS. A bare hover wheel leaves sideways swipes to the page.
-      // Notches stay unscaled. The applier picks 1% or the saved step from the volume at that moment.
-      const notches = wheelNotches(event.altKey ? event.deltaY || event.deltaX : event.deltaY, event.deltaMode);
+      // Shift changes the step, not where the gesture works. Without Alt, only a player target counts.
+      if (!event.altKey && target === undefined) return false;
+      // Alt+wheel keeps the horizontal axis for macOS. Shift may arrive as that axis after the browser remaps it.
+      // Notches stay unscaled. Without Shift, the applier picks 1% or the saved step. Shift skips that and uses the coarse step.
+      const notches = wheelNotches(event.altKey || event.shiftKey ? event.deltaY || event.deltaX : event.deltaY, event.deltaMode);
       if (!notches) return false;
       event.preventDefault();
       event.stopPropagation();
       if (event.altKey) useAlt();
-      queue({ type: 'volume', notches }, target);
+      queue(event.shiftKey ? { type: 'volume', notches, coarse: true } : { type: 'volume', notches }, target);
       return true;
     },
     /** An action decided outside the keyboard path, such as a short tap on a hold-to-skip key. */

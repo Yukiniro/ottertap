@@ -54,3 +54,7 @@ pnpm exec playwright test e2e/smoke.spec.ts -g "Alt\\+滚轮向上从 95%"
 ## 滚轮方向
 
 上面说的「向上加音量」是默认。设置页可以把方向改成向下增大，同一手势立刻反过来。只影响悬停滚轮和 Alt+滚轮，页面自己怎么滚不变。见 [wheel-direction.md](wheel-direction.md)。
+
+## Shift 粗调
+
+按住 Shift 在主播放器上滚动，或 Alt+Shift 在任意位置滚动，用「Coarse step」而不是默认的 10%。不在主播放器上、也没有按 Alt 时，Shift+滚轮仍留给页面。见 [coarse-step.md](coarse-step.md)。

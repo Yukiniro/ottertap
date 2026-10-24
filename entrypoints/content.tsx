@@ -4,7 +4,7 @@ import { browser } from 'wxt/browser';
 import { createShadowRootUi } from 'wxt/utils/content-script-ui/shadow-root';
 import { createHoldGesture } from '../lib/hold-gesture';
 import { holdRateEvent } from '../lib/hold-rate';
-import { actionHintEvent, actionHintText, createHotkeyInput, isFloatingEvent, isTypingEvent, rateHintEvent, volumeGestureEvent } from '../lib/hotkey';
+import { actionHintEvent, actionHintText, bareVolumeWheel, createHotkeyInput, isFloatingEvent, isTypingEvent, isTypingFocus, keepShiftWheel, rateHintEvent, volumeGestureEvent } from '../lib/hotkey';
 import { createMediaController, isMediaCommand, mediaPresenceEvent } from '../lib/media';
 import { rateLockEvent } from '../lib/rate-lock';
 import { maxEffectiveVolume, shouldReportVolume, volumeReportIntervalMs } from '../lib/volume-badge';
@@ -210,12 +210,13 @@ export default defineContentScript({
     };
     const hoverGesture = createHoverWheelGesture();
     const onWheel = (event: WheelEvent) => {
+      if (keepShiftWheel(event, isTypingEvent(event) || isTypingFocus(document))) return;
       const active = shortcutActive();
       const source = watched ?? contextKeys;
       const hover = source.hoverWheel;
       const pointed = active && hover ? controller.hoverAt({ x: event.clientX, y: event.clientY }, lockedLocalId) : undefined;
       const target = pointed?.id;
-      const bareTarget = hoverGesture(!event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey && event.deltaY && pointed?.stage ? target : undefined, event.timeStamp);
+      const bareTarget = hoverGesture(bareVolumeWheel(event, Boolean(pointed?.stage)) ? target : undefined, event.timeStamp);
       if (active) hotkeys.wheel(event, event.altKey ? target : bareTarget);
     };
     const onPageHide = () => {
