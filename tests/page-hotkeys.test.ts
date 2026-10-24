@@ -236,13 +236,13 @@ test('悬停滚轮只在视频上拦截，Alt+滚轮随处可用；目标只随�
   try {
     assert.equal(wheel({}), false, '不在视频上照常滚动页面');
     assert.equal(wheel({}, '7'), true);
-    assert.equal(wheel({ shiftKey: true }, '7'), false, 'Shift+滚轮是横向滚动');
+    assert.equal(wheel({ shiftKey: true }, '7'), true, '视频上的 Shift+滚轮改用粗档');
     assert.equal(wheel({ deltaX: 100, deltaY: 0 }, '7'), false, '悬停时横向手势留给页面');
     assert.equal(wheel({ ctrlKey: true }, '7'), false, 'Ctrl+滚轮是缩放');
     assert.equal(wheel({ altKey: true }), true);
     assert.equal(wheel({ altKey: true, deltaX: -100, deltaY: 0 }), true, 'macOS 的横向滚动量照常可用');
     flush();
-    assert.deepEqual(sent, [[{ type: 'volume', notches: -1 }, '7'], [{ type: 'volume', notches: -1 }, undefined], [{ type: 'volume', notches: 1 }, undefined]]);
+    assert.deepEqual(sent, [[{ type: 'volume', notches: -1 }, '7'], [{ type: 'volume', notches: -1, coarse: true }, '7'], [{ type: 'volume', notches: -1 }, undefined], [{ type: 'volume', notches: 1 }, undefined]]);
 
     sent.length = 0;
     assert.equal(key({ key: 'ArrowUp', code: 'ArrowUp' }, { singleKey: true }).handled, false);

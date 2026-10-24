@@ -274,7 +274,8 @@ export default defineBackground(() => {
     let delta = 'delta' in action ? action.delta : 0;
     if ('notches' in action) {
       const settings = await currentSettings();
-      delta = directedWheelNotches(action.notches, settings.wheelDirection) * volumeStepForWheel(previous, settings.volumeStep, settings.fineWheel);
+      const step = action.coarse ? settings.coarseStep : volumeStepForWheel(previous, settings.volumeStep, settings.fineWheel);
+      delta = directedWheelNotches(action.notches, settings.wheelDirection) * step;
     }
     gesture.percent = steppedVolume(previous, delta, gesture.max);
     gesture.at = Date.now();

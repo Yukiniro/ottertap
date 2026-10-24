@@ -26,6 +26,11 @@ export function normalizeVolumeStep(value: unknown): VolumeStep {
   return isVolumeStep(value) ? value : 10;
 }
 
+/** Shift+wheel step. Missing or unusable values stay at 20, so the coarse tier differs from the 10% volume step. */
+export function normalizeCoarseStep(value: unknown): VolumeStep {
+  return isVolumeStep(value) ? value : defaultSettings.coarseStep;
+}
+
 export function isWheelDirection(value: unknown): value is WheelDirection {
   return typeof value === 'string' && (wheelDirections as readonly string[]).includes(value);
 }
@@ -96,6 +101,7 @@ export function normalizeSettings(value: unknown): Settings {
     skipSeconds: normalizeSkipSeconds(source.skipSeconds),
     skipWithRate: source.skipWithRate === true,
     volumeStep: normalizeVolumeStep(source.volumeStep),
+    coarseStep: normalizeCoarseStep(source.coarseStep),
     fineWheel: typeof source.fineWheel === 'boolean' ? source.fineWheel : true,
     wheelDirection: normalizeWheelDirection(source.wheelDirection),
     rateStep: normalizeRateStep(source.rateStep),

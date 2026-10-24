@@ -47,3 +47,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive volume-step
 - 步长和单键模式都写进 profile。用完 `cleanup` 再 `launch`。同一会话里先跑过本条，再跑 `drive wheel-volume` 会因步长不再是 10 而失败。
 
 音量低于 25% 且「更细步长」开着时，悬停滚轮和 Alt+滚轮改用 1%。单键方向键和扩展命令仍用这里的步长。见 [fine-wheel.md](fine-wheel.md)。本条旅程从 50% 起步，不经过那个区间。
+
+## Shift 粗调
+
+按住 Shift 滚动时改用「Coarse step」，默认 20%，并跳过低于 25% 的 1% 细档。松开后仍用这里的步长。见 [coarse-step.md](coarse-step.md)。本条旅程不按 Shift。

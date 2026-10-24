@@ -217,7 +217,7 @@ function Row({ title, description, titleId, children }: { title: string; descrip
 }
 
 export function SettingsPage({ back }: { back?: () => void }) {
-  const { themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, floatingHiddenSitesAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, fineWheelAtom, wheelDirectionAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, floatingHiddenSitesAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, coarseStepAtom, fineWheelAtom, wheelDirectionAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const theme = useAtomValue(themeAtom);
   const floating = useAtomValue(floatingAtom);
   const floatingNote = useAtomValue(floatingNoteAtom);
@@ -233,6 +233,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
   const skipSeconds = useAtomValue(skipSecondsAtom);
   const skipWithRate = useAtomValue(skipWithRateAtom);
   const volumeStep = useAtomValue(volumeStepAtom);
+  const coarseStep = useAtomValue(coarseStepAtom);
   const fineWheel = useAtomValue(fineWheelAtom);
   const wheelDirection = useAtomValue(wheelDirectionAtom);
   const rateStep = useAtomValue(rateStepAtom);
@@ -441,6 +442,13 @@ export function SettingsPage({ back }: { back?: () => void }) {
               </ToggleGroup>
             </div>
             <p className="mt-2 text-sm leading-5 text-muted-foreground">{i18n.t('volumeStepDescription')}</p>
+            <div className="mt-4 flex flex-col gap-3 rounded-lg bg-secondary/60 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <h3 id="coarse-step-label" className="text-sm font-medium">{i18n.t('coarseStep')}</h3>
+              <ToggleGroup id="settings-coarse-step" aria-labelledby="coarse-step-label" spacing={1} className="grid h-auto w-full grid-cols-3 rounded-lg bg-background/80 p-1 sm:w-auto" value={[String(coarseStep)]} disabled={disabled} onValueChange={value => { const next = Number(value[0]); if (isVolumeStep(next)) void save({ coarseStep: next }); }}>
+                {volumeSteps.map(percent => <ToggleGroupItem key={percent} value={String(percent)} className="h-8 rounded-md border-0 px-2.5 text-xs text-muted-foreground shadow-none aria-pressed:bg-card aria-pressed:font-semibold aria-pressed:text-foreground aria-pressed:shadow-sm">{i18n.t('volumeStepOption', { percent })}</ToggleGroupItem>)}
+              </ToggleGroup>
+            </div>
+            <p className="mt-2 text-sm leading-5 text-muted-foreground">{i18n.t('coarseStepDescription')}</p>
             <div className="mt-3">
               <SwitchRow id="settings-fine-wheel" label={i18n.t('fineWheel')} description={i18n.t('fineWheelDescription')} checked={fineWheel} disabled={disabled} onChange={checked => void save({ fineWheel: checked })} />
             </div>
