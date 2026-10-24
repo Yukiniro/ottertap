@@ -440,7 +440,7 @@ export default defineBackground(() => {
         const settings = await currentSettings();
         const enabled = isSiteEnabled(url, settings);
         const host = new URL(url).hostname;
-        if (message.type === 'context') return { enabled, host, url, hasMedia: hasMedia(tabId), lockRate: settings.lockRate, holdBoost: settings.holdBoost, holdBoostRate: settings.holdBoostRate, holdSkip: settings.holdSkip, singleKey: settings.singleKey, hoverWheel: settings.hoverWheel, skipSeconds: settings.skipSeconds, volumeStep: settings.volumeStep, keybinds: settings.keybinds, ...localSelection(tabId, sender.frameId ?? 0) };
+        if (message.type === 'context') return { enabled, host, url, hasMedia: hasMedia(tabId), lockRate: settings.lockRate, holdBoost: settings.holdBoost, holdBoostRate: settings.holdBoostRate, holdSkip: settings.holdSkip, singleKey: settings.singleKey, hoverWheel: settings.hoverWheel, fullscreenWheel: settings.fullscreenWheel, skipSeconds: settings.skipSeconds, volumeStep: settings.volumeStep, keybinds: settings.keybinds, ...localSelection(tabId, sender.frameId ?? 0) };
         if (message.type === 'rateLock') { showRateLock(tabId); return { ok: true }; }
         if (message.type === 'register' && sender.tab) {
           const frameId = sender.frameId ?? 0;

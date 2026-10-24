@@ -22,6 +22,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-while-playing
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-hidden-sites
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive wheel-direction
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive fullscreen-wheel
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -41,7 +42,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -3082,7 +3083,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -3348,6 +3349,189 @@ async function driveWheelDirection(context, dir, note) {
     return state;
   } finally {
     await settings?.close().catch(() => {});
+    await page.close().catch(() => {});
+  }
+}
+
+async function driveFullscreenWheel(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const near = expected => value => Math.abs(value - expected) < 0.02;
+  const page = await context.newPage();
+  let options;
+  const volume = () => page.locator('#media').evaluate(element => element.volume);
+  const scrollY = () => page.evaluate(() => window.scrollY);
+  const settle = async value => {
+    await page.locator('#media').evaluate((element, next) => { element.volume = next; element.muted = false; }, value);
+    await poll(volume, near(value), `应能把音量设成 ${value}`);
+    await page.waitForTimeout(400);
+  };
+  const hoverAt = async deltaY => {
+    const at = await centerOf(page.locator('#media'));
+    await page.mouse.move(at.x, at.y);
+    await page.mouse.wheel(0, deltaY);
+  };
+  const hover = async deltaY => {
+    await page.waitForTimeout(350);
+    await hoverAt(deltaY);
+  };
+  const fullscreenSwitch = () => options.getByRole('switch', { name: 'Only use the hover wheel in fullscreen', exact: true });
+  const setPseudo = async enabled => {
+    await page.evaluate(on => {
+      const video = document.querySelector('#media');
+      if (!(video instanceof HTMLVideoElement)) throw new Error('没有夹具视频');
+      const shell = document.getElementById('pseudo-shell');
+      if (on) {
+        if (shell) return;
+        const next = document.createElement('div');
+        next.id = 'pseudo-shell';
+        next.className = 'bpx-state-web-fullscreen';
+        next.style.cssText = 'position:fixed;inset:0;z-index:10000;background:#111;display:flex;align-items:center;justify-content:center;';
+        video.before(next);
+        next.append(video);
+        video.style.width = '100%';
+        video.style.height = '100%';
+        return;
+      }
+      if (!shell) return;
+      shell.replaceWith(video);
+      video.style.width = '640px';
+      video.style.height = '360px';
+    }, enabled);
+  };
+  try {
+    options = await context.newPage();
+    await options.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
+    const toggle = fullscreenSwitch();
+    await toggle.waitFor({ state: 'visible', timeout: 15_000 });
+    if (await toggle.getAttribute('aria-checked') !== 'false') throw new Error('全屏滚轮开关默认应关闭');
+    const hoverWheel = options.getByRole('switch', { name: 'Scroll over the main player to change volume', exact: true });
+    if (await hoverWheel.getAttribute('aria-checked') !== 'true') throw new Error('悬停滚轮应保持开启');
+    await options.getByText('Off by default, so scrolling over the main player still changes volume. When this is on, the bare wheel changes volume only while the page or the video is fullscreen, including a player that fills the window without browser fullscreen. Otherwise the bare wheel scrolls the page. Alt + wheel still changes volume outside fullscreen.', { exact: true }).waitFor({ state: 'visible' });
+    await options.locator('#shortcuts').screenshot({ path: path.join(dir, 'settings-default.png'), animations: 'disabled' });
+    note('fullscreen wheel defaults off');
+
+    await page.goto(`${origin}/keys`, { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await page.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+    });
+    await settle(0.5);
+    const scrollBefore = await scrollY();
+    await hover(-100);
+    const openVolume = await poll(volume, near(0.6), '开关关闭时悬停滚轮应加到 60%');
+    const scrollHeld = await scrollY();
+    if (scrollHeld !== scrollBefore) throw new Error(`开关关闭时页面滚动了 ${scrollBefore} -> ${scrollHeld}`);
+    await page.screenshot({ path: path.join(dir, 'fixture-default.png'), animations: 'disabled' });
+    note(`default volume=${openVolume} scroll=${scrollHeld}`);
+
+    await options.bringToFront();
+    await toggle.click();
+    await poll(stored, value => value.fullscreenWheel === true && value.hoverWheel !== false, '应只打开全屏滚轮开关');
+    if (await toggle.getAttribute('aria-checked') !== 'true') throw new Error('开关按下状态没有变成开');
+    await options.locator('#shortcuts').screenshot({ path: path.join(dir, 'settings-on.png'), animations: 'disabled' });
+    note('fullscreen wheel on');
+
+    await page.bringToFront();
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await poll(scrollY, value => value === 0, '应回到顶部');
+    await settle(0.6);
+    const loud = await volume();
+    await hover(120);
+    const scrolled = await poll(scrollY, value => value > 20, '非全屏时悬停裸滚轮应让页面往下走');
+    const held = await volume();
+    if (Math.abs(held - loud) > 0.02) throw new Error(`非全屏裸滚轮改了音量 ${loud} -> ${held}`);
+    await page.screenshot({ path: path.join(dir, 'fixture-scroll.png'), animations: 'disabled' });
+    note(`window scroll=${scrolled} volume=${held}`);
+
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await poll(scrollY, value => value === 0, 'Alt 之前应回到顶部');
+    await page.waitForTimeout(400);
+    const at = await centerOf(page.locator('#media'));
+    await page.mouse.move(at.x, at.y);
+    await page.keyboard.down('Alt');
+    try { await page.mouse.wheel(0, -100); }
+    finally { await page.keyboard.up('Alt'); }
+    const altVolume = await poll(volume, near(0.7), '非全屏时 Alt+滚轮仍应加到 70%');
+    const altScroll = await scrollY();
+    if (altScroll !== 0) throw new Error(`Alt+滚轮时页面滚动了 ${altScroll}`);
+    await page.screenshot({ path: path.join(dir, 'fixture-alt.png'), animations: 'disabled' });
+    note(`alt volume=${altVolume} scroll=${altScroll}`);
+
+    await setPseudo(true);
+    await page.waitForTimeout(400);
+    const pseudoBefore = await scrollY();
+    await hover(-100);
+    const pseudoVolume = await poll(volume, near(0.8), '网页全屏后悬停滚轮应加到 80%');
+    const pseudoScroll = await scrollY();
+    if (pseudoScroll !== pseudoBefore) throw new Error(`网页全屏时页面滚动了 ${pseudoBefore} -> ${pseudoScroll}`);
+    await page.screenshot({ path: path.join(dir, 'fixture-pseudo.png'), animations: 'disabled' });
+    note(`pseudo volume=${pseudoVolume} scroll=${pseudoScroll}`);
+
+    await setPseudo(false);
+    const exitBefore = await scrollY();
+    const exitLoud = await volume();
+    await hoverAt(120);
+    const exitScroll = await poll(scrollY, value => value > exitBefore + 20, '退出网页全屏后裸滚轮应立刻让页面往下走');
+    const exitVolume = await volume();
+    if (Math.abs(exitVolume - exitLoud) > 0.02) throw new Error(`退出全屏后裸滚轮改了音量 ${exitLoud} -> ${exitVolume}`);
+    await page.screenshot({ path: path.join(dir, 'fixture-exit.png'), animations: 'disabled' });
+    note(`pseudo exit scroll=${exitScroll} volume=${exitVolume}`);
+
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await poll(scrollY, value => value === 0, '全屏 API 之前应回到顶部');
+    await page.evaluate(() => {
+      const video = document.querySelector('#media');
+      if (!(video instanceof HTMLVideoElement)) throw new Error('没有夹具视频');
+      const button = document.createElement('button');
+      button.id = 'api-fullscreen';
+      button.type = 'button';
+      button.textContent = 'Enter fullscreen';
+      button.addEventListener('click', () => { void video.requestFullscreen(); });
+      document.body.append(button);
+    });
+    await page.locator('#api-fullscreen').click();
+    await poll(() => page.evaluate(() => document.fullscreenElement?.id ?? ''), value => value === 'media', '点击后视频应进入全屏');
+    await page.waitForTimeout(400);
+    const apiBefore = await scrollY();
+    await hover(-100);
+    const apiVolume = await poll(volume, near(0.9), '全屏 API 里悬停滚轮应加到 90%');
+    const apiScroll = await scrollY();
+    if (apiScroll !== apiBefore) throw new Error(`全屏 API 时页面滚动了 ${apiBefore} -> ${apiScroll}`);
+    await page.screenshot({ path: path.join(dir, 'fixture-api.png'), animations: 'disabled' });
+    note(`api volume=${apiVolume} scroll=${apiScroll}`);
+
+    await page.keyboard.press('Escape');
+    await poll(() => page.evaluate(() => document.fullscreenElement), value => !value, 'Escape 应退出全屏');
+    const apiExitBefore = await scrollY();
+    const apiExitLoud = await volume();
+    await hoverAt(120);
+    const apiExitScroll = await poll(scrollY, value => value > apiExitBefore + 20, '退出全屏 API 后裸滚轮应立刻让页面往下走');
+    const apiExitVolume = await volume();
+    if (Math.abs(apiExitVolume - apiExitLoud) > 0.02) throw new Error(`退出全屏 API 后裸滚轮改了音量 ${apiExitLoud} -> ${apiExitVolume}`);
+    await page.screenshot({ path: path.join(dir, 'fixture-api-exit.png'), animations: 'disabled' });
+    note(`api exit scroll=${apiExitScroll} volume=${apiExitVolume}`);
+
+    await options.bringToFront();
+    await toggle.click();
+    await poll(stored, value => value.fullscreenWheel !== true, '成功后应把开关关回去');
+    const state = {
+      ok: true,
+      openVolume,
+      scrolled,
+      altVolume,
+      pseudoVolume,
+      exitScroll,
+      apiVolume,
+      apiExitScroll,
+    };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await options?.close().catch(() => {});
     await page.close().catch(() => {});
   }
 }
