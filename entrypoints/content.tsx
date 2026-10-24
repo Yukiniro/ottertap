@@ -15,6 +15,7 @@ import { createExtensionClient } from '../lib/extension-client';
 import { defaultSettings, type Settings } from '../lib/types';
 import { bareHoverStage, hoverFullscreenActive } from '../lib/fullscreen-wheel';
 import { createHoverWheelGesture } from '../lib/hover-wheel';
+import { sidebarBlocksBareWheel } from '../lib/sidebar-wheel';
 import { FloatingController } from '../components/floating';
 import { RateHint, RateLockNotice } from '../components/rate-hint';
 import { ThemeProvider } from '../components/theme';
@@ -218,7 +219,8 @@ export default defineContentScript({
       const pointed = active && hover ? controller.hoverAt({ x: event.clientX, y: event.clientY }, lockedLocalId) : undefined;
       const target = pointed?.id;
       const bareStage = bareHoverStage(Boolean(pointed?.stage), source.fullscreenWheel, () => hoverFullscreenActive(window, { x: event.clientX, y: event.clientY }));
-      const bareTarget = hoverGesture(bareVolumeWheel(event, bareStage) ? target : undefined, event.timeStamp);
+      // Known chat and outline columns release only the unmodified hover wheel. Alt and Shift still use `target`.
+      const bareTarget = hoverGesture(bareVolumeWheel(event, bareStage) && !sidebarBlocksBareWheel(event) ? target : undefined, event.timeStamp);
       if (active) hotkeys.wheel(event, event.altKey ? target : bareTarget);
     };
     const onPageHide = () => {

@@ -23,6 +23,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-hidden-sites
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive wheel-direction
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive fullscreen-wheel
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive sidebar-ignore
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -42,7 +43,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -195,6 +196,7 @@ function routedHtml(pathname) {
   if (pathname === '/audio') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><audio id="media" aria-label="Fixture audio" src="${wav}" preload="auto"></audio></body></html>`;
   if (pathname === '/pip-off') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" aria-label="Fixture video" src="${wav}" preload="auto" playsinline disablepictureinpicture style="display:block;width:640px;height:360px;margin:48px"></video></body></html>`;
   if (pathname === '/unseekable') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Unseekable</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" aria-label="Unseekable video" preload="none" style="display:block;width:640px;height:360px;margin:48px"></video></body></html>`;
+  if (pathname === '/chat') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><div id="stage" style="position:relative;width:960px;height:540px;margin:24px"><video id="media" aria-label="Main player" src="${wav}" preload="auto" playsinline loop style="display:block;width:960px;height:540px;background:#111"></video><div id="chat" data-test-selector="chat-scrollable-area__message-container" class="chat-scrollable-area__message-container" style="position:absolute;top:0;right:0;width:280px;height:540px;overflow:auto;z-index:2;background:#fff;color:#111"><div style="height:2400px;padding:12px">live chat</div></div><aside id="outline" class="VPDocAside" style="position:absolute;top:16px;left:16px;width:180px;height:160px;overflow:auto;z-index:2;background:#fff;color:#111"><div style="height:800px;padding:8px">outline</div></aside><div id="overlay" style="position:absolute;left:16px;bottom:16px;width:140px;height:64px;z-index:2;background:#ddd">notes</div></div></body></html>`;
   return null;
 }
 
@@ -464,6 +466,94 @@ async function driveWheelVolume(context, dir, note) {
     const alt = await poll(() => page.locator('#media').evaluate(element => element.volume), value => Math.abs(value - 0.6) < 0.02, '关闭悬停后 Alt+滚轮仍应调音量');
     note(`hover off bare ${bare} alt ${alt}`);
     const state = { ok: true, preview: afterPreview, main: { volume: mainVolume, scrollY: mainScroll }, card: { volume: cardVolume, scrollY: cardScroll, alt: cardAlt }, hoverOff: { bare, alt } };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally { await page.close(); }
+}
+
+async function driveSidebarIgnore(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const page = await context.newPage();
+  const near = expected => value => Math.abs(value - expected) < 0.02;
+  const volume = () => page.locator('#media').evaluate(element => element.volume);
+  const chatScroll = () => page.locator('#chat').evaluate(element => element.scrollTop);
+  const outlineScroll = () => page.locator('#outline').evaluate(element => element.scrollTop);
+  const scrollY = () => page.evaluate(() => window.scrollY);
+  try {
+    await page.goto(`${origin}/chat`, { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await page.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+      element.muted = true;
+      await element.play();
+      element.muted = false;
+      element.volume = 0.5;
+    });
+    await poll(async () => page.locator('#media').evaluate(element => ({ paused: element.paused, muted: element.muted, volume: element.volume })), value => value.paused === false && value.muted === false && near(0.5)(value.volume), '主画面应有声播放');
+    const stage = await page.locator('#media').boundingBox();
+    if (!stage || stage.width * 3 < 1280 || stage.height * 3 < 720) throw new Error(`主画面不够大 ${JSON.stringify(stage)}`);
+    const chatAt = await centerOf(page.locator('#chat'));
+    if (chatAt.x <= stage.x || chatAt.x >= stage.x + stage.width) throw new Error('聊天应盖在主画面上');
+    await page.mouse.move(chatAt.x, chatAt.y);
+    await page.waitForTimeout(350);
+    await page.screenshot({ path: path.join(dir, 'chat-before.png'), animations: 'disabled' });
+    await page.mouse.wheel(0, 160);
+    const chatMoved = await poll(chatScroll, value => value > 20, '聊天上的裸滚轮应滚动列表');
+    const chatVolume = await volume();
+    if (!near(0.5)(chatVolume)) throw new Error(`聊天上的裸滚轮改了音量 ${chatVolume}`);
+    if (await scrollY() !== 0) throw new Error('聊天滚动时页面也动了');
+    await page.screenshot({ path: path.join(dir, 'chat-scrolled.png'), animations: 'disabled' });
+    note(`chat scrollTop ${chatMoved} volume ${chatVolume}`);
+
+    const outlineAt = await centerOf(page.locator('#outline'));
+    await page.mouse.move(outlineAt.x, outlineAt.y);
+    await page.waitForTimeout(350);
+    await page.mouse.wheel(0, 120);
+    const outlineMoved = await poll(outlineScroll, value => value > 20, '大纲上的裸滚轮应滚动大纲');
+    const outlineVolume = await volume();
+    if (!near(0.5)(outlineVolume)) throw new Error(`大纲上的裸滚轮改了音量 ${outlineVolume}`);
+    if (await chatScroll() !== chatMoved) throw new Error('大纲滚动带动了聊天');
+    await page.screenshot({ path: path.join(dir, 'outline-scrolled.png'), animations: 'disabled' });
+    note(`outline scrollTop ${outlineMoved} volume ${outlineVolume}`);
+
+    await page.mouse.move(stage.x + stage.width / 2, stage.y + stage.height / 2);
+    await page.waitForTimeout(350);
+    await page.mouse.wheel(0, -100);
+    const playerVolume = await poll(volume, near(0.6), '主画面上的裸滚轮应调音量');
+    if (await scrollY() !== 0) throw new Error('主画面上的滚轮滚动了页面');
+    if (await chatScroll() !== chatMoved) throw new Error('主画面滚轮带动了聊天');
+    await page.screenshot({ path: path.join(dir, 'player-after.png'), animations: 'disabled' });
+    note(`player volume ${playerVolume}`);
+
+    const overlayAt = await centerOf(page.locator('#overlay'));
+    await page.mouse.move(overlayAt.x, overlayAt.y);
+    await page.waitForTimeout(350);
+    await page.mouse.wheel(0, -100);
+    const overlayVolume = await poll(volume, near(0.7), '认不出的叠层仍应按主画面调音');
+    await page.screenshot({ path: path.join(dir, 'overlay-after.png'), animations: 'disabled' });
+    note(`overlay volume ${overlayVolume}`);
+
+    const chatAltAt = await centerOf(page.locator('#chat'));
+    await page.mouse.move(chatAltAt.x, chatAltAt.y);
+    await page.waitForTimeout(350);
+    await page.keyboard.down('Alt');
+    try { await page.mouse.wheel(0, -100); }
+    finally { await page.keyboard.up('Alt'); }
+    const altVolume = await poll(volume, near(0.8), '聊天上的 Alt+滚轮仍应调音量');
+    if (await chatScroll() !== chatMoved) throw new Error('Alt+滚轮滚动了聊天');
+    await page.screenshot({ path: path.join(dir, 'chat-alt.png'), animations: 'disabled' });
+    note(`chat alt volume ${altVolume}`);
+
+    await page.keyboard.down('Shift');
+    try { await page.mouse.wheel(0, -100); }
+    finally { await page.keyboard.up('Shift'); }
+    const shiftVolume = await poll(volume, near(1), '聊天上的 Shift+滚轮仍应按粗调步长调音');
+    if (await chatScroll() !== chatMoved) throw new Error('Shift+滚轮滚动了聊天');
+    if (await scrollY() !== 0) throw new Error('修饰键滚轮滚动了页面');
+    await page.screenshot({ path: path.join(dir, 'chat-shift.png'), animations: 'disabled' });
+    note(`chat shift volume ${shiftVolume}`);
+    const state = { ok: true, chat: { scrollTop: chatMoved, volume: chatVolume }, outline: { scrollTop: outlineMoved, volume: outlineVolume }, player: playerVolume, overlay: overlayVolume, alt: altVolume, shift: shiftVolume };
     await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
     return state;
   } finally { await page.close(); }
@@ -3083,7 +3173,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });

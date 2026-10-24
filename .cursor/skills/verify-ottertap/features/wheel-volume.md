@@ -58,3 +58,7 @@ pnpm exec playwright test e2e/smoke.spec.ts -g "Alt\\+滚轮向上从 95%"
 ## Shift 粗调
 
 按住 Shift 在主播放器上滚动，或 Alt+Shift 在任意位置滚动，用「Coarse step」而不是默认的 10%。不在主播放器上、也没有按 Alt 时，Shift+滚轮仍留给页面。见 [coarse-step.md](coarse-step.md)。
+
+## 侧栏和大纲
+
+指针在常见直播聊天或文档大纲上时，裸滚轮滚动那个列表，不调音量。主画面上仍调音。Alt+滚轮和 Shift 粗调即使指针在这些区域里也照常调音。认不出的容器保持主播放区规则。见 [sidebar-ignore.md](sidebar-ignore.md)。

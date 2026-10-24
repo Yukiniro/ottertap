@@ -136,6 +136,7 @@ const pages: Record<string, string> = {
   '/keys': documentHtml(`<video id="media" src="${wav}" preload="auto" playsinline style="display:block;width:640px;height:360px;margin-top:320px"></video><input id="field" aria-label="Field" style="margin-top:1200px">`),
   '/feed': documentHtml(`<video id="preview" aria-label="Feed preview" src="${wav}" preload="auto" playsinline loop style="display:block;width:240px;height:135px"></video><video id="media" aria-label="Main player" src="${wav}" preload="auto" playsinline loop style="display:block;width:640px;height:360px;margin-top:24px"></video><div style="height:1600px"></div>`),
   '/cards': documentHtml(`<video id="card" aria-label="Feed card" src="${wav}" preload="auto" playsinline loop style="display:block;width:240px;height:135px"></video><div style="height:1600px"></div>`),
+  '/chat': documentHtml(`<div id="stage" style="position:relative;width:960px;height:540px;margin:24px"><video id="media" aria-label="Main player" src="${wav}" preload="auto" playsinline loop style="display:block;width:960px;height:540px;background:#111"></video><div id="chat" data-test-selector="chat-scrollable-area__message-container" class="chat-scrollable-area__message-container" style="position:absolute;top:0;right:0;width:280px;height:540px;overflow:auto;z-index:2;background:#fff;color:#111"><div style="height:2400px;padding:12px">live chat</div></div><aside id="outline" class="VPDocAside" style="position:absolute;top:16px;left:16px;width:180px;height:160px;overflow:auto;z-index:2;background:#fff;color:#111"><div style="height:800px;padding:8px">outline</div></aside><div id="overlay" style="position:absolute;left:16px;bottom:16px;width:140px;height:64px;z-index:2;background:#ddd">notes</div></div>`),
   '/pip-off': documentHtml(`<video id="media" src="${wav}" preload="auto" playsinline disablepictureinpicture></video>`),
   '/other': documentHtml(`<audio id="media" src="${wav}" preload="auto"></audio>`, 'Other tab'),
   '/stereo': documentHtml(`<audio id="media" src="${tone}" preload="auto" loop></audio>`),
@@ -692,6 +693,74 @@ test('列表小视频即使有声播放也不拦截页面滚动，Alt+滚轮仍�
     finally { await page.keyboard.up('Alt'); }
     await expect.poll(() => card.evaluate((element: HTMLMediaElement) => element.volume), '小卡片上 Alt+滚轮仍调音量').toBeCloseTo(0.6, 2);
     expect(await page.evaluate(() => window.scrollY), 'Alt+滚轮不滚动页面').toBe(0);
+  });
+});
+
+test('盖住主画面的侧栏聊天和文档大纲上，裸滚轮滚动列表且不改音量', async () => {
+  await withPage(async page => {
+    await openFixture(page, '/chat');
+    const media = page.locator('#media');
+    const chat = page.locator('#chat');
+    const outline = page.locator('#outline');
+    const overlay = page.locator('#overlay');
+    await expect.poll(() => media.evaluate((element: HTMLMediaElement) => element.readyState)).toBeGreaterThanOrEqual(1);
+    const stage = await media.boundingBox();
+    if (!stage) throw new Error('主画面没有位置');
+    expect(stage.width * 3).toBeGreaterThanOrEqual(1280);
+    expect(stage.height * 3).toBeGreaterThanOrEqual(720);
+    await media.evaluate(async (element: HTMLMediaElement) => {
+      element.muted = true;
+      await element.play();
+      element.muted = false;
+      element.volume = 0.5;
+    });
+    await expect.poll(() => media.evaluate((element: HTMLMediaElement) => ({ paused: element.paused, muted: element.muted, volume: element.volume }))).toEqual({ paused: false, muted: false, volume: 0.5 });
+    const chatBox = await chat.boundingBox();
+    if (!chatBox) throw new Error('聊天没有位置');
+    expect(chatBox.x).toBeGreaterThan(stage.x);
+    expect(chatBox.x + chatBox.width / 2).toBeLessThan(stage.x + stage.width);
+    await page.mouse.move(chatBox.x + 36, chatBox.y + chatBox.height / 2);
+    await page.waitForTimeout(350);
+    await page.mouse.wheel(0, 160);
+    await expect.poll(() => chat.evaluate((element: HTMLElement) => element.scrollTop), '聊天上的裸滚轮应滚动列表').toBeGreaterThan(20);
+    expect(await media.evaluate((element: HTMLMediaElement) => element.volume), '聊天上的裸滚轮不改音量').toBeCloseTo(0.5, 2);
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    const chatScroll = await chat.evaluate((element: HTMLElement) => element.scrollTop);
+    const outlineBox = await outline.boundingBox();
+    if (!outlineBox) throw new Error('大纲没有位置');
+    await page.mouse.move(outlineBox.x + outlineBox.width / 2, outlineBox.y + outlineBox.height / 2);
+    await page.waitForTimeout(350);
+    await page.mouse.wheel(0, 120);
+    await expect.poll(() => outline.evaluate((element: HTMLElement) => element.scrollTop), '大纲上的裸滚轮应滚动大纲').toBeGreaterThan(20);
+    expect(await media.evaluate((element: HTMLMediaElement) => element.volume)).toBeCloseTo(0.5, 2);
+    expect(await chat.evaluate((element: HTMLElement) => element.scrollTop)).toBe(chatScroll);
+    await page.waitForTimeout(350);
+    await page.mouse.move(stage.x + stage.width / 2, stage.y + stage.height / 2);
+    await page.mouse.wheel(0, -100);
+    await expect.poll(() => media.evaluate((element: HTMLMediaElement) => element.volume), '主画面上的裸滚轮仍调音量').toBeCloseTo(0.6, 2);
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    expect(await chat.evaluate((element: HTMLElement) => element.scrollTop)).toBe(chatScroll);
+    const overlayBox = await overlay.boundingBox();
+    if (!overlayBox) throw new Error('未知叠层没有位置');
+    await page.waitForTimeout(350);
+    await page.mouse.move(overlayBox.x + overlayBox.width / 2, overlayBox.y + overlayBox.height / 2);
+    await page.mouse.wheel(0, -100);
+    await expect.poll(() => media.evaluate((element: HTMLMediaElement) => element.volume), '认不出的叠层仍按主画面调音').toBeCloseTo(0.7, 2);
+    const chatAgain = await chat.boundingBox();
+    if (!chatAgain) throw new Error('聊天没有位置');
+    await page.mouse.move(chatAgain.x + 36, chatAgain.y + 80);
+    await page.waitForTimeout(350);
+    await page.keyboard.down('Alt');
+    try { await page.mouse.wheel(0, -100); }
+    finally { await page.keyboard.up('Alt'); }
+    await expect.poll(() => media.evaluate((element: HTMLMediaElement) => element.volume), '聊天上的 Alt+滚轮仍调音量').toBeCloseTo(0.8, 2);
+    expect(await chat.evaluate((element: HTMLElement) => element.scrollTop), 'Alt+滚轮不滚动聊天').toBe(chatScroll);
+    await page.keyboard.down('Shift');
+    try { await page.mouse.wheel(0, -100); }
+    finally { await page.keyboard.up('Shift'); }
+    await expect.poll(() => media.evaluate((element: HTMLMediaElement) => element.volume), '聊天上的 Shift+滚轮仍按粗调步长调音').toBeCloseTo(1, 2);
+    expect(await chat.evaluate((element: HTMLElement) => element.scrollTop), 'Shift+滚轮不滚动聊天').toBe(chatScroll);
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
   });
 });
 

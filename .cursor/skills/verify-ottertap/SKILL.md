@@ -53,7 +53,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs doctor
 
 ## Drive
 
-脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、低音量滚轮细步长（见 `features/fine-wheel.md`）、Shift 粗调步长（见 `features/coarse-step.md`）、倍速增减步长（见 `features/rate-step.md`）、扩展命令画中画（见 `features/extension-pip.md`）、按住临时加速（见 `features/hold-boost.md`）、同键短按跳长按加速（见 `features/hold-skip-combo.md`）、逐帧（见 `features/frame-step.md`）、页内快捷键改键（见 `features/hotkey-remap.md`）、浮动药丸倍速（见 `features/floating-speed.md`）、浮动药丸播放跳转（见 `features/floating-playback.md`）、浮动入口旁注（见 `features/floating-entry-note.md`）、从音量药丸打开弹出面板（见 `features/floating-open-panel.md`）、仅在播放时显示浮动入口（见 `features/floating-while-playing.md`）和滚轮方向（见 `features/wheel-direction.md`）。仅全屏时悬停滚轮见 `features/fullscreen-wheel.md`。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
+脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、低音量滚轮细步长（见 `features/fine-wheel.md`）、Shift 粗调步长（见 `features/coarse-step.md`）、倍速增减步长（见 `features/rate-step.md`）、扩展命令画中画（见 `features/extension-pip.md`）、按住临时加速（见 `features/hold-boost.md`）、同键短按跳长按加速（见 `features/hold-skip-combo.md`）、逐帧（见 `features/frame-step.md`）、页内快捷键改键（见 `features/hotkey-remap.md`）、浮动药丸倍速（见 `features/floating-speed.md`）、浮动药丸播放跳转（见 `features/floating-playback.md`）、浮动入口旁注（见 `features/floating-entry-note.md`）、从音量药丸打开弹出面板（见 `features/floating-open-panel.md`）、仅在播放时显示浮动入口（见 `features/floating-while-playing.md`）和滚轮方向（见 `features/wheel-direction.md`）。仅全屏时悬停滚轮见 `features/fullscreen-wheel.md`。侧栏聊天和文档大纲忽略见 `features/sidebar-ignore.md`。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
 
 ```bash
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
@@ -76,6 +76,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-open-pane
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-while-playing
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive wheel-direction
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive fullscreen-wheel
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive sidebar-ignore
 ```
 
 `skip-step` 在设置页把 `Skip step` 改成 `30s` 并打开 `Single-key mode`，再看弹出面板进退按钮名和页内 `L` / `J` / `→` / `←` 让 `/long` 夹具的 `currentTime` 跟着步长变；它会改写 profile，同一会话只能跑一次。步骤见 `features/skip-step.md`。
@@ -107,6 +108,8 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive fullscreen-wheel
 `wheel-direction` 确认设置页 `Wheel direction` 默认是 `Up increases`，悬停向上滚轮加大音量，播放器外向下滚轮仍让页面往下走。改成 `Down increases` 后不刷新页面，同一向上手势改为减小音量，Alt+向上滚轮同样减小，向下滚轮改为加大；播放器外的向下滚轮仍让页面往下走。再改回 `Up increases`，同一向上手势重新加大。它会改写 profile，同一会话只能跑一次。步骤见 `features/wheel-direction.md`。
 
 `fullscreen-wheel` 确认 `Only use the hover wheel in fullscreen` 默认关闭时，主播放区裸滚轮仍调音量。打开后，非全屏的裸滚轮滚动页面且不改音量，Alt+滚轮仍调音量；网页全屏和 Fullscreen API 里悬停可调，退出后下一格立刻交还页面。成功时把开关关回去。它会改写 profile，同一会话不要接在改过悬停滚轮或音量步长的旅程后面。步骤见 `features/fullscreen-wheel.md`。
+
+`sidebar-ignore` 在 `/chat` 上确认盖住主画面的聊天和大纲能滚动、音量不变，画面中心和认不出的叠层仍能调音，聊天上的 Alt+滚轮和 Shift 粗调仍调音且列表不动。它不改 profile。步骤见 `features/sidebar-ignore.md`。
 
 `floating-playback` 展开 `/long` 上的药丸，确认音量方向键和加快按钮仍可用，再点播放和暂停，并按 `Skip step` 前进后退。把步长改成 `30s` 后跳 30 秒；打开 `Scale skip with speed` 后，2× 时药丸和弹出面板都是 20 秒。`/unseekable` 上跳转按钮禁用并有说明。它会改写 profile，成功时恢复，同一会话只能跑一次，不能接在 `drive skip-step` 或 `drive skip-with-rate` 后面。步骤见 `features/floating-playback.md`。
 
@@ -195,6 +198,8 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive fullscreen-wheel
 
 `drive fullscreen-wheel` 写入 `fullscreen-wheel/`：`settings-default.png`、`fixture-default.png`、`settings-on.png`、`fixture-scroll.png`、`fixture-alt.png`、`fixture-pseudo.png`、`fixture-exit.png`、`fixture-api.png`、`fixture-api-exit.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
 
+`drive sidebar-ignore` 写入 `sidebar-ignore/`：`chat-before.png`、`chat-scrolled.png`、`outline-scrolled.png`、`player-after.png`、`overlay-after.png`、`chat-alt.png`、`chat-shift.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。它不改 profile。步骤见 `features/sidebar-ignore.md`。
+
 `launch` 成功后还会留下 `launch-probe.png`（浮动入口已经出现）。失败时同目录可能有 `error.txt`，那不算通过。
 
 换了 `OTTERTAP_VERIFY_ID` 时，文件名变成 `<id>-popup-playback/`。不要把这些截图提交进仓库。
@@ -236,6 +241,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-open-pane
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-while-playing
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive wheel-direction
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive fullscreen-wheel
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive sidebar-ignore
 node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 ```
 
