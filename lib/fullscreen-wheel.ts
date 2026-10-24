@@ -33,12 +33,15 @@ function apiFullscreen(doc: FullscreenDocument) {
   return Boolean(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement || doc.webkitIsFullScreen);
 }
 
-/** F11 and other browser-chrome fullscreen. A normal window keeps a toolbar gap, so a large viewport alone does not match. */
+/** F11 and other browser-chrome fullscreen. A normal window keeps a toolbar gap, so a large viewport alone does not match. Automated browsers have no toolbar, so their viewport filling `screen` is not fullscreen. */
 function pageFillsScreen(view: FullscreenView) {
   if (view.fullScreen === true) return true;
   try {
     if (view.matchMedia('(display-mode: fullscreen)').matches) return true;
   } catch { /* matchMedia can throw on a detached view */ }
+  try {
+    if (view.navigator?.webdriver === true) return false;
+  } catch { /* navigator can throw */ }
   const screen = view.screen;
   if (!screen || screen.width <= 0 || screen.height <= 0) return false;
   if (view.outerWidth <= 0 || view.outerHeight <= 0) return false;

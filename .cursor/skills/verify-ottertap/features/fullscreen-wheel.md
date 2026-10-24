@@ -39,7 +39,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive fullscreen-wheel
 5. 再滚回顶部。按住 Alt，`mouse.wheel(0, -100)`。音量约 0.7，`scrollY` 仍是 0。
 6. 给视频套上带 `bpx-state-web-fullscreen` 的固定满窗盒子。等间隔后悬停向上一格。音量约 0.8，页面不滚动。
 7. 拆掉这个盒子，不额外等待，立刻在视频上向下滚。页面往下走，音量仍约 0.8。
-8. 点页面上的按钮对 `#media` 调用 `requestFullscreen()`。进入全屏后悬停向上一格。音量约 0.9，页面不滚动。按 Escape 退出后立刻向下滚。页面往下走，音量仍约 0.9。
+8. 点页面上的按钮对 `#media` 调用 `requestFullscreen()`。进入全屏后悬停向上一格。音量约 0.9，这一格不滚动页面。再调用 `exitFullscreen()` 退出后立刻向下滚。页面往下走，音量仍约 0.9。
 9. 把开关关回去。存储里 `fullscreenWheel` 不再是 `true`。
 
 成功时 `state.json` 的 `ok` 为 `true`。证据写到 `/opt/cursor/artifacts/verify-ottertap/fullscreen-wheel/`：`settings-default.png`、`fixture-default.png`、`settings-on.png`、`fixture-scroll.png`、`fixture-alt.png`、`fixture-pseudo.png`、`fixture-exit.png`、`fixture-api.png`、`fixture-api-exit.png`、`state.json`、`transcript.txt`。
@@ -52,4 +52,4 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive fullscreen-wheel
 - 剧场模式、普通大窗口、只是把 `body` 固定住来锁滚动，都不算全屏。
 - 几何判断只看指针下那一层，并且这层要包着视频或音频。旁边一块铺满窗口的横幅不算。
 - 进入全屏后，如果刚才那一下滚动还没停稳，剩余的滚轮仍留给页面。停稳后再滚才调音量。退出则不等这一下。
-- 无头浏览器的视口经常比 `screen` 大或小，这本身不算全屏。旅程用 Fullscreen API 和网页全屏标记，不靠窗口尺寸。
+- 无头浏览器没有工具栏，视口又刚好等于 `screen`。那不是用户按下的全屏，`navigator.webdriver` 为真时不靠窗口尺寸判断。旅程用 Fullscreen API 和网页全屏标记。

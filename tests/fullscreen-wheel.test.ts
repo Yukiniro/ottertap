@@ -97,7 +97,11 @@ test('铺满屏幕且没有工具栏才算浏览器全屏，普通大窗口不�
   Object.defineProperty(window.screen, 'height', { configurable: true, value: 1080 });
   assert.equal(active(window), false, '工具栏还在，只是窗口很大');
   define('outerHeight', 1080);
+  Object.defineProperty(window.navigator, 'webdriver', { configurable: true, value: false });
   assert.equal(active(window), true, '视口铺满屏幕且没有工具栏');
+  Object.defineProperty(window.navigator, 'webdriver', { configurable: true, value: true });
+  assert.equal(active(window), false, '自动化浏览器的无边框窗口不是用户进入的全屏');
+  Object.defineProperty(window.navigator, 'webdriver', { configurable: true, value: false });
   define('innerWidth', 1280);
   define('innerHeight', 720);
   define('outerWidth', 1280);

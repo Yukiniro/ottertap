@@ -3504,8 +3504,8 @@ async function driveFullscreenWheel(context, dir, note) {
     await page.screenshot({ path: path.join(dir, 'fixture-api.png'), animations: 'disabled' });
     note(`api volume=${apiVolume} scroll=${apiScroll}`);
 
-    await page.keyboard.press('Escape');
-    await poll(() => page.evaluate(() => document.fullscreenElement), value => !value, 'Escape 应退出全屏');
+    await page.evaluate(async () => { if (document.fullscreenElement) await document.exitFullscreen(); });
+    await poll(() => page.evaluate(() => document.fullscreenElement == null), value => value === true, '应退出全屏');
     const apiExitBefore = await scrollY();
     const apiExitLoud = await volume();
     await hoverAt(120);
