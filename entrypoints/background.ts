@@ -4,7 +4,7 @@ import { extensionStore } from '../lib/extension-store';
 import { createSitePrefSession, isSiteEnabled, withRememberedCommand } from '../lib/settings';
 import { frameFailureKey, isMediaCommand, pipFailureKey } from '../lib/media';
 import { actionForCommand } from '../lib/commands';
-import { actionHintKey, applySkipStep, applyVolumeStep, isHotkeyAction, planHotkey, shownPercent, type HotkeyAction } from '../lib/hotkey';
+import { actionHintKey, applySkipStep, applyVolumeStep, directedWheelNotches, isHotkeyAction, planHotkey, shownPercent, type HotkeyAction } from '../lib/hotkey';
 import { nextRate } from '../lib/rate';
 import { steppedVolume, volumeStepForWheel } from '../lib/volume';
 import { volumeBadgeColor, volumeBadgeFromReports, volumeBadgeTtlMs } from '../lib/volume-badge';
@@ -274,7 +274,7 @@ export default defineBackground(() => {
     let delta = 'delta' in action ? action.delta : 0;
     if ('notches' in action) {
       const settings = await currentSettings();
-      delta = action.notches * volumeStepForWheel(previous, settings.volumeStep, settings.fineWheel);
+      delta = directedWheelNotches(action.notches, settings.wheelDirection) * volumeStepForWheel(previous, settings.volumeStep, settings.fineWheel);
     }
     gesture.percent = steppedVolume(previous, delta, gesture.max);
     gesture.at = Date.now();

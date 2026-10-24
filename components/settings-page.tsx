@@ -19,7 +19,7 @@ import { defaultRatePresets, formatRate, maxRatePresets, parseRatePreset, sameRa
 import { channelLabel } from '../lib/media';
 import { defaultKeybinds, keybindOwner, keyLabel, recordedKey, sameKeybinds, type KeybindAction, type KeybindOwner } from '../lib/keybinds';
 import { downloadSettingsBackup, parseSettingsBackup, readExtensionVersion, settingsBackupErrors, type SettingsBackupError } from '../lib/settings-backup';
-import { forgetSitePref, isFloatingNote, isRateStep, isSkipSeconds, isVolumeStep, normalizeDomain } from '../lib/settings';
+import { forgetSitePref, isFloatingNote, isRateStep, isSkipSeconds, isVolumeStep, isWheelDirection, normalizeDomain } from '../lib/settings';
 import { rateSteps, skipSteps, volumeSteps, type Settings, type SitePref } from '../lib/types';
 import { useSettingsAtoms } from './theme';
 
@@ -217,7 +217,7 @@ function Row({ title, description, titleId, children }: { title: string; descrip
 }
 
 export function SettingsPage({ back }: { back?: () => void }) {
-  const { themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, floatingHiddenSitesAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, fineWheelAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, floatingHiddenSitesAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, fineWheelAtom, wheelDirectionAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const theme = useAtomValue(themeAtom);
   const floating = useAtomValue(floatingAtom);
   const floatingNote = useAtomValue(floatingNoteAtom);
@@ -234,6 +234,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
   const skipWithRate = useAtomValue(skipWithRateAtom);
   const volumeStep = useAtomValue(volumeStepAtom);
   const fineWheel = useAtomValue(fineWheelAtom);
+  const wheelDirection = useAtomValue(wheelDirectionAtom);
   const rateStep = useAtomValue(rateStepAtom);
   const siteMode = useAtomValue(siteModeAtom);
   const sites = useAtomValue(sitesAtom);
@@ -443,6 +444,14 @@ export function SettingsPage({ back }: { back?: () => void }) {
             <div className="mt-3">
               <SwitchRow id="settings-fine-wheel" label={i18n.t('fineWheel')} description={i18n.t('fineWheelDescription')} checked={fineWheel} disabled={disabled} onChange={checked => void save({ fineWheel: checked })} />
             </div>
+            <div className="mt-4 rounded-lg bg-secondary/60 px-3 py-3">
+              <h3 id="wheel-direction-label" className="text-sm font-medium">{i18n.t('wheelDirection')}</h3>
+              <ToggleGroup id="settings-wheel-direction" aria-labelledby="wheel-direction-label" spacing={1} className="mt-3 grid h-auto w-full grid-cols-2 rounded-lg bg-background/80 p-1" value={[wheelDirection]} disabled={disabled} onValueChange={value => { const next = value[0]; if (isWheelDirection(next)) void save({ wheelDirection: next }); }}>
+                <ToggleGroupItem value="up" className="h-8 rounded-md border-0 px-2.5 text-xs text-muted-foreground shadow-none aria-pressed:bg-card aria-pressed:font-semibold aria-pressed:text-foreground aria-pressed:shadow-sm">{i18n.t('wheelDirectionUp')}</ToggleGroupItem>
+                <ToggleGroupItem value="down" className="h-8 rounded-md border-0 px-2.5 text-xs text-muted-foreground shadow-none aria-pressed:bg-card aria-pressed:font-semibold aria-pressed:text-foreground aria-pressed:shadow-sm">{i18n.t('wheelDirectionDown')}</ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+            <p className="mt-2 text-sm leading-5 text-muted-foreground">{i18n.t('wheelDirectionDescription')}</p>
           </div>
           <div className="mt-4">
             <div className="flex flex-col gap-3 rounded-lg bg-secondary/60 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">

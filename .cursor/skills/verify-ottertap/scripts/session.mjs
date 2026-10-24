@@ -20,6 +20,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-open-panel
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-while-playing
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-hidden-sites
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive wheel-direction
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -39,7 +40,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -2915,7 +2916,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -3056,6 +3057,133 @@ async function doctor() {
   if (!live.serviceWorker.startsWith(`chrome-extension://${live.extensionId}/`)) problems.push(`service worker 地址异常：${live.serviceWorker}`);
   if (problems.length) throw new Error(problems.join('\n'));
   console.log(`ottertap-verify doctor ok id=${id} pid=${session.pid} control=127.0.0.1:${session.controlPort} extension=${live.extensionId} version=${live.version} language=${live.uiLanguage} profile=${live.profileDir}`);
+}
+
+async function driveWheelDirection(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const near = expected => value => Math.abs(value - expected) < 0.02;
+  const page = await context.newPage();
+  let settings;
+  const volume = () => page.locator('#media').evaluate(element => element.volume);
+  const scrollY = () => page.evaluate(() => window.scrollY);
+  const settle = async value => {
+    await page.locator('#media').evaluate((element, next) => { element.volume = next; element.muted = false; }, value);
+    await poll(volume, near(value), `应能把音量设成 ${value}`);
+    await page.waitForTimeout(400);
+  };
+  const hover = async deltaY => {
+    const at = await centerOf(page.locator('#media'));
+    await page.mouse.move(at.x, at.y);
+    await page.waitForTimeout(350);
+    await page.mouse.wheel(0, deltaY);
+  };
+  const alt = async deltaY => {
+    const at = await centerOf(page.locator('#media'));
+    await page.mouse.move(at.x, at.y);
+    await page.keyboard.down('Alt');
+    try { await page.mouse.wheel(0, deltaY); }
+    finally { await page.keyboard.up('Alt'); }
+  };
+  const scrollPage = async () => {
+    const box = await page.locator('#media').boundingBox();
+    if (!box) throw new Error('视频没有位置');
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height + 80);
+    await page.waitForTimeout(350);
+    const before = await scrollY();
+    const loud = await volume();
+    await page.mouse.wheel(0, 120);
+    const after = await poll(scrollY, value => value > before + 20, '视频外向下滚轮应让页面往下走');
+    const held = await volume();
+    if (Math.abs(held - loud) > 0.02) throw new Error(`视频外滚动改了音量 ${loud} -> ${held}`);
+    return { before, after, held };
+  };
+  try {
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#playback`, { waitUntil: 'domcontentloaded' });
+    const group = settings.getByRole('group', { name: 'Wheel direction' });
+    await group.waitFor({ state: 'visible', timeout: 15_000 });
+    const up = group.getByRole('button', { name: 'Up increases', exact: true });
+    const down = group.getByRole('button', { name: 'Down increases', exact: true });
+    if (await up.getAttribute('aria-pressed') !== 'true') throw new Error('滚轮方向默认应是向上增大');
+    if (await down.getAttribute('aria-pressed') !== 'false') throw new Error('向下增大默认不应按下');
+    await settings.getByText('Choose whether scrolling up or scrolling down raises the volume. Only the wheel over the main player and Alt + wheel follow this. The page still scrolls the usual way. Arrow keys, extension commands, and the volume slider stay as they are. Up increases is the default.', { exact: true }).waitFor({ state: 'visible' });
+    await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-up.png'), animations: 'disabled' });
+    note('wheel direction defaults to up');
+
+    await page.goto(`${origin}/keys`, { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await page.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+    });
+    await settle(0.5);
+    const scrollBefore = await scrollY();
+    await hover(-100);
+    const upVolume = await poll(volume, near(0.6), '默认向上滚轮应加到 60%');
+    const scrollHeld = await scrollY();
+    if (scrollHeld !== scrollBefore) throw new Error(`悬停调音时页面滚动了 ${scrollBefore} -> ${scrollHeld}`);
+    await page.screenshot({ path: path.join(dir, 'fixture-up.png'), animations: 'disabled' });
+    note(`default up volume=${upVolume} scroll=${scrollHeld}`);
+
+    const pageDown = await scrollPage();
+    await page.screenshot({ path: path.join(dir, 'page-scroll-up.png'), animations: 'disabled' });
+    note(`page scroll while up ${pageDown.before}->${pageDown.after} volume=${pageDown.held}`);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await poll(scrollY, value => value === 0, '应滚回顶部');
+    await page.waitForTimeout(400);
+
+    await settings.bringToFront();
+    await down.click();
+    await poll(stored, value => value.wheelDirection === 'down', '应改成向下增大');
+    if (await up.getAttribute('aria-pressed') !== 'false' || await down.getAttribute('aria-pressed') !== 'true') throw new Error('按下状态没有跟着选项变');
+    await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-down.png'), animations: 'disabled' });
+    note('wheel direction down');
+
+    await page.bringToFront();
+    await hover(-100);
+    const reversed = await poll(volume, near(0.5), '同一向上手势在向下增大时应减回 50%');
+    await page.screenshot({ path: path.join(dir, 'fixture-down.png'), animations: 'disabled' });
+    note(`reversed hover volume=${reversed}`);
+    await alt(-100);
+    const altDown = await poll(volume, near(0.4), 'Alt+向上滚轮在向下增大时应再到 40%');
+    note(`reversed alt volume=${altDown}`);
+    await hover(100);
+    const downIncreases = await poll(volume, near(0.5), '向下滚轮在向下增大时应加回 50%');
+    note(`down gesture volume=${downIncreases}`);
+
+    const pageDownAgain = await scrollPage();
+    await page.screenshot({ path: path.join(dir, 'page-scroll-down.png'), animations: 'disabled' });
+    note(`page scroll while down ${pageDownAgain.before}->${pageDownAgain.after} volume=${pageDownAgain.held}`);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await poll(scrollY, value => value === 0, '应再次滚回顶部');
+    await page.waitForTimeout(400);
+
+    await settings.bringToFront();
+    await up.click();
+    await poll(stored, value => value.wheelDirection === 'up', '应改回向上增大');
+    await page.bringToFront();
+    await hover(-100);
+    const restored = await poll(volume, near(0.6), '改回向上增大后同一向上手势应加到 60%');
+    note(`restored volume=${restored}`);
+
+    const state = {
+      ok: true,
+      up: upVolume,
+      reversed,
+      alt: altDown,
+      downGesture: downIncreases,
+      restored,
+      pageScroll: { up: pageDown.after - pageDown.before, down: pageDownAgain.after - pageDownAgain.before }
+    };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await settings?.close().catch(() => {});
+    await page.close().catch(() => {});
+  }
 }
 
 async function drive(feature) {

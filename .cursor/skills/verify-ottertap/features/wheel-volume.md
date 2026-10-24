@@ -50,3 +50,7 @@ pnpm exec playwright test e2e/smoke.spec.ts -g "Alt\\+滚轮向上从 95%"
 - 横向滚轮只有在 Alt 按住时才调音量。断言前看页面收到的 `deltaY === 0` 且 `deltaX !== 0`，避免把纵向滚轮误判成横向。
 - 音量低于 25% 时，默认的更细步长会把一格收成 1%。本条旅程从 50% 或 95% 起步，仍按 10%。见 [fine-wheel.md](fine-wheel.md)。
 - 会话和 `pnpm e2e` 可以各用各的 profile 同时开，但两边都加载 `.output/chrome-mv3`。跑任何一边时都不要 `pnpm build`。
+
+## 滚轮方向
+
+上面说的「向上加音量」是默认。设置页可以把方向改成向下增大，同一手势立刻反过来。只影响悬停滚轮和 Alt+滚轮，页面自己怎么滚不变。见 [wheel-direction.md](wheel-direction.md)。
