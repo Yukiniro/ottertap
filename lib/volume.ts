@@ -1,4 +1,5 @@
 import { normalizeVolumeStep } from './settings';
+import type { WheelDirection } from './types';
 
 /** Shown percent below which hover-wheel and Alt+wheel take a 1% step. */
 export const fineWheelThreshold = 25;
@@ -14,6 +15,12 @@ export function volumeStepForWheel(percent: number, volumeStep: number, fineWhee
   const step = normalizeVolumeStep(volumeStep);
   if (fineWheel && Math.round(percent) < fineWheelThreshold) return fineWheelStep;
   return step;
+}
+
+/** Percentage points for one hover-wheel or Alt+wheel notch. `down` flips the sign only; the step, including the 1% fine step, stays. */
+export function wheelVolumePoints(notches: number, percent: number, volumeStep: number, fineWheel: boolean, direction: WheelDirection = 'up') {
+  const sign = direction === 'down' ? -1 : 1;
+  return notches * volumeStepForWheel(percent, volumeStep, fineWheel) * sign;
 }
 
 export function snapDraggedVolume(percent: number) {

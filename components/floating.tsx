@@ -25,7 +25,7 @@ const boostColor = (volume: number, max: number) => `color-mix(in oklch, var(--d
 
 /** `hideOnSite` offers 「本站隐藏浮动」. Leave it off where the settings are not the user's real ones, such as demos. */
 export function FloatingController({ client, openPanel, hideOnSite }: { client: MediaClient; openPanel?: (mediaId: string) => Promise<boolean>; hideOnSite?: boolean }) {
-  const { floatingAtom, floatingHiddenSitesAtom, floatingNoteAtom, floatingPositionAtom, floatingWhilePlayingAtom, fineWheelAtom, loadingAtom, ratePresetsAtom, rateStepAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { floatingAtom, floatingHiddenSitesAtom, floatingNoteAtom, floatingPositionAtom, floatingWhilePlayingAtom, fineWheelAtom, loadingAtom, ratePresetsAtom, rateStepAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, wheelDirectionAtom, writeSettingsAtom } = useSettingsAtoms();
   const floating = useAtomValue(floatingAtom);
   const floatingHiddenSites = useAtomValue(floatingHiddenSitesAtom);
   const floatingNote = useAtomValue(floatingNoteAtom);
@@ -38,6 +38,7 @@ export function FloatingController({ client, openPanel, hideOnSite }: { client: 
   const skipWithRate = useAtomValue(skipWithRateAtom);
   const volumeStep = useAtomValue(volumeStepAtom);
   const fineWheel = useAtomValue(fineWheelAtom);
+  const wheelDirection = useAtomValue(wheelDirectionAtom);
   const write = useSetAtom(writeSettingsAtom);
   const { page, selected, command, error } = useMedia(client, { pauseWhenEmpty: true });
   const [expanded, setExpanded] = useState(false);
@@ -62,8 +63,10 @@ export function FloatingController({ client, openPanel, hideOnSite }: { client: 
   commandRef.current = command;
   const volumeStepRef = useRef(volumeStep);
   const fineWheelRef = useRef(fineWheel);
+  const wheelDirectionRef = useRef(wheelDirection);
   volumeStepRef.current = volumeStep;
   fineWheelRef.current = fineWheel;
+  useEffect(() => { wheelDirectionRef.current = wheelDirection; }, [wheelDirection]);
 
   useEffect(() => {
     const resize = () => setViewport(readViewport());
@@ -91,7 +94,7 @@ export function FloatingController({ client, openPanel, hideOnSite }: { client: 
     const current = mediaRef.current;
     if (!current) return;
     const base = optimistic.current?.id === current.id ? optimistic.current : current;
-    const next = commandForHotkey(action, base, undefined, undefined, false, volumeStepRef.current, fineWheelRef.current);
+    const next = commandForHotkey(action, base, undefined, undefined, false, volumeStepRef.current, fineWheelRef.current, wheelDirectionRef.current);
     if (!next) return;
     if (next.type === 'volume') {
       optimistic.current = { ...base, volume: next.value, muted: next.value <= 0 };

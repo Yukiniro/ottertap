@@ -53,7 +53,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs doctor
 
 ## Drive
 
-脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、低音量滚轮细步长（见 `features/fine-wheel.md`）、倍速增减步长（见 `features/rate-step.md`）、扩展命令画中画（见 `features/extension-pip.md`）、按住临时加速（见 `features/hold-boost.md`）、同键短按跳长按加速（见 `features/hold-skip-combo.md`）、逐帧（见 `features/frame-step.md`）、页内快捷键改键（见 `features/hotkey-remap.md`）、浮动药丸倍速（见 `features/floating-speed.md`）、浮动药丸播放跳转（见 `features/floating-playback.md`）、浮动入口旁注（见 `features/floating-entry-note.md`）、从音量药丸打开弹出面板（见 `features/floating-open-panel.md`）和仅在播放时显示浮动入口（见 `features/floating-while-playing.md`）。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
+脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、低音量滚轮细步长（见 `features/fine-wheel.md`）、滚轮方向（见 `features/wheel-direction.md`）、倍速增减步长（见 `features/rate-step.md`）、扩展命令画中画（见 `features/extension-pip.md`）、按住临时加速（见 `features/hold-boost.md`）、同键短按跳长按加速（见 `features/hold-skip-combo.md`）、逐帧（见 `features/frame-step.md`）、页内快捷键改键（见 `features/hotkey-remap.md`）、浮动药丸倍速（见 `features/floating-speed.md`）、浮动药丸播放跳转（见 `features/floating-playback.md`）、浮动入口旁注（见 `features/floating-entry-note.md`）、从音量药丸打开弹出面板（见 `features/floating-open-panel.md`）和仅在播放时显示浮动入口（见 `features/floating-while-playing.md`）。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
 
 ```bash
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
@@ -61,6 +61,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive skip-step
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive skip-with-rate
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive volume-step
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive fine-wheel
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive wheel-direction
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive rate-step
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive extension-pip
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive default-rate
@@ -82,6 +83,8 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-while-pla
 `volume-step` 在设置页把 `Volume step` 改成 `5%` 和 `20%`，再看同一夹具页上的悬停滚轮、Alt+滚轮和单键 ↑ ↓ 跟着步长变，并确认跨过 100% 仍先停住。它会改写 profile，同一会话只能跑一次，而且不能接在 `drive wheel-volume` 前面。步骤见 `features/volume-step.md`。
 
 `fine-wheel` 确认 `Finer wheel steps below 25%` 默认开启，10% 上的悬停滚轮和 Alt+滚轮按 1% 变化且药丸和弹出面板都显示这个百分数，40% 上仍按音量步长，单键 ↑ 和滑块方向键不走细档，关掉开关后滚轮回到常规步长。它会改写 profile，同一会话只能跑一次，不能接在 `drive volume-step` 后面。步骤见 `features/fine-wheel.md`。
+
+`wheel-direction` 确认 `Wheel direction` 默认是 `Scroll up increases volume`，向上滚轮增大音量；改成 `Scroll down increases volume` 后，同一向上滚轮立刻减小、向下滚轮增大，Alt+滚轮跟着反向，视频外的页面滚动方向不变，低音量仍是 1% 一格，单键 ↑ 不反向。它会改写 profile，同一会话只能跑一次，不能接在 `drive volume-step` 或 `drive fine-wheel` 后面。步骤见 `features/wheel-direction.md`。
 
 `rate-step` 在设置页把 `Speed step` 改成 `0.1×` 和 `0.5×`，再看同一夹具页上的 Alt+.、弹出面板加快 / 减慢和单键 `>` 跟着步长变，并确认到 4× 和 0.25× 仍停住。它会改写 profile，同一会话只能跑一次。步骤见 `features/rate-step.md`。
 
@@ -157,6 +160,8 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-while-pla
 
 `drive fine-wheel` 写入 `fine-wheel/`：`settings-on.png`、`pill-11.png`、`popup-11.png`、`fixture-15.png`、`fixture-50.png`、`settings-off.png`、`fixture-off.png`、`slider-51.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
 
+`drive wheel-direction` 写入 `wheel-direction/`：`settings-up.png`、`fixture-up.png`、`settings-down.png`、`fixture-reversed.png`、`fixture-down.png`、`page-scroll.png`、`fixture-fine.png`、`fixture-arrow.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
 `drive rate-step` 写入 `rate-step/`：`settings-default.png`、`settings-0.1.png`、`settings-0.5.png`、`fixture-default.png`、`fixture-0.1.png`、`fixture-0.5.png`、`popup-0.1.png`、`popup-limit.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
 
 `drive default-rate` 写入 `default-rate/`：`settings-follow.png`、`fixture-follow.png`、`settings-1.5.png`、`fixture-1.5.png`、`fixture-site.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
@@ -205,6 +210,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive skip-step
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive skip-with-rate
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive volume-step
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive fine-wheel
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive wheel-direction
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive rate-step
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive extension-pip
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive default-rate

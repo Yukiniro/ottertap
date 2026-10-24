@@ -7,6 +7,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive skip-with-rate
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive volume-step
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive fine-wheel
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive wheel-direction
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive rate-step
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive extension-pip
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive default-rate
@@ -39,7 +40,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'wheel-direction', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -1030,6 +1031,140 @@ async function driveFineWheel(context, dir, note) {
     return state;
   } finally {
     await popup?.close().catch(() => {});
+    await settings?.close().catch(() => {});
+    await page.close().catch(() => {});
+  }
+}
+
+async function driveWheelDirection(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const near = expected => value => Math.abs(value - expected) < 0.02;
+  const page = await context.newPage();
+  let settings;
+  const volume = () => page.locator('#media').evaluate(element => element.volume);
+  const scrollY = () => page.evaluate(() => window.scrollY);
+  const settle = async value => {
+    await page.locator('#media').evaluate((element, next) => { element.volume = next; element.muted = false; }, value);
+    await poll(volume, near(value), `应能把音量设成 ${value}`);
+    await page.waitForTimeout(400);
+  };
+  const hover = async deltaY => {
+    const at = await centerOf(page.locator('#media'));
+    await page.mouse.move(at.x, at.y);
+    await page.waitForTimeout(350);
+    await page.mouse.wheel(0, deltaY);
+  };
+  const alt = async deltaY => {
+    const at = await centerOf(page.locator('#media'));
+    await page.mouse.move(at.x, at.y);
+    await page.keyboard.down('Alt');
+    try { await page.mouse.wheel(0, deltaY); }
+    finally { await page.keyboard.up('Alt'); }
+  };
+  try {
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#playback`, { waitUntil: 'domcontentloaded' });
+    const group = settings.getByRole('group', { name: 'Wheel direction' });
+    await group.waitFor({ state: 'visible', timeout: 15_000 });
+    const labels = (await group.getByRole('button').allInnerTexts()).map(text => text.replace(/\s+/g, ' ').trim());
+    const pressed = (await group.locator('[aria-pressed="true"]').allInnerTexts()).map(text => text.replace(/\s+/g, ' ').trim());
+    if (labels.join('|') !== 'Scroll up increases volume|Scroll down increases volume' || pressed.join() !== 'Scroll up increases volume') {
+      throw new Error(`滚轮方向默认值或文案不对：${JSON.stringify({ labels, pressed })}`);
+    }
+    await settings.getByText('Only the wheel over the main player and Alt + wheel follow this direction. Scrolling the page itself stays the same. Arrow keys, extension commands, and the volume slider are unchanged. Scroll up increases volume by default.', { exact: true }).waitFor({ state: 'visible' });
+    await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-up.png'), animations: 'disabled' });
+    note(`settings wheel direction labels=${labels.join(' | ')} pressed=${pressed.join(' | ')}`);
+
+    await page.goto(`${origin}/keys`, { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await page.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+    });
+    await settle(0.5);
+    await hover(-100);
+    const upDefault = await poll(volume, near(0.6), '默认向上滚动应把音量加到 60%');
+    const scrollDefault = await scrollY();
+    if (scrollDefault !== 0) throw new Error(`主播放器上滚轮滚动了页面 scrollY=${scrollDefault}`);
+    await page.screenshot({ path: path.join(dir, 'fixture-up.png'), animations: 'disabled' });
+    note(`default scroll-up volume=${upDefault} scrollY=${scrollDefault}`);
+
+    await settings.bringToFront();
+    const down = group.getByRole('button', { name: 'Scroll down increases volume', exact: true });
+    await down.click();
+    await poll(() => down.getAttribute('aria-pressed'), value => value === 'true', '点向下增大后应按下');
+    await poll(stored, value => value.wheelDirection === 'down' && value.fineWheel !== false && value.volumeStep === 10, '应存下 wheelDirection=down，细档和步长不变');
+    await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-down.png'), animations: 'disabled' });
+    note('saved wheelDirection=down without reloading the fixture');
+
+    await page.bringToFront();
+    await hover(-100);
+    const upReversed = await poll(volume, near(0.5), '同一向上滚轮应立刻把音量减回 50%');
+    if (await scrollY() !== 0) throw new Error('反向后主播放器上向上滚轮滚动了页面');
+    await page.screenshot({ path: path.join(dir, 'fixture-reversed.png'), animations: 'disabled' });
+    note(`reversed scroll-up volume=${upReversed}`);
+
+    await hover(100);
+    const downReversed = await poll(volume, near(0.6), '向下滚轮在反向后应把音量加到 60%');
+    if (await scrollY() !== 0) throw new Error('反向后主播放器上向下滚轮滚动了页面');
+    await page.screenshot({ path: path.join(dir, 'fixture-down.png'), animations: 'disabled' });
+    note(`reversed scroll-down volume=${downReversed}`);
+
+    const box = await page.locator('#media').boundingBox();
+    if (!box) throw new Error('视频没有位置');
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height + 48);
+    await page.waitForTimeout(350);
+    const beforeScroll = await scrollY();
+    const beforeVolume = await volume();
+    await page.mouse.wheel(0, 100);
+    const pageScroll = await poll(scrollY, value => value > beforeScroll, '视频外向下滚轮仍应让页面向下滚动');
+    const pageVolume = await volume();
+    if (Math.abs(pageVolume - beforeVolume) > 0.02) throw new Error(`视频外滚轮改了音量 ${pageVolume}`);
+    await page.screenshot({ path: path.join(dir, 'page-scroll.png'), animations: 'disabled' });
+    note(`page scroll ${beforeScroll} -> ${pageScroll} volume ${pageVolume}`);
+
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForTimeout(400);
+    await alt(100);
+    const altDown = await poll(volume, near(0.7), '反向后 Alt+向下滚轮应再加 10%');
+    await alt(-100);
+    const altUp = await poll(volume, near(0.6), '反向后 Alt+向上滚轮应减回 60%');
+    note(`alt down=${altDown} up=${altUp}`);
+
+    await settle(0.1);
+    await hover(100);
+    const fine = await poll(volume, near(0.11), '反向后低音量向下滚轮仍应按 1% 到 11%');
+    await page.screenshot({ path: path.join(dir, 'fixture-fine.png'), animations: 'disabled' });
+    note(`fine reversed volume=${fine}`);
+
+    await settings.bringToFront();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
+    const singleKey = settings.getByRole('switch', { name: 'Single-key mode' });
+    await singleKey.waitFor({ state: 'visible', timeout: 15_000 });
+    if (await singleKey.getAttribute('aria-checked') !== 'false') throw new Error('单键模式默认应关闭');
+    await singleKey.click();
+    await poll(stored, value => value.singleKey === true && value.wheelDirection === 'down', '应打开单键模式且滚轮方向仍是向下增大');
+    await page.bringToFront();
+    await settle(0.4);
+    const arrowAt = await centerOf(page.locator('#media'));
+    await page.mouse.click(arrowAt.x, arrowAt.y);
+    await page.keyboard.press('ArrowUp');
+    const arrow = await poll(volume, near(0.5), '单键 ↑ 在滚轮反向后仍应按步长增大到 50%');
+    await page.screenshot({ path: path.join(dir, 'fixture-arrow.png'), animations: 'disabled' });
+    note(`arrow volume=${arrow}`);
+
+    const state = {
+      ok: true,
+      up: upDefault,
+      reversed: { up: upReversed, down: downReversed, altDown, altUp, fine, pageScroll, pageVolume },
+      arrow,
+    };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
     await settings?.close().catch(() => {});
     await page.close().catch(() => {});
   }
@@ -2915,7 +3050,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'wheel-direction': driveWheelDirection, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });

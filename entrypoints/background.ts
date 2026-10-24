@@ -6,7 +6,7 @@ import { frameFailureKey, isMediaCommand, pipFailureKey } from '../lib/media';
 import { actionForCommand } from '../lib/commands';
 import { actionHintKey, applySkipStep, applyVolumeStep, isHotkeyAction, planHotkey, shownPercent, type HotkeyAction } from '../lib/hotkey';
 import { nextRate } from '../lib/rate';
-import { steppedVolume, volumeStepForWheel } from '../lib/volume';
+import { steppedVolume, wheelVolumePoints } from '../lib/volume';
 import { volumeBadgeColor, volumeBadgeFromReports, volumeBadgeTtlMs } from '../lib/volume-badge';
 import { keptSelection, lockedMedia } from '../lib/media';
 import { soundingTabs } from '../lib/tabs';
@@ -274,7 +274,7 @@ export default defineBackground(() => {
     let delta = 'delta' in action ? action.delta : 0;
     if ('notches' in action) {
       const settings = await currentSettings();
-      delta = action.notches * volumeStepForWheel(previous, settings.volumeStep, settings.fineWheel);
+      delta = wheelVolumePoints(action.notches, previous, settings.volumeStep, settings.fineWheel, settings.wheelDirection);
     }
     gesture.percent = steppedVolume(previous, delta, gesture.max);
     gesture.at = Date.now();
