@@ -242,7 +242,7 @@ test('悬停滚轮只在视频上拦截，Alt+滚轮随处可用；目标只随�
     assert.equal(wheel({ altKey: true }), true);
     assert.equal(wheel({ altKey: true, deltaX: -100, deltaY: 0 }), true, 'macOS 的横向滚动量照常可用');
     flush();
-    assert.deepEqual(sent, [[{ type: 'volume', delta: -10 }, '7'], [{ type: 'volume', delta: -10 }, undefined], [{ type: 'volume', delta: 10 }, undefined]]);
+    assert.deepEqual(sent, [[{ type: 'volume', notches: -1 }, '7'], [{ type: 'volume', notches: -1 }, undefined], [{ type: 'volume', notches: 1 }, undefined]]);
 
     sent.length = 0;
     assert.equal(key({ key: 'ArrowUp', code: 'ArrowUp' }, { singleKey: true }).handled, false);

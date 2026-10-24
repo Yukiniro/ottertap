@@ -4,11 +4,12 @@ import { isPipFailureKey, lockedMedia } from './media';
 import { nextRate } from './rate';
 import { actualSkipSeconds, hintSkipSeconds } from './skip';
 import { isSkipSeconds, normalizeSkipSeconds, normalizeVolumeStep } from './settings';
-import { steppedVolume } from './volume';
+import { steppedVolume, volumeStepForWheel } from './volume';
 import type { MediaCommand, MediaState, PageState } from './types';
 
 export type HotkeyAction =
   | { type: 'volume'; delta: number }
+  | { type: 'volume'; notches: number }
   | { type: 'rate'; direction: 1 | -1 | 0 }
   | { type: 'toggle' }
   | { type: 'mute' }
@@ -80,16 +81,27 @@ export function isTypingEvent(event: Event) {
   return isTypingTarget(event.composedPath()[0]);
 }
 
+/** Signed wheel notches. Pixel mode treats 100 as one notch; line and page modes use the raw delta. */
+export function wheelNotches(delta: number, deltaMode: number) {
+  if (!delta) return 0;
+  return -(deltaMode === 0 ? delta / 100 : delta);
+}
+
 export function wheelVolumeDelta(deltaY: number, deltaMode: number, volumeStep = 10) {
-  if (!deltaY) return 0;
-  const notches = deltaMode === 0 ? deltaY / 100 : deltaY;
-  return -notches * normalizeVolumeStep(volumeStep);
+  return wheelNotches(deltaY, deltaMode) * normalizeVolumeStep(volumeStep);
 }
 
 export function isHotkeyAction(value: unknown): value is HotkeyAction {
   if (!value || typeof value !== 'object') return false;
   const action = value as HotkeyAction;
-  if (action.type === 'volume') return Number.isFinite(action.delta) && Math.abs(action.delta) <= 150;
+  if (action.type === 'volume') {
+    const record = action as { delta?: unknown; notches?: unknown };
+    const notches = 'notches' in action;
+    const delta = 'delta' in action;
+    if (notches === delta) return false;
+    const amount = notches ? record.notches : record.delta;
+    return typeof amount === 'number' && Number.isFinite(amount) && Math.abs(amount) <= 150;
+  }
   if (action.type === 'rate') return action.direction === 1 || action.direction === -1 || action.direction === 0;
   if (action.type === 'toggle' || action.type === 'mute' || action.type === 'pip') return true;
   if (action.type === 'frame') return action.direction === 1 || action.direction === -1;
@@ -109,12 +121,12 @@ export function applySkipStep(action: HotkeyAction, seconds: number): HotkeyActi
 
 /** Command deltas only point up or down. The stored step supplies the percentage points. */
 export function applyVolumeStep(action: HotkeyAction, step: number): HotkeyAction {
-  if (action.type !== 'volume') return action;
+  if (action.type !== 'volume' || !('delta' in action)) return action;
   const direction = action.delta < 0 ? -1 : 1;
   return { type: 'volume', delta: direction * normalizeVolumeStep(step) };
 }
 
-export function commandForHotkey(action: HotkeyAction, media: MediaState, remembered?: number | null, rateStep?: number, skipWithRate = false): MediaCommand | null {
+export function commandForHotkey(action: HotkeyAction, media: MediaState, remembered?: number | null, rateStep?: number, skipWithRate = false, volumeStep = 10, fineWheel = true): MediaCommand | null {
   if (action.type === 'rate') {
     const value = nextRate(media.rate, action.direction, remembered, rateStep);
     return value === media.rate ? null : { type: 'rate', value };
@@ -128,9 +140,12 @@ export function commandForHotkey(action: HotkeyAction, media: MediaState, rememb
     const seconds = actualSkipSeconds(Math.abs(action.delta), media.rate, skipWithRate);
     return { type: 'skip', value: action.delta < 0 ? -seconds : seconds };
   }
-  if (!action.delta) return null;
+  if (action.type !== 'volume') return null;
+  const percent = shownPercent(media);
+  const delta = 'notches' in action ? action.notches * volumeStepForWheel(percent, volumeStep, fineWheel) : action.delta;
+  if (!delta) return null;
   const max = media.maxVolume * 100;
-  return { type: 'volume', value: steppedVolume(shownPercent(media), action.delta, max) / 100 };
+  return { type: 'volume', value: steppedVolume(percent, delta, max) / 100 };
 }
 
 export function actionHintText(key: string, seconds?: number) {
@@ -151,11 +166,11 @@ export function isFloatingEvent(event: Event) {
   return event.composedPath().some(node => node instanceof Element && node.localName === 'ottertap-controller');
 }
 
-export function planHotkey(page: PageState, action: HotkeyAction, remembered?: number | null, rateStep?: number, skipWithRate = false) {
+export function planHotkey(page: PageState, action: HotkeyAction, remembered?: number | null, rateStep?: number, skipWithRate = false, volumeStep = 10, fineWheel = true) {
   if (!page.enabled || !page.media.length) return null;
   const media = lockedMedia(page.media, page.selectedId);
   if (!media) return null;
-  const command = commandForHotkey(action, media, remembered, rateStep, skipWithRate);
+  const command = commandForHotkey(action, media, remembered, rateStep, skipWithRate, volumeStep, fineWheel);
   return command ? { media, command } : null;
 }
 
@@ -181,7 +196,8 @@ export function createHotkeyInput(send: (action: HotkeyAction, target?: string) 
     if (steps.some(step => step.action.type === 'volume')) window.dispatchEvent(new window.CustomEvent(volumeGestureEvent));
     // Keep event boundaries so the input after landing on 100% can leave it.
     for (const { action, target } of steps) {
-      if (action.type === 'volume') send({ type: 'volume', delta: Math.max(-150, Math.min(150, action.delta)) }, target);
+      if (action.type === 'volume' && 'notches' in action) send({ type: 'volume', notches: Math.max(-150, Math.min(150, action.notches)) }, target);
+      else if (action.type === 'volume') send({ type: 'volume', delta: Math.max(-150, Math.min(150, action.delta)) }, target);
       else send(action, target);
     }
   };
@@ -216,16 +232,17 @@ export function createHotkeyInput(send: (action: HotkeyAction, target?: string) 
       queue(action, action.type === 'volume' ? target : undefined);
       return true;
     },
-    wheel(event: { deltaX: number; deltaY: number; deltaMode: number; altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean; preventDefault(): void; stopPropagation(): void }, target?: string, volumeStep = 10) {
+    wheel(event: { deltaX: number; deltaY: number; deltaMode: number; altKey: boolean; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean; preventDefault(): void; stopPropagation(): void }, target?: string) {
       if (event.ctrlKey || event.metaKey) return false;
       if (!event.altKey && (target === undefined || event.shiftKey)) return false;
       // Alt+wheel keeps the horizontal axis for macOS. A bare hover wheel leaves sideways swipes to the page.
-      const delta = wheelVolumeDelta(event.altKey ? event.deltaY || event.deltaX : event.deltaY, event.deltaMode, volumeStep);
-      if (!delta) return false;
+      // Notches stay unscaled. The applier picks 1% or the saved step from the volume at that moment.
+      const notches = wheelNotches(event.altKey ? event.deltaY || event.deltaX : event.deltaY, event.deltaMode);
+      if (!notches) return false;
       event.preventDefault();
       event.stopPropagation();
       if (event.altKey) useAlt();
-      queue({ type: 'volume', delta }, target);
+      queue({ type: 'volume', notches }, target);
       return true;
     },
     /** An action decided outside the keyboard path, such as a short tap on a hold-to-skip key. */

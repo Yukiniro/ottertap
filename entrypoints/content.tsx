@@ -216,7 +216,7 @@ export default defineContentScript({
       const pointed = active && hover ? controller.hoverAt({ x: event.clientX, y: event.clientY }, lockedLocalId) : undefined;
       const target = pointed?.id;
       const bareTarget = hoverGesture(!event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey && event.deltaY && pointed?.stage ? target : undefined, event.timeStamp);
-      if (active) hotkeys.wheel(event, event.altKey ? target : bareTarget, source.volumeStep);
+      if (active) hotkeys.wheel(event, event.altKey ? target : bareTarget);
     };
     const onPageHide = () => {
       releaseHold();

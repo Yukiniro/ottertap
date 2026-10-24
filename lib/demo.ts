@@ -74,21 +74,22 @@ export function createDemo(document: Document, { src, title, store }: { src: str
     let skipSeconds = defaultSettings.skipSeconds;
     let skipWithRate = defaultSettings.skipWithRate;
     let volumeStep = defaultSettings.volumeStep;
+    let fineWheel = defaultSettings.fineWheel;
     let rateStep = defaultSettings.rateStep;
     let keybinds = defaultSettings.keybinds;
-    const apply = (settings: Settings) => { on = isSiteEnabled(demoUrl, settings); singleKey = settings.singleKey; skipSeconds = settings.skipSeconds; skipWithRate = settings.skipWithRate; volumeStep = settings.volumeStep; rateStep = settings.rateStep; keybinds = settings.keybinds; };
+    const apply = (settings: Settings) => { on = isSiteEnabled(demoUrl, settings); singleKey = settings.singleKey; skipSeconds = settings.skipSeconds; skipWithRate = settings.skipWithRate; volumeStep = settings.volumeStep; fineWheel = settings.fineWheel; rateStep = settings.rateStep; keybinds = settings.keybinds; };
     void store.load().then(apply);
     const unwatch = store.watch(apply);
     const hotkeys = createHotkeySession(async (action: HotkeyAction) => {
       const page = await client.read();
-      const plan = planHotkey(page, action, controller.recallRate(), rateStep, skipWithRate);
+      const plan = planHotkey(page, action, controller.recallRate(), rateStep, skipWithRate, volumeStep, fineWheel);
       if (!plan) return;
       if (plan.media.id !== page.selectedId) await client.select(plan.media.id);
       await client.command(plan.media, plan.command);
     });
     const allow = () => on && controller.snapshot().length > 0;
     const onKey = (event: KeyboardEvent) => { if (event.key === 'Alt' || (allow() && !isTypingEvent(event))) hotkeys.key(event, { singleKey, skipSeconds, volumeStep, keybinds }); };
-    const onWheel = (event: WheelEvent) => { if (allow()) hotkeys.wheel(event, undefined, volumeStep); };
+    const onWheel = (event: WheelEvent) => { if (allow()) hotkeys.wheel(event); };
     window.addEventListener('keydown', onKey, true);
     window.addEventListener('wheel', onWheel, { capture: true, passive: false });
     return () => { unwatch(); hotkeys.dispose(); window.removeEventListener('keydown', onKey, true); window.removeEventListener('wheel', onWheel, true); };

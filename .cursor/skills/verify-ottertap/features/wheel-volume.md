@@ -48,4 +48,5 @@ pnpm exec playwright test e2e/smoke.spec.ts -g "Alt\\+滚轮向上从 95%"
 - 输入框不会吃掉 Alt+滚轮。`Alt+M` 这种键在输入框里才失效。见倍速那一条。
 - 跨域且没有 CORS 的媒体不能超过 100%。滑块 `max` 停在 100，强行再加会失败。
 - 横向滚轮只有在 Alt 按住时才调音量。断言前看页面收到的 `deltaY === 0` 且 `deltaX !== 0`，避免把纵向滚轮误判成横向。
+- 音量低于 25% 时，默认的更细步长会把一格收成 1%。本条旅程从 50% 或 95% 起步，仍按 10%。见 [fine-wheel.md](fine-wheel.md)。
 - 会话和 `pnpm e2e` 可以各用各的 profile 同时开，但两边都加载 `.output/chrome-mv3`。跑任何一边时都不要 `pnpm build`。

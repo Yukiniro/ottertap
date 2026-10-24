@@ -6,7 +6,7 @@ import { frameFailureKey, isMediaCommand, pipFailureKey } from '../lib/media';
 import { actionForCommand } from '../lib/commands';
 import { actionHintKey, applySkipStep, applyVolumeStep, isHotkeyAction, planHotkey, shownPercent, type HotkeyAction } from '../lib/hotkey';
 import { nextRate } from '../lib/rate';
-import { steppedVolume } from '../lib/volume';
+import { steppedVolume, volumeStepForWheel } from '../lib/volume';
 import { volumeBadgeColor, volumeBadgeFromReports, volumeBadgeTtlMs } from '../lib/volume-badge';
 import { keptSelection, lockedMedia } from '../lib/media';
 import { soundingTabs } from '../lib/tabs';
@@ -257,7 +257,7 @@ export default defineBackground(() => {
     catch { /* The frame navigated away before the key came up. */ }
     return true;
   }
-  async function applyVolume(tabId: number, host: string, delta: number) {
+  async function applyVolume(tabId: number, host: string, action: Extract<HotkeyAction, { type: 'volume' }>) {
     let gesture = gestures.get(tabId);
     const selected = selectedIds.get(tabId);
     if (!gesture || gesture.id !== selected || Date.now() - gesture.at > 300) {
@@ -271,6 +271,11 @@ export default defineBackground(() => {
       gestures.set(tabId, gesture);
     }
     const previous = gesture.percent;
+    let delta = 'delta' in action ? action.delta : 0;
+    if ('notches' in action) {
+      const settings = await currentSettings();
+      delta = action.notches * volumeStepForWheel(previous, settings.volumeStep, settings.fineWheel);
+    }
     gesture.percent = steppedVolume(previous, delta, gesture.max);
     gesture.at = Date.now();
     try { await deliver(tabId, gesture.id, 'command', { type: 'volume', value: gesture.percent / 100 }); }
@@ -329,7 +334,7 @@ export default defineBackground(() => {
       return { handled: true as const, rate };
     }
     if (action.type === 'volume') {
-      const percent = await applyVolume(tabId, host, action.delta);
+      const percent = await applyVolume(tabId, host, action);
       if (percent === undefined) return { handled: false as const };
       reveal(tabId, percent);
       return { handled: true as const, percent };
