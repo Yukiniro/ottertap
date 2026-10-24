@@ -33,7 +33,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive fine-wheel
 5. 把音量设成 0.15，Alt+滚轮向上一格。音量约 0.16。
 6. 打开 `Single-key mode`。把音量设回 0.1，点一下视频后按 `ArrowUp`。音量约 0.2，细档不作用在方向键上。
 7. 关掉 `Finer wheel steps below 25%`，存储里 `fineWheel === false`。再从 0.1 悬停滚轮到约 0.2，Alt+滚轮再到约 0.3。
-8. 把音量设成 0.5，在音量药丸的滑块上按 `ArrowUp`。音量约 0.51，滑块仍是 1%。
+8. 重新加载夹具页，清掉滚轮留在药丸上的乐观百分数。把音量设成 0.5，在音量药丸的滑块上按 `ArrowUp`。音量约 0.51，滑块仍是 1%。
 
 成功时 `state.json` 的 `ok` 为 `true`。证据写到 `/opt/cursor/artifacts/verify-ottertap/fine-wheel/`：`settings-on.png`、`pill-11.png`、`popup-11.png`、`fixture-15.png`、`fixture-50.png`、`settings-off.png`、`fixture-off.png`、`slider-51.png`、`state.json`、`transcript.txt`。
 
@@ -45,4 +45,5 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive fine-wheel
 - 显示成 25% 就用常规步长。24.6% 会四舍五入成 25，不再细调。
 - 静音时药丸和面板显示 0%，所以细档开着时滚轮从 1% 开始，并取消静音。
 - 单键 ↑ ↓ 必须先打开单键模式，并且指针在视频上。滑块上的方向键属于药丸，不走单键音量。
+- 滚轮会把乐观百分数留在已展开的药丸上。之后用脚本改元素音量，药丸不会跟着改，方向键会从那个旧百分数起步。测滑块前要重新加载页面。
 - 这个开关和单键模式都写进 profile。用完 `cleanup` 再 `launch`。同一会话里先跑过 `drive volume-step` 会把步长和单键模式改掉。

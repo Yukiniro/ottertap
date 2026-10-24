@@ -948,7 +948,7 @@ async function driveFineWheel(context, dir, note) {
     await page.screenshot({ path: path.join(dir, 'pill-11.png'), animations: 'disabled' });
     note(`fine hover volume=${afterOne} pill=${pill}`);
     popup = await openActionPopup(context, page);
-    const popupPercent = await poll(() => popup.evaluate(`document.querySelector('[aria-label="Volume"]')?.getAttribute('aria-valuenow')`), value => Number(value) === 11, '弹出面板音量应显示 11%');
+    const popupPercent = await poll(() => popup.evaluate(`document.querySelector('input[aria-label="Volume"]')?.getAttribute('aria-valuenow') ?? null`), value => Number(value) === 11, '弹出面板音量应显示 11%');
     await popup.screenshot(path.join(dir, 'popup-11.png'));
     note(`popup volume=${popupPercent}`);
     await popup.close();
@@ -1005,8 +1005,14 @@ async function driveFineWheel(context, dir, note) {
     await page.screenshot({ path: path.join(dir, 'fixture-off.png'), animations: 'disabled' });
     note(`off hover=${offHover} alt=${offAlt}`);
 
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await page.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+    });
     await settle(0.5);
     await openPill();
+    await poll(shown, value => value === 50, '重载后音量药丸应显示 50%');
     await page.getByRole('slider', { name: 'Volume' }).press('ArrowUp');
     const slider = await poll(volume, near(0.51), '滑块方向键仍应按 1% 到 51%');
     const sliderShown = await poll(shown, value => value === 51, '滑块应显示 51%');
