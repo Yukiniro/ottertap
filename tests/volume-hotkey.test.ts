@@ -48,9 +48,9 @@ test('每次滚轮和按键读取当前音量步长', async () => {
     assert.equal(input.key(up, { singleKey: true, volumeStep: 5, target: '1' }), true);
     frame?.(0);
     const wheel = { ...bare, altKey: true, deltaX: 0, deltaY: -100, deltaMode: 0, preventDefault() {}, stopPropagation() {} };
-    assert.equal(input.wheel(wheel, '1', 20), true);
+    assert.equal(input.wheel(wheel, '1'), true);
     frame?.(0);
-    assert.deepEqual(sent, [{ type: 'volume', delta: 5 }, { type: 'volume', delta: 20 }]);
+    assert.deepEqual(sent, [{ type: 'volume', delta: 5 }, { type: 'volume', notches: 1 }]);
   } finally {
     input.dispose();
     await window.happyDOM.close();

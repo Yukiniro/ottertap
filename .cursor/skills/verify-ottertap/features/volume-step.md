@@ -45,3 +45,5 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive volume-step
 - 滑块拖动和滑块上的方向键仍是 1% 一档，用来精调。不要用滑块证明这个步长。
 - 从 85% 按 20% 向上会先停在 100%，不是 105%。步骤 5 用向下再向上，避开这次跨越；步骤 6 专门看跨越。
 - 步长和单键模式都写进 profile。用完 `cleanup` 再 `launch`。同一会话里先跑过本条，再跑 `drive wheel-volume` 会因步长不再是 10 而失败。
+
+音量低于 25% 且「更细步长」开着时，悬停滚轮和 Alt+滚轮改用 1%。单键方向键和扩展命令仍用这里的步长。见 [fine-wheel.md](fine-wheel.md)。本条旅程从 50% 起步，不经过那个区间。

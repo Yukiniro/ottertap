@@ -87,6 +87,7 @@ export function normalizeSettings(value: unknown): Settings {
     skipSeconds: normalizeSkipSeconds(source.skipSeconds),
     skipWithRate: source.skipWithRate === true,
     volumeStep: normalizeVolumeStep(source.volumeStep),
+    fineWheel: typeof source.fineWheel === 'boolean' ? source.fineWheel : true,
     rateStep: normalizeRateStep(source.rateStep),
     keybinds: normalizeKeybinds(source.keybinds)
   };
