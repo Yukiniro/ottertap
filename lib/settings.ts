@@ -97,6 +97,7 @@ export function normalizeSettings(value: unknown): Settings {
     holdBoostRate: normalizeHoldRate(source.holdBoostRate),
     holdSkip: source.holdSkip === true,
     hoverWheel: typeof source.hoverWheel === 'boolean' ? source.hoverWheel : true,
+    fullscreenWheel: source.fullscreenWheel === true,
     singleKey: source.singleKey === true,
     skipSeconds: normalizeSkipSeconds(source.skipSeconds),
     skipWithRate: source.skipWithRate === true,

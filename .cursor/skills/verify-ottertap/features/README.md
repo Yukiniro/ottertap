@@ -1,6 +1,6 @@
 # OtterTap 功能地图
 
-验证主界面是扩展本身。索引里的每一条都要能从用户路径走到可观察的结束状态。`scripts/session.mjs` 目前脚本化了弹出面板播放、滚轮音量、快进快退步长、快进快退随倍速放大、音量调节步长、低音量滚轮细步长、Shift 粗调步长、倍速增减步长、扩展命令画中画、全局默认倍速、按住临时加速、同键短按跳长按加速、逐帧、页内快捷键改键、浮动药丸倍速、浮动药丸播放跳转、浮动入口旁注、从音量药丸打开弹出面板、仅在播放时显示浮动入口和滚轮方向；其余条目的选择器和断言已经写在各自文件里，用同一次 `launch` 的 Chromium（或 `pnpm e2e` 里点名的那条测试）来驱动。一条失败就报告失败原因，写进该文件的 Gotchas，不要把旅程改容易。
+验证主界面是扩展本身。索引里的每一条都要能从用户路径走到可观察的结束状态。`scripts/session.mjs` 目前脚本化了弹出面板播放、滚轮音量、快进快退步长、快进快退随倍速放大、音量调节步长、低音量滚轮细步长、Shift 粗调步长、倍速增减步长、扩展命令画中画、全局默认倍速、按住临时加速、同键短按跳长按加速、逐帧、页内快捷键改键、浮动药丸倍速、浮动药丸播放跳转、浮动入口旁注、从音量药丸打开弹出面板、仅在播放时显示浮动入口和滚轮方向。仅全屏时悬停滚轮也已脚本化。其余条目的选择器和断言已经写在各自文件里，用同一次 `launch` 的 Chromium（或 `pnpm e2e` 里点名的那条测试）来驱动。一条失败就报告失败原因，写进该文件的 Gotchas，不要把旅程改容易。
 
 | 功能 | 文件 | 用户从哪里进入 | 现成回归 |
 | --- | --- | --- | --- |
@@ -29,3 +29,4 @@
 | 仅在播放时显示浮动入口 | [floating-while-playing.md](floating-while-playing.md) | 设置页「Floating controller」的 `Show only while the selected media is playing`，默认关。打开后，入口只在当前选中媒体播放时出现；暂停稍后再隐藏，没有选中马上隐藏。悬停滚轮仍按自己的开关工作 | `drive floating-while-playing`；`tests/floating-while-playing.test.ts` |
 | 按站点隐藏浮动入口 | [floating-hidden-sites.md](floating-hidden-sites.md) | 展开音量药丸，`Open panel` 旁的 `Hide floating on this site`；或工具栏弹出面板 `Floating controller` 行里的同名眼睛按钮。名单在设置页「Floating controller」的 `Sites without the floating button`，可逐条恢复，导出导入一并带上。与「Site rules」整站启停分开，面板与页内快捷键照常可用 | `drive floating-hidden-sites`；`tests/floating-hidden-sites.test.ts` |
 | 滚轮方向 | [wheel-direction.md](wheel-direction.md) | 设置页「Playback」的 `Wheel direction`。默认 `Up increases`。改成 `Down increases` 后，悬停滚轮和 Alt+滚轮立刻反过来。页面滚动、方向键、扩展命令和滑块不变 | `drive wheel-direction`；`tests/wheel-direction.test.ts`、`tests/wheel-direction-background.test.ts` |
+| 仅全屏时悬停滚轮 | [fullscreen-wheel.md](fullscreen-wheel.md) | 设置页「Keyboard shortcuts」的 `Only use the hover wheel in fullscreen`，默认关。打开后，只有页面或视频处于全屏（含可靠的网页全屏）时，悬停裸滚轮才调音量；非全屏裸滚轮滚动页面。Alt+滚轮在非全屏仍可用 | `drive fullscreen-wheel`；`tests/fullscreen-wheel.test.ts`、`tests/fullscreen-wheel-background.test.ts` |

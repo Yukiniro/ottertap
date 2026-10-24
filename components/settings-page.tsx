@@ -217,7 +217,7 @@ function Row({ title, description, titleId, children }: { title: string; descrip
 }
 
 export function SettingsPage({ back }: { back?: () => void }) {
-  const { themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, floatingHiddenSitesAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, coarseStepAtom, fineWheelAtom, wheelDirectionAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, floatingHiddenSitesAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, fullscreenWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, coarseStepAtom, fineWheelAtom, wheelDirectionAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const theme = useAtomValue(themeAtom);
   const floating = useAtomValue(floatingAtom);
   const floatingNote = useAtomValue(floatingNoteAtom);
@@ -229,6 +229,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
   const holdBoostRate = useAtomValue(holdBoostRateAtom);
   const holdSkip = useAtomValue(holdSkipAtom);
   const hoverWheel = useAtomValue(hoverWheelAtom);
+  const fullscreenWheel = useAtomValue(fullscreenWheelAtom);
   const singleKey = useAtomValue(singleKeyAtom);
   const skipSeconds = useAtomValue(skipSecondsAtom);
   const skipWithRate = useAtomValue(skipWithRateAtom);
@@ -509,6 +510,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
           <p className="mt-1 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsTyping')}</p>
           <div className="mt-4 flex flex-col gap-2">
             <SwitchRow id="settings-hover-wheel" label={i18n.t('hoverWheel')} description={i18n.t('hoverWheelDescription')} checked={hoverWheel} disabled={disabled} onChange={checked => void save({ hoverWheel: checked })} />
+            <SwitchRow id="settings-fullscreen-wheel" label={i18n.t('fullscreenWheel')} description={i18n.t('fullscreenWheelDescription')} checked={fullscreenWheel} disabled={disabled} onChange={checked => void save({ fullscreenWheel: checked })} />
             <SwitchRow id="settings-single-key" label={i18n.t('singleKey')} description={i18n.t('singleKeyDescription')} checked={singleKey} disabled={disabled} onChange={checked => void save({ singleKey: checked })} />
           </div>
           <h3 className="mt-6 mb-2 text-sm font-medium">{i18n.t('singleKeyShortcuts')}</h3>
