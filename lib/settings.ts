@@ -52,14 +52,18 @@ export function normalizeDomain(input: string): string {
   return url.hostname.replace(/\.$/, '');
 }
 
-export function normalizeSettings(value: unknown): Settings {
-  if (!value || typeof value !== 'object') return { ...defaultSettings, sites: [], sitePrefs: {}, ratePresets: [...defaultSettings.ratePresets], keybinds: { ...defaultSettings.keybinds } };
-  const source = value as Partial<Settings>;
+function normalizeDomains(value: unknown): string[] {
   const sites: string[] = [];
-  if (Array.isArray(source.sites)) for (const site of source.sites) {
+  if (Array.isArray(value)) for (const site of value) {
     if (typeof site !== 'string') continue;
     try { sites.push(normalizeDomain(site)); } catch { /* Ignore invalid saved entries. */ }
   }
+  return [...new Set(sites)];
+}
+
+export function normalizeSettings(value: unknown): Settings {
+  if (!value || typeof value !== 'object') return { ...defaultSettings, floatingHiddenSites: [], sites: [], sitePrefs: {}, ratePresets: [...defaultSettings.ratePresets], keybinds: { ...defaultSettings.keybinds } };
+  const source = value as Partial<Settings>;
   const position = source.floatingPosition;
   const validPosition = !!position && typeof position === 'object' && ['left', 'right'].includes(position.side) && Number.isFinite(position.y) && position.y >= 0 && position.y <= 1;
   return {
@@ -68,8 +72,9 @@ export function normalizeSettings(value: unknown): Settings {
     floatingPosition: validPosition ? { side: position.side, y: position.y } : { ...defaultSettings.floatingPosition },
     floatingNote: isFloatingNote(source.floatingNote) ? source.floatingNote : 'volume',
     floatingWhilePlaying: source.floatingWhilePlaying === true,
+    floatingHiddenSites: normalizeDomains(source.floatingHiddenSites),
     siteMode: ['all', 'allow', 'exclude'].includes(source.siteMode ?? '') ? source.siteMode! : 'all',
-    sites: [...new Set(sites)],
+    sites: normalizeDomains(source.sites),
     sitePrefs: normalizeSitePrefs(source.sitePrefs),
     ratePresets: normalizeRatePresets(source.ratePresets),
     defaultRate: normalizeDefaultRate(source.defaultRate),
@@ -152,6 +157,25 @@ export function forgetSitePref(prefs: Record<string, SitePref>, site: string): R
   const next = { ...prefs };
   delete next[site];
   return next;
+}
+
+export function isFloatingHidden(host: string, sites: readonly string[]) {
+  const name = hostKey(host);
+  return !!name && sites.some(site => matchesSite(name, site));
+}
+
+export function hideFloating(sites: string[], host: string): string[] {
+  if (isFloatingHidden(host, sites)) return sites;
+  let key: string;
+  try { key = normalizeDomain(hostKey(host)); } catch { return sites; }
+  return [...sites, key];
+}
+
+/** Removes every entry covering `host`, including a parent domain, so the entry really comes back. */
+export function showFloating(sites: string[], host: string): string[] {
+  const name = hostKey(host);
+  const next = sites.filter(site => !matchesSite(name, site));
+  return next.length === sites.length ? sites : next;
 }
 
 export function withRememberedCommand(prefs: Record<string, SitePref>, host: string, command: MediaCommand): Record<string, SitePref> | null {

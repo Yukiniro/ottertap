@@ -18,6 +18,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-entry-note
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-open-panel
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-while-playing
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-hidden-sites
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -37,7 +38,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -2528,6 +2529,147 @@ async function driveFloatingWhilePlaying(context, dir, note) {
   }
 }
 
+async function driveFloatingHiddenSites(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const otherOrigin = 'https://elsewhere.test';
+  const serveOther = async route => {
+    const body = routedHtml(new URL(route.request().url()).pathname);
+    if (!body) { await route.fulfill({ status: 404, contentType: 'text/plain', body: 'not found' }); return; }
+    await route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', headers: { 'cache-control': 'no-store' }, body });
+  };
+  const hostName = new URL(origin).hostname;
+  const sameList = (value, expected) => JSON.stringify(value?.floatingHiddenSites ?? []) === JSON.stringify(expected);
+  const rulesUntouched = value => value.floating !== false && (value.siteMode ?? 'all') === 'all' && (value.sites ?? []).length === 0;
+  const pill = page => page.getByRole('button', { name: /volume pill/i });
+  const shadowAside = page => page.evaluate(() => !!document.querySelector('ottertap-controller')?.shadowRoot?.querySelector('aside'));
+  const rateOf = page => page.locator('#media').evaluate(element => element.playbackRate);
+  const near = target => value => Math.abs(value - target) < 0.01;
+  const ready = async page => page.locator('#media').evaluate(async element => {
+    if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+  });
+  const shortcutWorks = async (page, label) => {
+    await page.bringToFront();
+    await page.mouse.click(1000, 600);
+    await page.keyboard.press('Alt+Period');
+    const faster = await poll(() => rateOf(page), near(1.25), `${label}：Alt+. 应把倍速调到 1.25`);
+    await page.keyboard.press('Alt+Digit0');
+    await poll(() => rateOf(page), near(1), `${label}：Alt+0 应回到 1`);
+    return faster;
+  };
+  const popupToggle = popup => popup.evaluate(`(() => document.querySelector('button[aria-label="Hide floating on this site"]')?.getAttribute('aria-pressed') ?? '')()`);
+  let settings;
+  let fixture;
+  let other;
+  await context.route(`${otherOrigin}/**`, serveOther);
+  try {
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#floating`, { waitUntil: 'domcontentloaded' });
+    await settings.getByText('Sites without the floating button', { exact: true }).waitFor({ state: 'visible', timeout: 15_000 });
+    await settings.getByText('No sites yet.', { exact: false }).waitFor({ state: 'visible' });
+    await settings.getByText('separate from Site rules', { exact: false }).waitFor({ state: 'visible' });
+    if (!sameList(await stored(), [])) throw new Error('名单默认应为空');
+    await settings.locator('#floating').screenshot({ path: path.join(dir, 'settings-empty.png'), animations: 'disabled' });
+    note('settings list empty by default');
+
+    fixture = await context.newPage();
+    await fixture.goto(`${origin}/video`, { waitUntil: 'domcontentloaded' });
+    await pill(fixture).waitFor({ state: 'visible', timeout: 15_000 });
+    await ready(fixture);
+    await pill(fixture).click();
+    const dialog = fixture.getByRole('dialog', { name: 'Volume pill' });
+    const hide = dialog.getByRole('button', { name: 'Hide floating on this site', exact: true });
+    await hide.waitFor({ state: 'visible', timeout: 5_000 });
+    await dialog.getByRole('button', { name: 'Open panel', exact: true }).waitFor({ state: 'visible' });
+    await dialog.screenshot({ path: path.join(dir, 'pill-hide-button.png'), animations: 'disabled' });
+    await hide.click();
+    await pill(fixture).waitFor({ state: 'hidden', timeout: 5_000 });
+    await fixture.getByRole('status').filter({ hasText: 'Floating button hidden on this site' }).waitFor({ state: 'visible', timeout: 3_000 });
+    await fixture.screenshot({ path: path.join(dir, 'fixture-hidden.png'), animations: 'disabled' });
+    const hidden = await poll(stored, value => sameList(value, [hostName]) && rulesUntouched(value), `存储里应只多出 ${hostName}，且不动全局浮动和网站规则`);
+    note(`pill hid ${hostName}; stored ${JSON.stringify(hidden.floatingHiddenSites)} siteMode=${hidden.siteMode ?? 'all'} sites=${JSON.stringify(hidden.sites ?? [])}`);
+
+    const hiddenRate = await shortcutWorks(fixture, '隐藏后的同一页');
+    note(`on-page shortcut still works while hidden (rate ${hiddenRate})`);
+    await fixture.reload({ waitUntil: 'domcontentloaded' });
+    await ready(fixture);
+    const reloadedRate = await shortcutWorks(fixture, '刷新后');
+    await fixture.waitForTimeout(1_500);
+    if (await shadowAside(fixture)) throw new Error('刷新后本站不应再出现浮动入口');
+    note(`after reload: no floater, Alt+. still ${reloadedRate}`);
+
+    const popup = await openActionPopup(context, fixture);
+    try {
+      if (await popupToggle(popup) !== 'true') throw new Error('弹出面板里的本站隐藏浮动按钮应为按下');
+      await popup.screenshot(path.join(dir, 'popup-hidden.png'));
+      await popup.click('Play');
+      await poll(() => fixture.locator('#media').evaluate(element => element.paused), value => value === false, '弹出面板仍应能播放本站媒体');
+      await popup.click('Pause');
+      await poll(() => fixture.locator('#media').evaluate(element => element.paused), value => value === true, '弹出面板仍应能暂停');
+    } finally { await popup.close(); }
+    note('popup still controls media; eye toggle shows hidden');
+
+    other = await context.newPage();
+    const response = await other.goto(`${otherOrigin}/video`, { waitUntil: 'domcontentloaded' });
+    if (!response?.ok()) throw new Error(`第二个站点没有被拦截：${response?.status()}`);
+    await pill(other).waitFor({ state: 'visible', timeout: 15_000 });
+    await other.screenshot({ path: path.join(dir, 'other-site.png'), animations: 'disabled' });
+    note('elsewhere.test still shows the floater');
+
+    await settings.bringToFront();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#backup`, { waitUntil: 'domcontentloaded' });
+    const [download] = await Promise.all([settings.waitForEvent('download'), settings.getByRole('button', { name: 'Export settings', exact: true }).click()]);
+    const exportPath = path.join(dir, 'export.json');
+    await download.saveAs(exportPath);
+    const exported = JSON.parse(await readFile(exportPath, 'utf8'));
+    if (JSON.stringify(exported.settings?.floatingHiddenSites) !== JSON.stringify([hostName])) throw new Error(`导出文件应带名单：${JSON.stringify(exported.settings?.floatingHiddenSites)}`);
+    note(`export floatingHiddenSites ${JSON.stringify(exported.settings.floatingHiddenSites)}`);
+
+    await settings.goto(`chrome-extension://${extensionId}/options.html#floating`, { waitUntil: 'domcontentloaded' });
+    const list = settings.locator('[aria-label="Sites without the floating button"]');
+    await list.getByText(hostName, { exact: true }).waitFor({ state: 'visible', timeout: 5_000 });
+    await settings.locator('#floating').screenshot({ path: path.join(dir, 'settings-listed.png'), animations: 'disabled' });
+    await settings.getByRole('button', { name: `Show the floating button on ${hostName} again`, exact: true }).click();
+    await settings.getByText('No sites yet.', { exact: false }).waitFor({ state: 'visible', timeout: 5_000 });
+    await poll(stored, value => sameList(value, []), '设置页撤销后名单应为空');
+    await pill(fixture).waitFor({ state: 'visible', timeout: 8_000 });
+    await fixture.screenshot({ path: path.join(dir, 'fixture-restored.png'), animations: 'disabled' });
+    note('settings undo brought the floater back without reload');
+
+    await settings.goto(`chrome-extension://${extensionId}/options.html#backup`, { waitUntil: 'domcontentloaded' });
+    await settings.locator('#backup input[type="file"]').setInputFiles(exportPath);
+    await settings.getByRole('button', { name: 'Replace settings', exact: true }).click();
+    const imported = await poll(stored, value => sameList(value, [hostName]) && rulesUntouched(value), '导入后名单应回来');
+    await pill(fixture).waitFor({ state: 'hidden', timeout: 8_000 });
+    note(`import restored ${JSON.stringify(imported.floatingHiddenSites)}; floater hidden again`);
+
+    const undo = await openActionPopup(context, fixture);
+    try {
+      if (await popupToggle(undo) !== 'true') throw new Error('导入后弹出面板按钮应为按下');
+      const clicked = await undo.evaluate(`(() => { const node = document.querySelector('button[aria-label="Hide floating on this site"]'); if (!node) return false; node.click(); return true; })()`);
+      if (!clicked) throw new Error('弹出面板里没有 Hide floating on this site');
+      await poll(() => popupToggle(undo), value => value === 'false', '弹出面板按钮应抬起');
+      await undo.evaluate('new Promise(resolve => setTimeout(resolve, 300))');
+      await undo.screenshot(path.join(dir, 'popup-restored.png'));
+    } finally { await undo.close(); }
+    const final = await poll(stored, value => sameList(value, []) && rulesUntouched(value), '弹出面板撤销后名单应为空');
+    await pill(fixture).waitFor({ state: 'visible', timeout: 8_000 });
+    note('popup toggle undo brought the floater back');
+
+    const state = { ok: true, host: hostName, hidden: hidden.floatingHiddenSites, shortcutRate: hiddenRate, reloadedRate, exported: exported.settings.floatingHiddenSites, imported: imported.floatingHiddenSites, final: final.floatingHiddenSites ?? [], siteMode: final.siteMode ?? 'all', sites: final.sites ?? [] };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await context.unroute(`${otherOrigin}/**`, serveOther).catch(() => {});
+    await settings?.close().catch(() => {});
+    await fixture?.close().catch(() => {});
+    await other?.close().catch(() => {});
+  }
+}
+
 async function inspect(context) {
   const worker = await serviceWorker(context);
   const runtime = await worker.evaluate(() => ({
@@ -2621,7 +2763,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });

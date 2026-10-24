@@ -15,13 +15,14 @@ const sameSitePrefs = (a: Record<string, SitePref>, b: Record<string, SitePref>)
   const keys = Object.keys(a);
   return keys.length === Object.keys(b).length && keys.every(key => !!b[key] && sameSitePref(a[key]!, b[key]!));
 };
-const sameSettings = (a: Settings, b: Settings) => a.theme === b.theme && a.floating === b.floating && a.floatingNote === b.floatingNote && a.floatingWhilePlaying === b.floatingWhilePlaying && a.defaultRate === b.defaultRate && a.lockRate === b.lockRate && a.holdBoost === b.holdBoost && a.holdBoostRate === b.holdBoostRate && a.holdSkip === b.holdSkip && a.hoverWheel === b.hoverWheel && a.singleKey === b.singleKey && a.skipSeconds === b.skipSeconds && a.skipWithRate === b.skipWithRate && a.volumeStep === b.volumeStep && a.rateStep === b.rateStep && a.siteMode === b.siteMode && samePosition(a.floatingPosition, b.floatingPosition) && sameSites(a.sites, b.sites) && sameSitePrefs(a.sitePrefs, b.sitePrefs) && samePresets(a.ratePresets, b.ratePresets) && sameKeybinds(a.keybinds, b.keybinds);
+const sameSettings = (a: Settings, b: Settings) => a.theme === b.theme && a.floating === b.floating && a.floatingNote === b.floatingNote && a.floatingWhilePlaying === b.floatingWhilePlaying && sameSites(a.floatingHiddenSites, b.floatingHiddenSites) && a.defaultRate === b.defaultRate && a.lockRate === b.lockRate && a.holdBoost === b.holdBoost && a.holdBoostRate === b.holdBoostRate && a.holdSkip === b.holdSkip && a.hoverWheel === b.hoverWheel && a.singleKey === b.singleKey && a.skipSeconds === b.skipSeconds && a.skipWithRate === b.skipWithRate && a.volumeStep === b.volumeStep && a.rateStep === b.rateStep && a.siteMode === b.siteMode && samePosition(a.floatingPosition, b.floatingPosition) && sameSites(a.sites, b.sites) && sameSitePrefs(a.sitePrefs, b.sitePrefs) && samePresets(a.ratePresets, b.ratePresets) && sameKeybinds(a.keybinds, b.keybinds);
 
 function mergeSettings(current: Settings, update: Partial<Settings>): Settings {
   const next = normalizeSettings({ ...current, ...update });
   return {
     ...next,
     floatingPosition: samePosition(current.floatingPosition, next.floatingPosition) ? current.floatingPosition : next.floatingPosition,
+    floatingHiddenSites: sameSites(current.floatingHiddenSites, next.floatingHiddenSites) ? current.floatingHiddenSites : next.floatingHiddenSites,
     sites: sameSites(current.sites, next.sites) ? current.sites : next.sites,
     sitePrefs: sameSitePrefs(current.sitePrefs, next.sitePrefs) ? current.sitePrefs : next.sitePrefs,
     ratePresets: samePresets(current.ratePresets, next.ratePresets) ? current.ratePresets : next.ratePresets,
@@ -36,6 +37,7 @@ export interface SettingsAtoms {
   floatingAtom: Atom<boolean>;
   floatingNoteAtom: Atom<FloatingNote>;
   floatingWhilePlayingAtom: Atom<boolean>;
+  floatingHiddenSitesAtom: Atom<string[]>;
   defaultRateAtom: Atom<number | null>;
   lockRateAtom: Atom<boolean>;
   holdBoostAtom: Atom<boolean>;
@@ -70,6 +72,7 @@ export function createSettingsAtoms(source: SettingsStore, options?: { initialLo
   const floatingAtom = selectAtom(settingsAtom, settings => settings.floating);
   const floatingNoteAtom = selectAtom(settingsAtom, settings => settings.floatingNote);
   const floatingWhilePlayingAtom = selectAtom(settingsAtom, settings => settings.floatingWhilePlaying);
+  const floatingHiddenSitesAtom = selectAtom(settingsAtom, settings => settings.floatingHiddenSites);
   const defaultRateAtom = selectAtom(settingsAtom, settings => settings.defaultRate);
   const lockRateAtom = selectAtom(settingsAtom, settings => settings.lockRate);
   const holdBoostAtom = selectAtom(settingsAtom, settings => settings.holdBoost);
@@ -175,7 +178,7 @@ export function createSettingsAtoms(source: SettingsStore, options?: { initialLo
   }
 
   return {
-    store, settingsAtom, themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, rateStepAtom, floatingPositionAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom, mount, ready,
+    store, settingsAtom, themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, floatingHiddenSitesAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, rateStepAtom, floatingPositionAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom, mount, ready,
     settled: () => idle
   };
 }

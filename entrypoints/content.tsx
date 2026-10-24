@@ -302,7 +302,7 @@ export default defineContentScript({
         container.className = 'ottertap-root';
         container.lang = i18n.t('locale');
         const root = createRoot(container);
-        root.render(<ThemeProvider store={extensionStore} target={container}><FloatingController client={client} openPanel={openPanel} /><RateHint /><RateLockNotice /></ThemeProvider>);
+        root.render(<ThemeProvider store={extensionStore} target={container}><FloatingController client={client} openPanel={openPanel} hideOnSite /><RateHint /><RateLockNotice /></ThemeProvider>);
         return root;
       },
       onRemove(root) { root?.unmount(); }
