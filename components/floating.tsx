@@ -1,7 +1,7 @@
 import { i18n } from '#i18n';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { CircleAlert, Minus, PanelTop, Pause, Play, Plus, RotateCcw, RotateCw, Volume2, VolumeX } from 'lucide-react';
+import { CircleAlert, EyeOff, Minus, PanelTop, Pause, Play, Plus, RotateCcw, RotateCw, Volume2, VolumeX } from 'lucide-react';
 import otterMark from '../assets/otter-mark';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
@@ -10,10 +10,11 @@ import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 import { VolumeSlider } from './volume-slider';
 import { useMedia } from '../hooks/use-media';
 import { dockedPoint, dockSize, dropPosition, nudgePosition, type Viewport } from '../lib/dock';
-import { commandForHotkey, createHotkeySession, rateHintEvent, volumeGestureEvent } from '../lib/hotkey';
+import { actionHintEvent, commandForHotkey, createHotkeySession, rateHintEvent, volumeGestureEvent } from '../lib/hotkey';
 import { floatingEntryNote } from '../lib/floating-note';
 import { createFloatingWhilePlayingGate, floatingWhilePlayingHideMs, stepFloatingWhilePlaying } from '../lib/floating-play';
 import { formatRate, nextRate, sameRate } from '../lib/rate';
+import { hideFloating, isFloatingHidden } from '../lib/settings';
 import { actualSkipSeconds } from '../lib/skip';
 import type { FloatingPosition, MediaClient, MediaState } from '../lib/types';
 import { useSettingsAtoms } from './theme';
@@ -22,9 +23,11 @@ const readViewport = (): Viewport => ({ width: document.documentElement.clientWi
 const thumbHeight = 10;
 const boostColor = (volume: number, max: number) => `color-mix(in oklch, var(--destructive) ${Math.max(0, Math.min(1, (volume - 100) / (max - 100))) * 100}%, #b57835)`;
 
-export function FloatingController({ client, openPanel }: { client: MediaClient; openPanel?: (mediaId: string) => Promise<boolean> }) {
-  const { floatingAtom, floatingNoteAtom, floatingPositionAtom, floatingWhilePlayingAtom, loadingAtom, ratePresetsAtom, rateStepAtom, skipSecondsAtom, skipWithRateAtom, writeSettingsAtom } = useSettingsAtoms();
+/** `hideOnSite` offers 「本站隐藏浮动」. Leave it off where the settings are not the user's real ones, such as demos. */
+export function FloatingController({ client, openPanel, hideOnSite }: { client: MediaClient; openPanel?: (mediaId: string) => Promise<boolean>; hideOnSite?: boolean }) {
+  const { floatingAtom, floatingHiddenSitesAtom, floatingNoteAtom, floatingPositionAtom, floatingWhilePlayingAtom, loadingAtom, ratePresetsAtom, rateStepAtom, skipSecondsAtom, skipWithRateAtom, writeSettingsAtom } = useSettingsAtoms();
   const floating = useAtomValue(floatingAtom);
+  const floatingHiddenSites = useAtomValue(floatingHiddenSitesAtom);
   const floatingNote = useAtomValue(floatingNoteAtom);
   const floatingWhilePlaying = useAtomValue(floatingWhilePlayingAtom);
   const floatingPosition = useAtomValue(floatingPositionAtom);
@@ -74,7 +77,8 @@ export function FloatingController({ client, openPanel }: { client: MediaClient;
   const mediaRef = useRef(selected);
   const clientRef = useRef(client);
   const optimistic = useRef<MediaState | null>(null);
-  floatingRef.current = floating;
+  const hiddenHere = isFloatingHidden(page.host, floatingHiddenSites);
+  floatingRef.current = floating && !hiddenHere;
   mediaRef.current = selected;
   clientRef.current = client;
   const hotkeys = useMemo(() => createHotkeySession(async action => {
@@ -132,8 +136,11 @@ export function FloatingController({ client, openPanel }: { client: MediaClient;
   useEffect(() => {
     if (floatingWhilePlaying && !playback.visible) setExpanded(false);
   }, [floatingWhilePlaying, playback.visible]);
+  useEffect(() => {
+    if (hiddenHere) setExpanded(false);
+  }, [hiddenHere]);
 
-  if (loading || !floating || !page.enabled || !selected || (floatingWhilePlaying && !playback.visible)) return null;
+  if (loading || !floating || hiddenHere || !page.enabled || !selected || (floatingWhilePlaying && !playback.visible)) return null;
   const position = moved ?? floatingPosition;
   const revealed = hovered || focused || expanded || !!dragPoint;
   const point = dragPoint ?? dockedPoint(position, viewport, revealed);
@@ -194,6 +201,9 @@ export function FloatingController({ client, openPanel }: { client: MediaClient;
       setOpeningPanel(false);
     }
   };
+  const hideHere = async () => {
+    if (await write({ floatingHiddenSites: hideFloating(floatingHiddenSites, page.host) })) window.dispatchEvent(new CustomEvent(actionHintEvent, { detail: i18n.t('floatingHiddenHint') }));
+  };
   return <aside ref={container} className="fixed z-2147483647 size-12 transition-[left,top] duration-150 ease-out data-dragging:transition-none" aria-label={i18n.t('floatingController')} data-side={position.side} data-revealed={revealed} data-dragging={dragPoint ? '' : undefined} style={{ left: point.x, top: point.y }} onPointerEnter={() => { window.clearTimeout(hideTimer.current); setHovered(true); }} onPointerLeave={() => { window.clearTimeout(hideTimer.current); hideTimer.current = window.setTimeout(() => setHovered(false), 300); }} onWheelCapture={event => { hotkeys.wheel(event); }}>
     <Popover open={expanded} onOpenChange={setExpanded}>
       <PopoverTrigger render={<Button variant="outline" size="icon" />} className="size-12 cursor-grab touch-none rounded-full bg-background text-primary shadow-[0_2px_8px_rgb(0_0_0/.12)] hover:border-primary hover:bg-background active:cursor-grabbing aria-expanded:border-primary aria-expanded:bg-background dark:bg-background dark:hover:bg-background" aria-label={expanded ? i18n.t('collapsePill') : i18n.t('openPill')} title={i18n.t('pillTitle', { title: selected.title })} onFocus={event => setFocused(event.currentTarget.matches(':focus-visible'))} onBlur={() => setFocused(false)} onClick={event => {
@@ -248,8 +258,11 @@ export function FloatingController({ client, openPanel }: { client: MediaClient;
               {ratePresets.map(speed => <ToggleGroupItem key={speed} value={String(speed)} aria-label={i18n.t('speedOption', { speed: formatRate(speed) })} className="h-7 w-full min-w-0 rounded-md border-0 bg-secondary/60 px-0.5 text-xs text-muted-foreground shadow-none aria-pressed:bg-primary aria-pressed:font-semibold aria-pressed:text-primary-foreground">{formatRate(speed)}×</ToggleGroupItem>)}
             </ToggleGroup>
           </div>
-          {openPanel && <div className="shrink-0 border-t border-border/70 px-1.5 py-1.5">
-            <Button type="button" variant="ghost" size="sm" className="h-auto min-h-8 w-full gap-1 whitespace-normal px-2 py-1 text-xs text-muted-foreground" aria-label={i18n.t('openPanel')} disabled={openingPanel} onClick={() => void requestPanel()}><PanelTop />{i18n.t('openPanel')}</Button>
+          {(openPanel || hideOnSite) && <div className="shrink-0 border-t border-border/70 px-1.5 py-1.5">
+            <div className="flex items-center justify-end gap-0.5">
+              {openPanel && <Button type="button" variant="ghost" size="sm" className="h-auto min-h-8 min-w-0 flex-1 gap-1 whitespace-normal px-2 py-1 text-xs text-muted-foreground" aria-label={i18n.t('openPanel')} disabled={openingPanel} onClick={() => void requestPanel()}><PanelTop />{i18n.t('openPanel')}</Button>}
+              {hideOnSite && <Button type="button" variant="ghost" size="icon-sm" className="shrink-0 text-muted-foreground" aria-label={i18n.t('hideFloatingHere')} title={i18n.t('hideFloatingHere')} disabled={!page.host} onClick={() => void hideHere()}><EyeOff /></Button>}
+            </div>
             {panelHint && <p role="status" className="px-1 pt-1 text-center text-[11px] leading-4 text-muted-foreground">{i18n.t('openPanelHint')}</p>}
           </div>}
         </div>

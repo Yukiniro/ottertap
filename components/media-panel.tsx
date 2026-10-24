@@ -1,7 +1,7 @@
 import { i18n } from '#i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { ChevronDown, Settings2, Settings as SettingsIcon, Volume2, VolumeX, AppWindow, Pause, Play, RotateCcw, RotateCw, Keyboard, CircleAlert, Info, Search, RefreshCw, PictureInPicture2, Headphones, Minus, Plus, StepBack, StepForward } from 'lucide-react';
+import { ChevronDown, EyeOff, Settings2, Settings as SettingsIcon, Volume2, VolumeX, AppWindow, Pause, Play, RotateCcw, RotateCw, Keyboard, CircleAlert, Info, Search, RefreshCw, PictureInPicture2, Headphones, Minus, Plus, StepBack, StepForward } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from './ui/dropdown-menu';
@@ -20,7 +20,7 @@ import { channelLabel, mediaChoiceLabel, pipHint } from '../lib/media';
 import { formatRate, nextRate, sameRate } from '../lib/rate';
 import { actualSkipSeconds } from '../lib/skip';
 import type { SoundingTab, SoundingTabsClient } from '../lib/tabs';
-import { disableSite, enableSite, forgetMatchingSites, isSiteEnabled, rememberSite, sitePrefFor } from '../lib/settings';
+import { disableSite, enableSite, forgetMatchingSites, hideFloating, isFloatingHidden, isSiteEnabled, rememberSite, showFloating, sitePrefFor } from '../lib/settings';
 import { defaultSettings, type MediaClient, type MediaState, type PageState, type SitePref } from '../lib/types';
 import { formatTime } from '../lib/utils';
 import { useSettingsAtoms } from './theme';
@@ -80,8 +80,9 @@ function OtherPlaying({ client }: { client?: SoundingTabsClient }) {
 }
 export function MediaPanel({ client, openSettings, sounding, initial }: { client: MediaClient; openSettings: () => void; sounding?: SoundingTabsClient; initial?: PageState }) {
   const { page, selected, select, command, refresh, loading, error } = useMedia(client, { initial });
-  const { floatingAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, skipSecondsAtom, skipWithRateAtom, rateStepAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { floatingAtom, floatingHiddenSitesAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, skipSecondsAtom, skipWithRateAtom, rateStepAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const floating = useAtomValue(floatingAtom);
+  const floatingHiddenSites = useAtomValue(floatingHiddenSitesAtom);
   const siteMode = useAtomValue(siteModeAtom);
   const sites = useAtomValue(sitesAtom);
   const sitePrefs = useAtomValue(sitePrefsAtom);
@@ -261,6 +262,11 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
         <ItemContent><ItemTitle className="font-normal"><label htmlFor="floating-toggle">{i18n.t('floatingController')}</label></ItemTitle></ItemContent>
         <ItemActions><Switch id="floating-toggle" aria-label={i18n.t('floatingController')} checked={floating} disabled={settingsLoading} onCheckedChange={checked => void write({ floating: checked })} /></ItemActions>
       </Item>
+      {floating && page.enabled && page.host && <Item role="listitem" className="min-h-10 flex-nowrap rounded-none px-0 py-1.5">
+        <ItemMedia variant="icon" className="text-muted-foreground"><EyeOff className="size-5" /></ItemMedia>
+        <ItemContent><ItemTitle className="font-normal"><label htmlFor="floating-hidden-here">{i18n.t('hideFloatingHere')}</label></ItemTitle></ItemContent>
+        <ItemActions><Switch id="floating-hidden-here" aria-label={i18n.t('hideFloatingHere')} checked={isFloatingHidden(page.host, floatingHiddenSites)} disabled={settingsLoading} onCheckedChange={checked => { if (page.host) void write({ floatingHiddenSites: checked ? hideFloating(floatingHiddenSites, page.host) : showFloating(floatingHiddenSites, page.host) }); }} /></ItemActions>
+      </Item>}
       {showSiteAction && <Item role="listitem" className="rounded-none px-0 py-0">
         <Button variant="ghost" size="sm" className="h-auto min-h-8 w-full justify-start px-0 text-muted-foreground whitespace-normal break-all" disabled={settingsLoading} onClick={() => void write(siteAction.settings!).then(ok => { if (ok) void refresh(); })}>{siteAction.label}</Button>
       </Item>}

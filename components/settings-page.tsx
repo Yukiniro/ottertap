@@ -2,7 +2,7 @@ import { i18n } from '#i18n';
 import { useEffect, useRef, useState } from 'react';
 import { commandBindings, extensionShortcutApis, shortcutsSettingsUrl } from '../lib/commands';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { Sun, AppWindow, Keyboard, Gauge, Globe, Bookmark, Archive, X, CircleCheck, ArrowLeft, CircleAlert, ChevronUp, ChevronDown } from 'lucide-react';
+import { Sun, AppWindow, Keyboard, Gauge, Globe, Bookmark, Archive, X, CircleCheck, ArrowLeft, CircleAlert, ChevronUp, ChevronDown, EyeOff } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -217,11 +217,12 @@ function Row({ title, description, titleId, children }: { title: string; descrip
 }
 
 export function SettingsPage({ back }: { back?: () => void }) {
-  const { themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, floatingHiddenSitesAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const theme = useAtomValue(themeAtom);
   const floating = useAtomValue(floatingAtom);
   const floatingNote = useAtomValue(floatingNoteAtom);
   const floatingWhilePlaying = useAtomValue(floatingWhilePlayingAtom);
+  const floatingHiddenSites = useAtomValue(floatingHiddenSitesAtom);
   const defaultRate = useAtomValue(defaultRateAtom);
   const lockRate = useAtomValue(lockRateAtom);
   const holdBoost = useAtomValue(holdBoostAtom);
@@ -369,6 +370,17 @@ export function SettingsPage({ back }: { back?: () => void }) {
                 <ToggleGroupItem value="off" className="h-8 rounded-md border-0 px-2 text-xs text-muted-foreground shadow-none aria-pressed:bg-card aria-pressed:font-semibold aria-pressed:text-foreground aria-pressed:shadow-sm">{i18n.t('floatingNoteOff')}</ToggleGroupItem>
               </ToggleGroup>
               <p className="mt-2 text-sm leading-5 text-muted-foreground">{i18n.t('floatingNoteDescription')}</p>
+            </div>
+            <div className="rounded-lg bg-secondary/60 px-3 py-3">
+              <h3 className="text-sm font-medium">{i18n.t('floatingHiddenSites')}</h3>
+              <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('floatingHiddenSitesDescription')}</p>
+              {floatingHiddenSites.length
+                ? <ItemGroup aria-label={i18n.t('floatingHiddenSites')} className="mt-3 gap-0 overflow-hidden rounded-lg bg-background/80">{floatingHiddenSites.map(site => <Item key={site} role="listitem" className="rounded-none border-b-border px-3 not-last:border-b">
+                  <ItemMedia variant="icon" className="text-muted-foreground"><EyeOff className="size-4" /></ItemMedia>
+                  <ItemContent><ItemTitle className="line-clamp-none font-normal break-all">{site}</ItemTitle></ItemContent>
+                  <ItemActions><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={i18n.t('restoreFloating', { site })} disabled={disabled} onClick={() => void save({ floatingHiddenSites: floatingHiddenSites.filter(value => value !== site) })}><X /></Button></ItemActions>
+                </Item>)}</ItemGroup>
+                : <p className="mt-3 rounded-lg bg-background/80 px-3 py-3 text-sm text-muted-foreground">{i18n.t('floatingHiddenEmpty')}</p>}
             </div>
           </div>
         </div>
