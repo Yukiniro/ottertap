@@ -95,7 +95,7 @@ test('浮动药丸与弹出面板一键隐藏本站浮动，设置页可查看�
     await act(async () => { trigger.dispatchEvent(new window.MouseEvent('click', { bubbles: true })); });
   };
   const hideButton = () => floater.node.querySelector('button[aria-label="本站隐藏浮动"]') as HTMLButtonElement | null;
-  const panelSwitch = () => panel.node.querySelector('[role="switch"][aria-label="本站隐藏浮动"]') as HTMLElement | null;
+  const panelToggle = () => panel.node.querySelector('button[aria-label="本站隐藏浮动"]') as HTMLElement | null;
   const refresh = async () => {
     window.dispatchEvent(new window.Event(mediaPresenceEvent));
     await new Promise(resolve => setTimeout(resolve, 30));
@@ -123,16 +123,16 @@ test('浮动药丸与弹出面板一键隐藏本站浮动，设置页可查看�
 
     await act(async () => { panel.root.render(createElement(ThemeProvider, { store, children: createElement(MediaPanel, { client, openSettings() {} }) })); await new Promise(resolve => setTimeout(resolve, 30)); });
     assert.ok(panel.node.querySelector('button[aria-label="播放"]'), '面板仍能控制本站媒体');
-    assert.equal(panelSwitch()?.getAttribute('aria-checked'), 'true');
+    assert.equal(panelToggle()?.getAttribute('aria-pressed'), 'true');
     await act(async () => { (panel.node.querySelector('button[aria-label="播放"]') as unknown as HTMLElement).click(); });
     assert.deepEqual(commands, [{ type: 'play' }]);
-    await act(async () => { panelSwitch()!.click(); await new Promise(resolve => setTimeout(resolve, 20)); });
+    await act(async () => { panelToggle()!.click(); await new Promise(resolve => setTimeout(resolve, 20)); });
     assert.deepEqual(value.floatingHiddenSites, ['other.test'], '面板里关掉即撤销本站');
     await act(refresh);
     assert.ok(aside(), '撤销后入口回来');
     assert.equal(floater.node.querySelector('[role="dialog"]'), null, '回来时不会自己展开药丸');
 
-    await act(async () => { panelSwitch()!.click(); await new Promise(resolve => setTimeout(resolve, 20)); });
+    await act(async () => { panelToggle()!.click(); await new Promise(resolve => setTimeout(resolve, 20)); });
     assert.deepEqual(value.floatingHiddenSites, ['other.test', 'www.example.com'], '面板也能一键隐藏');
     await act(refresh);
     assert.equal(aside(), null);
@@ -144,7 +144,7 @@ test('浮动药丸与弹出面板一键隐藏本站浮动，设置页可查看�
     await act(refresh);
 
     await act(async () => { value = { ...value, floating: false }; listeners.forEach(listener => listener(value)); await new Promise(resolve => setTimeout(resolve, 20)); });
-    assert.equal(panelSwitch(), null, '全局关掉浮动时不显示本站开关');
+    assert.equal(panelToggle(), null, '全局关掉浮动时不显示本站按钮');
     await act(async () => { value = { ...value, floating: true }; listeners.forEach(listener => listener(value)); await new Promise(resolve => setTimeout(resolve, 20)); });
 
     await act(async () => { page.root.render(createElement(ThemeProvider, { store, children: createElement(SettingsPage) })); });

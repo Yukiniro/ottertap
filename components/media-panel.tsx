@@ -108,6 +108,7 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
   const pendingRates = useRef(0);
   const rateQueue = useRef(Promise.resolve());
   const remembered = page.host ? sitePrefFor(page.host, sitePrefs) : null;
+  const hiddenHere = isFloatingHidden(page.host, floatingHiddenSites);
   const playbackRate = selected ? aimedRate ?? selected.rate : 1;
   const jump = actualSkipSeconds(skipSeconds, playbackRate, skipWithRate);
   const storePreference = () => {
@@ -260,13 +261,11 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
       <Item role="listitem" className="min-h-10 flex-nowrap rounded-none px-0 py-1.5">
         <ItemMedia variant="icon" className="text-muted-foreground"><AppWindow className="size-5" /></ItemMedia>
         <ItemContent><ItemTitle className="font-normal"><label htmlFor="floating-toggle">{i18n.t('floatingController')}</label></ItemTitle></ItemContent>
-        <ItemActions><Switch id="floating-toggle" aria-label={i18n.t('floatingController')} checked={floating} disabled={settingsLoading} onCheckedChange={checked => void write({ floating: checked })} /></ItemActions>
+        <ItemActions>
+          {floating && page.enabled && page.host && <Button type="button" variant="ghost" size="icon-sm" className="text-muted-foreground aria-pressed:bg-accent aria-pressed:text-primary" aria-pressed={hiddenHere} aria-label={i18n.t('hideFloatingHere')} title={i18n.t('hideFloatingHere')} disabled={settingsLoading} onClick={() => { if (page.host) void write({ floatingHiddenSites: hiddenHere ? showFloating(floatingHiddenSites, page.host) : hideFloating(floatingHiddenSites, page.host) }); }}><EyeOff /></Button>}
+          <Switch id="floating-toggle" aria-label={i18n.t('floatingController')} checked={floating} disabled={settingsLoading} onCheckedChange={checked => void write({ floating: checked })} />
+        </ItemActions>
       </Item>
-      {floating && page.enabled && page.host && <Item role="listitem" className="min-h-10 flex-nowrap rounded-none px-0 py-1.5">
-        <ItemMedia variant="icon" className="text-muted-foreground"><EyeOff className="size-5" /></ItemMedia>
-        <ItemContent><ItemTitle className="font-normal"><label htmlFor="floating-hidden-here">{i18n.t('hideFloatingHere')}</label></ItemTitle></ItemContent>
-        <ItemActions><Switch id="floating-hidden-here" aria-label={i18n.t('hideFloatingHere')} checked={isFloatingHidden(page.host, floatingHiddenSites)} disabled={settingsLoading} onCheckedChange={checked => { if (page.host) void write({ floatingHiddenSites: checked ? hideFloating(floatingHiddenSites, page.host) : showFloating(floatingHiddenSites, page.host) }); }} /></ItemActions>
-      </Item>}
       {showSiteAction && <Item role="listitem" className="rounded-none px-0 py-0">
         <Button variant="ghost" size="sm" className="h-auto min-h-8 w-full justify-start px-0 text-muted-foreground whitespace-normal break-all" disabled={settingsLoading} onClick={() => void write(siteAction.settings!).then(ok => { if (ok) void refresh(); })}>{siteAction.label}</Button>
       </Item>}

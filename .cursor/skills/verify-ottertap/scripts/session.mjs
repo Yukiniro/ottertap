@@ -2560,7 +2560,7 @@ async function driveFloatingHiddenSites(context, dir, note) {
     await poll(() => rateOf(page), near(1), `${label}：Alt+0 应回到 1`);
     return faster;
   };
-  const popupSwitch = popup => popup.evaluate(`(() => document.querySelector('[role="switch"][aria-label="Hide floating on this site"]')?.getAttribute('aria-checked') ?? '')()`);
+  const popupToggle = popup => popup.evaluate(`(() => document.querySelector('button[aria-label="Hide floating on this site"]')?.getAttribute('aria-pressed') ?? '')()`);
   let settings;
   let fixture;
   let other;
@@ -2603,14 +2603,14 @@ async function driveFloatingHiddenSites(context, dir, note) {
 
     const popup = await openActionPopup(context, fixture);
     try {
-      if (await popupSwitch(popup) !== 'true') throw new Error('弹出面板里的本站隐藏浮动应为打开');
+      if (await popupToggle(popup) !== 'true') throw new Error('弹出面板里的本站隐藏浮动按钮应为按下');
       await popup.screenshot(path.join(dir, 'popup-hidden.png'));
       await popup.click('Play');
       await poll(() => fixture.locator('#media').evaluate(element => element.paused), value => value === false, '弹出面板仍应能播放本站媒体');
       await popup.click('Pause');
       await poll(() => fixture.locator('#media').evaluate(element => element.paused), value => value === true, '弹出面板仍应能暂停');
     } finally { await popup.close(); }
-    note('popup still controls media; switch shows hidden');
+    note('popup still controls media; eye toggle shows hidden');
 
     other = await context.newPage();
     const response = await other.goto(`${otherOrigin}/video`, { waitUntil: 'domcontentloaded' });
@@ -2648,15 +2648,16 @@ async function driveFloatingHiddenSites(context, dir, note) {
 
     const undo = await openActionPopup(context, fixture);
     try {
-      if (await popupSwitch(undo) !== 'true') throw new Error('导入后弹出面板开关应为打开');
-      const clicked = await undo.evaluate(`(() => { const node = document.querySelector('[role="switch"][aria-label="Hide floating on this site"]'); if (!node) return false; node.click(); return true; })()`);
+      if (await popupToggle(undo) !== 'true') throw new Error('导入后弹出面板按钮应为按下');
+      const clicked = await undo.evaluate(`(() => { const node = document.querySelector('button[aria-label="Hide floating on this site"]'); if (!node) return false; node.click(); return true; })()`);
       if (!clicked) throw new Error('弹出面板里没有 Hide floating on this site');
-      await poll(() => popupSwitch(undo), value => value === 'false', '弹出面板开关应关掉');
+      await poll(() => popupToggle(undo), value => value === 'false', '弹出面板按钮应抬起');
+      await undo.evaluate('new Promise(resolve => setTimeout(resolve, 300))');
       await undo.screenshot(path.join(dir, 'popup-restored.png'));
     } finally { await undo.close(); }
     const final = await poll(stored, value => sameList(value, []) && rulesUntouched(value), '弹出面板撤销后名单应为空');
     await pill(fixture).waitFor({ state: 'visible', timeout: 8_000 });
-    note('popup switch undo brought the floater back');
+    note('popup toggle undo brought the floater back');
 
     const state = { ok: true, host: hostName, hidden: hidden.floatingHiddenSites, shortcutRate: hiddenRate, reloadedRate, exported: exported.settings.floatingHiddenSites, imported: imported.floatingHiddenSites, final: final.floatingHiddenSites ?? [], siteMode: final.siteMode ?? 'all', sites: final.sites ?? [] };
     await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
