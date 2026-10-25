@@ -26,6 +26,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive sidebar-ignore
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-memory-filter
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-sites-filter
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-floating-hidden-filter
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -45,7 +46,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -3176,7 +3177,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -3842,6 +3843,134 @@ async function driveSettingsSitesFilter(context, dir, note) {
     await remembered(['kept.example']);
 
     const state = { ok: true, filtered: ['beta.example', 'gamma.example'], afterAdd, afterRemove, modeReset: 'exclude', memoryVisible: ['kept.example'] };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await settings?.close().catch(() => {});
+  }
+}
+
+async function driveSettingsFloatingHiddenFilter(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const hiddenOf = value => value.floatingHiddenSites ?? [];
+  const sameHidden = expected => value => hiddenOf(value).join() === expected.join();
+  const sitesOf = value => value.sites ?? [];
+  const prefsOf = value => Object.keys(value.sitePrefs ?? {}).sort();
+  let settings;
+  try {
+    await worker.evaluate(async () => {
+      const key = 'ottertap-settings-v1';
+      const current = (await chrome.storage.local.get(key))[key] ?? {};
+      await chrome.storage.local.set({
+        [key]: {
+          ...current,
+          floating: true,
+          siteMode: 'allow',
+          sites: ['rules.example', 'listed.test'],
+          sitePrefs: {
+            'kept.example': { volume: 0.4 },
+            'noted.test': { volume: 0.2 },
+          },
+          floatingHiddenSites: ['alpha.test', 'beta.example', 'gamma.example'],
+        },
+      });
+    });
+    const seeded = ['alpha.test', 'beta.example', 'gamma.example'];
+    await poll(stored, value => value.floating !== false && value.siteMode === 'allow' && sameHidden(seeded)(value) && sitesOf(value).join() === 'rules.example,listed.test' && prefsOf(value).join() === 'kept.example,noted.test', '应先写入隐藏名单、网站规则和记住站点');
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#floating`, { waitUntil: 'domcontentloaded' });
+    const floating = settings.locator('#floating');
+    const sites = settings.locator('#sites');
+    const memory = settings.locator('#memory');
+    const filter = floating.getByRole('searchbox', { name: 'Filter hidden sites' });
+    const siteFilter = sites.getByRole('searchbox', { name: 'Filter site list' });
+    const memoryFilter = memory.getByRole('searchbox', { name: 'Filter by hostname' });
+    await filter.waitFor({ state: 'visible', timeout: 15_000 });
+    await siteFilter.waitFor({ state: 'visible', timeout: 15_000 });
+    await memoryFilter.waitFor({ state: 'visible', timeout: 15_000 });
+    const titles = () => floating.locator('[data-slot="item-title"]').allTextContents();
+    const siteTitles = () => sites.locator('[data-slot="item-title"]').allTextContents();
+    const memoryTitles = () => memory.locator('[data-slot="item-title"]').allTextContents();
+    const listed = expected => poll(titles, value => value.join() === expected.join(), `隐藏名单应为 ${expected.join(', ')}`);
+    const ruled = expected => poll(siteTitles, value => value.join() === expected.join(), `网站名单应为 ${expected.join(', ')}`);
+    const remembered = expected => poll(memoryTitles, value => value.join() === expected.join(), `记住站点应为 ${expected.join(', ')}`);
+    await listed(seeded);
+    await ruled(['rules.example', 'listed.test']);
+    await remembered(['kept.example', 'noted.test']);
+    await floating.screenshot({ path: path.join(dir, 'list-all.png'), animations: 'disabled' });
+    note('hidden list shows alpha.test, beta.example, gamma.example');
+
+    await filter.fill('example');
+    await listed(['beta.example', 'gamma.example']);
+    if ((await titles()).includes('alpha.test')) throw new Error('过滤 example 时不应显示 alpha.test');
+    const whileFiltered = await stored();
+    if (!sameHidden(seeded)(whileFiltered)) throw new Error(`过滤不应改存储：${hiddenOf(whileFiltered).join()}`);
+    if (whileFiltered.floating === false || whileFiltered.siteMode !== 'allow') throw new Error('过滤不应改全局浮动或网站规则');
+    await floating.screenshot({ path: path.join(dir, 'filtered.png'), animations: 'disabled' });
+    note('filter example hides alpha.test');
+
+    await siteFilter.fill('rules');
+    await memoryFilter.fill('kept');
+    await ruled(['rules.example']);
+    await remembered(['kept.example']);
+    await listed(['beta.example', 'gamma.example']);
+    if (await filter.inputValue() !== 'example') throw new Error('另外两处过滤不应改隐藏名单过滤词');
+    await settings.screenshot({ path: path.join(dir, 'independent.png'), fullPage: true, animations: 'disabled' });
+    note('site and memory filters leave the hidden-sites filter alone');
+
+    await floating.getByRole('button', { name: 'Show the floating button on beta.example again' }).click();
+    const afterRestore = ['alpha.test', 'gamma.example'];
+    await listed(['gamma.example']);
+    if ((await titles()).includes('beta.example')) throw new Error('恢复后仍匹配的站点应从结果消失');
+    const restored = await poll(stored, value => sameHidden(afterRestore)(value) && sitesOf(value).join() === 'rules.example,listed.test' && prefsOf(value).join() === 'kept.example,noted.test', '恢复 beta.example 只应去掉这一条');
+    if (await filter.inputValue() !== 'example') throw new Error('恢复不应清掉过滤词');
+    await floating.screenshot({ path: path.join(dir, 'restored.png'), animations: 'disabled' });
+    note(`restored beta.example; stored=${hiddenOf(restored).join()}`);
+
+    const [download] = await Promise.all([
+      settings.waitForEvent('download'),
+      settings.getByRole('button', { name: 'Export settings', exact: true }).click(),
+    ]);
+    const exportPath = path.join(dir, 'export.json');
+    await download.saveAs(exportPath);
+    const exported = JSON.parse(await readFile(exportPath, 'utf8'));
+    if (JSON.stringify(exported.settings?.floatingHiddenSites) !== JSON.stringify(afterRestore)) throw new Error(`导出应带完整名单：${JSON.stringify(exported.settings?.floatingHiddenSites)}`);
+    if (await filter.inputValue() !== 'example') throw new Error('导出不应清掉过滤词');
+    await listed(['gamma.example']);
+    note(`export floatingHiddenSites ${JSON.stringify(exported.settings.floatingHiddenSites)}`);
+
+    const roundTrip = structuredClone(exported);
+    roundTrip.settings.floatingHiddenSites = ['alpha.test', 'beta.example', 'gamma.example', 'delta.test'];
+    const importPath = path.join(dir, 'import.json');
+    await writeFile(importPath, `${JSON.stringify(roundTrip, null, 2)}\n`);
+    await settings.locator('#backup input[type="file"]').setInputFiles(importPath);
+    await settings.getByRole('button', { name: 'Replace settings', exact: true }).click();
+    const importedHidden = ['alpha.test', 'beta.example', 'gamma.example', 'delta.test'];
+    const imported = await poll(stored, value => sameHidden(importedHidden)(value) && sitesOf(value).join() === 'rules.example,listed.test' && prefsOf(value).join() === 'kept.example,noted.test', '导入应写回完整隐藏名单，且不改另外两张表');
+    if (await filter.inputValue() !== 'example') throw new Error('导入不应清掉过滤词');
+    await listed(['beta.example', 'gamma.example']);
+    if ((await titles()).includes('alpha.test') || (await titles()).includes('delta.test')) throw new Error('导入后不匹配的站点不应出现在过滤结果里');
+    await ruled(['rules.example']);
+    await remembered(['kept.example']);
+    await floating.screenshot({ path: path.join(dir, 'imported.png'), animations: 'disabled' });
+    note(`import restored ${hiddenOf(imported).join()}; filter still example`);
+
+    await filter.fill('zzzz');
+    await listed([]);
+    await floating.getByText('No hidden sites match.', { exact: true }).waitFor({ state: 'visible' });
+    if (await floating.locator('[role="list"]').count()) throw new Error('无匹配时不应留下空白列表');
+    const unmatched = await stored();
+    if (!sameHidden(importedHidden)(unmatched)) throw new Error(`无匹配文案不应改存储：${hiddenOf(unmatched).join()}`);
+    await floating.screenshot({ path: path.join(dir, 'no-match.png'), animations: 'disabled' });
+    note('no match shows a sentence');
+
+    await filter.fill('');
+    await listed(importedHidden);
+    const state = { ok: true, filtered: ['beta.example', 'gamma.example'], afterRestore, exported: exported.settings.floatingHiddenSites, imported: hiddenOf(imported) };
     await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
     return state;
   } finally {

@@ -79,6 +79,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive fullscreen-wheel
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive sidebar-ignore
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-memory-filter
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-sites-filter
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-floating-hidden-filter
 ```
 
 `skip-step` 在设置页把 `Skip step` 改成 `30s` 并打开 `Single-key mode`，再看弹出面板进退按钮名和页内 `L` / `J` / `→` / `←` 让 `/long` 夹具的 `currentTime` 跟着步长变；它会改写 profile，同一会话只能跑一次。步骤见 `features/skip-step.md`。
@@ -246,6 +247,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive fullscreen-wheel
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive sidebar-ignore
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-memory-filter
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-sites-filter
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-floating-hidden-filter
 node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 ```
 
@@ -282,3 +284,13 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-sites-fil
 `settings-sites-filter` 先把 `siteMode` 设成 `allow`，写入 `alpha.test`、`beta.example`、`gamma.example`，并记住 `kept.example` 与 `other.test`。网站规则过滤框无障碍名是 `Filter site list`，和记住站点的 `Filter by hostname` 不是同一个框。输入 `example` 后网站名单只剩两条，存储里的 `alpha.test` 还在。添加 `delta.test` 只进 `sites`、不出现在过滤结果里；再添加 `delta.example` 会出现。移除 `gamma.example` 只少这一条。记住站点过滤填 `kept` 时只剩 `kept.example`，网站名单不变。切到 `Exclude listed sites` 后网站规则过滤清空、整表出现，记住站点的过滤词还在。输入 `zzzz` 时出现 `No sites match.`，`#sites` 里没有列表。再切到 `All sites`，过滤再次清空。它会改写 profile，同一会话只能跑一次。步骤见 `features/settings-sites-filter.md`。
 
 写入 `settings-sites-filter/`：`list-all.png`、`filtered.png`、`added.png`、`removed.png`、`independent.png`、`mode-reset.png`、`no-match.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
+## 隐藏浮动站点名单过滤
+
+```bash
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-floating-hidden-filter
+```
+
+`settings-floating-hidden-filter` 先写入 `alpha.test`、`beta.example`、`gamma.example`，网站规则允许 `rules.example` 与 `listed.test`，并记住 `kept.example` 与 `noted.test`。隐藏名单过滤框无障碍名是 `Filter hidden sites`，和 `Filter site list`、`Filter by hostname` 不是同一个框。输入 `example` 后只剩两条，存储里的 `alpha.test` 还在。另外两处过滤分别填 `rules` 和 `kept` 时，这边的过滤词和结果不变。点 `Show the floating button on beta.example again` 后结果只剩 `gamma.example`，`alpha.test` 仍在 `floatingHiddenSites`。同一页导出的 JSON 带上这两条。导入一份加回 `beta.example` 和 `delta.test` 的备份后，过滤词仍是 `example`，结果里是 `beta.example` 和 `gamma.example`。输入 `zzzz` 时出现 `No hidden sites match.`，`#floating` 里没有列表。它会改写 profile，同一会话只能跑一次。步骤见 `features/settings-floating-hidden-filter.md`。
+
+写入 `settings-floating-hidden-filter/`：`list-all.png`、`filtered.png`、`independent.png`、`restored.png`、`export.json`、`imported.png`、`no-match.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。

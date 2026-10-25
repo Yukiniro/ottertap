@@ -19,7 +19,7 @@ import { defaultRatePresets, formatRate, maxRatePresets, parseRatePreset, sameRa
 import { channelLabel } from '../lib/media';
 import { defaultKeybinds, keybindOwner, keyLabel, recordedKey, sameKeybinds, type KeybindAction, type KeybindOwner } from '../lib/keybinds';
 import { downloadSettingsBackup, parseSettingsBackup, readExtensionVersion, settingsBackupErrors, type SettingsBackupError } from '../lib/settings-backup';
-import { filterRememberedSites, filterSiteList, forgetSitePref, isFloatingNote, isRateStep, isSkipSeconds, isVolumeStep, isWheelDirection, normalizeDomain } from '../lib/settings';
+import { filterFloatingHiddenSites, filterRememberedSites, filterSiteList, forgetSitePref, isFloatingNote, isRateStep, isSkipSeconds, isVolumeStep, isWheelDirection, normalizeDomain } from '../lib/settings';
 import { rateSteps, skipSteps, volumeSteps, type Settings, type SitePref } from '../lib/types';
 import { useSettingsAtoms } from './theme';
 
@@ -169,6 +169,24 @@ function SiteRulesList({ sites, disabled, onRemove }: { sites: readonly string[]
         <ItemActions><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={i18n.t('removeSite', { site })} disabled={disabled} onClick={() => onRemove(site)}><X /></Button></ItemActions>
       </Item>)}</ItemGroup>
       : <p id="site-list-no-match" className="mt-3 rounded-lg bg-secondary/60 px-3 py-5 text-sm text-muted-foreground">{i18n.t('siteListNoMatch')}</p>}
+  </>;
+}
+
+function FloatingHiddenSitesList({ sites, disabled, onRestore }: { sites: readonly string[]; disabled: boolean; onRestore: (site: string) => void }) {
+  const [query, setQuery] = useState('');
+  const visible = filterFloatingHiddenSites(sites, query);
+  return <>
+    <Field className="mt-3">
+      <FieldLabel htmlFor="floating-hidden-filter" className="sr-only">{i18n.t('floatingHiddenFilter')}</FieldLabel>
+      <Input id="floating-hidden-filter" type="search" className="h-10 px-3" value={query} disabled={disabled} placeholder={i18n.t('floatingHiddenFilter')} autoComplete="off" spellCheck={false} aria-describedby={visible.length === 0 ? 'floating-hidden-no-match' : undefined} onChange={event => setQuery(event.target.value)} />
+    </Field>
+    {visible.length
+      ? <ItemGroup aria-label={i18n.t('floatingHiddenSites')} className="mt-3 gap-0 overflow-hidden rounded-lg bg-background/80">{visible.map(site => <Item key={site} role="listitem" className="rounded-none border-b-border px-3 not-last:border-b">
+        <ItemMedia variant="icon" className="text-muted-foreground"><EyeOff className="size-4" /></ItemMedia>
+        <ItemContent><ItemTitle className="line-clamp-none font-normal break-all">{site}</ItemTitle></ItemContent>
+        <ItemActions><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={i18n.t('restoreFloating', { site })} disabled={disabled} onClick={() => onRestore(site)}><X /></Button></ItemActions>
+      </Item>)}</ItemGroup>
+      : <p id="floating-hidden-no-match" className="mt-3 rounded-lg bg-background/80 px-3 py-3 text-sm text-muted-foreground">{i18n.t('floatingHiddenNoMatch')}</p>}
   </>;
 }
 
@@ -429,11 +447,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
               <h3 className="text-sm font-medium">{i18n.t('floatingHiddenSites')}</h3>
               <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('floatingHiddenSitesDescription')}</p>
               {floatingHiddenSites.length
-                ? <ItemGroup aria-label={i18n.t('floatingHiddenSites')} className="mt-3 gap-0 overflow-hidden rounded-lg bg-background/80">{floatingHiddenSites.map(site => <Item key={site} role="listitem" className="rounded-none border-b-border px-3 not-last:border-b">
-                  <ItemMedia variant="icon" className="text-muted-foreground"><EyeOff className="size-4" /></ItemMedia>
-                  <ItemContent><ItemTitle className="line-clamp-none font-normal break-all">{site}</ItemTitle></ItemContent>
-                  <ItemActions><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={i18n.t('restoreFloating', { site })} disabled={disabled} onClick={() => void save({ floatingHiddenSites: floatingHiddenSites.filter(value => value !== site) })}><X /></Button></ItemActions>
-                </Item>)}</ItemGroup>
+                ? <FloatingHiddenSitesList sites={floatingHiddenSites} disabled={disabled} onRestore={site => void save({ floatingHiddenSites: floatingHiddenSites.filter(value => value !== site) })} />
                 : <p className="mt-3 rounded-lg bg-background/80 px-3 py-3 text-sm text-muted-foreground">{i18n.t('floatingHiddenEmpty')}</p>}
             </div>
           </div>
