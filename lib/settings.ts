@@ -190,6 +190,13 @@ export function filterSiteList(sites: readonly string[], query: string): string[
   return sites.filter(site => site.toLowerCase().includes(needle));
 }
 
+/** Hostname substring for the floating-hidden list. An empty query returns every entry in stored order. Does not mutate `sites` or use parent-domain matching. */
+export function filterFloatingHiddenSites(sites: readonly string[], query: string): string[] {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return [...sites];
+  return sites.filter(site => site.toLowerCase().includes(needle));
+}
+
 export function isFloatingHidden(host: string, sites: readonly string[]) {
   const name = hostKey(host);
   return !!name && sites.some(site => matchesSite(name, site));
