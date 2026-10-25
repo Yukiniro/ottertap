@@ -75,13 +75,13 @@ test('设置页二次确认后只清空记住站点，取消则不动', async ()
   const root = createRoot(host as unknown as HTMLElement);
   const memory = () => host.querySelector('#memory')!;
   const titles = () => [...memory().querySelectorAll('[data-slot="item-title"]')].map(node => node.textContent);
-  const buttonsNamed = (rootNode: ParentNode, name: string) => [...rootNode.querySelectorAll('button')].filter(button => button.textContent === name);
+  const buttonsNamed = (rootNode: { querySelectorAll(selector: string): Iterable<{ textContent: string | null; click(): void }> } | null, name: string) => rootNode ? [...rootNode.querySelectorAll('button')].filter(button => button.textContent === name) : [];
   const region = () => memory().querySelector('[role="region"]');
   const remember = () => [...host.querySelectorAll('[role="switch"]')].find(item => item.getAttribute('aria-label') === '记住此站点');
   const click = async (element: { click(): void }) => { await act(async () => { element.click(); }); };
   const type = async (text: string) => {
     await act(async () => {
-      const input = memory().querySelector('#remembered-filter') as HTMLInputElement;
+      const input = memory().querySelector('#remembered-filter') as unknown as HTMLInputElement;
       const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
       setter?.call(input, text);
       input.dispatchEvent(new window.Event('input', { bubbles: true }) as unknown as Event);
