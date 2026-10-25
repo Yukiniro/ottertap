@@ -25,6 +25,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive fullscreen-wheel
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive sidebar-ignore
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-memory-filter
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-sites-filter
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -44,7 +45,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -3175,7 +3176,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -3724,6 +3725,127 @@ async function driveSettingsMemoryFilter(context, dir, note) {
     await popup?.close().catch(() => {});
     await settings?.close().catch(() => {});
     await fixture?.close().catch(() => {});
+  }
+}
+
+async function driveSettingsSitesFilter(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const sitesOf = value => value.sites ?? [];
+  const sameSites = expected => value => sitesOf(value).join() === expected.join();
+  const prefsOf = value => Object.keys(value.sitePrefs ?? {}).sort();
+  let settings;
+  try {
+    await worker.evaluate(async () => {
+      const key = 'ottertap-settings-v1';
+      const current = (await chrome.storage.local.get(key))[key] ?? {};
+      await chrome.storage.local.set({
+        [key]: {
+          ...current,
+          siteMode: 'allow',
+          sites: ['alpha.test', 'beta.example', 'gamma.example'],
+          sitePrefs: {
+            'kept.example': { volume: 0.4 },
+            'other.test': { volume: 0.2 },
+          },
+        },
+      });
+    });
+    const seeded = ['alpha.test', 'beta.example', 'gamma.example'];
+    await poll(stored, value => value.siteMode === 'allow' && sameSites(seeded)(value) && prefsOf(value).join() === ['kept.example', 'other.test'].join(), '应先写入允许名单和两条记住站点');
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#sites`, { waitUntil: 'domcontentloaded' });
+    const sites = settings.locator('#sites');
+    const memory = settings.locator('#memory');
+    const filter = sites.getByRole('searchbox', { name: 'Filter site list' });
+    const memoryFilter = memory.getByRole('searchbox', { name: 'Filter by hostname' });
+    await filter.waitFor({ state: 'visible', timeout: 15_000 });
+    await memoryFilter.waitFor({ state: 'visible', timeout: 15_000 });
+    const titles = () => sites.locator('[data-slot="item-title"]').allTextContents();
+    const memoryTitles = () => memory.locator('[data-slot="item-title"]').allTextContents();
+    const listed = expected => poll(titles, value => value.join() === expected.join(), `网站名单应为 ${expected.join(', ')}`);
+    const remembered = expected => poll(memoryTitles, value => value.join() === expected.join(), `记住站点应为 ${expected.join(', ')}`);
+    await listed(seeded);
+    await remembered(['kept.example', 'other.test']);
+    await sites.screenshot({ path: path.join(dir, 'list-all.png'), animations: 'disabled' });
+    note('site list shows alpha.test, beta.example, gamma.example');
+
+    await filter.fill('example');
+    await listed(['beta.example', 'gamma.example']);
+    if ((await titles()).includes('alpha.test')) throw new Error('过滤 example 时不应显示 alpha.test');
+    await remembered(['kept.example', 'other.test']);
+    const whileFiltered = await stored();
+    if (!sameSites(seeded)(whileFiltered)) throw new Error(`过滤不应改存储：${sitesOf(whileFiltered).join()}`);
+    if (whileFiltered.siteMode !== 'allow') throw new Error('过滤不应改 siteMode');
+    await sites.screenshot({ path: path.join(dir, 'filtered.png'), animations: 'disabled' });
+    note('filter example hides alpha.test');
+
+    await settings.locator('#site-domain').fill('https://delta.test/watch');
+    await sites.getByRole('button', { name: 'Add', exact: true }).click();
+    const afterHiddenAdd = [...seeded, 'delta.test'];
+    await poll(stored, sameSites(afterHiddenAdd), '添加 delta.test 应追加到原来的 sites');
+    await listed(['beta.example', 'gamma.example']);
+    if ((await titles()).includes('delta.test')) throw new Error('不匹配 example 的新站点不应出现');
+    if (await filter.inputValue() !== 'example') throw new Error('添加不应清掉过滤词');
+
+    await settings.locator('#site-domain').fill('delta.example');
+    await sites.getByRole('button', { name: 'Add', exact: true }).click();
+    const afterAdd = [...afterHiddenAdd, 'delta.example'];
+    await poll(stored, sameSites(afterAdd), '添加 delta.example 应追加到原来的 sites');
+    await listed(['beta.example', 'gamma.example', 'delta.example']);
+    await remembered(['kept.example', 'other.test']);
+    await sites.screenshot({ path: path.join(dir, 'added.png'), animations: 'disabled' });
+    note(`added delta.test (hidden) and delta.example; stored=${afterAdd.join()}`);
+
+    await sites.getByRole('button', { name: 'Remove gamma.example' }).click();
+    const afterRemove = ['alpha.test', 'beta.example', 'delta.test', 'delta.example'];
+    await listed(['beta.example', 'delta.example']);
+    const removed = await poll(stored, sameSites(afterRemove), '移除 gamma.example 只应去掉这一条');
+    if (prefsOf(removed).join() !== 'kept.example,other.test') throw new Error('移除网站规则不应改记住站点');
+    await sites.screenshot({ path: path.join(dir, 'removed.png'), animations: 'disabled' });
+    note(`removed gamma.example; stored=${sitesOf(removed).join()}`);
+
+    await memoryFilter.fill('kept');
+    await remembered(['kept.example']);
+    await listed(['beta.example', 'delta.example']);
+    if (await filter.inputValue() !== 'example') throw new Error('记住站点过滤不应改网站规则过滤词');
+    await memory.screenshot({ path: path.join(dir, 'independent.png'), animations: 'disabled' });
+    note('remembered filter kept leaves the site-rules filter alone');
+
+    await settings.getByRole('radio', { name: /Exclude listed sites/ }).click();
+    const excluded = await poll(stored, value => value.siteMode === 'exclude' && sameSites(afterRemove)(value), '切换到排除应只改 siteMode');
+    if (await filter.inputValue() !== '') throw new Error('切换模式后网站规则过滤应清空');
+    await listed(afterRemove);
+    if (await memoryFilter.inputValue() !== 'kept') throw new Error('切换模式不应清空记住站点过滤');
+    await remembered(['kept.example']);
+    await sites.screenshot({ path: path.join(dir, 'mode-reset.png'), animations: 'disabled' });
+    note(`mode exclude resets the site filter; stored=${sitesOf(excluded).join()}`);
+
+    await filter.fill('zzzz');
+    await listed([]);
+    await sites.getByText('No sites match.', { exact: true }).waitFor({ state: 'visible' });
+    if (await sites.locator('[role="list"]').count()) throw new Error('无匹配时不应留下空白列表');
+    const unmatched = await stored();
+    if (!sameSites(afterRemove)(unmatched) || unmatched.siteMode !== 'exclude') throw new Error(`无匹配文案不应改存储：${sitesOf(unmatched).join()}`);
+    await remembered(['kept.example']);
+    await sites.screenshot({ path: path.join(dir, 'no-match.png'), animations: 'disabled' });
+    note('no match shows a sentence');
+
+    await settings.getByRole('radio', { name: /All sites/ }).click();
+    await poll(stored, value => value.siteMode === 'all' && sameSites(afterRemove)(value), '切回全部网站应只改 siteMode');
+    if (await filter.inputValue() !== '') throw new Error('再次切换模式后网站规则过滤应清空');
+    await listed(afterRemove);
+    if (await memoryFilter.inputValue() !== 'kept') throw new Error('再次切换模式不应清空记住站点过滤');
+    await remembered(['kept.example']);
+
+    const state = { ok: true, filtered: ['beta.example', 'gamma.example'], afterAdd, afterRemove, modeReset: 'exclude', memoryVisible: ['kept.example'] };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await settings?.close().catch(() => {});
   }
 }
 

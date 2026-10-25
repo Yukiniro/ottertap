@@ -19,7 +19,7 @@ import { defaultRatePresets, formatRate, maxRatePresets, parseRatePreset, sameRa
 import { channelLabel } from '../lib/media';
 import { defaultKeybinds, keybindOwner, keyLabel, recordedKey, sameKeybinds, type KeybindAction, type KeybindOwner } from '../lib/keybinds';
 import { downloadSettingsBackup, parseSettingsBackup, readExtensionVersion, settingsBackupErrors, type SettingsBackupError } from '../lib/settings-backup';
-import { filterRememberedSites, forgetSitePref, isFloatingNote, isRateStep, isSkipSeconds, isVolumeStep, isWheelDirection, normalizeDomain } from '../lib/settings';
+import { filterRememberedSites, filterSiteList, forgetSitePref, isFloatingNote, isRateStep, isSkipSeconds, isVolumeStep, isWheelDirection, normalizeDomain } from '../lib/settings';
 import { rateSteps, skipSteps, volumeSteps, type Settings, type SitePref } from '../lib/types';
 import { useSettingsAtoms } from './theme';
 
@@ -151,6 +151,24 @@ function RememberedSitesList({ prefs, disabled, onForget }: { prefs: Record<stri
         <ItemActions><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={i18n.t('forgetSite', { site })} disabled={disabled} onClick={() => onForget(site)}><X /></Button></ItemActions>
       </Item>)}</ItemGroup>
       : <p id="remembered-no-match" className="mt-3 rounded-lg bg-secondary/60 px-3 py-5 text-sm text-muted-foreground">{i18n.t('rememberedNoMatch')}</p>}
+  </>;
+}
+
+function SiteRulesList({ sites, disabled, onRemove }: { sites: readonly string[]; disabled: boolean; onRemove: (site: string) => void }) {
+  const [query, setQuery] = useState('');
+  const visible = filterSiteList(sites, query);
+  return <>
+    <Field className="mt-3">
+      <FieldLabel htmlFor="site-list-filter" className="sr-only">{i18n.t('siteListFilter')}</FieldLabel>
+      <Input id="site-list-filter" type="search" className="h-10 px-3" value={query} disabled={disabled} placeholder={i18n.t('siteListFilter')} autoComplete="off" spellCheck={false} aria-describedby={visible.length === 0 ? 'site-list-no-match' : undefined} onChange={event => setQuery(event.target.value)} />
+    </Field>
+    {visible.length
+      ? <ItemGroup aria-label={i18n.t('siteList')} className="mt-3 gap-0 overflow-hidden rounded-lg bg-secondary/60">{visible.map(site => <Item key={site} role="listitem" className="rounded-none border-b-border px-3 not-last:border-b">
+        <ItemMedia variant="icon" className="text-muted-foreground"><Globe className="size-4" /></ItemMedia>
+        <ItemContent><ItemTitle className="line-clamp-none font-normal break-all">{site}</ItemTitle></ItemContent>
+        <ItemActions><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={i18n.t('removeSite', { site })} disabled={disabled} onClick={() => onRemove(site)}><X /></Button></ItemActions>
+      </Item>)}</ItemGroup>
+      : <p id="site-list-no-match" className="mt-3 rounded-lg bg-secondary/60 px-3 py-5 text-sm text-muted-foreground">{i18n.t('siteListNoMatch')}</p>}
   </>;
 }
 
@@ -591,11 +609,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
             </Field>
           </form>
           {sites.length
-            ? <ItemGroup aria-label={i18n.t('siteList')} className="mt-3 gap-0 overflow-hidden rounded-lg bg-secondary/60">{sites.map(site => <Item key={site} role="listitem" className="rounded-none border-b-border px-3 not-last:border-b">
-              <ItemMedia variant="icon" className="text-muted-foreground"><Globe className="size-4" /></ItemMedia>
-              <ItemContent><ItemTitle className="line-clamp-none font-normal break-all">{site}</ItemTitle></ItemContent>
-              <ItemActions><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={i18n.t('removeSite', { site })} disabled={disabled} onClick={() => void save({ sites: sites.filter(value => value !== site) })}><X /></Button></ItemActions>
-            </Item>)}</ItemGroup>
+            ? <SiteRulesList key={siteMode} sites={sites} disabled={disabled} onRemove={site => void save({ sites: sites.filter(value => value !== site) })} />
             : <p className="mt-3 rounded-lg bg-secondary/60 px-3 py-5 text-sm text-muted-foreground">{siteMode === 'allow' ? i18n.t('allowEmpty') : siteMode === 'exclude' ? i18n.t('excludeEmpty') : i18n.t('allEmpty')}</p>}
         </Row>
       </section>
