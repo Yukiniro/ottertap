@@ -24,6 +24,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive wheel-direction
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive fullscreen-wheel
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive sidebar-ignore
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-memory-filter
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -43,7 +44,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -3174,7 +3175,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -3624,6 +3625,105 @@ async function driveFullscreenWheel(context, dir, note) {
   } finally {
     await options?.close().catch(() => {});
     await page.close().catch(() => {});
+  }
+}
+
+async function driveSettingsMemoryFilter(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const hostsOf = value => Object.keys(value.sitePrefs ?? {}).sort();
+  const sameHosts = expected => value => hostsOf(value).join() === expected.join();
+  let settings;
+  let fixture;
+  let popup;
+  try {
+    await worker.evaluate(async () => {
+      const key = 'ottertap-settings-v1';
+      const current = (await chrome.storage.local.get(key))[key] ?? {};
+      await chrome.storage.local.set({
+        [key]: {
+          ...current,
+          sitePrefs: {
+            'alpha.test': { volume: 0.5 },
+            'beta.example': { rate: 1.5 },
+            'gamma.example': { volume: 1 },
+          },
+        },
+      });
+    });
+    await poll(stored, sameHosts(['alpha.test', 'beta.example', 'gamma.example']), '应先写入三条记住站点');
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#memory`, { waitUntil: 'domcontentloaded' });
+    const memory = settings.locator('#memory');
+    const filter = settings.getByRole('searchbox', { name: 'Filter by hostname' });
+    await filter.waitFor({ state: 'visible', timeout: 15_000 });
+    const titles = () => memory.locator('[data-slot="item-title"]').allTextContents();
+    const listed = expected => poll(titles, value => value.join() === expected.join(), `列表应为 ${expected.join(', ')}`);
+    await listed(['alpha.test', 'beta.example', 'gamma.example']);
+    await memory.getByText('A domain includes its subdomains.').waitFor({ state: 'visible' });
+    await memory.screenshot({ path: path.join(dir, 'list-all.png'), animations: 'disabled' });
+    note('memory list shows alpha.test, beta.example, gamma.example');
+
+    await filter.fill('example');
+    await listed(['beta.example', 'gamma.example']);
+    if ((await titles()).includes('alpha.test')) throw new Error('过滤 example 时不应显示 alpha.test');
+    const whileFiltered = await stored();
+    if (!sameHosts(['alpha.test', 'beta.example', 'gamma.example'])(whileFiltered)) throw new Error(`过滤不应改存储：${hostsOf(whileFiltered).join()}`);
+    await memory.screenshot({ path: path.join(dir, 'filtered.png'), animations: 'disabled' });
+    note('filter example hides alpha.test');
+
+    fixture = await context.newPage();
+    await fixture.goto(`${origin}/video`, { waitUntil: 'domcontentloaded' });
+    await fixture.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    popup = await openActionPopup(context, fixture);
+    const remembered = await popup.evaluate(`(() => {
+      const node = document.querySelector('[role="switch"][aria-label="Remember this site"]');
+      if (!node || node.getAttribute('aria-checked') === 'true') return false;
+      node.click();
+      return true;
+    })()`);
+    if (!remembered) throw new Error('弹出面板里没有未打开的 Remember this site');
+    await popup.close();
+    popup = undefined;
+    const afterRemember = await poll(stored, value => sameHosts(['alpha.test', 'beta.example', 'gamma.example', 'media.ottertap.test'])(value) && value.sitePrefs?.['alpha.test']?.volume === 0.5, '记住此站点应追加 media.ottertap.test，并留下未显示的 alpha.test');
+    await settings.bringToFront();
+    await listed(['beta.example', 'gamma.example']);
+    if ((await titles()).includes('media.ottertap.test')) throw new Error('不匹配 example 的新站点不应出现在过滤结果里');
+    await memory.screenshot({ path: path.join(dir, 'remembered.png'), animations: 'disabled' });
+    note(`remembered media.ottertap.test; stored=${hostsOf(afterRemember).join()}`);
+
+    await filter.fill('');
+    await listed(['alpha.test', 'beta.example', 'gamma.example', 'media.ottertap.test']);
+    await filter.fill('example');
+    await listed(['beta.example', 'gamma.example']);
+    await memory.getByRole('button', { name: 'Forget beta.example' }).click();
+    await listed(['gamma.example']);
+    const afterForget = await poll(stored, sameHosts(['alpha.test', 'gamma.example', 'media.ottertap.test']), '忘记 beta.example 只应去掉这一条');
+    if (afterForget.sitePrefs?.['beta.example']) throw new Error('beta.example 应已从记住表删除');
+    await memory.screenshot({ path: path.join(dir, 'forgotten.png'), animations: 'disabled' });
+    note(`forgot beta.example; stored=${hostsOf(afterForget).join()}`);
+
+    await filter.fill('zzzz');
+    await listed([]);
+    await memory.getByText('No remembered sites match.', { exact: true }).waitFor({ state: 'visible' });
+    if (await memory.locator('[role="list"]').count()) throw new Error('无匹配时不应留下空白列表');
+    const unmatched = await stored();
+    if (!sameHosts(['alpha.test', 'gamma.example', 'media.ottertap.test'])(unmatched)) throw new Error(`无匹配文案不应改存储：${hostsOf(unmatched).join()}`);
+    await memory.screenshot({ path: path.join(dir, 'no-match.png'), animations: 'disabled' });
+    note('no match shows a sentence');
+
+    await filter.fill('');
+    await listed(['alpha.test', 'gamma.example', 'media.ottertap.test']);
+    const state = { ok: true, filtered: ['beta.example', 'gamma.example'], afterRemember: hostsOf(afterRemember), afterForget: hostsOf(afterForget) };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await popup?.close().catch(() => {});
+    await settings?.close().catch(() => {});
+    await fixture?.close().catch(() => {});
   }
 }
 

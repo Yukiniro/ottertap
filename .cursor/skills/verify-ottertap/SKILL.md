@@ -77,6 +77,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-while-pla
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive wheel-direction
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive fullscreen-wheel
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive sidebar-ignore
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-memory-filter
 ```
 
 `skip-step` 在设置页把 `Skip step` 改成 `30s` 并打开 `Single-key mode`，再看弹出面板进退按钮名和页内 `L` / `J` / `→` / `←` 让 `/long` 夹具的 `currentTime` 跟着步长变；它会改写 profile，同一会话只能跑一次。步骤见 `features/skip-step.md`。
@@ -242,6 +243,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-while-pla
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive wheel-direction
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive fullscreen-wheel
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive sidebar-ignore
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-memory-filter
 node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 ```
 
@@ -258,3 +260,13 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-hidden-si
 `floating-hidden-sites` 在 `/video` 上展开药丸，点 `Open panel` 旁的 `Hide floating on this site`。入口消失，存储里 `floatingHiddenSites` 只多出 `media.ottertap.test`，`floating`、`siteMode`、`sites` 不变。隐藏后和刷新后 `Alt+.` 仍生效，弹出面板仍能播放暂停，面板 `Floating controller` 行里的同名眼睛按钮为按下。临时拦截的 `https://elsewhere.test/video` 上入口照常出现。再走一遍导出、设置页撤销、导入、弹出面板撤销。它会改写 profile，成功时名单清空。步骤见 `features/floating-hidden-sites.md`。
 
 写入 `floating-hidden-sites/`：`settings-empty.png`、`pill-hide-button.png`、`fixture-hidden.png`、`popup-hidden.png`、`other-site.png`、`export.json`、`settings-listed.png`、`fixture-restored.png`、`popup-restored.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
+## 记住站点列表过滤
+
+```bash
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-memory-filter
+```
+
+`settings-memory-filter` 先在存储里放上 `alpha.test`、`beta.example`、`gamma.example`，打开 `options.html#memory`。过滤框无障碍名是 `Filter by hostname`。输入 `example` 后只剩两条 `example` 主机名，`alpha.test` 仍在 `sitePrefs`。再到 `/video` 的弹出面板打开 `Remember this site`，存储追加 `media.ottertap.test` 且不丢掉未显示的站点；过滤结果不变。清空后四条都在。再滤回 `example` 并点 `Forget beta.example`，存储只少这一条。输入 `zzzz` 时出现 `No remembered sites match.`，`#memory` 里没有列表。它会改写 profile，同一会话只能跑一次。步骤见 `features/settings-memory-filter.md`。
+
+写入 `settings-memory-filter/`：`list-all.png`、`filtered.png`、`remembered.png`、`forgotten.png`、`no-match.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
