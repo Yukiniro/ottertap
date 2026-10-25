@@ -28,6 +28,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-sites-filter
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-floating-hidden-filter
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-current-site
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-clear-remembered
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -47,7 +48,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -3178,7 +3179,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -4125,6 +4126,165 @@ async function driveSettingsCurrentSite(context, dir, note) {
     await settings?.close().catch(() => {});
     await fixture?.close().catch(() => {});
     await elsewhere?.close().catch(() => {});
+  }
+}
+
+async function driveSettingsClearRemembered(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const near = expected => value => Math.abs(value - expected) < 0.02;
+  const hostsOf = value => Object.keys(value.sitePrefs ?? {}).sort();
+  const kept = value => ({
+    siteMode: value.siteMode,
+    sites: value.sites ?? [],
+    hidden: value.floatingHiddenSites ?? [],
+    defaultRate: value.defaultRate ?? null,
+    prefs: hostsOf(value),
+  });
+  const panelState = `(() => {
+    const remember = document.querySelector('[role="switch"][aria-label="Remember this site"]');
+    const slider = document.querySelector('[role="slider"][aria-label="Volume"]') || document.querySelector('[aria-label="Volume"][role="slider"]');
+    return {
+      remembered: remember?.getAttribute('aria-checked') ?? '',
+      volume: Number(slider?.getAttribute('aria-valuenow')),
+    };
+  })()`;
+  let settings;
+  let fixture;
+  let popup;
+  try {
+    await worker.evaluate(async () => {
+      const key = 'ottertap-settings-v1';
+      const current = (await chrome.storage.local.get(key))[key] ?? {};
+      await chrome.storage.local.set({
+        [key]: {
+          ...current,
+          siteMode: 'exclude',
+          sites: ['rules.example'],
+          floatingHiddenSites: ['hidden.example'],
+          defaultRate: 1.25,
+          sitePrefs: {
+            'alpha.test': { volume: 0.5 },
+            'beta.example': { rate: 1.5 },
+            'media.ottertap.test': { volume: 0.4, rate: 2 },
+          },
+        },
+      });
+    });
+    const seeded = await poll(stored, value => hostsOf(value).join() === ['alpha.test', 'beta.example', 'media.ottertap.test'].join() && value.defaultRate === 1.25 && value.siteMode === 'exclude' && (value.sites ?? []).join() === 'rules.example' && (value.floatingHiddenSites ?? []).join() === 'hidden.example', '应先写入三条记住站点，并留下规则、隐藏名单和默认倍速');
+    note(`seeded ${JSON.stringify(kept(seeded))}`);
+
+    fixture = await context.newPage();
+    await fixture.goto(`${origin}/video`, { waitUntil: 'domcontentloaded' });
+    await fixture.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await fixture.reload({ waitUntil: 'domcontentloaded' });
+    await fixture.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    const volumeOf = () => fixture.locator('#media').evaluate(element => element.volume);
+    const rateOf = () => fixture.locator('#media').evaluate(element => element.playbackRate);
+    const beforeVolume = await poll(volumeOf, near(0.4), '记住的音量 40% 应套用到夹具');
+    const beforeRate = await poll(rateOf, near(2), '记住的 2× 应盖过默认 1.25×');
+    await fixture.screenshot({ path: path.join(dir, 'fixture-before.png'), animations: 'disabled' });
+    note(`before clear volume=${beforeVolume} rate=${beforeRate}`);
+
+    popup = await openActionPopup(context, fixture);
+    const beforePanel = await poll(() => popup.evaluate(panelState), value => value?.remembered === 'true' && Math.abs(value.volume - 40) < 1, '清空前面板应显示已记住，音量约 40%');
+    await popup.screenshot(path.join(dir, 'popup-before.png'));
+    note(`panel before ${JSON.stringify(beforePanel)}`);
+    await popup.close();
+    popup = undefined;
+
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#memory`, { waitUntil: 'domcontentloaded' });
+    const memory = settings.locator('#memory');
+    const clearAll = memory.getByRole('button', { name: 'Clear all', exact: true });
+    await clearAll.waitFor({ state: 'visible', timeout: 15_000 });
+    const titles = () => memory.locator('[data-slot="item-title"]').allTextContents();
+    await poll(titles, value => value.join() === ['alpha.test', 'beta.example', 'media.ottertap.test'].join(), '记住表应列出三条');
+    if (await settings.locator('#sites').getByRole('button', { name: 'Clear all', exact: true }).count()) throw new Error('网站规则区不应有清空全部');
+    if (await settings.locator('#floating').getByRole('button', { name: 'Clear all', exact: true }).count()) throw new Error('隐藏浮动名单不应有清空全部');
+    const confirm = memory.getByRole('region', { name: 'Clear every remembered site?' });
+    if (await confirm.count()) throw new Error('还没点清空全部时不应出现确认');
+    await memory.screenshot({ path: path.join(dir, 'list-before.png'), animations: 'disabled' });
+    note('memory lists three sites and Clear all');
+
+    await clearAll.click();
+    await confirm.waitFor({ state: 'visible' });
+    await confirm.getByText('You cannot undo this unless you already have your own backup.', { exact: false }).waitFor({ state: 'visible' });
+    await confirm.getByText('Site rules, sites without the floating button, and the rest of your settings stay unchanged.', { exact: false }).waitFor({ state: 'visible' });
+    await memory.screenshot({ path: path.join(dir, 'confirm.png'), animations: 'disabled' });
+    note('confirm copy says the wipe cannot be undone without a backup');
+
+    await confirm.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await confirm.waitFor({ state: 'hidden' });
+    await poll(titles, value => value.join() === ['alpha.test', 'beta.example', 'media.ottertap.test'].join(), '取消后列表应不变');
+    const cancelled = await poll(stored, value => hostsOf(value).join() === ['alpha.test', 'beta.example', 'media.ottertap.test'].join() && value.sitePrefs?.['media.ottertap.test']?.volume === 0.4 && value.sitePrefs?.['media.ottertap.test']?.rate === 2 && value.siteMode === 'exclude' && (value.sites ?? []).join() === 'rules.example' && (value.floatingHiddenSites ?? []).join() === 'hidden.example' && value.defaultRate === 1.25, '取消不应改记住表、规则、隐藏名单或默认倍速');
+    await memory.screenshot({ path: path.join(dir, 'cancelled.png'), animations: 'disabled' });
+    note(`cancelled ${JSON.stringify(kept(cancelled))}`);
+
+    await memory.getByRole('searchbox', { name: 'Filter by hostname' }).fill('example');
+    await poll(titles, value => value.join() === 'beta.example', '过滤 example 时只显示 beta.example');
+    await memory.screenshot({ path: path.join(dir, 'filtered.png'), animations: 'disabled' });
+    note('filter hides alpha.test and media.ottertap.test before clear');
+
+    await clearAll.click();
+    await confirm.getByRole('button', { name: 'Clear all remembered sites', exact: true }).click();
+    await memory.getByText('No sites remembered yet.', { exact: false }).waitFor({ state: 'visible' });
+    if (await memory.locator('[role="list"]').count()) throw new Error('清空后不应留下记住表');
+    await clearAll.waitFor({ state: 'hidden' });
+    const cleared = await poll(stored, value => hostsOf(value).length === 0 && value.siteMode === 'exclude' && (value.sites ?? []).join() === 'rules.example' && (value.floatingHiddenSites ?? []).join() === 'hidden.example' && value.defaultRate === 1.25, '确认后 sitePrefs 应为空，规则、隐藏名单和默认倍速仍在');
+    await memory.screenshot({ path: path.join(dir, 'cleared.png'), animations: 'disabled' });
+    note(`cleared ${JSON.stringify(kept(cleared))}`);
+
+    await settings.goto(`chrome-extension://${extensionId}/options.html#backup`, { waitUntil: 'domcontentloaded' });
+    const [download] = await Promise.all([
+      settings.waitForEvent('download'),
+      settings.getByRole('button', { name: 'Export settings', exact: true }).click(),
+    ]);
+    const exportPath = path.join(dir, 'export.json');
+    await download.saveAs(exportPath);
+    const exported = JSON.parse(await readFile(exportPath, 'utf8'));
+    const exportedPrefs = exported?.settings?.sitePrefs ?? null;
+    if (!exportedPrefs || typeof exportedPrefs !== 'object' || Array.isArray(exportedPrefs) || Object.keys(exportedPrefs).length !== 0) {
+      throw new Error(`导出的记住站点应为 0：${JSON.stringify(exportedPrefs)}`);
+    }
+    if ((exported.settings.sites ?? []).join() !== 'rules.example' || (exported.settings.floatingHiddenSites ?? []).join() !== 'hidden.example' || exported.settings.siteMode !== 'exclude' || exported.settings.defaultRate !== 1.25) {
+      throw new Error(`导出不应改其他设置：${JSON.stringify({ sites: exported.settings.sites, hidden: exported.settings.floatingHiddenSites, siteMode: exported.settings.siteMode, defaultRate: exported.settings.defaultRate })}`);
+    }
+    note('export has 0 remembered sites');
+
+    await fixture.reload({ waitUntil: 'domcontentloaded' });
+    await fixture.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    const afterRate = await poll(rateOf, near(1.25), '清空后应套用默认 1.25×，不再套用记住的 2×');
+    await fixture.waitForTimeout(800);
+    const afterVolume = await volumeOf();
+    const settledRate = await rateOf();
+    if (!near(1)(afterVolume)) throw new Error(`清空后新访问不应再套用 40%：${afterVolume}`);
+    if (!near(1.25)(settledRate)) throw new Error(`清空后倍速不应离开默认 1.25×：${settledRate}`);
+    await fixture.screenshot({ path: path.join(dir, 'fixture-after.png'), animations: 'disabled' });
+    note(`after clear volume=${afterVolume} rate=${afterRate}`);
+
+    popup = await openActionPopup(context, fixture);
+    const afterPanel = await poll(() => popup.evaluate(panelState), value => value?.remembered === 'false' && Math.abs(value.volume - 100) < 1, '清空后面板不应再显示已记住，音量应回到约 100%');
+    await popup.screenshot(path.join(dir, 'popup-after.png'));
+    note(`panel after ${JSON.stringify(afterPanel)}`);
+
+    const state = {
+      ok: true,
+      before: { volume: beforeVolume, rate: beforeRate, panel: beforePanel },
+      cancelled: kept(cancelled),
+      cleared: kept(cleared),
+      exportRemembered: 0,
+      after: { volume: afterVolume, rate: settledRate, panel: afterPanel },
+    };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await popup?.close().catch(() => {});
+    await settings?.close().catch(() => {});
+    await fixture?.close().catch(() => {});
   }
 }
 

@@ -20,7 +20,7 @@ import { channelLabel } from '../lib/media';
 import { defaultKeybinds, keybindOwner, keyLabel, recordedKey, sameKeybinds, type KeybindAction, type KeybindOwner } from '../lib/keybinds';
 import { downloadSettingsBackup, parseSettingsBackup, readExtensionVersion, settingsBackupErrors, type SettingsBackupError } from '../lib/settings-backup';
 import { readCurrentSiteHost, watchSiteTabs } from '../lib/current-site';
-import { filterFloatingHiddenSites, filterRememberedSites, filterSiteList, forgetSitePref, isFloatingNote, isRateStep, isSkipSeconds, isVolumeStep, isWheelDirection, normalizeDomain } from '../lib/settings';
+import { clearRememberedSites, filterFloatingHiddenSites, filterRememberedSites, filterSiteList, forgetSitePref, isFloatingNote, isRateStep, isSkipSeconds, isVolumeStep, isWheelDirection, normalizeDomain } from '../lib/settings';
 import { rateSteps, skipSteps, volumeSteps, type Settings, type SitePref } from '../lib/types';
 import { useSettingsAtoms } from './theme';
 
@@ -241,14 +241,31 @@ function FloatingHiddenSitesList({ sites, disabled, onRestore, host, readHost }:
   </>;
 }
 
-function RememberedSitesSection({ prefs, disabled, onForget, host, readHost }: { prefs: Record<string, SitePref>; disabled: boolean; onForget: (site: string) => void; host: string | null; readHost: ReadCurrentHost }) {
+function RememberedSitesSection({ prefs, disabled, onForget, onClear, host, readHost }: { prefs: Record<string, SitePref>; disabled: boolean; onForget: (site: string) => void; onClear: () => Promise<boolean>; host: string | null; readHost: ReadCurrentHost }) {
+  const [confirming, setConfirming] = useState(false);
+  const filled = Object.keys(prefs).length > 0;
+  useEffect(() => { if (!filled) setConfirming(false); }, [filled]);
+  const confirmClear = async () => { if (await onClear()) setConfirming(false); };
   return <section id="memory" aria-labelledby="memory-label" className="scroll-mt-32 rounded-xl border bg-card md:scroll-mt-8">
     <div className="px-5 py-5 sm:px-6">
-      <h2 id="memory-label" className="text-base font-semibold">{i18n.t('rememberedSites')}</h2>
-      <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('rememberedSitesDescription')}</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h2 id="memory-label" className="text-base font-semibold">{i18n.t('rememberedSites')}</h2>
+          <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('rememberedSitesDescription')}</p>
+        </div>
+        {filled && <Button type="button" variant="outline" className="shrink-0" disabled={disabled} onClick={() => setConfirming(true)}>{i18n.t('clearRemembered')}</Button>}
+      </div>
+      {confirming && <div className="mt-4 rounded-lg border bg-muted/40 p-4" role="region" aria-labelledby="clear-remembered-title">
+        <h3 id="clear-remembered-title" className="text-base font-semibold">{i18n.t('clearRememberedTitle')}</h3>
+        <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('clearRememberedConfirm')}</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button type="button" variant="destructive" disabled={disabled} onClick={() => void confirmClear()}>{i18n.t('clearRememberedAction')}</Button>
+          <Button type="button" variant="outline" disabled={disabled} onClick={() => setConfirming(false)}>{i18n.t('clearRememberedCancel')}</Button>
+        </div>
+      </div>}
     </div>
     <div className="px-5 pb-5 sm:px-6">
-      {Object.keys(prefs).length
+      {filled
         ? <RememberedSitesList prefs={prefs} disabled={disabled} onForget={onForget} host={host} readHost={readHost} />
         : <p className="rounded-lg bg-secondary/60 px-3 py-5 text-sm text-muted-foreground">{i18n.t('rememberedEmpty')}</p>}
     </div>
@@ -679,7 +696,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
             : <p className="mt-3 rounded-lg bg-secondary/60 px-3 py-5 text-sm text-muted-foreground">{siteMode === 'allow' ? i18n.t('allowEmpty') : siteMode === 'exclude' ? i18n.t('excludeEmpty') : i18n.t('allEmpty')}</p>}
         </Row>
       </section>
-      <RememberedSitesSection prefs={sitePrefs} disabled={disabled} onForget={site => void save({ sitePrefs: forgetSitePref(sitePrefs, site) })} host={currentHost} readHost={readCurrentHost} />
+      <RememberedSitesSection prefs={sitePrefs} disabled={disabled} onForget={site => void save({ sitePrefs: forgetSitePref(sitePrefs, site) })} onClear={() => save({ sitePrefs: clearRememberedSites(sitePrefs) })} host={currentHost} readHost={readCurrentHost} />
       <BackupSection disabled={disabled} save={save} />
       {error && <Alert variant="destructive"><CircleAlert /><AlertDescription>{error}</AlertDescription></Alert>}
       <p className="px-1 text-xs leading-5 text-muted-foreground md:hidden">{i18n.t('localOnly')}</p>
