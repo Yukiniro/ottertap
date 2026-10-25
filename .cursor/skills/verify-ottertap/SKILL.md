@@ -53,7 +53,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs doctor
 
 ## Drive
 
-脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、低音量滚轮细步长（见 `features/fine-wheel.md`）、Shift 粗调步长（见 `features/coarse-step.md`）、倍速增减步长（见 `features/rate-step.md`）、扩展命令画中画（见 `features/extension-pip.md`）、按住临时加速（见 `features/hold-boost.md`）、同键短按跳长按加速（见 `features/hold-skip-combo.md`）、逐帧（见 `features/frame-step.md`）、页内快捷键改键（见 `features/hotkey-remap.md`）、浮动药丸倍速（见 `features/floating-speed.md`）、浮动药丸播放跳转（见 `features/floating-playback.md`）、浮动入口旁注（见 `features/floating-entry-note.md`）、从音量药丸打开弹出面板（见 `features/floating-open-panel.md`）、仅在播放时显示浮动入口（见 `features/floating-while-playing.md`）和滚轮方向（见 `features/wheel-direction.md`）。仅全屏时悬停滚轮见 `features/fullscreen-wheel.md`。侧栏聊天和文档大纲忽略见 `features/sidebar-ignore.md`。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
+脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、低音量滚轮细步长（见 `features/fine-wheel.md`）、Shift 粗调步长（见 `features/coarse-step.md`）、倍速增减步长（见 `features/rate-step.md`）、扩展命令画中画（见 `features/extension-pip.md`）、按住临时加速（见 `features/hold-boost.md`）、同键短按跳长按加速（见 `features/hold-skip-combo.md`）、逐帧（见 `features/frame-step.md`）、页内快捷键改键（见 `features/hotkey-remap.md`）、浮动药丸倍速（见 `features/floating-speed.md`）、浮动药丸播放跳转（见 `features/floating-playback.md`）、浮动入口旁注（见 `features/floating-entry-note.md`）、从音量药丸打开弹出面板（见 `features/floating-open-panel.md`）、仅在播放时显示浮动入口（见 `features/floating-while-playing.md`）和滚轮方向（见 `features/wheel-direction.md`）。仅全屏时悬停滚轮见 `features/fullscreen-wheel.md`。侧栏聊天和文档大纲忽略见 `features/sidebar-ignore.md`。设置页三处名单的「当前站」见 `features/settings-current-site.md`。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
 
 ```bash
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
@@ -80,6 +80,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive sidebar-ignore
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-memory-filter
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-sites-filter
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-floating-hidden-filter
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-current-site
 ```
 
 `skip-step` 在设置页把 `Skip step` 改成 `30s` 并打开 `Single-key mode`，再看弹出面板进退按钮名和页内 `L` / `J` / `→` / `←` 让 `/long` 夹具的 `currentTime` 跟着步长变；它会改写 profile，同一会话只能跑一次。步骤见 `features/skip-step.md`。
@@ -248,6 +249,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive sidebar-ignore
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-memory-filter
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-sites-filter
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-floating-hidden-filter
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-current-site
 node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 ```
 
@@ -294,3 +296,13 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-floating-
 `settings-floating-hidden-filter` 先写入 `alpha.test`、`beta.example`、`gamma.example`，网站规则允许 `rules.example` 与 `listed.test`，并记住 `kept.example` 与 `noted.test`。隐藏名单过滤框无障碍名是 `Filter hidden sites`，和 `Filter site list`、`Filter by hostname` 不是同一个框。输入 `example` 后只剩两条，存储里的 `alpha.test` 还在。另外两处过滤分别填 `rules` 和 `kept` 时，这边的过滤词和结果不变。点 `Show the floating button on beta.example again` 后结果只剩 `gamma.example`，`alpha.test` 仍在 `floatingHiddenSites`。同一页导出的 JSON 带上这两条。导入一份加回 `beta.example` 和 `delta.test` 的备份后，过滤词仍是 `example`，结果里是 `beta.example` 和 `gamma.example`。输入 `zzzz` 时出现 `No hidden sites match.`，`#floating` 里没有列表。它会改写 profile，同一会话只能跑一次。步骤见 `features/settings-floating-hidden-filter.md`。
 
 写入 `settings-floating-hidden-filter/`：`list-all.png`、`filtered.png`、`independent.png`、`restored.png`、`export.json`、`imported.png`、`no-match.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
+## 设置名单定位当前站
+
+```bash
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-current-site
+```
+
+`settings-current-site` 先在记住站点、网站规则和隐藏浮动名单里放上包含 `media.ottertap.test` 的条目，网站规则为仅指定网站。先打开 `https://elsewhere.test/`，再打开 `/video`，然后打开设置页。三处按钮的无障碍名都是 `Current site`。记住站点点下去后，过滤变成 `media.ottertap.test`，列表滚进视口；网站规则仍是事先填的 `beta`，隐藏名单仍是 `gamma`。再点另外两处，各自变成当前主机名，不改旁边那一处。关掉这两个网页标签后三颗按钮不可用。把记住站点过滤改成 `alpha` 再点，过滤仍是 `alpha`。存储里的三张表都不因点击而改。它会改写 profile，同一会话只能跑一次。步骤见 `features/settings-current-site.md`。
+
+写入 `settings-current-site/`：`memory-located.png`、`sites-held.png`、`hidden-located.png`、`unavailable.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。

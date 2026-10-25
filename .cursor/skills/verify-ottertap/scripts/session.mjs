@@ -27,6 +27,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-memory-filter
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-sites-filter
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-floating-hidden-filter
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-current-site
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -46,7 +47,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -3177,7 +3178,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -3975,6 +3976,155 @@ async function driveSettingsFloatingHiddenFilter(context, dir, note) {
     return state;
   } finally {
     await settings?.close().catch(() => {});
+  }
+}
+
+async function driveSettingsCurrentSite(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const snapshot = value => ({
+    sites: value.sites ?? [],
+    prefs: Object.keys(value.sitePrefs ?? {}).sort(),
+    hidden: value.floatingHiddenSites ?? [],
+  });
+  const elsewhereRoute = 'https://elsewhere.test/**';
+  let settings;
+  let fixture;
+  let elsewhere;
+  try {
+    await context.route(elsewhereRoute, route => route.fulfill({
+      status: 200,
+      contentType: 'text/html; charset=utf-8',
+      body: '<!doctype html><title>elsewhere</title><p>elsewhere</p>',
+    }));
+    await worker.evaluate(async () => {
+      const key = 'ottertap-settings-v1';
+      const current = (await chrome.storage.local.get(key))[key] ?? {};
+      await chrome.storage.local.set({
+        [key]: {
+          ...current,
+          siteMode: 'allow',
+          sites: ['alpha.test', 'beta.example', 'media.ottertap.test'],
+          sitePrefs: {
+            'alpha.test': { volume: 0.4 },
+            'beta.example': { rate: 1.5 },
+            'media.ottertap.test': { volume: 0.8 },
+          },
+          floatingHiddenSites: ['alpha.test', 'gamma.example', 'media.ottertap.test'],
+        },
+      });
+    });
+    const seeded = await poll(stored, value => value.siteMode === 'allow' && (value.sites ?? []).join() === 'alpha.test,beta.example,media.ottertap.test' && Object.keys(value.sitePrefs ?? {}).sort().join() === 'alpha.test,beta.example,media.ottertap.test' && (value.floatingHiddenSites ?? []).join() === 'alpha.test,gamma.example,media.ottertap.test', '应先写入三处名单');
+    const seededSnapshot = snapshot(seeded);
+    elsewhere = await context.newPage();
+    await elsewhere.goto('https://elsewhere.test/', { waitUntil: 'domcontentloaded' });
+    await elsewhere.waitForTimeout(150);
+    fixture = await context.newPage();
+    await fixture.goto(`${origin}/video`, { waitUntil: 'domcontentloaded' });
+    await fixture.locator('#media').waitFor({ state: 'attached', timeout: 15_000 });
+    await fixture.bringToFront();
+    await fixture.waitForTimeout(150);
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html`, { waitUntil: 'domcontentloaded' });
+    const memory = settings.locator('#memory');
+    const sites = settings.locator('#sites');
+    const floating = settings.locator('#floating');
+    const memoryFilter = memory.getByRole('searchbox', { name: 'Filter by hostname' });
+    const siteFilter = sites.getByRole('searchbox', { name: 'Filter site list' });
+    const hiddenFilter = floating.getByRole('searchbox', { name: 'Filter hidden sites' });
+    const memoryButton = memory.getByRole('button', { name: 'Current site', exact: true });
+    const siteButton = sites.getByRole('button', { name: 'Current site', exact: true });
+    const hiddenButton = floating.getByRole('button', { name: 'Current site', exact: true });
+    const memoryTitles = () => memory.locator('[data-slot="item-title"]').allTextContents();
+    const siteTitles = () => sites.locator('[data-slot="item-title"]').allTextContents();
+    const hiddenTitles = () => floating.locator('[data-slot="item-title"]').allTextContents();
+    await memoryButton.waitFor({ state: 'visible', timeout: 15_000 });
+    await siteButton.waitFor({ state: 'visible', timeout: 15_000 });
+    await hiddenButton.waitFor({ state: 'visible', timeout: 15_000 });
+    const tabs = await settings.evaluate(async () => {
+      const self = await chrome.tabs.getCurrent();
+      const all = await chrome.tabs.query({});
+      return {
+        selfId: self?.id ?? null,
+        selfWindow: self?.windowId ?? null,
+        tabs: all.map(tab => ({ id: tab.id, windowId: tab.windowId, active: tab.active, url: tab.url ?? '', lastAccessed: tab.lastAccessed ?? 0 })),
+      };
+    });
+    note(`tabs ${JSON.stringify(tabs)}`);
+    await poll(async () => (await memoryButton.isEnabled()) && (await siteButton.isEnabled()) && (await hiddenButton.isEnabled()), value => value === true, '有当前网站时三处当前站都可点');
+    await siteFilter.fill('beta');
+    await hiddenFilter.fill('gamma');
+    await poll(siteTitles, value => value.join() === 'beta.example', '网站规则先筛到 beta');
+    await poll(hiddenTitles, value => value.join() === 'gamma.example', '隐藏名单先筛到 gamma');
+    await settings.evaluate(() => window.scrollTo(0, 0));
+    await poll(() => settings.evaluate(() => window.scrollY), value => value === 0, '应回到页顶');
+    await memoryButton.evaluate(node => node.click());
+    await poll(() => memoryFilter.inputValue(), value => value === 'media.ottertap.test', '记住站点应筛成当前主机名');
+    await poll(memoryTitles, value => value.join() === 'media.ottertap.test', '记住站点只剩当前站');
+    if (await siteFilter.inputValue() !== 'beta') throw new Error('记住站点的当前站不应改网站规则过滤');
+    if (await hiddenFilter.inputValue() !== 'gamma') throw new Error('记住站点的当前站不应改隐藏名单过滤');
+    await poll(siteTitles, value => value.join() === 'beta.example', '网站规则结果应保持 beta');
+    await poll(hiddenTitles, value => value.join() === 'gamma.example', '隐藏名单结果应保持 gamma');
+    const viewport = settings.viewportSize();
+    const memoryBox = await memory.locator('[data-current-site-list="memory"]').boundingBox();
+    const scrolled = await settings.evaluate(() => window.scrollY);
+    if (!viewport || !memoryBox || memoryBox.y < -2 || memoryBox.y > viewport.height - 8) throw new Error(`记住站点列表没有进视口 y=${memoryBox?.y}`);
+    if (scrolled <= 0) throw new Error('点记住站点的当前站后页面仍停在页顶');
+    const whileLocated = await stored();
+    if (JSON.stringify(snapshot(whileLocated)) !== JSON.stringify(seededSnapshot)) throw new Error(`定位不应改存储：${JSON.stringify(snapshot(whileLocated))}`);
+    await memory.screenshot({ path: path.join(dir, 'memory-located.png'), animations: 'disabled' });
+    await sites.screenshot({ path: path.join(dir, 'sites-held.png'), animations: 'disabled' });
+    note(`memory located; scrollY=${scrolled}; sites still beta; hidden still gamma`);
+
+    await siteButton.evaluate(node => node.click());
+    await poll(() => siteFilter.inputValue(), value => value === 'media.ottertap.test', '网站规则应筛成当前主机名');
+    await poll(siteTitles, value => value.join() === 'media.ottertap.test', '网站规则只剩当前站');
+    if (await memoryFilter.inputValue() !== 'media.ottertap.test') throw new Error('网站规则的当前站不应改记住站点过滤');
+    if (await hiddenFilter.inputValue() !== 'gamma') throw new Error('网站规则的当前站不应改隐藏名单过滤');
+    const sitesBox = await sites.locator('[data-current-site-list="sites"]').boundingBox();
+    if (!sitesBox || sitesBox.y < -2 || sitesBox.y > viewport.height - 8) throw new Error(`网站规则列表没有进视口 y=${sitesBox?.y}`);
+
+    await hiddenButton.evaluate(node => node.click());
+    await poll(() => hiddenFilter.inputValue(), value => value === 'media.ottertap.test', '隐藏名单应筛成当前主机名');
+    await poll(hiddenTitles, value => value.join() === 'media.ottertap.test', '隐藏名单只剩当前站');
+    if (await memoryFilter.inputValue() !== 'media.ottertap.test' || await siteFilter.inputValue() !== 'media.ottertap.test') throw new Error('隐藏名单的当前站不应改另外两处');
+    const hiddenBox = await floating.locator('[data-current-site-list="floating"]').boundingBox();
+    if (!hiddenBox || hiddenBox.y < -2 || hiddenBox.y > viewport.height - 8) throw new Error(`隐藏名单没有进视口 y=${hiddenBox?.y}`);
+    await floating.screenshot({ path: path.join(dir, 'hidden-located.png'), animations: 'disabled' });
+    note('each section located on its own');
+
+    await fixture.close();
+    fixture = undefined;
+    await elsewhere.close();
+    elsewhere = undefined;
+    const disabled = async () => !(await memoryButton.isEnabled()) && !(await siteButton.isEnabled()) && !(await hiddenButton.isEnabled());
+    await poll(disabled, value => value === true, '没有网页标签时当前站应不可用');
+    await memoryFilter.fill('alpha');
+    await memoryButton.evaluate(node => node.click());
+    if (await memoryFilter.inputValue() !== 'alpha') throw new Error('不可用的当前站不应改过滤');
+    if (await siteFilter.inputValue() !== 'media.ottertap.test' || await hiddenFilter.inputValue() !== 'media.ottertap.test') throw new Error('不可用的点击不应改另外两处');
+    const afterUnavailable = await stored();
+    if (JSON.stringify(snapshot(afterUnavailable)) !== JSON.stringify(seededSnapshot)) throw new Error(`不可用时不应改存储：${JSON.stringify(snapshot(afterUnavailable))}`);
+    await memory.screenshot({ path: path.join(dir, 'unavailable.png'), animations: 'disabled' });
+    note('no hostname leaves the alpha filter');
+
+    const state = {
+      ok: true,
+      host: 'media.ottertap.test',
+      memory: ['media.ottertap.test'],
+      held: { sites: 'beta', hidden: 'gamma' },
+      unavailableKept: 'alpha',
+    };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await context.unroute(elsewhereRoute).catch(() => {});
+    await settings?.close().catch(() => {});
+    await fixture?.close().catch(() => {});
+    await elsewhere?.close().catch(() => {});
   }
 }
 
