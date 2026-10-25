@@ -177,6 +177,12 @@ export function forgetSitePref(prefs: Record<string, SitePref>, site: string): R
   return next;
 }
 
+/** Hostname substring for the settings list. An empty query returns every entry, sorted. Does not mutate `prefs` or use parent-domain matching. */
+export function filterRememberedSites(prefs: Record<string, SitePref>, query: string): [string, SitePref][] {
+  const needle = query.trim().toLowerCase();
+  return Object.entries(prefs).filter(([site]) => needle === '' || site.toLowerCase().includes(needle)).sort(([a], [b]) => a.localeCompare(b));
+}
+
 export function isFloatingHidden(host: string, sites: readonly string[]) {
   const name = hostKey(host);
   return !!name && sites.some(site => matchesSite(name, site));

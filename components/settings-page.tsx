@@ -19,7 +19,7 @@ import { defaultRatePresets, formatRate, maxRatePresets, parseRatePreset, sameRa
 import { channelLabel } from '../lib/media';
 import { defaultKeybinds, keybindOwner, keyLabel, recordedKey, sameKeybinds, type KeybindAction, type KeybindOwner } from '../lib/keybinds';
 import { downloadSettingsBackup, parseSettingsBackup, readExtensionVersion, settingsBackupErrors, type SettingsBackupError } from '../lib/settings-backup';
-import { forgetSitePref, isFloatingNote, isRateStep, isSkipSeconds, isVolumeStep, isWheelDirection, normalizeDomain } from '../lib/settings';
+import { filterRememberedSites, forgetSitePref, isFloatingNote, isRateStep, isSkipSeconds, isVolumeStep, isWheelDirection, normalizeDomain } from '../lib/settings';
 import { rateSteps, skipSteps, volumeSteps, type Settings, type SitePref } from '../lib/types';
 import { useSettingsAtoms } from './theme';
 
@@ -135,6 +135,38 @@ function BackupSection({ disabled, save }: { disabled: boolean; save: (next: Set
 }
 
 const prefSummary = (pref: SitePref) => [pref.volume === undefined ? '' : i18n.t('rememberedVolume', { volume: Math.round(pref.volume * 100) }), pref.rate === undefined ? '' : i18n.t('rememberedRate', { rate: pref.rate }), pref.channel === undefined ? '' : channelLabel(pref.channel)].filter(Boolean).join(' · ');
+
+function RememberedSitesList({ prefs, disabled, onForget }: { prefs: Record<string, SitePref>; disabled: boolean; onForget: (site: string) => void }) {
+  const [query, setQuery] = useState('');
+  const visible = filterRememberedSites(prefs, query);
+  return <>
+    <Field>
+      <FieldLabel htmlFor="remembered-filter" className="sr-only">{i18n.t('rememberedFilter')}</FieldLabel>
+      <Input id="remembered-filter" type="search" className="h-10 px-3" value={query} disabled={disabled} placeholder={i18n.t('rememberedFilter')} autoComplete="off" spellCheck={false} aria-describedby={visible.length === 0 ? 'remembered-no-match' : undefined} onChange={event => setQuery(event.target.value)} />
+    </Field>
+    {visible.length
+      ? <ItemGroup aria-label={i18n.t('rememberedSites')} className="mt-3 gap-0 overflow-hidden rounded-lg bg-secondary/60">{visible.map(([site, pref]) => <Item key={site} role="listitem" className="rounded-none border-b-border px-3 not-last:border-b">
+        <ItemMedia variant="icon" className="text-muted-foreground"><Bookmark className="size-4" /></ItemMedia>
+        <ItemContent><ItemTitle className="line-clamp-none font-normal break-all">{site}</ItemTitle><p className="text-xs text-muted-foreground">{prefSummary(pref)}</p></ItemContent>
+        <ItemActions><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={i18n.t('forgetSite', { site })} disabled={disabled} onClick={() => onForget(site)}><X /></Button></ItemActions>
+      </Item>)}</ItemGroup>
+      : <p id="remembered-no-match" className="mt-3 rounded-lg bg-secondary/60 px-3 py-5 text-sm text-muted-foreground">{i18n.t('rememberedNoMatch')}</p>}
+  </>;
+}
+
+function RememberedSitesSection({ prefs, disabled, onForget }: { prefs: Record<string, SitePref>; disabled: boolean; onForget: (site: string) => void }) {
+  return <section id="memory" aria-labelledby="memory-label" className="scroll-mt-32 rounded-xl border bg-card md:scroll-mt-8">
+    <div className="px-5 py-5 sm:px-6">
+      <h2 id="memory-label" className="text-base font-semibold">{i18n.t('rememberedSites')}</h2>
+      <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('rememberedSitesDescription')}</p>
+    </div>
+    <div className="px-5 pb-5 sm:px-6">
+      {Object.keys(prefs).length
+        ? <RememberedSitesList prefs={prefs} disabled={disabled} onForget={onForget} />
+        : <p className="rounded-lg bg-secondary/60 px-3 py-5 text-sm text-muted-foreground">{i18n.t('rememberedEmpty')}</p>}
+    </div>
+  </section>;
+}
 
 function ThemeThumb({ value }: { value: 'light' | 'dark' | 'system' }) {
   const frame = 'mb-2 block h-11 w-16 overflow-hidden rounded-md border';
@@ -567,21 +599,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
             : <p className="mt-3 rounded-lg bg-secondary/60 px-3 py-5 text-sm text-muted-foreground">{siteMode === 'allow' ? i18n.t('allowEmpty') : siteMode === 'exclude' ? i18n.t('excludeEmpty') : i18n.t('allEmpty')}</p>}
         </Row>
       </section>
-      <section id="memory" aria-labelledby="memory-label" className="scroll-mt-32 rounded-xl border bg-card md:scroll-mt-8">
-        <div className="px-5 py-5 sm:px-6">
-          <h2 id="memory-label" className="text-base font-semibold">{i18n.t('rememberedSites')}</h2>
-          <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('rememberedSitesDescription')}</p>
-        </div>
-        <div className="px-5 pb-5 sm:px-6">
-          {Object.keys(sitePrefs).length
-            ? <ItemGroup aria-label={i18n.t('rememberedSites')} className="gap-0 overflow-hidden rounded-lg bg-secondary/60">{Object.entries(sitePrefs).sort(([a], [b]) => a.localeCompare(b)).map(([site, pref]) => <Item key={site} role="listitem" className="rounded-none border-b-border px-3 not-last:border-b">
-              <ItemMedia variant="icon" className="text-muted-foreground"><Bookmark className="size-4" /></ItemMedia>
-              <ItemContent><ItemTitle className="line-clamp-none font-normal break-all">{site}</ItemTitle><p className="text-xs text-muted-foreground">{prefSummary(pref)}</p></ItemContent>
-              <ItemActions><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={i18n.t('forgetSite', { site })} disabled={disabled} onClick={() => void save({ sitePrefs: forgetSitePref(sitePrefs, site) })}><X /></Button></ItemActions>
-            </Item>)}</ItemGroup>
-            : <p className="rounded-lg bg-secondary/60 px-3 py-5 text-sm text-muted-foreground">{i18n.t('rememberedEmpty')}</p>}
-        </div>
-      </section>
+      <RememberedSitesSection prefs={sitePrefs} disabled={disabled} onForget={site => void save({ sitePrefs: forgetSitePref(sitePrefs, site) })} />
       <BackupSection disabled={disabled} save={save} />
       {error && <Alert variant="destructive"><CircleAlert /><AlertDescription>{error}</AlertDescription></Alert>}
       <p className="px-1 text-xs leading-5 text-muted-foreground md:hidden">{i18n.t('localOnly')}</p>
