@@ -4024,7 +4024,7 @@ async function driveSettingsCurrentSite(context, dir, note) {
     await elsewhere.waitForTimeout(150);
     fixture = await context.newPage();
     await fixture.goto(`${origin}/video`, { waitUntil: 'domcontentloaded' });
-    await fixture.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await fixture.locator('#media').waitFor({ state: 'attached', timeout: 15_000 });
     await fixture.bringToFront();
     await fixture.waitForTimeout(150);
     settings = await context.newPage();
