@@ -4146,10 +4146,10 @@ async function driveSettingsClearRemembered(context, dir, note) {
   });
   const panelState = `(() => {
     const remember = document.querySelector('[role="switch"][aria-label="Remember this site"]');
-    const slider = document.querySelector('[role="slider"][aria-label="Volume"]') || document.querySelector('[aria-label="Volume"][role="slider"]');
+    const slider = document.querySelector('input[aria-label="Volume"]');
     return {
       remembered: remember?.getAttribute('aria-checked') ?? '',
-      volume: Number(slider?.getAttribute('aria-valuenow')),
+      volume: slider ? Number(slider.getAttribute('aria-valuenow')) : null,
     };
   })()`;
   let settings;
