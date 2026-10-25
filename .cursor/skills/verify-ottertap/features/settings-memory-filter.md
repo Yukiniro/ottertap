@@ -13,7 +13,7 @@
 ## How to get to it (user POV)
 
 1. 打开 `chrome-extension://<extensionId>/options.html#memory`。
-2. 记住表里已经有站点时，标题下有 `textbox`，无障碍名和占位符都是 `Filter by hostname`。
+2. 记住表里已经有站点时，标题下有 `searchbox`，无障碍名和占位符都是 `Filter by hostname`。
 3. 输入主机名片段，再点某行的 `Forget {site}`，或回到网页用弹出面板的 `Remember this site`。
 
 ## Driving it with Playwright

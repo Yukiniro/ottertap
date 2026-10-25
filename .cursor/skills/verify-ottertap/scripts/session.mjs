@@ -3658,12 +3658,12 @@ async function driveSettingsMemoryFilter(context, dir, note) {
     settings = await context.newPage();
     await settings.goto(`chrome-extension://${extensionId}/options.html#memory`, { waitUntil: 'domcontentloaded' });
     const memory = settings.locator('#memory');
-    const filter = settings.getByRole('textbox', { name: 'Filter by hostname' });
+    const filter = settings.getByRole('searchbox', { name: 'Filter by hostname' });
     await filter.waitFor({ state: 'visible', timeout: 15_000 });
     const titles = () => memory.locator('[data-slot="item-title"]').allTextContents();
     const listed = expected => poll(titles, value => value.join() === expected.join(), `列表应为 ${expected.join(', ')}`);
     await listed(['alpha.test', 'beta.example', 'gamma.example']);
-    await settings.getByText('A domain includes its subdomains.').waitFor({ state: 'visible' });
+    await memory.getByText('A domain includes its subdomains.').waitFor({ state: 'visible' });
     await memory.screenshot({ path: path.join(dir, 'list-all.png'), animations: 'disabled' });
     note('memory list shows alpha.test, beta.example, gamma.example');
 
@@ -3699,7 +3699,7 @@ async function driveSettingsMemoryFilter(context, dir, note) {
     await listed(['alpha.test', 'beta.example', 'gamma.example', 'media.ottertap.test']);
     await filter.fill('example');
     await listed(['beta.example', 'gamma.example']);
-    await settings.getByRole('button', { name: 'Forget beta.example' }).click();
+    await memory.getByRole('button', { name: 'Forget beta.example' }).click();
     await listed(['gamma.example']);
     const afterForget = await poll(stored, sameHosts(['alpha.test', 'gamma.example', 'media.ottertap.test']), '忘记 beta.example 只应去掉这一条');
     if (afterForget.sitePrefs?.['beta.example']) throw new Error('beta.example 应已从记住表删除');
@@ -3708,7 +3708,7 @@ async function driveSettingsMemoryFilter(context, dir, note) {
 
     await filter.fill('zzzz');
     await listed([]);
-    await settings.getByText('No remembered sites match.', { exact: true }).waitFor({ state: 'visible' });
+    await memory.getByText('No remembered sites match.', { exact: true }).waitFor({ state: 'visible' });
     if (await memory.locator('[role="list"]').count()) throw new Error('无匹配时不应留下空白列表');
     const unmatched = await stored();
     if (!sameHosts(['alpha.test', 'gamma.example', 'media.ottertap.test'])(unmatched)) throw new Error(`无匹配文案不应改存储：${hostsOf(unmatched).join()}`);
