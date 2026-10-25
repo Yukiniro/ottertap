@@ -1,5 +1,5 @@
 import { i18n } from '#i18n';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { commandBindings, extensionShortcutApis, shortcutsSettingsUrl } from '../lib/commands';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { Sun, AppWindow, Keyboard, Gauge, Globe, Bookmark, Archive, X, CircleCheck, ArrowLeft, CircleAlert, ChevronUp, ChevronDown, EyeOff } from 'lucide-react';
@@ -19,6 +19,7 @@ import { defaultRatePresets, formatRate, maxRatePresets, parseRatePreset, sameRa
 import { channelLabel } from '../lib/media';
 import { defaultKeybinds, keybindOwner, keyLabel, recordedKey, sameKeybinds, type KeybindAction, type KeybindOwner } from '../lib/keybinds';
 import { downloadSettingsBackup, parseSettingsBackup, readExtensionVersion, settingsBackupErrors, type SettingsBackupError } from '../lib/settings-backup';
+import { readCurrentSiteHost, watchSiteTabs } from '../lib/current-site';
 import { filterFloatingHiddenSites, filterRememberedSites, filterSiteList, forgetSitePref, isFloatingNote, isRateStep, isSkipSeconds, isVolumeStep, isWheelDirection, normalizeDomain } from '../lib/settings';
 import { rateSteps, skipSteps, volumeSteps, type Settings, type SitePref } from '../lib/types';
 import { useSettingsAtoms } from './theme';
@@ -136,61 +137,111 @@ function BackupSection({ disabled, save }: { disabled: boolean; save: (next: Set
 
 const prefSummary = (pref: SitePref) => [pref.volume === undefined ? '' : i18n.t('rememberedVolume', { volume: Math.round(pref.volume * 100) }), pref.rate === undefined ? '' : i18n.t('rememberedRate', { rate: pref.rate }), pref.channel === undefined ? '' : channelLabel(pref.channel)].filter(Boolean).join(' · ');
 
-function RememberedSitesList({ prefs, disabled, onForget }: { prefs: Record<string, SitePref>; disabled: boolean; onForget: (site: string) => void }) {
+type ReadCurrentHost = () => Promise<string | null>;
+
+function useCurrentSiteHost() {
+  const [host, setHost] = useState<string | null>(null);
+  const read = useCallback(async () => {
+    const next = await readCurrentSiteHost();
+    setHost(next);
+    return next;
+  }, []);
+  useEffect(() => {
+    let cancelled = false;
+    const pull = () => { void readCurrentSiteHost().then(next => { if (!cancelled) setHost(next); }); };
+    pull();
+    const stop = watchSiteTabs(pull);
+    const onVisible = () => { if (document.visibilityState === 'visible') pull(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { cancelled = true; stop(); document.removeEventListener('visibilitychange', onVisible); };
+  }, []);
+  return { host, read };
+}
+
+function HostnameQuery({ id, label, query, setQuery, describedBy, disabled, host, onLocate, className }: { id: string; label: string; query: string; setQuery: (value: string) => void; describedBy?: string; disabled: boolean; host: string | null; onLocate: () => void; className?: string }) {
+  const unavailableId = `${id}-current-site`;
+  return <Field className={className}>
+    <FieldLabel htmlFor={id} className="sr-only">{label}</FieldLabel>
+    <div className="flex gap-2">
+      <Input id={id} type="search" className="h-10 min-w-0 flex-1 px-3" value={query} disabled={disabled} placeholder={label} autoComplete="off" spellCheck={false} aria-describedby={describedBy} onChange={event => setQuery(event.target.value)} />
+      <Button type="button" variant="outline" className="h-10 shrink-0 px-3" disabled={disabled || !host} title={host ?? i18n.t('currentSiteUnavailable')} aria-describedby={host ? undefined : unavailableId} onClick={onLocate}>{i18n.t('currentSite')}</Button>
+      {!host && <p id={unavailableId} className="sr-only">{i18n.t('currentSiteUnavailable')}</p>}
+    </div>
+  </Field>;
+}
+
+function useLocateCurrentSite(readHost: ReadCurrentHost, setQuery: (value: string) => void) {
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const [scrollToken, setScrollToken] = useState(0);
+  useEffect(() => {
+    if (scrollToken === 0) return;
+    anchorRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [scrollToken]);
+  const locate = () => {
+    void readHost().then(next => {
+      if (!next) return;
+      setQuery(next);
+      setScrollToken(token => token + 1);
+    });
+  };
+  return { anchorRef, locate };
+}
+
+function RememberedSitesList({ prefs, disabled, onForget, host, readHost }: { prefs: Record<string, SitePref>; disabled: boolean; onForget: (site: string) => void; host: string | null; readHost: ReadCurrentHost }) {
   const [query, setQuery] = useState('');
   const visible = filterRememberedSites(prefs, query);
+  const { anchorRef, locate } = useLocateCurrentSite(readHost, setQuery);
   return <>
-    <Field>
-      <FieldLabel htmlFor="remembered-filter" className="sr-only">{i18n.t('rememberedFilter')}</FieldLabel>
-      <Input id="remembered-filter" type="search" className="h-10 px-3" value={query} disabled={disabled} placeholder={i18n.t('rememberedFilter')} autoComplete="off" spellCheck={false} aria-describedby={visible.length === 0 ? 'remembered-no-match' : undefined} onChange={event => setQuery(event.target.value)} />
-    </Field>
-    {visible.length
-      ? <ItemGroup aria-label={i18n.t('rememberedSites')} className="mt-3 gap-0 overflow-hidden rounded-lg bg-secondary/60">{visible.map(([site, pref]) => <Item key={site} role="listitem" className="rounded-none border-b-border px-3 not-last:border-b">
-        <ItemMedia variant="icon" className="text-muted-foreground"><Bookmark className="size-4" /></ItemMedia>
-        <ItemContent><ItemTitle className="line-clamp-none font-normal break-all">{site}</ItemTitle><p className="text-xs text-muted-foreground">{prefSummary(pref)}</p></ItemContent>
-        <ItemActions><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={i18n.t('forgetSite', { site })} disabled={disabled} onClick={() => onForget(site)}><X /></Button></ItemActions>
-      </Item>)}</ItemGroup>
-      : <p id="remembered-no-match" className="mt-3 rounded-lg bg-secondary/60 px-3 py-5 text-sm text-muted-foreground">{i18n.t('rememberedNoMatch')}</p>}
+    <HostnameQuery id="remembered-filter" label={i18n.t('rememberedFilter')} query={query} setQuery={setQuery} describedBy={visible.length === 0 ? 'remembered-no-match' : undefined} disabled={disabled} host={host} onLocate={locate} />
+    <div ref={anchorRef} data-current-site-list="memory">
+      {visible.length
+        ? <ItemGroup aria-label={i18n.t('rememberedSites')} className="mt-3 gap-0 overflow-hidden rounded-lg bg-secondary/60">{visible.map(([site, pref]) => <Item key={site} role="listitem" className="rounded-none border-b-border px-3 not-last:border-b">
+          <ItemMedia variant="icon" className="text-muted-foreground"><Bookmark className="size-4" /></ItemMedia>
+          <ItemContent><ItemTitle className="line-clamp-none font-normal break-all">{site}</ItemTitle><p className="text-xs text-muted-foreground">{prefSummary(pref)}</p></ItemContent>
+          <ItemActions><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={i18n.t('forgetSite', { site })} disabled={disabled} onClick={() => onForget(site)}><X /></Button></ItemActions>
+        </Item>)}</ItemGroup>
+        : <p id="remembered-no-match" className="mt-3 rounded-lg bg-secondary/60 px-3 py-5 text-sm text-muted-foreground">{i18n.t('rememberedNoMatch')}</p>}
+    </div>
   </>;
 }
 
-function SiteRulesList({ sites, disabled, onRemove }: { sites: readonly string[]; disabled: boolean; onRemove: (site: string) => void }) {
+function SiteRulesList({ sites, disabled, onRemove, host, readHost }: { sites: readonly string[]; disabled: boolean; onRemove: (site: string) => void; host: string | null; readHost: ReadCurrentHost }) {
   const [query, setQuery] = useState('');
   const visible = filterSiteList(sites, query);
+  const { anchorRef, locate } = useLocateCurrentSite(readHost, setQuery);
   return <>
-    <Field className="mt-3">
-      <FieldLabel htmlFor="site-list-filter" className="sr-only">{i18n.t('siteListFilter')}</FieldLabel>
-      <Input id="site-list-filter" type="search" className="h-10 px-3" value={query} disabled={disabled} placeholder={i18n.t('siteListFilter')} autoComplete="off" spellCheck={false} aria-describedby={visible.length === 0 ? 'site-list-no-match' : undefined} onChange={event => setQuery(event.target.value)} />
-    </Field>
-    {visible.length
-      ? <ItemGroup aria-label={i18n.t('siteList')} className="mt-3 gap-0 overflow-hidden rounded-lg bg-secondary/60">{visible.map(site => <Item key={site} role="listitem" className="rounded-none border-b-border px-3 not-last:border-b">
-        <ItemMedia variant="icon" className="text-muted-foreground"><Globe className="size-4" /></ItemMedia>
-        <ItemContent><ItemTitle className="line-clamp-none font-normal break-all">{site}</ItemTitle></ItemContent>
-        <ItemActions><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={i18n.t('removeSite', { site })} disabled={disabled} onClick={() => onRemove(site)}><X /></Button></ItemActions>
-      </Item>)}</ItemGroup>
-      : <p id="site-list-no-match" className="mt-3 rounded-lg bg-secondary/60 px-3 py-5 text-sm text-muted-foreground">{i18n.t('siteListNoMatch')}</p>}
+    <HostnameQuery id="site-list-filter" className="mt-3" label={i18n.t('siteListFilter')} query={query} setQuery={setQuery} describedBy={visible.length === 0 ? 'site-list-no-match' : undefined} disabled={disabled} host={host} onLocate={locate} />
+    <div ref={anchorRef} data-current-site-list="sites">
+      {visible.length
+        ? <ItemGroup aria-label={i18n.t('siteList')} className="mt-3 gap-0 overflow-hidden rounded-lg bg-secondary/60">{visible.map(site => <Item key={site} role="listitem" className="rounded-none border-b-border px-3 not-last:border-b">
+          <ItemMedia variant="icon" className="text-muted-foreground"><Globe className="size-4" /></ItemMedia>
+          <ItemContent><ItemTitle className="line-clamp-none font-normal break-all">{site}</ItemTitle></ItemContent>
+          <ItemActions><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={i18n.t('removeSite', { site })} disabled={disabled} onClick={() => onRemove(site)}><X /></Button></ItemActions>
+        </Item>)}</ItemGroup>
+        : <p id="site-list-no-match" className="mt-3 rounded-lg bg-secondary/60 px-3 py-5 text-sm text-muted-foreground">{i18n.t('siteListNoMatch')}</p>}
+    </div>
   </>;
 }
 
-function FloatingHiddenSitesList({ sites, disabled, onRestore }: { sites: readonly string[]; disabled: boolean; onRestore: (site: string) => void }) {
+function FloatingHiddenSitesList({ sites, disabled, onRestore, host, readHost }: { sites: readonly string[]; disabled: boolean; onRestore: (site: string) => void; host: string | null; readHost: ReadCurrentHost }) {
   const [query, setQuery] = useState('');
   const visible = filterFloatingHiddenSites(sites, query);
+  const { anchorRef, locate } = useLocateCurrentSite(readHost, setQuery);
   return <>
-    <Field className="mt-3">
-      <FieldLabel htmlFor="floating-hidden-filter" className="sr-only">{i18n.t('floatingHiddenFilter')}</FieldLabel>
-      <Input id="floating-hidden-filter" type="search" className="h-10 px-3" value={query} disabled={disabled} placeholder={i18n.t('floatingHiddenFilter')} autoComplete="off" spellCheck={false} aria-describedby={visible.length === 0 ? 'floating-hidden-no-match' : undefined} onChange={event => setQuery(event.target.value)} />
-    </Field>
-    {visible.length
-      ? <ItemGroup aria-label={i18n.t('floatingHiddenSites')} className="mt-3 gap-0 overflow-hidden rounded-lg bg-background/80">{visible.map(site => <Item key={site} role="listitem" className="rounded-none border-b-border px-3 not-last:border-b">
-        <ItemMedia variant="icon" className="text-muted-foreground"><EyeOff className="size-4" /></ItemMedia>
-        <ItemContent><ItemTitle className="line-clamp-none font-normal break-all">{site}</ItemTitle></ItemContent>
-        <ItemActions><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={i18n.t('restoreFloating', { site })} disabled={disabled} onClick={() => onRestore(site)}><X /></Button></ItemActions>
-      </Item>)}</ItemGroup>
-      : <p id="floating-hidden-no-match" className="mt-3 rounded-lg bg-background/80 px-3 py-3 text-sm text-muted-foreground">{i18n.t('floatingHiddenNoMatch')}</p>}
+    <HostnameQuery id="floating-hidden-filter" className="mt-3" label={i18n.t('floatingHiddenFilter')} query={query} setQuery={setQuery} describedBy={visible.length === 0 ? 'floating-hidden-no-match' : undefined} disabled={disabled} host={host} onLocate={locate} />
+    <div ref={anchorRef} data-current-site-list="floating">
+      {visible.length
+        ? <ItemGroup aria-label={i18n.t('floatingHiddenSites')} className="mt-3 gap-0 overflow-hidden rounded-lg bg-background/80">{visible.map(site => <Item key={site} role="listitem" className="rounded-none border-b-border px-3 not-last:border-b">
+          <ItemMedia variant="icon" className="text-muted-foreground"><EyeOff className="size-4" /></ItemMedia>
+          <ItemContent><ItemTitle className="line-clamp-none font-normal break-all">{site}</ItemTitle></ItemContent>
+          <ItemActions><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={i18n.t('restoreFloating', { site })} disabled={disabled} onClick={() => onRestore(site)}><X /></Button></ItemActions>
+        </Item>)}</ItemGroup>
+        : <p id="floating-hidden-no-match" className="mt-3 rounded-lg bg-background/80 px-3 py-3 text-sm text-muted-foreground">{i18n.t('floatingHiddenNoMatch')}</p>}
+    </div>
   </>;
 }
 
-function RememberedSitesSection({ prefs, disabled, onForget }: { prefs: Record<string, SitePref>; disabled: boolean; onForget: (site: string) => void }) {
+function RememberedSitesSection({ prefs, disabled, onForget, host, readHost }: { prefs: Record<string, SitePref>; disabled: boolean; onForget: (site: string) => void; host: string | null; readHost: ReadCurrentHost }) {
   return <section id="memory" aria-labelledby="memory-label" className="scroll-mt-32 rounded-xl border bg-card md:scroll-mt-8">
     <div className="px-5 py-5 sm:px-6">
       <h2 id="memory-label" className="text-base font-semibold">{i18n.t('rememberedSites')}</h2>
@@ -198,7 +249,7 @@ function RememberedSitesSection({ prefs, disabled, onForget }: { prefs: Record<s
     </div>
     <div className="px-5 pb-5 sm:px-6">
       {Object.keys(prefs).length
-        ? <RememberedSitesList prefs={prefs} disabled={disabled} onForget={onForget} />
+        ? <RememberedSitesList prefs={prefs} disabled={disabled} onForget={onForget} host={host} readHost={readHost} />
         : <p className="rounded-lg bg-secondary/60 px-3 py-5 text-sm text-muted-foreground">{i18n.t('rememberedEmpty')}</p>}
     </div>
   </section>;
@@ -321,6 +372,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
   const [active, setActive] = useState<(typeof nav)[number]['id']>('appearance');
   const [keyError, setKeyError] = useState<{ action: KeybindAction; message: string } | null>(null);
   const commandRows = useCommandBindings();
+  const { host: currentHost, read: readCurrentHost } = useCurrentSiteHost();
   useEffect(() => {
     if (typeof IntersectionObserver === 'undefined') return;
     const nodes = nav.map(item => document.getElementById(item.id)).filter((node): node is HTMLElement => !!node);
@@ -447,7 +499,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
               <h3 className="text-sm font-medium">{i18n.t('floatingHiddenSites')}</h3>
               <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('floatingHiddenSitesDescription')}</p>
               {floatingHiddenSites.length
-                ? <FloatingHiddenSitesList sites={floatingHiddenSites} disabled={disabled} onRestore={site => void save({ floatingHiddenSites: floatingHiddenSites.filter(value => value !== site) })} />
+                ? <FloatingHiddenSitesList sites={floatingHiddenSites} disabled={disabled} onRestore={site => void save({ floatingHiddenSites: floatingHiddenSites.filter(value => value !== site) })} host={currentHost} readHost={readCurrentHost} />
                 : <p className="mt-3 rounded-lg bg-background/80 px-3 py-3 text-sm text-muted-foreground">{i18n.t('floatingHiddenEmpty')}</p>}
             </div>
           </div>
@@ -623,11 +675,11 @@ export function SettingsPage({ back }: { back?: () => void }) {
             </Field>
           </form>
           {sites.length
-            ? <SiteRulesList key={siteMode} sites={sites} disabled={disabled} onRemove={site => void save({ sites: sites.filter(value => value !== site) })} />
+            ? <SiteRulesList key={siteMode} sites={sites} disabled={disabled} onRemove={site => void save({ sites: sites.filter(value => value !== site) })} host={currentHost} readHost={readCurrentHost} />
             : <p className="mt-3 rounded-lg bg-secondary/60 px-3 py-5 text-sm text-muted-foreground">{siteMode === 'allow' ? i18n.t('allowEmpty') : siteMode === 'exclude' ? i18n.t('excludeEmpty') : i18n.t('allEmpty')}</p>}
         </Row>
       </section>
-      <RememberedSitesSection prefs={sitePrefs} disabled={disabled} onForget={site => void save({ sitePrefs: forgetSitePref(sitePrefs, site) })} />
+      <RememberedSitesSection prefs={sitePrefs} disabled={disabled} onForget={site => void save({ sitePrefs: forgetSitePref(sitePrefs, site) })} host={currentHost} readHost={readCurrentHost} />
       <BackupSection disabled={disabled} save={save} />
       {error && <Alert variant="destructive"><CircleAlert /><AlertDescription>{error}</AlertDescription></Alert>}
       <p className="px-1 text-xs leading-5 text-muted-foreground md:hidden">{i18n.t('localOnly')}</p>

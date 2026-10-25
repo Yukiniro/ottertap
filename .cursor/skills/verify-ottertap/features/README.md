@@ -1,6 +1,6 @@
 # OtterTap 功能地图
 
-验证主界面是扩展本身。索引里的每一条都要能从用户路径走到可观察的结束状态。`scripts/session.mjs` 目前脚本化了弹出面板播放、滚轮音量、快进快退步长、快进快退随倍速放大、音量调节步长、低音量滚轮细步长、Shift 粗调步长、倍速增减步长、扩展命令画中画、全局默认倍速、按住临时加速、同键短按跳长按加速、逐帧、页内快捷键改键、浮动药丸倍速、浮动药丸播放跳转、浮动入口旁注、从音量药丸打开弹出面板、仅在播放时显示浮动入口和滚轮方向。仅全屏时悬停滚轮、侧栏聊天和文档大纲忽略，以及记住站点、网站规则和不显示浮动站点这三份名单的本地过滤也已脚本化。其余条目的选择器和断言已经写在各自文件里，用同一次 `launch` 的 Chromium（或 `pnpm e2e` 里点名的那条测试）来驱动。一条失败就报告失败原因，写进该文件的 Gotchas，不要把旅程改容易。
+验证主界面是扩展本身。索引里的每一条都要能从用户路径走到可观察的结束状态。`scripts/session.mjs` 目前脚本化了弹出面板播放、滚轮音量、快进快退步长、快进快退随倍速放大、音量调节步长、低音量滚轮细步长、Shift 粗调步长、倍速增减步长、扩展命令画中画、全局默认倍速、按住临时加速、同键短按跳长按加速、逐帧、页内快捷键改键、浮动药丸倍速、浮动药丸播放跳转、浮动入口旁注、从音量药丸打开弹出面板、仅在播放时显示浮动入口和滚轮方向。仅全屏时悬停滚轮、侧栏聊天和文档大纲忽略，以及记住站点、网站规则和不显示浮动站点这三份名单的本地过滤，和三处名单各自的「当前站」也已脚本化。其余条目的选择器和断言已经写在各自文件里，用同一次 `launch` 的 Chromium（或 `pnpm e2e` 里点名的那条测试）来驱动。一条失败就报告失败原因，写进该文件的 Gotchas，不要把旅程改容易。
 
 | 功能 | 文件 | 用户从哪里进入 | 现成回归 |
 | --- | --- | --- | --- |
@@ -34,3 +34,4 @@
 | 记住站点列表过滤 | [settings-memory-filter.md](settings-memory-filter.md) | 设置页「Remembered sites」。列表上方的 `Filter by hostname` 按主机名子串筛选，清空回到整张表。删除和「记住此站点」仍写原来的记住表。没有匹配时显示一句说明 | `drive settings-memory-filter`；`tests/settings-memory-filter.test.ts` |
 | 网站规则名单过滤 | [settings-sites-filter.md](settings-sites-filter.md) | 设置页「Site rules」当前模式的网站名单。添加框下的 `Filter site list` 按主机名子串筛选，清空回到整张名单。添加和移除仍写原来的 `sites`。切换全部 / 仅这些站 / 排除这些站时清空这次筛选，不影响记住站点的过滤 | `drive settings-sites-filter`；`tests/settings-sites-filter.test.ts` |
 | 隐藏浮动站点名单过滤 | [settings-floating-hidden-filter.md](settings-floating-hidden-filter.md) | 设置页「Floating controller」的 `Sites without the floating button`。名单上方的 `Filter hidden sites` 按主机名子串筛选，清空回到整张名单。恢复某一站仍只从原来的 `floatingHiddenSites` 去掉那一条。导出导入带上完整名单。与网站规则、已记住站点的过滤分开 | `drive settings-floating-hidden-filter`；`tests/settings-floating-hidden-filter.test.ts` |
+| 设置名单定位当前站 | [settings-current-site.md](settings-current-site.md) | 设置页记住站点、网站规则、隐藏浮动名单各自的 `Current site`。点一处只把该处过滤设成当前标签页主机名，并把该列表滚进视野。读不到主机名时按钮不可用。另外两处的过滤不动 | `drive settings-current-site`；`tests/settings-current-site-locate.test.ts` |
