@@ -269,3 +269,4 @@ keybindUnsupported: "Cette touche n'est pas utilisable. Appuyez sur une seule to
 keybindsDescription: "Sélectionnez une touche, puis appuyez sur la nouvelle. Échap annule. Les changements s'appliquent tout de suite sur les pages ouvertes. Les raccourcis Alt et les flèches ne changent pas."
 keySpace: "Espace"
 resetKeybinds: "Rétablir les touches par défaut"
+demoLoadError: "Le média de démonstration n’a pas pu être chargé. Actualisez la page pour réessayer."

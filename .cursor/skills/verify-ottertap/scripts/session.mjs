@@ -336,9 +336,10 @@ async function openActionPopup(context, fixture, options = {}) {
     screenshot,
     seen: view,
     close: async () => {
-      await fixture.keyboard.press('Escape').catch(() => {});
-      await cdp.send('Target.detachFromTarget', { sessionId }).catch(() => {});
-      await cdp.detach().catch(() => {});
+      try {
+        await cdp.send('Target.closeTarget', { targetId });
+        await poll(async () => (await cdp.send('Target.getTargets')).targetInfos.some(item => item.targetId === targetId), value => !value, '旧弹出面板应已关闭');
+      } finally { await cdp.detach().catch(() => {}); }
     },
   };
 }

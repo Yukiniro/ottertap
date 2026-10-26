@@ -269,3 +269,4 @@ keybindUnsupported: "That key can't be used. Press one key, with Shift if you li
 keybindsDescription: "Select a key, then press the new one. Esc cancels. Changes apply right away on open pages. Alt shortcuts and the arrow keys stay as they are."
 keySpace: "Space"
 resetKeybinds: "Restore default keys"
+demoLoadError: "The demo media could not load. Reload the page to try again."

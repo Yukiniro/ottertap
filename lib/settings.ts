@@ -114,6 +114,27 @@ export function hostKey(host: string) {
   return host.trim().toLowerCase().replace(/\.$/, '');
 }
 
+/** Apply only the caller's changes, preserving edits made by other settings pages. */
+export function mergeSettingsChange(current: Settings, previous: Settings, next: Settings): Settings {
+  const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
+  const merge = (current: unknown, previous: unknown, next: unknown): unknown => {
+    if (JSON.stringify(previous) === JSON.stringify(next)) return current;
+    if (!record(previous) || !record(next)) return next;
+    const result = { ...(record(current) ? current : {}) };
+    for (const key of new Set([...Object.keys(previous), ...Object.keys(next)])) {
+      if (!Object.hasOwn(next, key)) delete result[key];
+      else result[key] = merge(result[key], previous[key], next[key]);
+    }
+    return result;
+  };
+  const merged = { ...merge(current, previous, next) as Settings };
+  for (const key of ['sites', 'floatingHiddenSites'] as const) {
+    merged[key] = JSON.stringify(current[key]) === JSON.stringify(previous[key]) ? next[key]
+      : [...new Set([...current[key].filter(site => !previous[key].includes(site) || next[key].includes(site)), ...next[key].filter(site => !previous[key].includes(site))])];
+  }
+  return normalizeSettings(merged);
+}
+
 function sanitizeSitePref(value: unknown): SitePref {
   if (!value || typeof value !== 'object') return {};
   const source = value as { volume?: unknown; rate?: unknown; channel?: unknown };
@@ -179,7 +200,7 @@ export function forgetSitePref(prefs: Record<string, SitePref>, site: string): R
 
 /** Removes every remembered site. Same stored shape as forgetting each row with `forgetSitePref`. Does not mutate `prefs`. */
 export function clearRememberedSites(prefs: Record<string, SitePref>): Record<string, SitePref> {
-  return Object.keys(prefs).reduce((next, site) => forgetSitePref(next, site), prefs);
+  return Object.keys(prefs).length ? {} : prefs;
 }
 
 /** Hostname substring for the settings list. An empty query returns every entry, sorted. Does not mutate `prefs` or use parent-domain matching. */

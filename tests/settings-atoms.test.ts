@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { defaultSettings, type Settings, type SettingsStore } from '../lib/types';
 import { createSettingsAtoms } from '../lib/settings-atoms';
+import { mergeSettingsChange, normalizeSettings } from '../lib/settings';
 
 function memoryStore(initial: Settings, failSave = false) {
   let value = initial;
@@ -84,5 +85,25 @@ test('首次读取失败时保留默认设置并结束加载', async () => {
     assert.equal(atoms.store.get(atoms.errorAtom), '设置读取失败，请重试。');
     assert.equal(atoms.store.get(atoms.floatingAtom), true);
     assert.equal(atoms.store.get(atoms.themeAtom), 'system');
+  } finally { unmount(); }
+});
+
+test('确认导入整份替换比 UI 更新的存储，并恢复仅声道不同的偏好', async () => {
+  const initial = normalizeSettings({ theme: 'light', sites: ['old.test'], sitePrefs: { 'one.test': { volume: .5, rate: 1.5, channel: 'mono' } } });
+  let stored = structuredClone(initial);
+  const source: SettingsStore = {
+    async load() { return stored; },
+    async save(next: Settings, previous: Settings, replace = false) { stored = replace ? next : mergeSettingsChange(stored, previous, next); },
+    watch() { return () => {}; }
+  };
+  const atoms = createSettingsAtoms(source);
+  const unmount = atoms.mount();
+  try {
+    await atoms.ready;
+    stored = normalizeSettings({ ...initial, theme: 'dark', sites: ['old.test', 'new.test'], sitePrefs: { ...initial.sitePrefs, 'new.test': { rate: 2 } } });
+    const backup = normalizeSettings({ ...initial, sitePrefs: { 'one.test': { volume: .5, rate: 1.5, channel: 'left' } } });
+    assert.equal(await atoms.store.set(atoms.writeSettingsAtom, backup, true), true);
+    assert.deepEqual(stored, backup);
+    assert.deepEqual(atoms.store.get(atoms.sitePrefsAtom), backup.sitePrefs);
   } finally { unmount(); }
 });

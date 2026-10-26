@@ -269,3 +269,4 @@ keybindUnsupported: "這個鍵不能用。請只按一個鍵，可以帶 Shift�
 keybindsDescription: "點一下按鍵，再按下新鍵即可修改，Esc 取消。變更會立即在已開啟的網頁上生效。Alt 快捷鍵和方向鍵維持不變。"
 keySpace: "空白鍵"
 resetKeybinds: "恢復預設按鍵"
+demoLoadError: "示範媒體載入失敗，請重新整理頁面再試。"

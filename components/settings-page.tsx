@@ -85,7 +85,7 @@ function RatePresetsSection({ presets, disabled, save }: { presets: number[]; di
   </section>;
 }
 
-function BackupSection({ disabled, save }: { disabled: boolean; save: (next: Settings) => Promise<boolean> }) {
+function BackupSection({ disabled, save }: { disabled: boolean; save: (next: Settings, replace: boolean) => Promise<boolean> }) {
   const { settingsAtom } = useSettingsAtoms();
   const settings = useAtomValue(settingsAtom);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -111,7 +111,7 @@ function BackupSection({ disabled, save }: { disabled: boolean; save: (next: Set
   };
   const confirmImport = async () => {
     if (!pending) return;
-    if (await save(pending)) setPending(null);
+    if (await save(pending, true)) setPending(null);
   };
   return <section id="backup" aria-labelledby="backup-heading" className="scroll-mt-32 rounded-xl border bg-card md:scroll-mt-8">
     <div className="px-5 py-5 sm:px-6">
@@ -409,9 +409,9 @@ export function SettingsPage({ back }: { back?: () => void }) {
     window.addEventListener('scroll', update, { passive: true });
     return () => { cancelled = true; observer.disconnect(); window.removeEventListener('resize', update); window.removeEventListener('scroll', update); };
   }, []);
-  const save = async (next: Partial<Settings>) => {
+  const save = async (next: Partial<Settings>, replace = false) => {
     setSaving(true); setSaved(false);
-    const ok = await write(next);
+    const ok = await write(next, replace);
     setSaving(false); setSaved(ok);
     return ok;
   };

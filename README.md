@@ -61,10 +61,11 @@ pnpm zip
 
 ```powershell
 pnpm build
+pnpm site:build
 pnpm e2e
 ```
 
-`pnpm e2e` 会先安装 Chromium（已经安装时不会重新下载），再运行 `e2e/` 里的冒烟测试。
+`pnpm e2e` 会先安装 Chromium（已经安装时不会重新下载），再运行 `e2e/` 里的扩展冒烟和官网演示媒体加载回归。官网测试使用 `site:build` 的静态产物。
 
 交互预览：
 

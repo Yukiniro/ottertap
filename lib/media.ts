@@ -128,7 +128,7 @@ export function mediaSnapshot(element: HTMLMediaElement, id: string, document: D
 export function pipFields(element: HTMLMediaElement, document: Document): Pick<MediaState, 'pip' | 'pipAvailable' | 'pipBlock'> {
   if (element.localName !== 'video') return { pip: false, pipAvailable: false, pipBlock: 'audio' };
   const video = element as HTMLVideoElement;
-  const pip = document.pictureInPictureElement === video;
+  const pip = (video.getRootNode() as Document | ShadowRoot).pictureInPictureElement === video;
   const supported = typeof video.requestPictureInPicture === 'function' && document.pictureInPictureEnabled === true;
   if (!supported) return { pip, pipAvailable: pip, pipBlock: pip ? '' : 'unsupported' };
   if (video.disablePictureInPicture && !pip) return { pip: false, pipAvailable: false, pipBlock: 'disabled' };
@@ -170,10 +170,11 @@ export async function togglePictureInPicture(element: HTMLMediaElement) {
   const video = element as HTMLVideoElement;
   const doc = video.ownerDocument;
   if (typeof video.requestPictureInPicture !== 'function' || doc.pictureInPictureEnabled !== true) throw new Error(i18n.t('pipUnsupported'));
-  if (video.disablePictureInPicture && doc.pictureInPictureElement !== video) throw new Error(i18n.t('pipDisabledBySite'));
+  const pip = (video.getRootNode() as Document | ShadowRoot).pictureInPictureElement === video;
+  if (video.disablePictureInPicture && !pip) throw new Error(i18n.t('pipDisabledBySite'));
   if (video.readyState < 1) throw new Error(i18n.t('pipNotReady'));
   try {
-    if (doc.pictureInPictureElement === video) { await doc.exitPictureInPicture(); return; }
+    if (pip) { await doc.exitPictureInPicture(); return; }
     await video.requestPictureInPicture();
   } catch (error) {
     if (error instanceof DOMException) throw new Error(pictureInPictureError(error, video.readyState));
@@ -415,7 +416,7 @@ export function createMediaController(document: Document, onChange?: () => void,
         else watchPresentedFrames(element);
       }
       return elements.map(element => {
-        noteSeen(element, element.playbackRate);
+        if (!holds.has(element)) noteSeen(element, element.playbackRate);
         const snap = mediaSnapshot(element, idOf(element), document, amplifier);
         return slots.get(element)?.state.givenUp ? { ...snap, rateLock: 'given-up' as const } : snap;
       });

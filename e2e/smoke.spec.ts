@@ -1,5 +1,6 @@
 import { chromium, expect, test, type BrowserContext, type Page, type Worker } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
+import { readFile } from 'node:fs/promises';
 
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
@@ -1008,7 +1009,13 @@ async function readActionPopup(fixture: Page) {
       message: JSON.stringify({ id, method: 'Runtime.evaluate', params: { expression, returnByValue: true, awaitPromise: true } }),
     });
   });
-  return read;
+  return Object.assign(read, { close: async () => {
+    // Keyboard input on the fixture does not close this separate, CDP-attached popup.
+    try {
+      await session.send('Target.closeTarget', { targetId });
+      await expect.poll(async () => (await session.send('Target.getTargets')).targetInfos.some(item => item.targetId === targetId)).toBe(false);
+    } finally { await session.detach(); }
+  } });
 }
 
 const pipButtonState = `(() => {
@@ -1016,6 +1023,60 @@ const pipButtonState = `(() => {
   if (!button) return null;
   return { label: button.getAttribute('aria-label'), disabled: button.disabled, hint: document.getElementById('pip-hint')?.textContent ?? '' };
 })()`;
+
+test('同一页面反复打开并关闭真实工具栏弹窗，不留下旧目标', async () => {
+  await withPage(async page => {
+    await openFixture(page, '/video');
+    for (let index = 0; index < 3; index++) {
+      const popup = await readActionPopup(page);
+      try { await expect.poll(() => popup(`document.querySelector('h1')?.textContent`)).toBe('OtterTap fixture'); }
+      finally { await popup.close(); }
+    }
+  });
+});
+
+test('两个设置页同时保存不同字段，刷新后两项都保留', async () => {
+  const worker = await serviceWorker(browser!);
+  const extensionId = new URL(worker.url()).host;
+  const a = await browser!.newPage(), b = await browser!.newPage();
+  try {
+    await Promise.all([a.goto(`chrome-extension://${extensionId}/options.html`), b.goto(`chrome-extension://${extensionId}/options.html`)]);
+    const floating = a.getByRole('switch', { name: 'Floating controller', exact: true });
+    await expect(floating).toBeEnabled();
+    await expect(b.getByRole('button', { name: 'Dark', exact: true })).toBeEnabled();
+    await Promise.all([floating.click(), b.getByRole('button', { name: 'Dark', exact: true }).click()]);
+    await expect.poll(() => worker.evaluate(async key => (await (globalThis as unknown as ExtensionGlobal).chrome.storage.local.get(key))[key], settingsKey)).toMatchObject({ theme: 'dark', floating: false });
+    await a.reload();
+    await expect(floating).toHaveAttribute('aria-checked', 'false');
+    await expect(a.getByRole('button', { name: 'Dark', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  } finally { await a.close(); await b.close(); }
+});
+
+test('备份导出、确认导入及拒绝旧版本，走真实设置写入', async ({}, info) => {
+  const worker = await serviceWorker(browser!);
+  const extensionId = new URL(worker.url()).host;
+  const settings = await browser!.newPage();
+  const stored = () => worker.evaluate(async key => (await (globalThis as unknown as ExtensionGlobal).chrome.storage.local.get(key))[key], settingsKey);
+  try {
+    await settings.goto(`chrome-extension://${extensionId}/options.html#backup`);
+    const [download] = await Promise.all([settings.waitForEvent('download'), settings.getByRole('button', { name: 'Export settings', exact: true }).click()]);
+    const file = info.outputPath('settings.json');
+    await download.saveAs(file);
+    const backup = JSON.parse(await readFile(file, 'utf8'));
+    expect(backup).toMatchObject({ format: 'ottertap-settings', version: 1, settings: { floating: true } });
+    backup.settings = { ...backup.settings, theme: 'dark', floating: false, sites: ['restored.test'] };
+    const choose = (value: unknown) => settings.locator('#backup input[type=file]').setInputFiles({ name: 'settings.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(value)) });
+    await choose(backup);
+    expect((await stored())?.floating).toBe(true);
+    await settings.getByRole('button', { name: 'Replace settings', exact: true }).click();
+    await expect.poll(stored).toMatchObject({ theme: 'dark', floating: false, sites: ['restored.test'] });
+    const before = await stored();
+    await choose({ ...backup, version: 0 });
+    await expect(settings.locator('#backup').getByRole('alert')).toContainText('older');
+    expect(await stored()).toEqual(before);
+    await settings.screenshot({ path: info.outputPath('backup-rejected.png') });
+  } finally { await settings.close(); }
+});
 
 test('单媒体弹出面板常用控制完整可见且说明可展开', async () => {
   await withPage(async page => {
@@ -1046,7 +1107,7 @@ test('单媒体弹出面板常用控制完整可见且说明可展开', async ()
       })()`);
       await expect.poll(() => read(`document.querySelector('[data-slot="popover-description"]')?.textContent`)).toBe(description);
       expect(await read(`document.querySelector('[role="switch"][aria-label="Remember this site"]').getAttribute('aria-checked')`)).toBe('false');
-    } finally { await page.keyboard.press('Escape'); }
+    } finally { await read.close(); }
   });
 });
 
@@ -1064,7 +1125,7 @@ test('弹出面板预设改倍速后，Alt+0 记住的是这个倍速', async ()
         return 'clicked';
       })()`)).toBe('clicked');
       await expect.poll(rate).toBeCloseTo(2);
-    } finally { await page.keyboard.press('Escape'); }
+    } finally { await read.close(); }
     await focusPage(page, 300);
     await page.keyboard.press('Alt+Digit0');
     await expect.poll(rate).toBe(1);
@@ -1080,14 +1141,14 @@ test('画中画按钮在视频上可点，音频和站点禁用时说明原因',
     const read = await readActionPopup(page);
     try {
       await expect.poll(() => read(pipButtonState)).toEqual({ label: 'Picture-in-picture', disabled: true, hint: "Audio can't use picture-in-picture." });
-    } finally { await page.keyboard.press('Escape'); }
+    } finally { await read.close(); }
   });
   await withPage(async page => {
     await openFixture(page, '/pip-off');
     const read = await readActionPopup(page);
     try {
       await expect.poll(() => read(pipButtonState)).toEqual({ label: 'Picture-in-picture', disabled: true, hint: 'This site has turned off picture-in-picture.' });
-    } finally { await page.keyboard.press('Escape'); }
+    } finally { await read.close(); }
   });
   await withPage(async page => {
     await openFixture(page, '/video');
@@ -1097,7 +1158,7 @@ test('画中画按钮在视频上可点，音频和站点禁用时说明原因',
       await expect.poll(() => read(pipButtonState)).toEqual(available
         ? { label: 'Picture-in-picture', disabled: false, hint: '' }
         : { label: 'Picture-in-picture', disabled: true, hint: "This browser can't use picture-in-picture." });
-    } finally { await page.keyboard.press('Escape'); }
+    } finally { await read.close(); }
   });
 });
 
@@ -1265,7 +1326,7 @@ test('默认立体声：打开弹出面板、在 100% 内调音量都不接入 W
     const popup = await readActionPopup(page);
     try {
       await expect.poll(() => popup(channelControl)).toEqual({ label: 'Channels: Stereo', disabled: false, hint: '' });
-    } finally { await page.keyboard.press('Escape'); }
+    } finally { await popup.close(); }
     expect(await tap.read(), '没选非立体声时扩展不应创建输出链路').toBeNull();
     expect(await mediaRouted(page), '媒体不应被 createMediaElementSource 接管').toBe('not-connected');
   });
@@ -1285,7 +1346,7 @@ test('切换声道后两侧电平符合模式，切回立体声恢复原样，�
         await expect.poll(() => popup(channelControl)).toMatchObject({ label: `Channels: ${channelNames[mode]}`, disabled: false });
         await expectLevels(tap, `${mode} @100%`, toneLevels[mode], { maxPeak: 1 });
       }
-    } finally { await page.keyboard.press('Escape'); }
+    } finally { await popup.close(); }
     await focusPage(page);
     for (let step = 0; step < 10; step += 1) { await volumeUp(page); await page.waitForTimeout(60); }
     await expect.poll(async () => (await toolbarBadge(page))?.text).toBe('200');
@@ -1298,7 +1359,7 @@ test('切换声道后两侧电平符合模式，切回立体声恢复原样，�
         expect(await popup(chooseChannel(channelNames[mode]))).toBe('chosen');
         await expect.poll(() => popup(channelControl)).toMatchObject({ label: `Channels: ${channelNames[mode]}` });
       }
-    } finally { await page.keyboard.press('Escape'); }
+    } finally { await popup.close(); }
     // Left at 200% would peak at 1.0; the limiter holds it under full scale.
     await expectLevels(tap, 'stereo @200%', toneLevels.stereo.map(value => value * 2), { tolerance: 0.25, maxPeak: 1 });
     expect(await mediaRouted(page)).toBe('connected');
@@ -1316,7 +1377,7 @@ test('跨域且无 CORS 的媒体：声道入口置灰并说明原因，强行�
       await expect.poll(() => popup(channelControl)).toEqual({ label: 'Channels: Stereo', disabled: true, hint: reason });
       expect(await popup(sendChannel('mono'))).toEqual({ error: reason });
       await expect.poll(() => popup(channelControl)).toEqual({ label: 'Channels: Stereo', disabled: true, hint: reason });
-    } finally { await page.keyboard.press('Escape'); }
+    } finally { await popup.close(); }
     expect(await tap.read()).toBeNull();
     expect(await mediaRouted(page)).toBe('not-connected');
   });
@@ -1336,7 +1397,7 @@ test('按站点记住的声道在下次打开时恢复，设置页摘要列出�
     try {
       await expect.poll(() => popup(channelControl)).toMatchObject({ label: 'Channels: Left channel only' });
       expect(await popup(`document.querySelector('[role="switch"][aria-label="Remember this site"]')?.getAttribute('aria-checked')`)).toBe('true');
-    } finally { await page.keyboard.press('Escape'); }
+    } finally { await popup.close(); }
     await expectLevels(tap, 'remembered left', toneLevels.left);
     const options = await browser.newPage();
     try {

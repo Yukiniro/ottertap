@@ -39,7 +39,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
 
 ## Gotchas
 
-- 2026-10-22 在 Windows Chromium 上，画中画 e2e 在第二次 `chrome.action.openPopup()` 报 `Failed to open popup`；未修改的 HEAD 同样复现。`drive popup-playback` 的播放/暂停旅程可通过。
+- 重复打开前必须关闭旧的独立 popup target。2026-10-26 已复现：对夹具页发送 Escape 后旧目标仍存在，仅断开 CDP 也不能关闭它，下一次 `openPopup()` 会报 `Failed to open popup`。测试助手现在显式关闭目标、等待销毁并释放 CDP；「同一页面反复打开」覆盖三轮打开关闭。
 - 用地址栏打开 `chrome-extension://<id>/popup.html` 会让弹出面板变成活动标签，面板读不到夹具页上的视频。必须 `openPopup()`，并且夹具页在前台。
 - 选择器是英语。`doctor` 若报告语言不是 `en` 开头，先停掉会话再按 `SKILL.md` 的 launch 参数重开。
 - 不循环的短媒体播完会自己变成暂停。夹具视频带 `loop`，长度约 1 秒。

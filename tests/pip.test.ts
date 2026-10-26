@@ -34,6 +34,26 @@ function installPip(document: Document, video: HTMLVideoElement, enabled = true)
   };
 }
 
+test('shadow 视频从所在树根读取画中画状态，并在站点禁用后仍可退出', async () => {
+  const { window, document } = page();
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = host.attachShadow({ mode: 'open' });
+  const video = document.createElement('video');
+  root.append(video);
+  const pip = installPip(document, video);
+  Object.defineProperty(document, 'pictureInPictureElement', { get: () => pip.current ? host : null });
+  Object.defineProperty(root, 'pictureInPictureElement', { get: () => pip.current });
+  try {
+    await togglePictureInPicture(video);
+    assert.equal(mediaSnapshot(video, '1', document).pip, true);
+    video.disablePictureInPicture = true;
+    await togglePictureInPicture(video);
+    assert.equal(pip.current, null);
+    assert.equal(mediaSnapshot(video, '1', document).pip, false);
+  } finally { await window.happyDOM.close(); }
+});
+
 test('画中画指令切换进入和退出，并替换另一个正在画中画的视频', async () => {
   const { document } = page();
   const video = document.createElement('video') as HTMLVideoElement;

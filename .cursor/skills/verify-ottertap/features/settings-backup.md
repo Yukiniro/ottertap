@@ -34,5 +34,5 @@
 - `Cancel` 必须留下旧设置。若取消也写入了，这是失败。
 - 隐藏的 file input 是 `aria-hidden`。用 `setInputFiles` 选文件；仍然要点可见的 `Replace settings`。
 - 导出的 `settings` 会经过 `normalizeSettings`。多余的字段不会原样出现。断言用规范化之后的形状。
-- 没有 e2e 覆盖这条 UI。单元测试里的 `downloadSettingsBackup` 不代替设置页上的点击。
+- `e2e/smoke.spec.ts` 的「备份导出、确认导入及拒绝旧版本」覆盖真实设置页下载、确认写入与拒绝旧文件，保存 `settings.json` 和 `backup-rejected.png`。
 - 替换是整份覆盖。用完要在 cleanup 时丢掉 profile，避免把暗色主题留在验证配置里。空 profile 下次 launch 会回到默认值。

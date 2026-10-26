@@ -2,7 +2,7 @@ import { i18n } from '#i18n';
 import { atom, createStore, type Atom, type WritableAtom } from 'jotai';
 import { selectAtom } from 'jotai/utils';
 import { sameKeybinds, type Keybinds } from './keybinds';
-import { normalizeSettings } from './settings';
+import { mergeSettingsChange, normalizeSettings } from './settings';
 import { defaultSettings, type FloatingNote, type FloatingPosition, type RateStep, type Settings, type SettingsStore, type SiteMode, type SitePref, type SkipSeconds, type Theme, type VolumeStep, type WheelDirection } from './types';
 
 const readError = () => i18n.t('settingsReadError');
@@ -10,7 +10,7 @@ const writeError = () => i18n.t('settingsWriteError');
 const samePosition = (a: FloatingPosition, b: FloatingPosition) => a.side === b.side && a.y === b.y;
 const sameSites = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((site, index) => site === b[index]);
 const samePresets = (a: readonly number[], b: readonly number[]) => a.length === b.length && a.every((rate, index) => rate === b[index]);
-const sameSitePref = (a: SitePref, b: SitePref) => a.volume === b.volume && a.rate === b.rate;
+const sameSitePref = (a: SitePref, b: SitePref) => a.volume === b.volume && a.rate === b.rate && a.channel === b.channel;
 const sameSitePrefs = (a: Record<string, SitePref>, b: Record<string, SitePref>) => {
   const keys = Object.keys(a);
   return keys.length === Object.keys(b).length && keys.every(key => !!b[key] && sameSitePref(a[key]!, b[key]!));
@@ -61,7 +61,7 @@ export interface SettingsAtoms {
   keybindsAtom: Atom<Keybinds>;
   loadingAtom: Atom<boolean>;
   errorAtom: Atom<string>;
-  writeSettingsAtom: WritableAtom<null, [Partial<Settings>], Promise<boolean>>;
+  writeSettingsAtom: WritableAtom<null, [Partial<Settings>, boolean?], Promise<boolean>>;
   mount: () => () => void;
   ready: Promise<void>;
   settled: () => Promise<void>;
@@ -107,7 +107,7 @@ export function createSettingsAtoms(source: SettingsStore, options?: { initialLo
   let readySettled = false;
   const finishReady = () => { if (!readySettled) { readySettled = true; resolveReady(); } };
 
-  const writeSettingsAtom = atom(null, (_get, _set, update: Partial<Settings>) => {
+  const writeSettingsAtom = atom(null, (_get, _set, update: Partial<Settings>, replace: boolean = false) => {
     const previous = store.get(settingsAtom);
     store.set(settingsAtom, mergeSettings(previous, update));
     const version = ++writeVersion;
@@ -116,8 +116,8 @@ export function createSettingsAtoms(source: SettingsStore, options?: { initialLo
       let stored: Settings | undefined;
       try {
         stored = await source.load();
-        const next = mergeSettings(stored, update);
-        await source.save(next);
+        const next = replace ? normalizeSettings(update) : mergeSettingsChange(stored, previous, mergeSettings(previous, update));
+        await source.save(next, stored, replace);
         if (version === writeVersion) {
           if (!sameSettings(store.get(settingsAtom), next)) store.set(settingsAtom, next);
           store.set(errorAtom, '');

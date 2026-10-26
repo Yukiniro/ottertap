@@ -269,3 +269,4 @@ keybindUnsupported: "Esa tecla no se puede usar. Pulsa una sola tecla, con Shift
 keybindsDescription: "Selecciona una tecla y pulsa la nueva. Esc cancela. Los cambios se aplican al instante en las páginas abiertas. Los atajos con Alt y las flechas no cambian."
 keySpace: "Espacio"
 resetKeybinds: "Restaurar teclas predeterminadas"
+demoLoadError: "No se pudo cargar el contenido de demostración. Recarga la página para volver a intentarlo."

@@ -35,6 +35,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive extension-pip
 
 ## Gotchas
 
+- 第二次 `openPopup()` 报错时，先查旧 popup target 是否仍存在。对媒体页发送 Escape 不能代替关闭独立弹窗；助手的 `close()` 会显式关闭并等待目标销毁。
 - 不要给 `pip` 加 `suggested_key`。四个名额已经占满。
 - 页内 Alt / 单键模式没有画中画键。`Alt+P` 只有在用户把它绑成扩展命令之后才切换画中画。
 - 浮动入口没有画中画按钮。

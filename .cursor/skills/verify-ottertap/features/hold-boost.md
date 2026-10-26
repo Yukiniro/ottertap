@@ -47,4 +47,5 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive hold-boost
 - 关闭时 `Alt+Shift+.` 仍会步进，因为 `>` 本来就是加速键。只有开关打开后，这一组才变成按住临时档。
 - 松开要认物理键 `Period` 或 `KeyS`。先松开 Shift 再松开 `.` 也要还原。
 - 提示在开放 shadow root 里，文案来自 `holdRateHint`。乘号是 `×`。
+- 临时加速期间的快照也不能改变上一档倍速；`tests/hold-boost.test.ts` 在按住期间及松开后读取快照并检查召回值。
 - 这一程会记住 `media.ottertap.test` 并打开单键模式。用完 `cleanup` 再 `launch`。

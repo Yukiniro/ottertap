@@ -269,3 +269,4 @@ keybindUnsupported: "Diese Taste geht nicht. Drücke eine einzelne Taste, gern m
 keybindsDescription: "Wähle eine Taste und drücke dann die neue. Esc bricht ab. Änderungen gelten sofort auf geöffneten Seiten. Alt-Kürzel und Pfeiltasten bleiben unverändert."
 keySpace: "Leertaste"
 resetKeybinds: "Standardtasten wiederherstellen"
+demoLoadError: "Die Demo-Mediendatei konnte nicht geladen werden. Lade die Seite neu, um es erneut zu versuchen."

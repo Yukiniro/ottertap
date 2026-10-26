@@ -5,6 +5,8 @@
 | 功能 | 文件 | 用户从哪里进入 | 现成回归 |
 | --- | --- | --- | --- |
 | 弹出面板播放控制 | [popup-playback.md](popup-playback.md) | 工具栏弹出面板 | `drive popup-playback` |
+| 设置并发保存 | [settings-concurrency.md](settings-concurrency.md) | 两个设置页同时修改不同字段，或不同标签页同时更新站点记忆 | `e2e/smoke.spec.ts` 的「两个设置页」；`tests/settings-background.test.ts`、`tests/settings-change.test.ts` |
+| 官网演示加载状态 | [site-demo.md](site-demo.md) | 官网演示面板与浮动控制器 | `e2e/site-demo.spec.ts`，先构建官网 |
 | 全局默认倍速 | [default-rate.md](default-rate.md) | 设置页「Playback」的 `Default speed`；陌生网站的新媒体应用一次，站点记住的倍速优先 | `drive default-rate`；`tests/default-rate.test.ts`、`tests/default-rate-background.test.ts` |
 | 滚轮与 Alt 快捷键音量 | [wheel-volume.md](wheel-volume.md) | 网页里的主播放器、静音预览、列表小卡片或浮动音量药丸 | `drive wheel-volume`；`e2e/smoke.spec.ts` 中悬停滚轮、静音预览、小卡片、Alt+滚轮 |
 | 倍速 | [playback-rate.md](playback-rate.md) | 弹出面板倍速按钮，或网页上的 Alt+, / Alt+. / Alt+0 | `e2e/smoke.spec.ts` 中 Alt + , . 0 那条 |
@@ -20,7 +22,7 @@
 | 低音量滚轮细步长 | [fine-wheel.md](fine-wheel.md) | 设置页「Playback」的 `Finer wheel steps below 25%`，默认开。低于 25% 时悬停滚轮和 Alt+滚轮用 1%，以上用音量步长。方向键、扩展命令和滑块不变 | `drive fine-wheel`；`tests/fine-wheel.test.ts`、`tests/fine-wheel-background.test.ts` |
 | Shift 粗调步长 | [coarse-step.md](coarse-step.md) | 设置页「Playback」的 `Coarse step`，默认 20%。按住 Shift 滚动用这一档，并优先于低于 25% 的自动细调。松开回到音量步长。输入框聚焦时不拦截。Alt+滚轮仍可在任意位置调音 | `drive coarse-step`；`tests/coarse-step.test.ts`、`tests/coarse-step-background.test.ts` |
 | 1× 与之前倍速来回切换 | [rate-recall.md](rate-recall.md) | 页内 Alt+0，或扩展命令 rate-reset | `e2e/smoke.spec.ts` 中「1× 与之前的倍速」 |
-| 设置导出导入 | [settings-backup.md](settings-backup.md) | 设置页「Backup and restore」 | 无 e2e；格式见 `tests/settings-backup.test.ts` |
+| 设置导出导入 | [settings-backup.md](settings-backup.md) | 设置页「Backup and restore」 | `e2e/smoke.spec.ts` 的「备份导出」；格式见 `tests/settings-backup.test.ts` |
 | 单声道与左右声道 | [channel-mode.md](channel-mode.md) | 弹出面板音量区的声道菜单 | `e2e/smoke.spec.ts` 中声道三条 |
 | 扩展命令 → 画中画 | [extension-pip.md](extension-pip.md) | 设置页「Keyboard shortcuts」的扩展命令列表；绑定后对活动标签页里当前媒体切换画中画 | `drive extension-pip`；命令分发见 `tests/pip-command.test.ts`；面板按钮见 `e2e/smoke.spec.ts` 中画中画那条 |
 | 页内快捷键改键 | [hotkey-remap.md](hotkey-remap.md) | 设置页「Keyboard shortcuts」里带铅笔图标的按键按钮：播放暂停、快进快退、倍速增减、静音、按住临时加速、逐帧。点一下再按新键，已打开的网页立即生效；撞键时提示被谁占用；`Restore default keys` 恢复默认 | `drive hotkey-remap`；`tests/keybinds.test.ts`、`tests/hotkey-remap.test.ts` |
