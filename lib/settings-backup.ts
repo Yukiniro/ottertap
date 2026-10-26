@@ -2,7 +2,7 @@ import { normalizeSettings } from './settings';
 import type { Settings } from './types';
 
 export const settingsBackupFormat = 'ottertap-settings';
-/** Current export format. Bump this when the file shape changes and add a migration below. */
+/** Current export format. Bump this when the file shape changes. */
 export const settingsBackupVersion = 1;
 
 export const settingsBackupErrors = {
@@ -14,14 +14,6 @@ export const settingsBackupErrors = {
 
 export type SettingsBackupError = (typeof settingsBackupErrors)[keyof typeof settingsBackupErrors];
 export type SettingsBackupResult = { ok: true; settings: Settings } | { ok: false; error: SettingsBackupError };
-
-/**
- * Upgrade an exported settings payload to `settingsBackupVersion`.
- * Keys are the version being upgraded from. When the format version increases,
- * add the previous version here before `normalizeSettings` sees the payload:
- * `1: (settings) => settings`
- */
-const settingsBackupMigrations: Partial<Record<number, (settings: unknown) => unknown>> = {};
 
 type ManifestRuntime = { getManifest?: () => { version?: unknown } };
 
@@ -60,18 +52,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
-function migrateExportedSettings(version: number, settings: unknown): { ok: true; settings: unknown } | { ok: false; error: typeof settingsBackupErrors.versionTooOld } {
-  let current = version;
-  let payload = settings;
-  while (current < settingsBackupVersion) {
-    const migrate = settingsBackupMigrations[current];
-    if (!migrate) return { ok: false, error: settingsBackupErrors.versionTooOld };
-    payload = migrate(payload);
-    current += 1;
-  }
-  return { ok: true, settings: payload };
-}
-
 export function parseSettingsBackup(text: string): SettingsBackupResult {
   let value: unknown;
   try { value = JSON.parse(text); }
@@ -80,10 +60,9 @@ export function parseSettingsBackup(text: string): SettingsBackupResult {
     return { ok: false, error: settingsBackupErrors.notOttertap };
   }
   if (value.version > settingsBackupVersion) return { ok: false, error: settingsBackupErrors.versionTooNew };
-  const migrated = migrateExportedSettings(value.version, value.settings);
-  if (!migrated.ok) return migrated;
-  if (!isRecord(migrated.settings)) return { ok: false, error: settingsBackupErrors.notOttertap };
-  return { ok: true, settings: normalizeSettings(migrated.settings) };
+  if (value.version < settingsBackupVersion) return { ok: false, error: settingsBackupErrors.versionTooOld };
+  if (!isRecord(value.settings)) return { ok: false, error: settingsBackupErrors.notOttertap };
+  return { ok: true, settings: normalizeSettings(value.settings) };
 }
 
 export function downloadSettingsBackup(settings: Settings, extensionVersion: string, now = new Date()) {

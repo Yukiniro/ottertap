@@ -269,3 +269,4 @@ keybindUnsupported: "このキーは使えません。キーを 1 つだけ押�
 keybindsDescription: "キーを選んでから新しいキーを押すと変更できます。Esc で取り消します。変更は開いているページにすぐ反映されます。Alt のショートカットと矢印キーは変わりません。"
 keySpace: "スペース"
 resetKeybinds: "キーを初期値に戻す"
+demoLoadError: "デモメディアを読み込めませんでした。ページを再読み込みしてお試しください。"

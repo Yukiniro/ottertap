@@ -269,3 +269,4 @@ keybindUnsupported: "이 키는 쓸 수 없습니다. 키 하나만 누르세요
 keybindsDescription: "키를 선택한 뒤 새 키를 누르면 바뀝니다. Esc를 누르면 취소됩니다. 열린 페이지에 바로 적용됩니다. Alt 단축키와 방향키는 그대로입니다."
 keySpace: "스페이스"
 resetKeybinds: "기본 키로 되돌리기"
+demoLoadError: "데모 미디어를 불러오지 못했습니다. 페이지를 새로고침한 후 다시 시도하세요."

@@ -1,7 +1,7 @@
 import { i18n } from '#i18n';
 import { browser } from 'wxt/browser';
-import { extensionStore } from '../lib/extension-store';
-import { createSitePrefSession, isSiteEnabled, withRememberedCommand } from '../lib/settings';
+import { extensionStore, settingsKey } from '../lib/extension-store';
+import { createSitePrefSession, isSiteEnabled, mergeSettingsChange, normalizeSettings, withRememberedCommand } from '../lib/settings';
 import { frameFailureKey, isMediaCommand, pipFailureKey } from '../lib/media';
 import { actionForCommand } from '../lib/commands';
 import { actionHintKey, applySkipStep, applyVolumeStep, directedWheelNotches, isHotkeyAction, planHotkey, shownPercent, type HotkeyAction } from '../lib/hotkey';
@@ -44,6 +44,17 @@ export default defineBackground(() => {
     return settingsLoad;
   };
   extensionStore.watch(value => { settingsCache = value; });
+  let settingsTail = Promise.resolve();
+  const updateSettings = (change: (settings: Settings) => Settings) => {
+    const run = settingsTail.then(async () => {
+      const current = await extensionStore.load();
+      const next = change(current);
+      if (next !== current) await browser.storage.local.set({ [settingsKey]: next });
+      settingsCache = next;
+    });
+    settingsTail = run.catch(() => {});
+    return run;
+  };
   const selectedIds = new Map<number, string>();
   const gestures = new Map<number, { id: string; percent: number; max: number; at: number }>();
   const commandTails = new Map<number, Promise<void>>();
@@ -139,9 +150,10 @@ export default defineBackground(() => {
   async function rememberCommand(host: string, command: MediaCommand) {
     if (command.type !== 'volume' && command.type !== 'rate' && command.type !== 'channel') return;
     try {
-      const latest = await currentSettings();
-      const sitePrefs = withRememberedCommand(latest.sitePrefs, host, command);
-      if (sitePrefs) { const next = { ...latest, sitePrefs }; await extensionStore.save(next); settingsCache = next; }
+      await updateSettings(latest => {
+        const sitePrefs = withRememberedCommand(latest.sitePrefs, host, command);
+        return sitePrefs ? { ...latest, sitePrefs } : latest;
+      });
     } catch { /* The control already applied; the next adjustment can store it. */ }
   }
   async function applySitePref(tabId: number, host: string, mediaId: string, prefs: Record<string, SitePref>, defaultRate: number | null) {
@@ -409,9 +421,17 @@ export default defineBackground(() => {
       if (sender.tab?.id !== undefined) void browser.tabs.sendMessage(sender.tab.id, { namespace: 'ottertap', type: 'altUsed' }).catch(() => {});
       return;
     }
-    if (!['options', 'context', 'register', 'read', 'command', 'select', 'highlight', 'hotkey', 'holdRate', 'soundingTabs', 'focusTab', 'muteTab', 'rateLock', 'openPopup'].includes(message.type)) return;
+    if (!['settings', 'options', 'context', 'register', 'read', 'command', 'select', 'highlight', 'hotkey', 'holdRate', 'soundingTabs', 'focusTab', 'muteTab', 'rateLock', 'openPopup'].includes(message.type)) return;
     const tabId = sender.tab?.id ?? message.tabId;
     async function handle() {
+      if (message.type === 'settings') {
+        if (!sender.tab && !extensionPage(sender.url)) return { error: i18n.t('extensionMessageFailed') };
+        if (!message.settings || typeof message.settings !== 'object' || Array.isArray(message.settings) || !message.previous || typeof message.previous !== 'object' || Array.isArray(message.previous)) return { error: i18n.t('invalidCommand') };
+        try {
+          await updateSettings(current => message.replace === true ? normalizeSettings(message.settings) : mergeSettingsChange(current, normalizeSettings(message.previous), normalizeSettings(message.settings)));
+          return { ok: true };
+        } catch { return { error: i18n.t('settingsWriteError') }; }
+      }
       if (message.type === 'openPopup') {
         const tab = sender.tab;
         const id = tab?.id;

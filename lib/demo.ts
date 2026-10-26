@@ -1,14 +1,15 @@
 import { i18n } from '#i18n';
 import { createHotkeySession, isTypingEvent, isTypingFocus, keepShiftWheel, planHotkey, type HotkeyAction } from './hotkey';
 import { createMediaController, lockedMedia } from './media';
-import { createSitePrefSession, isSiteEnabled, normalizeSettings, withRememberedCommand } from './settings';
+import { createSitePrefSession, isSiteEnabled, mergeSettingsChange, normalizeSettings, withRememberedCommand } from './settings';
 import { defaultSettings, type MediaClient, type Settings, type SettingsStore } from './types';
 
 export function createDemoStore(key: string): SettingsStore {
   const listeners = new Set<(settings: Settings) => void>();
+  const load = () => { try { return normalizeSettings(JSON.parse(localStorage.getItem(key) ?? 'null')); } catch { return normalizeSettings(null); } };
   return {
-    async load() { try { return normalizeSettings(JSON.parse(localStorage.getItem(key) ?? 'null')); } catch { return normalizeSettings(null); } },
-    async save(settings) { localStorage.setItem(key, JSON.stringify(settings)); for (const listener of listeners) listener(settings); },
+    async load() { return load(); },
+    async save(settings, previous, replace = false) { const next = replace ? normalizeSettings(settings) : mergeSettingsChange(load(), previous, settings); localStorage.setItem(key, JSON.stringify(next)); for (const listener of listeners) listener(next); },
     watch(callback) { listeners.add(callback); return () => { listeners.delete(callback); }; }
   };
 }
@@ -63,7 +64,7 @@ export function createDemo(document: Document, { src, title, store }: { src: str
       await controller.command(item.id, command);
       const settings = await store.load();
       const sitePrefs = withRememberedCommand(settings.sitePrefs, demoHost, command);
-      if (sitePrefs) await store.save({ ...settings, sitePrefs });
+      if (sitePrefs) await store.save({ ...settings, sitePrefs }, settings);
     },
     async select(id) { selectedId = id; await applyRemembered(id); },
     async highlight(item) { controller.flash(item.id); }

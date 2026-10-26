@@ -12,7 +12,7 @@ const remembered: Record<string, SitePref> = {
   'player.test': { volume: .2, rate: 2, channel: 'mono' }
 };
 
-test('清空记住站点复用逐条忘记，不改原表', () => {
+test('清空记住站点与逐条忘记结果一致，不改原表', () => {
   const snapshot = structuredClone(remembered);
   let manual: Record<string, SitePref> = remembered;
   for (const site of Object.keys(remembered)) manual = forgetSitePref(manual, site);
@@ -23,6 +23,15 @@ test('清空记住站点复用逐条忘记，不改原表', () => {
   assert.deepEqual(remembered, snapshot);
   const empty = {};
   assert.equal(clearRememberedSites(empty), empty);
+});
+
+test('清空大表不读取或复制逐条偏好', () => {
+  const prefs: Record<string, SitePref> = {};
+  for (let index = 0; index < 1000; index++) Object.defineProperty(prefs, `site${index}.test`, {
+    enumerable: true, get() { assert.fail('清空不应读取偏好'); }
+  });
+  assert.deepEqual(clearRememberedSites(prefs), {});
+  assert.equal(Object.keys(prefs).length, 1000);
 });
 
 test('清空后新的访问不再套用旧记忆，默认倍速仍会套用', () => {

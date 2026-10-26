@@ -100,10 +100,13 @@ test('按住只改当前倍速，松开还原，不把临时倍速记成可召�
     assert.equal(controller.beginHold(id, 2), true);
     assert.equal(media.playbackRate, 2);
     assert.equal(controller.recallRate(), null);
+    controller.snapshot();
+    assert.equal(controller.recallRate(), null, '轮询不能记住临时倍速');
     assert.equal(controller.beginHold(id, 3), true);
     assert.equal(media.playbackRate, 2);
     assert.equal(controller.endHold(id), true);
     assert.equal(media.playbackRate, 1);
+    controller.snapshot();
     assert.equal(controller.recallRate(), null);
     assert.equal(controller.endHold(id), false);
     controller.setLockRate(true);

@@ -37,7 +37,8 @@ export interface Settings { theme: Theme; floating: boolean; floatingPosition: F
 export const defaultSettings: Settings = { theme: 'system', floating: true, floatingPosition: { side: 'right', y: .8 }, floatingNote: 'volume', floatingWhilePlaying: false, floatingHiddenSites: [], siteMode: 'all', sites: [], sitePrefs: {}, ratePresets: [...defaultRatePresets], defaultRate: null, lockRate: false, holdBoost: false, holdBoostRate: 2, holdSkip: false, hoverWheel: true, fullscreenWheel: false, singleKey: false, skipSeconds: 10, skipWithRate: false, volumeStep: 10, coarseStep: 20, fineWheel: true, wheelDirection: 'up', rateStep: defaultRateStep, keybinds: { ...defaultKeybinds } };
 export interface SettingsStore {
   load(): Promise<Settings>;
-  save(settings: Settings): Promise<void>;
+  /** Merge against the baseline, or replace the full value when importing a backup. */
+  save(settings: Settings, previous: Settings, replace?: boolean): Promise<void>;
   watch(callback: (settings: Settings) => void): () => void;
 }
 export type PipBlock = '' | 'audio' | 'unsupported' | 'disabled';
