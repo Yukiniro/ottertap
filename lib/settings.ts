@@ -177,6 +177,11 @@ export function forgetSitePref(prefs: Record<string, SitePref>, site: string): R
   return next;
 }
 
+/** Removes every remembered site. Same stored shape as forgetting each row with `forgetSitePref`. Does not mutate `prefs`. */
+export function clearRememberedSites(prefs: Record<string, SitePref>): Record<string, SitePref> {
+  return Object.keys(prefs).reduce((next, site) => forgetSitePref(next, site), prefs);
+}
+
 /** Hostname substring for the settings list. An empty query returns every entry, sorted. Does not mutate `prefs` or use parent-domain matching. */
 export function filterRememberedSites(prefs: Record<string, SitePref>, query: string): [string, SitePref][] {
   const needle = query.trim().toLowerCase();

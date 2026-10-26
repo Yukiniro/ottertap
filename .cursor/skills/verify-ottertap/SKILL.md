@@ -53,7 +53,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs doctor
 
 ## Drive
 
-脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、低音量滚轮细步长（见 `features/fine-wheel.md`）、Shift 粗调步长（见 `features/coarse-step.md`）、倍速增减步长（见 `features/rate-step.md`）、扩展命令画中画（见 `features/extension-pip.md`）、按住临时加速（见 `features/hold-boost.md`）、同键短按跳长按加速（见 `features/hold-skip-combo.md`）、逐帧（见 `features/frame-step.md`）、页内快捷键改键（见 `features/hotkey-remap.md`）、浮动药丸倍速（见 `features/floating-speed.md`）、浮动药丸播放跳转（见 `features/floating-playback.md`）、浮动入口旁注（见 `features/floating-entry-note.md`）、从音量药丸打开弹出面板（见 `features/floating-open-panel.md`）、仅在播放时显示浮动入口（见 `features/floating-while-playing.md`）和滚轮方向（见 `features/wheel-direction.md`）。仅全屏时悬停滚轮见 `features/fullscreen-wheel.md`。侧栏聊天和文档大纲忽略见 `features/sidebar-ignore.md`。设置页三处名单的「当前站」见 `features/settings-current-site.md`。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
+脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、低音量滚轮细步长（见 `features/fine-wheel.md`）、Shift 粗调步长（见 `features/coarse-step.md`）、倍速增减步长（见 `features/rate-step.md`）、扩展命令画中画（见 `features/extension-pip.md`）、按住临时加速（见 `features/hold-boost.md`）、同键短按跳长按加速（见 `features/hold-skip-combo.md`）、逐帧（见 `features/frame-step.md`）、页内快捷键改键（见 `features/hotkey-remap.md`）、浮动药丸倍速（见 `features/floating-speed.md`）、浮动药丸播放跳转（见 `features/floating-playback.md`）、浮动入口旁注（见 `features/floating-entry-note.md`）、从音量药丸打开弹出面板（见 `features/floating-open-panel.md`）、仅在播放时显示浮动入口（见 `features/floating-while-playing.md`）和滚轮方向（见 `features/wheel-direction.md`）。仅全屏时悬停滚轮见 `features/fullscreen-wheel.md`。侧栏聊天和文档大纲忽略见 `features/sidebar-ignore.md`。设置页三处名单的「当前站」见 `features/settings-current-site.md`。记住站点的「清空全部」见 `features/settings-clear-remembered.md`。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
 
 ```bash
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
@@ -81,6 +81,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-memory-fi
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-sites-filter
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-floating-hidden-filter
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-current-site
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-clear-remembered
 ```
 
 `skip-step` 在设置页把 `Skip step` 改成 `30s` 并打开 `Single-key mode`，再看弹出面板进退按钮名和页内 `L` / `J` / `→` / `←` 让 `/long` 夹具的 `currentTime` 跟着步长变；它会改写 profile，同一会话只能跑一次。步骤见 `features/skip-step.md`。
@@ -250,6 +251,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-memory-fi
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-sites-filter
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-floating-hidden-filter
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-current-site
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-clear-remembered
 node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 ```
 
@@ -306,3 +308,13 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-current-s
 `settings-current-site` 先在记住站点、网站规则和隐藏浮动名单里放上包含 `media.ottertap.test` 的条目，网站规则为仅指定网站。先打开 `https://elsewhere.test/`，再打开 `/video`，然后打开设置页。三处按钮的无障碍名都是 `Current site`。记住站点点下去后，过滤变成 `media.ottertap.test`，列表滚进视口；网站规则仍是事先填的 `beta`，隐藏名单仍是 `gamma`。再点另外两处，各自变成当前主机名，不改旁边那一处。关掉这两个网页标签后三颗按钮不可用。把记住站点过滤改成 `alpha` 再点，过滤仍是 `alpha`。存储里的三张表都不因点击而改。它会改写 profile，同一会话只能跑一次。步骤见 `features/settings-current-site.md`。
 
 写入 `settings-current-site/`：`memory-located.png`、`sites-held.png`、`hidden-located.png`、`unavailable.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
+## 清空全部已记住的站点
+
+```bash
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-clear-remembered
+```
+
+`settings-clear-remembered` 先写入 `alpha.test`、`beta.example`、`media.ottertap.test`（40% 与 2×），网站规则排除 `rules.example`，隐藏浮动名单留下 `hidden.example`，默认倍速为 `1.25×`。夹具先套用记住的 40% 和 2×，弹出面板 `Remember this site` 为开。设置页 `Clear all` 只在记住站点区。点开确认后取消，列表和存储不变。再滤到 `example` 并确认 `Clear all remembered sites`。记住表为空，导出 JSON 的 `sitePrefs` 为 0 条，规则、隐藏名单和默认倍速仍在。重新打开夹具后音量约 100%，倍速是 1.25×，面板不再显示已记住。确认文案写明除非已有自己的备份否则无法撤销。它会改写 profile，同一会话只能跑一次。步骤见 `features/settings-clear-remembered.md`。
+
+写入 `settings-clear-remembered/`：`fixture-before.png`、`popup-before.png`、`list-before.png`、`confirm.png`、`cancelled.png`、`filtered.png`、`cleared.png`、`export.json`、`fixture-after.png`、`popup-after.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
