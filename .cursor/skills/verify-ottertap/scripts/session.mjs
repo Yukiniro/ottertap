@@ -5077,7 +5077,10 @@ async function driveMirrorMarkCommands(context, dir, note) {
       const input = document.createElement('input');
       input.type = 'text';
       input.setAttribute('aria-label', 'Fixture note');
-      document.body.prepend(input);
+      input.style.position = 'fixed';
+      input.style.left = '720px';
+      input.style.top = '420px';
+      document.body.append(input);
     });
     const field = fixture.getByRole('textbox', { name: 'Fixture note' });
     await field.focus();
@@ -5092,6 +5095,7 @@ async function driveMirrorMarkCommands(context, dir, note) {
     if (!plain(whileTyping) || !near(40)(typedAt)) throw new Error(`输入框聚焦时不应翻转或跳转：${JSON.stringify({ ...whileTyping, currentTime: typedAt })}`);
     await fixture.screenshot({ path: path.join(dir, 'fixture-typing.png'), animations: 'disabled' });
     note('typing ignores mirror, set mark, and jump');
+    await field.evaluate(element => element.blur());
     await focusFixture();
     await fixture.keyboard.press('KeyN');
     const stillMarked = await poll(time, near(markedAt), '输入时按过设标记，跳回应仍回到原来的时间');
