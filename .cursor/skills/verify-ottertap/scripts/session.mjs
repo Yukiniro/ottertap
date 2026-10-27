@@ -30,6 +30,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-current-site
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-clear-remembered
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive horizontal-mirror
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive progress-mark
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -49,7 +50,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -3181,7 +3182,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -4493,6 +4494,217 @@ async function driveHorizontalMirror(context, dir, note) {
     await popup?.close().catch(() => {});
     await audio?.close().catch(() => {});
     await feed?.close().catch(() => {});
+    await page.close().catch(() => {});
+  }
+}
+
+const progressMarkView = `(() => {
+  const button = label => document.querySelector('button[aria-label="' + label + '"]');
+  const set = button('Set mark');
+  const jump = button('Jump to mark');
+  const clear = button('Clear mark');
+  const mark = document.querySelector('[data-progress-mark]');
+  const track = document.querySelector('[data-slot="slider-track"]');
+  let ratio = null;
+  if (mark && track) {
+    const m = mark.getBoundingClientRect();
+    const t = track.getBoundingClientRect();
+    if (t.width > 0) ratio = (m.left + m.width / 2 - t.left) / t.width;
+  }
+  return {
+    heading: document.querySelector('h1')?.textContent?.trim() ?? '',
+    setDisabled: !set || !!set.disabled,
+    jumpDisabled: !jump || !!jump.disabled,
+    clearDisabled: !clear || !!clear.disabled,
+    frameDisabled: !!button('Next frame')?.disabled,
+    skipDisabled: !!button('Forward 10 seconds')?.disabled,
+    status: (document.querySelector('#progress-mark-status')?.textContent ?? '').trim(),
+    hasMark: !!mark,
+    ratio,
+    alert: document.querySelector('[role="alert"]')?.textContent?.trim() ?? '',
+  };
+})()`;
+
+async function driveProgressMark(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const dumpStorage = () => worker.evaluate(async () => {
+    const local = await chrome.storage.local.get(null);
+    let session = null;
+    try { session = await chrome.storage.session.get(null); } catch { session = null; }
+    return JSON.stringify({ local, session });
+  });
+  const near = (expected, slack = 0.05) => value => Math.abs(value - expected) < slack;
+  const chooseMedia = async (popup, name) => {
+    if (!await popup.evaluate(`(() => { const trigger = document.getElementById('popup-media'); if (!trigger) return false; trigger.click(); return true; })()`)) throw new Error('没有媒体列表');
+    const chose = await poll(async () => popup.evaluate(`(() => {
+      const item = [...document.querySelectorAll('[role="menuitemradio"]')].find(node => (node.textContent || '').includes(${JSON.stringify(name)}));
+      if (!item) return false;
+      item.click();
+      return true;
+    })()`), value => value === true, `应能选中 ${name}`);
+    if (!chose) throw new Error(`没有点到 ${name}`);
+  };
+  let popup = null;
+  let fresh = null;
+  let feed = null;
+  let blocked = null;
+  const page = await context.newPage();
+  const time = () => page.locator('#media').evaluate(element => element.currentTime);
+  try {
+    await page.goto(`${origin}/long`, { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await page.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+      element.pause();
+      element.currentTime = 12;
+    });
+    await poll(time, near(12), '长视频应停在 12 秒');
+    const duration = await page.locator('#media').evaluate(element => element.duration);
+    if (!(duration > 100)) throw new Error(`/long 的时长应约 120 秒：${duration}`);
+
+    popup = await openActionPopup(context, page);
+    const empty = await poll(() => popup.evaluate(progressMarkView), value => value.heading === 'Long video' && value.setDisabled === false && value.jumpDisabled && value.clearDisabled && value.status === '' && !value.hasMark && !value.alert, '未设标记时只能设，不能跳或清');
+    let storage = await dumpStorage();
+    await page.waitForTimeout(200);
+    const settled = await dumpStorage();
+    if (settled !== storage) storage = settled;
+    if (storage.includes('"mark"')) throw new Error('设标记前扩展存储里已有 mark');
+    note(`empty status=${JSON.stringify(empty.status)} storageBytes=${storage.length}`);
+
+    await popup.click('Set mark');
+    const marked = await poll(() => popup.evaluate(progressMarkView), value => value.status === 'Mark at 00:12' && value.hasMark && !value.jumpDisabled && !value.clearDisabled && !value.alert && value.ratio != null && value.ratio > 0.05 && value.ratio < 0.2, '设标记后应停在 12 秒，并画在进度条约 10% 处');
+    await popup.screenshot(path.join(dir, 'popup-set.png'));
+    note(`set ratio=${marked.ratio} status=${marked.status}`);
+
+    await popup.click('Forward 10 seconds');
+    const awayTime = await poll(time, near(22), '前进 10 秒后应到约 22 秒');
+    const away = await poll(() => popup.evaluate(progressMarkView), value => value.status === 'Mark at 00:12' && value.hasMark && value.ratio != null && value.ratio > 0.05 && value.ratio < 0.2, '快进后标记仍停在 12 秒');
+    await popup.screenshot(path.join(dir, 'popup-away.png'));
+    const beforeFrame = await time();
+    await popup.click('Next frame');
+    const framed = await poll(time, value => value > beforeFrame + 0.005 && value < beforeFrame + 0.5, '下一帧应只挪一小步');
+    const framedView = await popup.evaluate(progressMarkView);
+    if (framedView.status !== 'Mark at 00:12' || !framedView.hasMark) throw new Error(`逐帧擦掉了标记：${JSON.stringify(framedView)}`);
+    note(`away=${awayTime} ratio=${away.ratio} frame=${framed}`);
+
+    await popup.click('Jump to mark');
+    const jumped = await poll(time, near(12), '跳到标记应回到约 12 秒');
+    const jumpedView = await poll(() => popup.evaluate(progressMarkView), value => value.status === 'Mark at 00:12' && value.hasMark && !value.alert, '跳转后标记还在');
+    note(`jump=${jumped} status=${jumpedView.status}`);
+
+    await popup.close();
+    popup = null;
+    popup = await openActionPopup(context, page);
+    const reopened = await poll(() => popup.evaluate(progressMarkView), value => value.status === 'Mark at 00:12' && value.hasMark && !value.jumpDisabled && !value.alert, '关掉面板再打开，标记仍在这一页');
+    await popup.screenshot(path.join(dir, 'popup-reopened.png'));
+    note(`reopened ratio=${reopened.ratio}`);
+
+    await popup.click('Clear mark');
+    const cleared = await poll(() => popup.evaluate(progressMarkView), value => value.status === '' && !value.hasMark && value.jumpDisabled && value.clearDisabled && !value.setDisabled && !value.alert, '清除后不能再跳');
+    const stayed = await time();
+    if (!near(12)(stayed)) throw new Error(`清除标记改了进度：${stayed}`);
+    await popup.click('Jump to mark');
+    await page.waitForTimeout(400);
+    const afterJump = await time();
+    if (!near(12)(afterJump)) throw new Error(`清除后跳转改了进度：${afterJump}`);
+    await popup.screenshot(path.join(dir, 'popup-cleared.png'));
+    note(`cleared time=${afterJump} jumpDisabled=${cleared.jumpDisabled}`);
+    await popup.close();
+    popup = null;
+    await page.close();
+
+    fresh = await context.newPage();
+    await fresh.goto(`${origin}/long`, { waitUntil: 'domcontentloaded' });
+    await fresh.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await fresh.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+      element.pause();
+      element.currentTime = 12;
+    });
+    await poll(() => fresh.locator('#media').evaluate(element => element.currentTime), near(12), '新标签应停在 12 秒');
+    popup = await openActionPopup(context, fresh);
+    const nextTab = await poll(() => popup.evaluate(progressMarkView), value => value.status === '' && !value.hasMark && value.jumpDisabled && !value.alert, '新标签不应带上一个标签的标记');
+    note(`new tab status=${JSON.stringify(nextTab.status)}`);
+    await popup.close();
+    popup = null;
+
+    feed = await context.newPage();
+    await feed.goto(`${origin}/feed`, { waitUntil: 'domcontentloaded' });
+    await feed.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await feed.evaluate(async () => {
+      const preview = document.querySelector('#preview');
+      const main = document.querySelector('#media');
+      for (const element of [preview, main]) {
+        if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+        element.pause();
+      }
+      preview.currentTime = 0.4;
+      main.currentTime = 0.2;
+    });
+    popup = await openActionPopup(context, feed);
+    const feedStart = await poll(() => popup.evaluate(progressMarkView), value => (value.heading === 'Feed preview' || value.heading === 'Main player') && !value.hasMark && value.jumpDisabled, 'feed 上两条都还没有标记');
+    const selectedSelector = feedStart.heading === 'Feed preview' ? '#preview' : '#media';
+    const otherSelector = selectedSelector === '#preview' ? '#media' : '#preview';
+    const otherName = otherSelector === '#media' ? 'Main player' : 'Feed preview';
+    const markedAt = selectedSelector === '#preview' ? 0.4 : 0.2;
+    const readTimes = () => feed.evaluate(() => ({
+      preview: document.querySelector('#preview').currentTime,
+      main: document.querySelector('#media').currentTime,
+    }));
+    await popup.click('Set mark');
+    await poll(() => popup.evaluate(progressMarkView), value => value.heading === feedStart.heading && value.hasMark && !value.jumpDisabled && value.status === 'Mark at 00:00', '当前这条应设上标记');
+    const markedTimes = await readTimes();
+    await chooseMedia(popup, otherName);
+    const otherView = await poll(() => popup.evaluate(progressMarkView), value => value.heading === otherName && !value.hasMark && value.jumpDisabled && value.status === '' && !value.alert, '另一条媒体没有这条的标记');
+    const otherTimes = await readTimes();
+    if (Math.abs(otherTimes.preview - markedTimes.preview) > 0.05 || Math.abs(otherTimes.main - markedTimes.main) > 0.05) {
+      throw new Error(`换媒体改了进度：${JSON.stringify({ markedTimes, otherTimes })}`);
+    }
+    await popup.screenshot(path.join(dir, 'feed-other.png'));
+    await chooseMedia(popup, feedStart.heading);
+    await poll(() => popup.evaluate(progressMarkView), value => value.heading === feedStart.heading && value.hasMark && !value.jumpDisabled, '回到原来那一条，标记还在');
+    await feed.locator(selectedSelector).evaluate(element => { element.currentTime = 0.05; });
+    await popup.click('Jump to mark');
+    const returned = await poll(() => feed.locator(selectedSelector).evaluate(element => element.currentTime), near(markedAt, 0.08), '跳转应把原来那一条拉回标记');
+    const otherAfter = await feed.locator(otherSelector).evaluate(element => element.currentTime);
+    const otherExpected = otherSelector === '#preview' ? markedTimes.preview : markedTimes.main;
+    if (Math.abs(otherAfter - otherExpected) > 0.05) throw new Error(`跳转串到了另一条：${otherAfter}`);
+    note(`feed selected=${feedStart.heading} other=${otherView.heading} returned=${returned}`);
+    await popup.close();
+    popup = null;
+
+    blocked = await context.newPage();
+    await blocked.goto(`${origin}/unseekable`, { waitUntil: 'domcontentloaded' });
+    await blocked.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    popup = await openActionPopup(context, blocked);
+    const unavailable = "Live streams and media that can't be seeked can't keep a mark.";
+    const blockedView = await poll(() => popup.evaluate(progressMarkView), value => value.setDisabled && value.jumpDisabled && value.clearDisabled && value.status === unavailable && !value.hasMark && value.frameDisabled && value.skipDisabled, '不可 seek 时标记入口应禁用并说明');
+    const blockedTime = await blocked.locator('#media').evaluate(element => element.currentTime);
+    await popup.click('Set mark');
+    await blocked.waitForTimeout(400);
+    const blockedAfter = await blocked.locator('#media').evaluate(element => element.currentTime);
+    if (blockedAfter !== blockedTime) throw new Error(`不可 seek 时设标记改了进度：${blockedAfter}`);
+    const stillBlocked = await popup.evaluate(progressMarkView);
+    if (!stillBlocked.setDisabled || stillBlocked.hasMark || stillBlocked.alert) throw new Error(`不可 seek 时误设了标记：${JSON.stringify(stillBlocked)}`);
+    await popup.screenshot(path.join(dir, 'unseekable-popup.png'));
+    note(`unseekable status=${blockedView.status}`);
+    await popup.close();
+    popup = null;
+
+    const after = await dumpStorage();
+    if (after !== storage) throw new Error(`扩展存储被进度标记改写：before=${storage} after=${after}`);
+    if (after.includes('"mark"')) throw new Error('扩展存储里出现了 mark');
+
+    const state = { ok: true, markedRatio: marked.ratio, away: awayTime, framed, jumped, feed: feedStart.heading, storageSame: true };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await popup?.close().catch(() => {});
+    await blocked?.close().catch(() => {});
+    await feed?.close().catch(() => {});
+    await fresh?.close().catch(() => {});
     await page.close().catch(() => {});
   }
 }

@@ -69,6 +69,11 @@ export interface MediaState {
    * Never stored in `sitePrefs`.
    */
   mirrored?: boolean;
+  /**
+   * One progress mark for this element, in seconds.
+   * Absent when unset. Lives only in the page session for this element, never in extension storage.
+   */
+  mark?: number;
   /** Set when rate lock has surrendered on this element. */
   rateLock?: 'given-up';
   frameId?: number;
@@ -78,7 +83,8 @@ export type MediaCommand =
   | { type: 'seek' | 'skip' | 'volume' | 'rate'; value: number }
   | { type: 'channel'; value: ChannelMode }
   | { type: 'mirror'; value: boolean }
-  | { type: 'frame'; direction: 1 | -1 };
+  | { type: 'frame'; direction: 1 | -1 }
+  | { type: 'mark'; action: 'set' | 'jump' | 'clear' };
 export interface PageState { host: string; enabled: boolean; media: MediaState[]; selectedId: string }
 export interface MediaClient {
   read(): Promise<PageState>;

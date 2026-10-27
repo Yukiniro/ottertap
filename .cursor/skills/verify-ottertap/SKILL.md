@@ -83,6 +83,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-floating-
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-current-site
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-clear-remembered
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive horizontal-mirror
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive progress-mark
 ```
 
 `skip-step` 在设置页把 `Skip step` 改成 `30s` 并打开 `Single-key mode`，再看弹出面板进退按钮名和页内 `L` / `J` / `→` / `←` 让 `/long` 夹具的 `currentTime` 跟着步长变；它会改写 profile，同一会话只能跑一次。步骤见 `features/skip-step.md`。
@@ -255,6 +256,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-floating-
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-current-site
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-clear-remembered
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive horizontal-mirror
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive progress-mark
 node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 ```
 
@@ -331,3 +333,13 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive horizontal-mirror
 `horizontal-mirror` 在 `/video` 上确认弹出面板的 `Mirror horizontally` 默认关。点开后只翻转当前视频画面，音量、倍速、进度和布局盒子不变；再点关闭即恢复。重新加载后默认不镜像。`/feed` 上只翻转当前选中的那一条，换到另一条时开关为关。`/audio` 上开关禁用。打开「Remember this site」后再镜像，`sitePrefs` 不出现镜像字段；重新加载后画面仍不镜像。成功时关掉记住并忘掉该站。它会改写 profile，同一会话只能跑一次。步骤见 `features/horizontal-mirror.md`。
 
 写入 `horizontal-mirror/`：`popup-off.png`、`popup-on.png`、`fixture-on.png`、`popup-restored.png`、`feed-other.png`、`audio-disabled.png`、`remembered.png`、`reloaded.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
+## 进度标记
+
+```bash
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive progress-mark
+```
+
+`progress-mark` 在 `/long` 上给当前视频设一个 12 秒的标记，进度条附近能看见它。前进 10 秒和下一帧之后标记还在原来的时间，再跳回去。关掉弹出面板再打开，标记仍在；清除后不能跳。关掉标签后新开的页面没有标记。`/feed` 上换到另一条媒体时标记不跟着过去。`/unseekable` 上三个按钮禁用并有短说明。全程不写扩展存储。它不改 profile。步骤见 `features/progress-mark.md`。
+
+写入 `progress-mark/`：`popup-set.png`、`popup-away.png`、`popup-reopened.png`、`popup-cleared.png`、`feed-other.png`、`unseekable-popup.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。

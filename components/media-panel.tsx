@@ -1,7 +1,7 @@
 import { i18n } from '#i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { ChevronDown, EyeOff, Settings2, Settings as SettingsIcon, Volume2, VolumeX, AppWindow, Pause, Play, RotateCcw, RotateCw, Keyboard, CircleAlert, Info, Search, RefreshCw, PictureInPicture2, Headphones, Minus, Plus, StepBack, StepForward } from 'lucide-react';
+import { ChevronDown, EyeOff, Settings2, Settings as SettingsIcon, Volume2, VolumeX, AppWindow, Pause, Play, RotateCcw, RotateCw, Keyboard, CircleAlert, Info, Search, RefreshCw, PictureInPicture2, Headphones, Minus, Plus, StepBack, StepForward, Bookmark, BookmarkX, CornerDownLeft } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from './ui/dropdown-menu';
@@ -26,6 +26,11 @@ import { formatTime } from '../lib/utils';
 import { useSettingsAtoms } from './theme';
 
 const first = (value: number | readonly number[]) => Array.isArray(value) ? value[0] : value;
+const markLeft = (mark: number, min: number, max: number) => {
+  if (!(max > min) || !Number.isFinite(mark)) return null;
+  const ratio = Math.min(1, Math.max(0, (mark - min) / (max - min)));
+  return `calc(${ratio} * (100% - 0.75rem) + 0.375rem)`;
+};
 const currentPref = (media: MediaState): SitePref => ({ volume: media.volume, rate: media.rate, ...(media.channel === 'stereo' ? {} : { channel: media.channel }) });
 function TabIcon({ src }: { src: string }) {
   const [failed, setFailed] = useState(false);
@@ -149,6 +154,9 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
   const seekMax = ranges[ranges.length - 1]?.end ?? 0;
   const canSeek = seekMax > seekMin;
   const canStep = selected ? canStepFrames(selected) : false;
+  const canMark = canStep;
+  const progressMark = canMark && typeof selected?.mark === 'number' && Number.isFinite(selected.mark) ? selected.mark : null;
+  const progressMarkLeft = progressMark == null ? null : markLeft(progressMark, seekMin, seekMax);
   const volume = selected ? Math.round((selected.muted ? 0 : selected.volume) * 100) : 0;
   const hint = selected ? pipHint(selected) : '';
   const channelHint = selected && !selected.channelAvailable ? i18n.t('channelCrossOrigin') : '';
@@ -199,8 +207,17 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
         </div>
         <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground tabular-nums">
           <span className="shrink-0">{formatTime(seekDraft ?? selected.currentTime)}</span>
-          <Slider aria-label={i18n.t('seek')} className="min-w-0 flex-1 py-2" min={seekMin} max={Math.max(seekMin + 1, seekMax)} step={1} value={[seekDraft ?? selected.currentTime]} disabled={!canSeek} onValueChange={value => setSeekDraft(first(value) ?? null)} onValueCommitted={value => { void command({ type: 'seek', value: first(value) ?? seekMin }).finally(() => setSeekDraft(null)); }} />
+          <div className="relative min-w-0 flex-1">
+            <Slider aria-label={i18n.t('seek')} className="py-2" min={seekMin} max={Math.max(seekMin + 1, seekMax)} step={1} value={[seekDraft ?? selected.currentTime]} disabled={!canSeek} onValueChange={value => setSeekDraft(first(value) ?? null)} onValueCommitted={value => { void command({ type: 'seek', value: first(value) ?? seekMin }).finally(() => setSeekDraft(null)); }} />
+            {progressMarkLeft != null && <span data-progress-mark="" aria-hidden="true" title={i18n.t('markAt', { time: formatTime(progressMark ?? 0) })} className="pointer-events-none absolute top-0.5 z-10 h-2 w-1 -translate-x-1/2 rounded-full bg-primary" style={{ left: progressMarkLeft }} />}
+          </div>
           <span className="shrink-0">{selected.duration === null ? selected.live ? i18n.t('live') : '--:--' : formatTime(selected.duration)}</span>
+        </div>
+        <div className="mt-1 flex items-center gap-1">
+          <Button type="button" variant="ghost" size="icon-sm" className="text-muted-foreground" aria-label={i18n.t('setMark')} title={canMark ? i18n.t('setMark') : i18n.t('markUnavailable')} aria-describedby={canMark ? undefined : 'progress-mark-status'} disabled={!canMark} onClick={() => void command({ type: 'mark', action: 'set' })}><Bookmark /></Button>
+          <Button type="button" variant="ghost" size="icon-sm" className="text-muted-foreground" aria-label={i18n.t('jumpToMark')} title={canMark ? i18n.t('jumpToMark') : i18n.t('markUnavailable')} aria-describedby={canMark ? undefined : 'progress-mark-status'} disabled={!canMark || progressMark == null} onClick={() => void command({ type: 'mark', action: 'jump' })}><CornerDownLeft /></Button>
+          <Button type="button" variant="ghost" size="icon-sm" className="text-muted-foreground" aria-label={i18n.t('clearMark')} title={canMark ? i18n.t('clearMark') : i18n.t('markUnavailable')} aria-describedby={canMark ? undefined : 'progress-mark-status'} disabled={!canMark || progressMark == null} onClick={() => void command({ type: 'mark', action: 'clear' })}><BookmarkX /></Button>
+          <p id="progress-mark-status" aria-live="polite" className="min-w-0 flex-1 text-xs leading-4 text-muted-foreground">{!canMark ? i18n.t('markUnavailable') : progressMark == null ? '' : i18n.t('markAt', { time: formatTime(progressMark) })}</p>
         </div>
         <p id="frame-step-hint" className={canStep ? 'sr-only' : 'mt-1 text-xs text-muted-foreground'}>{canStep ? i18n.t('frameStepHint') : i18n.t('frameStepUnavailable')}</p>
         {hint ? <p id="pip-hint" className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
