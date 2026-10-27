@@ -50,6 +50,12 @@ export interface MediaState {
   id: string;
   title: string;
   label: string;
+  /**
+   * Filename stem from the media address, without directory or query.
+   * Empty when the address is missing, a blob, or a data URL.
+   * The panel list uses it only when the element has no title or accessible name.
+   */
+  file?: string;
   host: string;
   kind: 'audio' | 'video';
   paused: boolean;
