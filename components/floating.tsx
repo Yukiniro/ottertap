@@ -1,7 +1,7 @@
 import { i18n } from '#i18n';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { CircleAlert, EyeOff, Minus, PanelTop, Pause, Play, Plus, RotateCcw, RotateCw, Volume2, VolumeX } from 'lucide-react';
+import { CircleAlert, EyeOff, Minus, PanelTop, Pause, Play, Plus, RotateCcw, RotateCw, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react';
 import otterMark from '../assets/otter-mark';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
@@ -12,6 +12,7 @@ import { useMedia } from '../hooks/use-media';
 import { dockedPoint, dockSize, dropPosition, nudgePosition, type Viewport } from '../lib/dock';
 import { actionHintEvent, commandForHotkey, createHotkeySession, rateHintEvent, volumeGestureEvent } from '../lib/hotkey';
 import { floatingEntryNote } from '../lib/floating-note';
+import { cycleMediaId } from '../lib/media';
 import { createFloatingWhilePlayingGate, floatingWhilePlayingHideMs, stepFloatingWhilePlaying } from '../lib/floating-play';
 import { formatRate, nextRate, sameRate } from '../lib/rate';
 import { hideFloating, isFloatingHidden } from '../lib/settings';
@@ -41,7 +42,7 @@ export function FloatingController({ client, openPanel, hideOnSite }: { client: 
   const fineWheel = useAtomValue(fineWheelAtom);
   const wheelDirection = useAtomValue(wheelDirectionAtom);
   const write = useSetAtom(writeSettingsAtom);
-  const { page, selected, command, error } = useMedia(client, { pauseWhenEmpty: true });
+  const { page, selected, select, command, error } = useMedia(client, { pauseWhenEmpty: true });
   const [expanded, setExpanded] = useState(false);
   const [panelHint, setPanelHint] = useState(false);
   const [openingPanel, setOpeningPanel] = useState(false);
@@ -200,6 +201,10 @@ export function FloatingController({ client, openPanel, hideOnSite }: { client: 
     });
   };
   const stepPlayback = (direction: 1 | -1) => commitRate(nextRate(aimedRate.current ?? selected.rate, direction, null, rateStep));
+  const stepMedia = (direction: 1 | -1) => {
+    const nextId = cycleMediaId(page.media, selected.id, direction);
+    if (nextId) select(nextId);
+  };
   const requestPanel = async () => {
     if (!openPanel || openingPanel) return;
     setOpeningPanel(true);
@@ -258,6 +263,10 @@ export function FloatingController({ client, openPanel, hideOnSite }: { client: 
               <Button type="button" variant="ghost" size="sm" className="h-9 min-w-0 flex-1 gap-0.5 px-1 text-muted-foreground tabular-nums" aria-label={i18n.t('skipForward', { seconds: jump })} title={canSeek ? undefined : i18n.t('skipUnavailable')} aria-describedby={canSeek ? undefined : 'floating-skip-hint'} disabled={!canSeek} onClick={() => void command({ type: 'skip', value: jump })}><span className="text-xs">{jump}</span><RotateCw /></Button>
             </div>
             {!canSeek && <p id="floating-skip-hint" className="px-1 pt-1 text-center text-[11px] leading-4 text-muted-foreground">{i18n.t('skipUnavailable')}</p>}
+            {page.media.length > 1 && <div className="mt-1 flex items-center gap-0.5">
+              <Button type="button" variant="ghost" size="sm" className="h-8 min-w-0 flex-1 gap-0.5 px-1 text-xs text-muted-foreground" aria-label={i18n.t('mediaPrev')} title={i18n.t('mediaPrev')} onClick={() => stepMedia(-1)}><SkipBack /><span className="truncate">{i18n.t('floatPrev')}</span></Button>
+              <Button type="button" variant="ghost" size="sm" className="h-8 min-w-0 flex-1 gap-0.5 px-1 text-xs text-muted-foreground" aria-label={i18n.t('mediaNext')} title={i18n.t('mediaNext')} onClick={() => stepMedia(1)}><span className="truncate">{i18n.t('floatNext')}</span><SkipForward /></Button>
+            </div>}
           </div>
           <div role="group" aria-labelledby="floating-speed-label" className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-hidden p-2">
             <p id="floating-speed-label" className="text-center text-xs font-medium text-muted-foreground">{i18n.t('speed')}</p>

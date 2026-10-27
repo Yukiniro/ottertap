@@ -38,6 +38,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive selection-highlight
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive prev-next-media
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive panel-media-list
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive float-prev-next
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -57,7 +58,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -3227,7 +3228,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -6184,6 +6185,128 @@ async function drivePanelMediaList(context, dir, note) {
     await playlist?.close().catch(() => {});
     await feed?.close().catch(() => {});
     await single?.close().catch(() => {});
+  }
+}
+
+async function driveFloatPrevNext(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const dialog = page => page.getByRole('dialog', { name: 'Volume pill' });
+  const trigger = page => page.getByRole('button', { name: /volume pill/i });
+  const named = (page, label) => dialog(page).getByRole('button', { name: label, exact: true });
+  const overlaps = (a, b) => a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+  const place = async page => {
+    const box = await trigger(page).boundingBox();
+    if (!box) throw new Error('浮动入口没有位置');
+    return { x: Math.round(box.x), y: Math.round(box.y) };
+  };
+  const expand = async page => {
+    const box = await trigger(page).boundingBox();
+    if (!box) throw new Error('浮动入口没有位置');
+    await page.mouse.move(box.x + Math.min(8, box.width / 4), box.y + box.height / 2);
+    await trigger(page).click();
+    await dialog(page).waitFor({ state: 'visible', timeout: 5_000 });
+  };
+  const rings = page => page.evaluate(() => ({
+    preview: document.querySelector('#preview')?.classList.contains('ottertap-selection-ring') === true,
+    media: document.querySelector('#media')?.classList.contains('ottertap-selection-ring') === true,
+  }));
+  const rates = page => page.evaluate(() => ({
+    preview: document.querySelector('#preview')?.playbackRate ?? 0,
+    media: document.querySelector('#media')?.playbackRate ?? 0,
+    paused: {
+      preview: document.querySelector('#preview')?.paused !== false,
+      media: document.querySelector('#media')?.paused !== false,
+    },
+  }));
+  const apart = async page => {
+    const previous = await named(page, 'Previous media').boundingBox();
+    const next = await named(page, 'Next media').boundingBox();
+    const open = await named(page, 'Open panel').boundingBox();
+    if (!previous || !next || !open) throw new Error('上一条、下一条或打开面板没有位置');
+    if (overlaps(previous, open) || overlaps(next, open)) throw new Error('上一条或下一条挡住了打开面板');
+    if (previous.y + previous.height > open.y || next.y + next.height > open.y) throw new Error('上一条或下一条不在打开面板上方');
+    return { previous, next, open };
+  };
+  let page;
+  let popup;
+  try {
+    const before = await stored();
+    page = await context.newPage();
+    await page.goto(`${origin}/video`, { waitUntil: 'domcontentloaded' });
+    await trigger(page).waitFor({ state: 'visible', timeout: 15_000 });
+    await expand(page);
+    if (await named(page, 'Previous media').count()) throw new Error('只有一条时不应有上一条');
+    if (await named(page, 'Next media').count()) throw new Error('只有一条时不应有下一条');
+    await named(page, 'Open panel').waitFor({ state: 'visible', timeout: 5_000 });
+    await dialog(page).screenshot({ path: path.join(dir, 'pill-one.png'), animations: 'disabled' });
+    note('single media hides prev/next');
+
+    await page.goto(`${origin}/feed`, { waitUntil: 'domcontentloaded' });
+    await trigger(page).waitFor({ state: 'visible', timeout: 15_000 });
+    await page.locator('#preview').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+    });
+    await page.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+    });
+    await poll(async () => (await trigger(page).getAttribute('title')) ?? '', value => value.startsWith('Feed preview'), '暂停的信息流应先选中页面顺序的第一条');
+    await expand(page);
+    await named(page, 'Previous media').waitFor({ state: 'visible', timeout: 5_000 });
+    await named(page, 'Next media').waitFor({ state: 'visible', timeout: 5_000 });
+    const gap = await apart(page);
+    const anchored = await place(page);
+    await dialog(page).screenshot({ path: path.join(dir, 'pill-two.png'), animations: 'disabled' });
+    note(`two media, open panel y=${Math.round(gap.open.y)} prev y=${Math.round(gap.previous.y)}`);
+
+    await named(page, 'Next media').click();
+    await poll(() => rings(page), value => value.media === true && value.preview === false, '下一条后只有主视频有轮廓');
+    await poll(async () => (await trigger(page).getAttribute('title')) ?? '', value => value.startsWith('Main player'), '药丸应改去控制主视频');
+    if (await dialog(page).isVisible() !== true) throw new Error('切换后药丸不应收起');
+    await page.screenshot({ path: path.join(dir, 'ring-next.png') });
+    popup = await openActionPopup(context, page);
+    const nextHeading = await poll(() => popup.view(), value => value.heading === 'Main player', '弹出面板应对准主视频');
+    await popup.screenshot(path.join(dir, 'popup-next.png'));
+    await popup.close();
+    popup = null;
+    note(`next heading=${nextHeading.heading}`);
+
+    await named(page, 'Play').click();
+    await poll(() => rates(page), value => value.paused.media === false && value.paused.preview === true, '药丸播放应只作用在主视频');
+    await page.bringToFront();
+    await page.keyboard.press('Alt+Period');
+    await poll(() => rates(page), value => value.media === 1.25 && value.preview === 1, 'Alt+. 应只加快主视频');
+    await named(page, 'Pause').waitFor({ state: 'visible', timeout: 5_000 });
+    await named(page, 'Pause').click();
+    await poll(() => rates(page), value => value.paused.media === true && value.paused.preview === true, '暂停应停住主视频');
+
+    await named(page, 'Previous media').click();
+    await poll(() => rings(page), value => value.preview === true && value.media === false, '上一条后只有预览有轮廓');
+    await poll(async () => (await trigger(page).getAttribute('title')) ?? '', value => value.startsWith('Feed preview'), '药丸应回到预览');
+    await page.screenshot({ path: path.join(dir, 'ring-prev.png') });
+    popup = await openActionPopup(context, page);
+    const prevHeading = await poll(() => popup.view(), value => value.heading === 'Feed preview', '弹出面板应回到预览');
+    await popup.screenshot(path.join(dir, 'popup-prev.png'));
+    await popup.close();
+    popup = null;
+    await page.bringToFront();
+    await page.keyboard.press('Alt+Period');
+    await poll(() => rates(page), value => value.preview === 1.25 && value.media === 1.25, 'Alt+. 应只加快回到的预览，主视频保持 1.25×');
+    const stayed = await place(page);
+    if (stayed.x !== anchored.x || stayed.y !== anchored.y) throw new Error(`浮动入口挪动了：${JSON.stringify(anchored)} -> ${JSON.stringify(stayed)}`);
+    await apart(page);
+    const after = await stored();
+    if (JSON.stringify(after.floatingPosition ?? null) !== JSON.stringify(before.floatingPosition ?? null)) throw new Error(`位置记忆变了：${JSON.stringify(before.floatingPosition)} -> ${JSON.stringify(after.floatingPosition)}`);
+    if (after.sitePrefs && Object.keys(after.sitePrefs).length) throw new Error(`切换写入了站点记忆：${JSON.stringify(after.sitePrefs)}`);
+    const state = { ok: true, from: 'Feed preview', next: nextHeading.heading, previous: prevHeading.heading, place: stayed, floatingPosition: after.floatingPosition ?? null };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    note(`place ${JSON.stringify(stayed)}`);
+    return state;
+  } finally {
+    await popup?.close().catch(() => {});
+    await page?.close().catch(() => {});
   }
 }
 
