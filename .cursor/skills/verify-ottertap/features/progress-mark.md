@@ -37,7 +37,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive progress-mark
 4. 关掉这个标签，新开 `/long` 并停在 12 秒。弹出面板没有标记。
 5. `/feed` 上给当前选中的那一条设标记，换到另一条时没有标记，也没有改另一条的进度。换回来标记还在，跳转只把原来那一条拉回去。截 `feed-other.png`。
 6. `/unseekable` 上三个按钮禁用，说明与 `markUnavailable` 一致，没有标记。逐帧和前进按钮仍禁用。点设标记不改进度。截 `unseekable-popup.png`。
-7. 全程 `chrome.storage.local` 和 `chrome.storage.session` 与设标记之前一致，存储文本里没有 `"mark"`。
+7. 全程 `chrome.storage.local` 与设标记之前一致。`chrome.storage.session` 里除了打开新标签时后台登记的 `ottertap-frames-v1` 帧路由表，其余也一致。两边的存储文本都没有 `"mark"`。
 
 成功时 `state.json` 的 `ok` 为 `true`。证据写到 `/opt/cursor/artifacts/verify-ottertap/progress-mark/`：`popup-set.png`、`popup-away.png`、`popup-reopened.png`、`popup-cleared.png`、`feed-other.png`、`unseekable-popup.png`、`state.json`、`transcript.txt`。
 

@@ -4694,8 +4694,15 @@ async function driveProgressMark(context, dir, note) {
     popup = null;
 
     const after = await dumpStorage();
-    if (after !== storage) throw new Error(`扩展存储被进度标记改写：before=${storage} after=${after}`);
-    if (after.includes('"mark"')) throw new Error('扩展存储里出现了 mark');
+    // New tabs register content-script frames in session storage. That map is routing, not the mark.
+    const withoutFrames = raw => {
+      const parsed = JSON.parse(raw);
+      const session = parsed.session && typeof parsed.session === 'object' ? { ...parsed.session } : parsed.session;
+      if (session && typeof session === 'object') delete session['ottertap-frames-v1'];
+      return JSON.stringify({ local: parsed.local, session });
+    };
+    if (withoutFrames(after) !== withoutFrames(storage)) throw new Error(`扩展存储被进度标记改写：before=${storage} after=${after}`);
+    if (storage.includes('"mark"') || after.includes('"mark"')) throw new Error('扩展存储里出现了 mark');
 
     const state = { ok: true, markedRatio: marked.ratio, away: awayTime, framed, jumped, feed: feedStart.heading, storageSame: true };
     await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
