@@ -2,9 +2,9 @@ import { i18n } from '#i18n';
 import { browser } from 'wxt/browser';
 import { extensionStore, settingsKey } from '../lib/extension-store';
 import { createSitePrefSession, isSiteEnabled, mergeSettingsChange, normalizeSettings, withRememberedCommand } from '../lib/settings';
-import { frameFailureKey, isMediaCommand, pipFailureKey } from '../lib/media';
+import { frameFailureKey, isMediaCommand, mirrorMarkFailureKey, pipFailureKey } from '../lib/media';
 import { actionForCommand } from '../lib/commands';
-import { actionHintKey, applySkipStep, applyVolumeStep, directedWheelNotches, isHotkeyAction, planHotkey, shownPercent, type HotkeyAction } from '../lib/hotkey';
+import { actionHintKey, applySkipStep, applyVolumeStep, directedWheelNotches, isHotkeyAction, mirrorMarkHintKey, planHotkey, shownPercent, type HotkeyAction } from '../lib/hotkey';
 import { nextRate } from '../lib/rate';
 import { steppedVolume, volumeStepForWheel } from '../lib/volume';
 import { volumeBadgeColor, volumeBadgeFromReports, volumeBadgeTtlMs } from '../lib/volume-badge';
@@ -335,6 +335,10 @@ export default defineBackground(() => {
         const key = frameFailureKey(error.message);
         if (key) { showAction(tabId, key); return true; }
       }
+      if ((plan.command.type === 'mirror' || plan.command.type === 'mark') && error instanceof Error) {
+        const key = mirrorMarkFailureKey(error.message);
+        if (key) { showAction(tabId, key); return true; }
+      }
       throw error;
     }
     const key = actionHintKey(action, plan.media);
@@ -530,8 +534,18 @@ export default defineBackground(() => {
         if (message.type === 'command') {
           if (!isMediaCommand(message.command) || !mediaId) throw new Error(i18n.t('invalidCommand'));
           if (message.command.type === 'volume' || message.command.type === 'mute') gestures.delete(tabId);
-          await deliver(tabId, mediaId, 'command', message.command);
+          try {
+            await deliver(tabId, mediaId, 'command', message.command);
+          } catch (error) {
+            if ((message.command.type === 'mirror' || message.command.type === 'mark') && error instanceof Error) {
+              const key = mirrorMarkFailureKey(error.message);
+              if (key) showAction(tabId, key);
+            }
+            throw error;
+          }
           await rememberCommand(host, message.command);
+          const hint = mirrorMarkHintKey(message.command);
+          if (hint) showAction(tabId, hint);
           return { ok: true };
         }
       } catch (error) { return { error: error instanceof Error ? error.message : i18n.t('pageUnavailable') }; }

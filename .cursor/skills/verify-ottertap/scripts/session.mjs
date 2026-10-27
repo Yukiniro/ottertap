@@ -33,6 +33,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive progress-mark
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-other-tabs
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-commands
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-feedback
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -52,7 +53,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -3220,7 +3221,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -5146,6 +5147,260 @@ async function driveMirrorMarkCommands(context, dir, note) {
     return state;
   } finally {
     await audio?.close().catch(() => {});
+    await fixture?.close().catch(() => {});
+    await settings?.close().catch(() => {});
+  }
+}
+
+async function driveMirrorMarkFeedback(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const prefsText = async () => JSON.stringify((await stored()).sitePrefs ?? {});
+  const near = (expected, slack = 0.35) => value => Math.abs(value - expected) < slack;
+  const flipped = value => value.mirrored && (value.scale === '-1 1' || value.computedScale === '-1 1');
+  const plain = value => !value.mirrored && value.scale !== '-1 1' && value.computedScale !== '-1 1';
+  const keyButton = (page, action) => page.getByRole('button', { name: new RegExp(`^Change the key for ${action.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\. Now `) });
+  const successCopy = ['Mirror on', 'Mirror off', 'Marked', 'Back to mark'];
+  const markUnavailable = "Live streams and media that can't be seeked can't keep a mark.";
+  const mirrorUnavailable = "Audio has no picture, so it cannot be mirrored.";
+  const markMissing = 'This media has no mark.';
+  let settings;
+  let fixture;
+  let popup = null;
+  const focusFixture = async () => {
+    await fixture.bringToFront();
+    await fixture.mouse.click(12, 12);
+  };
+  const hint = text => fixture.getByText(text, { exact: true });
+  const showHint = async text => {
+    const node = hint(text);
+    await node.waitFor({ state: 'visible', timeout: 8_000 });
+    const pass = await node.evaluate(element => element.className.includes('pointer-events-none') && element.getAttribute('role') === 'status');
+    if (!pass) throw new Error(`${text} 不是不挡点击的状态字样`);
+    const toast = await node.boundingBox();
+    const media = await fixture.locator('#media').boundingBox();
+    if (!toast || !media) throw new Error(`${text} 没有位置`);
+    const controlsTop = media.y + Math.max(media.height - 48, media.height * 0.75);
+    const coversControls = toast.y + toast.height > controlsTop && toast.x < media.x + media.width && toast.x + toast.width > media.x;
+    if (coversControls) throw new Error(`${text} 盖住了播放控件：${JSON.stringify({ toast, media })}`);
+    return toast;
+  };
+  const hideHint = async text => {
+    await hint(text).waitFor({ state: 'hidden', timeout: 3_000 });
+  };
+  const restoreKeys = async () => {
+    if (!settings || settings.isClosed()) return;
+    await settings.bringToFront();
+    const reset = settings.getByRole('button', { name: 'Restore default keys', exact: true });
+    if (await reset.isDisabled()) return;
+    await reset.click();
+    await poll(stored, value => value.keybinds?.mirror === '' && value.keybinds?.markSet === '' && value.keybinds?.markJump === '' && value.keybinds?.toggle === 'k', '应恢复默认键');
+  };
+  const fillWindow = async on => {
+    await fixture.evaluate(enabled => {
+      const video = document.querySelector('#media');
+      if (!(video instanceof HTMLVideoElement)) throw new Error('没有夹具视频');
+      video.style.cssText = enabled
+        ? 'position:fixed;inset:0;z-index:1;width:100vw;height:100vh;background:#111'
+        : 'display:block;width:640px;height:360px;margin:48px';
+    }, on);
+  };
+  try {
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
+    await settings.locator('#shortcuts').getByRole('heading', { name: 'Keyboard shortcuts' }).waitFor({ state: 'visible', timeout: 15_000 });
+    const singleKey = settings.getByRole('switch', { name: 'Single-key mode' });
+    if (await singleKey.getAttribute('aria-checked') !== 'false') throw new Error('单键模式应保持关闭');
+    await keyButton(settings, 'Mirror horizontally').click();
+    await settings.getByRole('button', { name: 'Press a key', exact: true }).waitFor({ state: 'visible' });
+    await settings.keyboard.press('KeyH');
+    await keyButton(settings, 'Set mark').click();
+    await settings.keyboard.press('KeyB');
+    await keyButton(settings, 'Jump to mark').click();
+    await settings.keyboard.press('KeyN');
+    await poll(stored, value => value.keybinds?.mirror === 'h' && value.keybinds?.markSet === 'b' && value.keybinds?.markJump === 'n' && value.singleKey !== true, '应绑上 H / B / N，且单键模式仍关');
+    note('bound H B N');
+
+    fixture = await context.newPage();
+    await fixture.goto(`${origin}/long`, { waitUntil: 'domcontentloaded' });
+    await fixture.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await fixture.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+      element.pause();
+      element.currentTime = 12;
+    });
+    const time = () => fixture.locator('#media').evaluate(element => element.currentTime);
+    await poll(time, near(12), '长视频应停在 12 秒');
+    await focusFixture();
+    if (!plain(await pictureOf(fixture, '#media'))) throw new Error('按镜像键之前画面应未翻转');
+    await fixture.keyboard.press('KeyH');
+    await showHint('Mirror on');
+    await fixture.screenshot({ path: path.join(dir, 'toast-mirror-on.png'), animations: 'disabled' });
+    const mirrored = await poll(() => pictureOf(fixture, '#media'), flipped, 'H 应翻转当前视频');
+    note(`mirror on scale=${mirrored.scale}`);
+    await fixture.keyboard.press('KeyH');
+    await showHint('Mirror off');
+    await poll(() => pictureOf(fixture, '#media'), plain, '再按 H 应恢复画面');
+    await fixture.screenshot({ path: path.join(dir, 'toast-mirror-off.png'), animations: 'disabled' });
+    await hideHint('Mirror off');
+    note('mirror hint faded');
+
+    await focusFixture();
+    await fixture.keyboard.press('KeyB');
+    await showHint('Marked');
+    const markedAt = await time();
+    if (!near(12)(markedAt)) throw new Error(`设标记时进度应仍在 12 秒附近：${markedAt}`);
+    await fixture.screenshot({ path: path.join(dir, 'toast-marked.png'), animations: 'disabled' });
+    await fixture.locator('#media').evaluate(element => { element.currentTime = 40; });
+    await poll(time, near(40), '应先离开标记');
+    await focusFixture();
+    await fixture.keyboard.press('KeyN');
+    await showHint('Back to mark');
+    const jumped = await poll(time, near(markedAt), 'N 应跳回设下的时间');
+    await fixture.screenshot({ path: path.join(dir, 'toast-jump.png'), animations: 'disabled' });
+    await hideHint('Back to mark');
+    note(`jump landed at ${jumped}`);
+
+    await fixture.evaluate(() => {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.setAttribute('aria-label', 'Fixture note');
+      input.style.position = 'fixed';
+      input.style.left = '720px';
+      input.style.top = '420px';
+      document.body.append(input);
+    });
+    const field = fixture.getByRole('textbox', { name: 'Fixture note' });
+    await field.focus();
+    await fixture.keyboard.press('KeyH');
+    await fixture.waitForTimeout(400);
+    if (!plain(await pictureOf(fixture, '#media'))) throw new Error('输入框聚焦时不应翻转');
+    if (await hint('Mirror on').isVisible()) throw new Error('输入框聚焦时不应出现镜像提示');
+    await field.evaluate(element => element.blur());
+    note('typing shows no mirror hint');
+
+    await focusFixture();
+    await fillWindow(true);
+    await fixture.keyboard.press('KeyH');
+    const fullToast = await showHint('Mirror on');
+    if (fullToast.y > 80) throw new Error(`铺满窗口时提示不在顶部：${fullToast.y}`);
+    await poll(() => pictureOf(fixture, '#media'), flipped, '铺满窗口时 H 仍应翻转');
+    await fixture.screenshot({ path: path.join(dir, 'toast-fullscreen.png'), animations: 'disabled' });
+    await fixture.keyboard.press('KeyH');
+    await showHint('Mirror off');
+    await poll(() => pictureOf(fixture, '#media'), plain, '铺满窗口时再按 H 应恢复');
+    await fillWindow(false);
+    await hideHint('Mirror off');
+    const documentFullscreen = await fixture.evaluate(async () => {
+      const root = document.documentElement;
+      if (typeof root.requestFullscreen !== 'function') return false;
+      try {
+        await root.requestFullscreen();
+        return document.fullscreenElement === root;
+      } catch {
+        return false;
+      }
+    });
+    if (documentFullscreen) {
+      await focusFixture();
+      await fixture.keyboard.press('KeyH');
+      await showHint('Mirror on');
+      await fixture.keyboard.press('KeyH');
+      await showHint('Mirror off');
+      await fixture.evaluate(async () => { if (document.fullscreenElement) await document.exitFullscreen(); });
+      await hideHint('Mirror off');
+      note('document fullscreen showed the hint');
+    } else note('document fullscreen unavailable; window-filling player showed the hint');
+
+    popup = await openActionPopup(context, fixture);
+    if (!await popup.evaluate(mirrorClickExpr('Mirror horizontally'))) throw new Error('面板点不到水平镜像');
+    await showHint('Mirror on');
+    await poll(() => pictureOf(fixture, '#media'), flipped, '面板开关应翻转画面');
+    await fixture.screenshot({ path: path.join(dir, 'toast-panel-mirror.png'), animations: 'disabled' });
+    await popup.click('Set mark');
+    await showHint('Marked');
+    await poll(() => popup.evaluate(`(() => {
+      const jump = document.querySelector('button[aria-label="Jump to mark"]');
+      return !!jump && !jump.disabled;
+    })()`), value => value === true, '设标记后面板应能跳到标记');
+    await fixture.locator('#media').evaluate(element => { element.currentTime = 40; });
+    await poll(time, near(40), '面板跳转前应离开标记');
+    await popup.click('Jump to mark');
+    await showHint('Back to mark');
+    await poll(time, near(markedAt), '面板应跳回设下的时间');
+    await hideHint('Back to mark');
+    await popup.click('Clear mark');
+    await fixture.waitForTimeout(700);
+    for (const text of successCopy) {
+      if (await hint(text).isVisible()) throw new Error(`清除标记后不该出现「${text}」`);
+    }
+    const afterClear = await time();
+    if (!near(markedAt)(afterClear)) throw new Error(`清除标记改了进度：${afterClear}`);
+    note('panel hints shown; clear stays quiet');
+    await popup.close();
+    popup = null;
+    if ((await prefsText()) !== '{}') throw new Error(`页内操作写入了 sitePrefs：${await prefsText()}`);
+
+    const blocked = await context.newPage();
+    try {
+      await blocked.goto(`${origin}/unseekable`, { waitUntil: 'domcontentloaded' });
+      await blocked.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+      await blocked.bringToFront();
+      await blocked.mouse.click(12, 12);
+      await blocked.keyboard.press('KeyB');
+      await blocked.getByText(markUnavailable, { exact: true }).waitFor({ state: 'visible', timeout: 8_000 });
+      const stuck = await blocked.locator('#media').evaluate(element => element.currentTime);
+      if (stuck !== 0) throw new Error(`不可 seek 时进度被改成 ${stuck}`);
+      await blocked.screenshot({ path: path.join(dir, 'toast-unseekable.png'), animations: 'disabled' });
+      await blocked.getByText(markUnavailable, { exact: true }).waitFor({ state: 'hidden', timeout: 3_000 });
+      note('unseekable uses the existing explanation');
+    } finally { await blocked.close().catch(() => {}); }
+
+    const audio = await context.newPage();
+    try {
+      await audio.goto(`${origin}/audio`, { waitUntil: 'domcontentloaded' });
+      await audio.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+      await audio.bringToFront();
+      await audio.mouse.click(12, 12);
+      await audio.keyboard.press('KeyH');
+      await audio.getByText(mirrorUnavailable, { exact: true }).waitFor({ state: 'visible', timeout: 8_000 });
+      if ((await pictureOf(audio, '#media')).mirrored) throw new Error('音频不应被镜像');
+      await audio.screenshot({ path: path.join(dir, 'toast-audio.png'), animations: 'disabled' });
+      note('audio uses the existing explanation');
+    } finally { await audio.close().catch(() => {}); }
+
+    const fresh = await context.newPage();
+    try {
+      await fresh.goto(`${origin}/long`, { waitUntil: 'domcontentloaded' });
+      await fresh.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+      await fresh.locator('#media').evaluate(async element => {
+        if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+        element.pause();
+        element.currentTime = 12;
+      });
+      await poll(() => fresh.locator('#media').evaluate(element => element.currentTime), near(12), '新页面应停在 12 秒');
+      await fresh.bringToFront();
+      await fresh.mouse.click(12, 12);
+      await fresh.keyboard.press('KeyN');
+      await fresh.getByText(markMissing, { exact: true }).waitFor({ state: 'visible', timeout: 8_000 });
+      const stayed = await fresh.locator('#media').evaluate(element => element.currentTime);
+      if (!near(12)(stayed)) throw new Error(`没有标记时进度被改成 ${stayed}`);
+      await fresh.screenshot({ path: path.join(dir, 'toast-missing.png'), animations: 'disabled' });
+      await fresh.getByText(markMissing, { exact: true }).waitFor({ state: 'hidden', timeout: 3_000 });
+      note('missing mark uses the existing explanation');
+    } finally { await fresh.close().catch(() => {}); }
+
+    await restoreKeys();
+    if ((await prefsText()) !== '{}') throw new Error(`结束时 sitePrefs 不是空的：${await prefsText()}`);
+    const state = { ok: true, markedAt, jumped, documentFullscreen, sitePrefs: {} };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await popup?.close().catch(() => {});
+    await restoreKeys().catch(() => {});
     await fixture?.close().catch(() => {});
     await settings?.close().catch(() => {});
   }

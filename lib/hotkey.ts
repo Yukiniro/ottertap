@@ -19,7 +19,8 @@ export type HotkeyAction =
   | { type: 'mirror' }
   | { type: 'mark'; action: 'set' | 'jump' };
 
-export type ActionHintKey = 'play' | 'paused' | 'skipBack' | 'skipForward' | 'mute' | 'unmute' | 'shortcutFrameBack' | 'shortcutFrameForward' | 'frameStepUnavailable';
+export type MirrorMarkHintKey = 'mirrorOnHint' | 'mirrorOffHint' | 'markSetHint' | 'markJumpHint';
+export type ActionHintKey = 'play' | 'paused' | 'skipBack' | 'skipForward' | 'mute' | 'unmute' | 'shortcutFrameBack' | 'shortcutFrameForward' | 'frameStepUnavailable' | MirrorMarkHintKey;
 
 export const volumeGestureEvent = 'ottertap-volume-gesture';
 export const rateHintEvent = 'ottertap-rate';
@@ -183,9 +184,17 @@ export function commandForHotkey(action: HotkeyAction, media: MediaState, rememb
   return { type: 'volume', value: steppedVolume(percent, delta, max) / 100 };
 }
 
+/** Success copy for a mirror toggle or a mark set/jump. Clear has no success hint. */
+export function mirrorMarkHintKey(command: MediaCommand): MirrorMarkHintKey | '' {
+  if (command.type === 'mirror') return command.value ? 'mirrorOnHint' : 'mirrorOffHint';
+  if (command.type === 'mark' && command.action === 'set') return 'markSetHint';
+  if (command.type === 'mark' && command.action === 'jump') return 'markJumpHint';
+  return '';
+}
+
 export function actionHintText(key: string, seconds?: number) {
   if (key === 'skipBack' || key === 'skipForward') return i18n.t(key, { seconds: hintSkipSeconds(seconds) });
-  if (key === 'play' || key === 'paused' || key === 'mute' || key === 'unmute' || key === 'shortcutFrameBack' || key === 'shortcutFrameForward' || key === 'frameStepUnavailable' || isPipFailureKey(key)) return i18n.t(key);
+  if (key === 'play' || key === 'paused' || key === 'mute' || key === 'unmute' || key === 'shortcutFrameBack' || key === 'shortcutFrameForward' || key === 'frameStepUnavailable' || key === 'mirrorOnHint' || key === 'mirrorOffHint' || key === 'markSetHint' || key === 'markJumpHint' || key === 'mirrorUnavailableAudio' || key === 'markUnavailable' || key === 'markMissing' || key === 'cannotSeek' || isPipFailureKey(key)) return i18n.t(key);
   return '';
 }
 
@@ -194,6 +203,10 @@ export function actionHintKey(action: HotkeyAction, media: MediaState): ActionHi
   if (action.type === 'skip') return action.delta < 0 ? 'skipBack' : 'skipForward';
   if (action.type === 'frame') return action.direction < 0 ? 'shortcutFrameBack' : 'shortcutFrameForward';
   if (action.type === 'mute') return media.muted ? 'unmute' : 'mute';
+  if (action.type === 'mirror' || action.type === 'mark') {
+    const command = commandForHotkey(action, media);
+    return command ? mirrorMarkHintKey(command) : '';
+  }
   return '';
 }
 
