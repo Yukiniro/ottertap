@@ -6,6 +6,7 @@ import { clampRate, maxRate, minRate, noteRecallRate, readSettledRate, recallabl
 import type { ChannelMode, MediaCommand, MediaState } from './types';
 import { adjacentFrameTime, frameStepSeconds, stopAllPresentedFrames, stopPresentedFrames, watchPresentedFrames } from './frame';
 import { isHorizontallyMirrored, setHorizontalMirror } from './mirror';
+import { clearSelectionRings, showSelectionRing } from './selection-ring';
 import { formatTime } from './utils';
 
 export const mediaPresenceEvent = 'ottertap-media';
@@ -302,8 +303,6 @@ export function createMediaController(document: Document, onChange?: () => void,
   const view = document.defaultView!;
   installAssignedRateHook(view);
   const amplifier = createAmplifier(view);
-  const flashed = new WeakMap<HTMLMediaElement, { token: number; outline: string; offset: string }>();
-  let flashToken = 0;
   const onPip = () => onChange?.();
   document.addEventListener('enterpictureinpicture', onPip, true);
   document.addEventListener('leavepictureinpicture', onPip, true);
@@ -563,28 +562,19 @@ export function createMediaController(document: Document, onChange?: () => void,
         return settled;
       }
     },
+    /** Brief ring on a video. Audio has no picture, so it only clears any ring in this frame. */
     flash(id: string) {
       this.snapshot();
       const element = elements.find(media => ids.get(media) === id && media.isConnected);
-      const view = element?.ownerDocument.defaultView;
-      if (!element || !view) return;
-      let state = flashed.get(element);
-      if (!state) {
-        state = { token: 0, outline: element.style.outline, offset: element.style.outlineOffset };
-        flashed.set(element, state);
+      if (!element) return '';
+      if (element.localName !== 'video') {
+        clearSelectionRings();
+        return 'audio' as const;
       }
-      const token = ++flashToken;
-      state.token = token;
-      element.style.outline = '3px solid #e4572e';
-      element.style.outlineOffset = '4px';
-      const origin = state;
-      view.setTimeout(() => {
-        if (flashed.get(element)?.token !== token) return;
-        element.style.outline = origin.outline;
-        element.style.outlineOffset = origin.offset;
-        flashed.delete(element);
-      }, 1200);
+      showSelectionRing(element);
+      return 'video' as const;
     },
+    clearSelectionRing() { clearSelectionRings(); },
     destroy() {
       document.removeEventListener('enterpictureinpicture', onPip, true);
       document.removeEventListener('leavepictureinpicture', onPip, true);
@@ -593,6 +583,7 @@ export function createMediaController(document: Document, onChange?: () => void,
       for (const element of [...slots.keys()]) release(element);
       for (const element of [...rateWatchers]) unwatchRate(element);
       for (const element of [...playWatchers]) unwatchPlay(element);
+      clearSelectionRings();
       stopAllPresentedFrames();
       amplifier.dispose();
     }

@@ -94,6 +94,7 @@ export default defineContentScript({
       if (message.type === 'selected') {
         selectionEpoch += 1;
         lockedLocalId = typeof message.id === 'string' && /^\d+$/.test(message.id) ? message.id : '';
+        if (!lockedLocalId) controller.clearSelectionRing();
         return;
       }
       if (!['snapshot', 'command', 'highlight', 'reveal', 'rateHint', 'actionHint', 'rateLockHint', 'hold', 'holdHint'].includes(message.type)) return;
@@ -134,7 +135,10 @@ export default defineContentScript({
         if (!enabled) return { media: [], recallRate: null, typing };
         return { media: controller.snapshot(), recallRate: controller.recallRate(), typing };
       }
-      if (message.type === 'highlight') { if (enabled && typeof message.id === 'string') controller.flash(message.id); return { ok: true }; }
+      if (message.type === 'highlight') {
+        const kind = enabled && typeof message.id === 'string' ? controller.flash(message.id) : '';
+        return { ok: true, kind };
+      }
       if (message.type === 'command') {
         try {
           if (!enabled || !isMediaCommand(message.command) || typeof message.id !== 'string') throw new Error(i18n.t('pageNotControllable'));
