@@ -8,6 +8,7 @@ import { actionHintKey, applySkipStep, applyVolumeStep, directedWheelNotches, is
 import { nextRate } from '../lib/rate';
 import { steppedVolume, volumeStepForWheel } from '../lib/volume';
 import { volumeBadgeColor, volumeBadgeFromReports, volumeBadgeTtlMs } from '../lib/volume-badge';
+import { shouldFollowPlaying } from '../lib/follow-playing';
 import { keptSelection, lockedMedia } from '../lib/media';
 import { soundingTabs } from '../lib/tabs';
 import type { MediaCommand, MediaState, Settings, SitePref } from '../lib/types';
@@ -56,6 +57,7 @@ export default defineBackground(() => {
     return run;
   };
   const selectedIds = new Map<number, string>();
+  const manualPicks = new Map<number, number>();
   const gestures = new Map<number, { id: string; percent: number; max: number; at: number }>();
   const commandTails = new Map<number, Promise<void>>();
   const enqueueCommand = (tabId: number, task: () => Promise<unknown>) => {
@@ -142,7 +144,7 @@ export default defineBackground(() => {
   }).catch(() => undefined) : Promise.resolve();
   const sessionReady = Promise.all([framesReady, holdsReady]);
   const forget = (tabId: number) => {
-    frames.delete(tabId); mediaKnown.delete(tabId); selectedIds.delete(tabId); gestures.delete(tabId); sitePrefSessions.delete(tabId);
+    frames.delete(tabId); mediaKnown.delete(tabId); selectedIds.delete(tabId); manualPicks.delete(tabId); gestures.delete(tabId); sitePrefSessions.delete(tabId);
     const held = holdTargets.delete(tabId);
     volumes.delete(tabId); clearVolumeTimer(tabId); paintBadge(tabId, Date.now()); persistFrames();
     return held ? persistHolds() : undefined;
@@ -428,7 +430,7 @@ export default defineBackground(() => {
       if (sender.tab?.id !== undefined) void browser.tabs.sendMessage(sender.tab.id, { namespace: 'ottertap', type: 'altUsed' }).catch(() => {});
       return;
     }
-    if (!['settings', 'options', 'context', 'register', 'read', 'command', 'select', 'highlight', 'hotkey', 'holdRate', 'soundingTabs', 'focusTab', 'muteTab', 'rateLock', 'openPopup'].includes(message.type)) return;
+    if (!['settings', 'options', 'context', 'register', 'read', 'command', 'select', 'highlight', 'hotkey', 'holdRate', 'soundingTabs', 'focusTab', 'muteTab', 'rateLock', 'openPopup', 'playing'].includes(message.type)) return;
     const tabId = sender.tab?.id ?? message.tabId;
     async function handle() {
       if (message.type === 'settings') {
@@ -490,6 +492,15 @@ export default defineBackground(() => {
           if (added) persistFrames();
           return;
         }
+        if (message.type === 'playing') {
+          if (!sender.tab || !enabled) return { ok: true };
+          const local = typeof message.id === 'string' && /^\d+$/.test(message.id) ? message.id : '';
+          if (!local) return { ok: true };
+          const playingId = `${sender.frameId ?? 0}:${local}`;
+          if (!shouldFollowPlaying({ enabled: settings.followPlaying, selectedId: selectedIds.get(tabId) ?? '', playingId, manualAt: manualPicks.get(tabId) ?? null, now: Date.now() })) return { ok: true };
+          rememberSelection(tabId, playingId);
+          return { ok: true };
+        }
         // Only extension pages and this tab's content scripts can request controls.
         if (!sender.tab && !sender.url?.startsWith(browser.runtime.getURL('/'))) return;
         const mediaId = typeof message.id === 'string' && /^\d+:\d+$/.test(message.id) ? message.id : '';
@@ -508,6 +519,7 @@ export default defineBackground(() => {
         if (!enabled) throw new Error(i18n.t('siteDisabled'));
         if (message.type === 'select') {
           if (!mediaId) throw new Error(i18n.t('invalidCommand'));
+          if (message.manual === true) manualPicks.set(tabId, Date.now());
           if (gestures.get(tabId)?.id !== mediaId) gestures.delete(tabId);
           rememberSelection(tabId, mediaId);
           await applySitePref(tabId, host, mediaId, settings.sitePrefs, settings.defaultRate);

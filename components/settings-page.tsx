@@ -353,11 +353,12 @@ function Row({ title, description, titleId, children }: { title: string; descrip
 }
 
 export function SettingsPage({ back }: { back?: () => void }) {
-  const { themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, floatingHiddenSitesAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, fullscreenWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, coarseStepAtom, fineWheelAtom, wheelDirectionAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, followPlayingAtom, floatingHiddenSitesAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, fullscreenWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, coarseStepAtom, fineWheelAtom, wheelDirectionAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const theme = useAtomValue(themeAtom);
   const floating = useAtomValue(floatingAtom);
   const floatingNote = useAtomValue(floatingNoteAtom);
   const floatingWhilePlaying = useAtomValue(floatingWhilePlayingAtom);
+  const followPlaying = useAtomValue(followPlayingAtom);
   const floatingHiddenSites = useAtomValue(floatingHiddenSitesAtom);
   const defaultRate = useAtomValue(defaultRateAtom);
   const lockRate = useAtomValue(lockRateAtom);
@@ -529,6 +530,9 @@ export function SettingsPage({ back }: { back?: () => void }) {
         <div className="px-5 py-5 sm:px-6">
           <h2 id="playback-heading" className="text-base font-semibold">{i18n.t('playback')}</h2>
           <p className="mt-1 max-w-xl text-sm leading-5 text-muted-foreground">{i18n.t('lockRateDescription')}</p>
+          <div className="mt-4">
+            <SwitchRow id="settings-follow-playing" label={i18n.t('followPlaying')} description={i18n.t('followPlayingDescription')} checked={followPlaying} disabled={disabled} onChange={checked => void save({ followPlaying: checked })} />
+          </div>
           <Field orientation="horizontal" className="mt-4 justify-between gap-4 rounded-lg bg-secondary/60 px-3 py-3">
             <FieldLabel htmlFor="settings-lock-rate" className="text-sm font-normal">{i18n.t('lockRate')}</FieldLabel>
             <Switch id="settings-lock-rate" aria-label={i18n.t('lockRate')} checked={lockRate} disabled={disabled} onCheckedChange={checked => void save({ lockRate: checked })} />

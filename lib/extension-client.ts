@@ -13,7 +13,7 @@ export function createExtensionClient(tabId?: number): MediaClient {
   return {
     read: () => request(tabId, { type: 'read' }),
     async command(media, command) { await request(tabId, { type: 'command', id: media.id, command }); },
-    async select(id) { await request(tabId, { type: 'select', id }); },
+    async select(id, manual) { await request(tabId, manual ? { type: 'select', id, manual: true } : { type: 'select', id }); },
     async highlight(media) { await request(tabId, { type: 'highlight', id: media.id }); }
   };
 }
