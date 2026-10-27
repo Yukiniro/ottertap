@@ -76,8 +76,6 @@ test('展开音量药丸后，至少两条媒体才有上一条和下一条，�
     assert.ok(playback?.querySelector('button[aria-label="上一条媒体"]'));
     assert.ok(playback?.querySelector('button[aria-label="下一条媒体"]'));
     assert.equal(playback?.querySelector('button[aria-label="打开面板"]'), null, '上一条和下一条不放进打开面板那一栏');
-    assert.equal(previous.textContent?.includes('上一条'), true);
-    assert.equal(next.textContent?.includes('下一条'), true);
     assert.equal(host.querySelector('[data-slot="popover-trigger"]')?.getAttribute('title')?.startsWith('预览'), true);
 
     const click = async (element: HTMLButtonElement) => { await act(async () => { element.click(); }); };

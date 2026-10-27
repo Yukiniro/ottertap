@@ -264,8 +264,8 @@ export function FloatingController({ client, openPanel, hideOnSite }: { client: 
             </div>
             {!canSeek && <p id="floating-skip-hint" className="px-1 pt-1 text-center text-[11px] leading-4 text-muted-foreground">{i18n.t('skipUnavailable')}</p>}
             {page.media.length > 1 && <div className="mt-1 flex items-center gap-0.5">
-              <Button type="button" variant="ghost" size="sm" className="h-8 min-w-0 flex-1 gap-0.5 px-1 text-xs text-muted-foreground" aria-label={i18n.t('mediaPrev')} title={i18n.t('mediaPrev')} onClick={() => stepMedia(-1)}><SkipBack /><span className="truncate">{i18n.t('floatPrev')}</span></Button>
-              <Button type="button" variant="ghost" size="sm" className="h-8 min-w-0 flex-1 gap-0.5 px-1 text-xs text-muted-foreground" aria-label={i18n.t('mediaNext')} title={i18n.t('mediaNext')} onClick={() => stepMedia(1)}><span className="truncate">{i18n.t('floatNext')}</span><SkipForward /></Button>
+              <Button type="button" variant="ghost" size="sm" className="h-8 min-w-0 flex-1 text-muted-foreground" aria-label={i18n.t('mediaPrev')} title={i18n.t('mediaPrev')} onClick={() => stepMedia(-1)}><SkipBack /></Button>
+              <Button type="button" variant="ghost" size="sm" className="h-8 min-w-0 flex-1 text-muted-foreground" aria-label={i18n.t('mediaNext')} title={i18n.t('mediaNext')} onClick={() => stepMedia(1)}><SkipForward /></Button>
             </div>}
           </div>
           <div role="group" aria-labelledby="floating-speed-label" className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-hidden p-2">
