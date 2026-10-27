@@ -205,20 +205,18 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
             <Button type="button" variant="ghost" size="icon" className="text-muted-foreground aria-pressed:bg-accent aria-pressed:text-primary" aria-pressed={selected.pip} title={selected.pip ? i18n.t('exitPictureInPicture') : i18n.t('pictureInPicture')} aria-label={selected.pip ? i18n.t('exitPictureInPicture') : i18n.t('pictureInPicture')} aria-describedby={hint ? 'pip-hint' : undefined} disabled={!!hint} onClick={() => void command({ type: 'pip' })}><PictureInPicture2 /></Button>
           </div>
         </div>
-        <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground tabular-nums">
+        <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground tabular-nums">
           <span className="shrink-0">{formatTime(seekDraft ?? selected.currentTime)}</span>
           <div className="relative min-w-0 flex-1">
             <Slider aria-label={i18n.t('seek')} className="py-2" min={seekMin} max={Math.max(seekMin + 1, seekMax)} step={1} value={[seekDraft ?? selected.currentTime]} disabled={!canSeek} onValueChange={value => setSeekDraft(first(value) ?? null)} onValueCommitted={value => { void command({ type: 'seek', value: first(value) ?? seekMin }).finally(() => setSeekDraft(null)); }} />
             {progressMarkLeft != null && <span data-progress-mark="" aria-hidden="true" title={i18n.t('markAt', { time: formatTime(progressMark ?? 0) })} className="pointer-events-none absolute top-0.5 z-10 h-2 w-1 -translate-x-1/2 rounded-full bg-primary" style={{ left: progressMarkLeft }} />}
           </div>
           <span className="shrink-0">{selected.duration === null ? selected.live ? i18n.t('live') : '--:--' : formatTime(selected.duration)}</span>
+          <Button type="button" variant="ghost" size="icon-xs" className="text-muted-foreground data-set:bg-accent data-set:text-primary" aria-label={i18n.t('setMark')} title={canMark ? i18n.t('setMark') : i18n.t('markUnavailable')} aria-describedby="progress-mark-status" disabled={!canMark} data-set={progressMark != null ? '' : undefined} onClick={() => void command({ type: 'mark', action: 'set' })}><Bookmark /></Button>
+          <Button type="button" variant="ghost" size="icon-xs" className="text-muted-foreground" aria-label={i18n.t('jumpToMark')} title={canMark ? i18n.t('jumpToMark') : i18n.t('markUnavailable')} aria-describedby="progress-mark-status" disabled={!canMark || progressMark == null} onClick={() => void command({ type: 'mark', action: 'jump' })}><CornerDownLeft /></Button>
+          <Button type="button" variant="ghost" size="icon-xs" className="text-muted-foreground" aria-label={i18n.t('clearMark')} title={canMark ? i18n.t('clearMark') : i18n.t('markUnavailable')} aria-describedby="progress-mark-status" disabled={!canMark || progressMark == null} onClick={() => void command({ type: 'mark', action: 'clear' })}><BookmarkX /></Button>
         </div>
-        <div className="mt-1 flex items-center gap-1">
-          <Button type="button" variant="ghost" size="icon-sm" className="text-muted-foreground" aria-label={i18n.t('setMark')} title={canMark ? i18n.t('setMark') : i18n.t('markUnavailable')} aria-describedby={canMark ? undefined : 'progress-mark-status'} disabled={!canMark} onClick={() => void command({ type: 'mark', action: 'set' })}><Bookmark /></Button>
-          <Button type="button" variant="ghost" size="icon-sm" className="text-muted-foreground" aria-label={i18n.t('jumpToMark')} title={canMark ? i18n.t('jumpToMark') : i18n.t('markUnavailable')} aria-describedby={canMark ? undefined : 'progress-mark-status'} disabled={!canMark || progressMark == null} onClick={() => void command({ type: 'mark', action: 'jump' })}><CornerDownLeft /></Button>
-          <Button type="button" variant="ghost" size="icon-sm" className="text-muted-foreground" aria-label={i18n.t('clearMark')} title={canMark ? i18n.t('clearMark') : i18n.t('markUnavailable')} aria-describedby={canMark ? undefined : 'progress-mark-status'} disabled={!canMark || progressMark == null} onClick={() => void command({ type: 'mark', action: 'clear' })}><BookmarkX /></Button>
-          <p id="progress-mark-status" aria-live="polite" className="min-w-0 flex-1 text-xs leading-4 text-muted-foreground">{!canMark ? i18n.t('markUnavailable') : progressMark == null ? '' : i18n.t('markAt', { time: formatTime(progressMark) })}</p>
-        </div>
+        <p id="progress-mark-status" aria-live="polite" className={canMark ? 'sr-only' : 'mt-1 text-xs text-muted-foreground'}>{!canMark ? i18n.t('markUnavailable') : progressMark == null ? '' : i18n.t('markAt', { time: formatTime(progressMark) })}</p>
         <p id="frame-step-hint" className={canStep ? 'sr-only' : 'mt-1 text-xs text-muted-foreground'}>{canStep ? i18n.t('frameStepHint') : i18n.t('frameStepUnavailable')}</p>
         {hint ? <p id="pip-hint" className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
         {selected.kind !== 'video' ? <p id="mirror-hint" className="mt-1 text-xs text-muted-foreground">{i18n.t('mirrorUnavailableAudio')}</p> : null}
