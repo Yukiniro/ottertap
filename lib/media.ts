@@ -288,7 +288,7 @@ export function mirrorMarkFailureKey(message: string): MirrorMarkFailureKey | ''
 
 interface RateSlot { state: RateLockState; timer: number; listening: boolean; onEvent: () => void }
 
-export function createMediaController(document: Document, onChange?: () => void, onRateLockGiveUp?: () => void) {
+export function createMediaController(document: Document, onChange?: () => void, onRateLockGiveUp?: () => void, onPlaying?: (localId: string) => void) {
   let nextId = 0;
   const ids = new WeakMap<HTMLMediaElement, string>();
   let elements: HTMLMediaElement[] = [];
@@ -428,19 +428,35 @@ export function createMediaController(document: Document, onChange?: () => void,
     slot.state = noteDesiredRate(slot.state, rate);
     if (lockOn) listen(element);
   };
+  const idOf = (element: HTMLMediaElement) => {
+    if (!ids.has(element)) ids.set(element, String(++nextId));
+    return ids.get(element)!;
+  };
+  const playWatchers = new Set<HTMLMediaElement>();
+  const onElementPlay = (event: Event) => {
+    const element = event.currentTarget as HTMLMediaElement | null;
+    if (!element?.isConnected) return;
+    onPlaying?.(idOf(element));
+  };
+  const unwatchPlay = (element: HTMLMediaElement) => {
+    if (!playWatchers.delete(element)) return;
+    element.removeEventListener('play', onElementPlay);
+  };
+  const watchPlay = (element: HTMLMediaElement) => {
+    if (!onPlaying || playWatchers.has(element)) return;
+    playWatchers.add(element);
+    element.addEventListener('play', onElementPlay);
+  };
   const refresh = () => {
     // shortcut: late Shadow Roots need an outer DOM mutation; add attachShadow tracking if target sites require it.
     if (!dirty) return;
     elements = discoverMedia(document, observe);
     dirty = false;
-    for (const element of elements) watchRate(element);
+    for (const element of elements) { watchRate(element); watchPlay(element); }
     for (const [root, observer] of observers) if ('host' in root && !root.host.isConnected) { observer.disconnect(); observers.delete(root); }
     for (const element of slots.keys()) if (!element.isConnected) release(element);
     for (const element of [...rateWatchers]) if (!element.isConnected) unwatchRate(element);
-  };
-  const idOf = (element: HTMLMediaElement) => {
-    if (!ids.has(element)) ids.set(element, String(++nextId));
-    return ids.get(element)!;
+    for (const element of [...playWatchers]) if (!element.isConnected) unwatchPlay(element);
   };
   return {
     snapshot() {
@@ -576,6 +592,7 @@ export function createMediaController(document: Document, onChange?: () => void,
       observers.clear();
       for (const element of [...slots.keys()]) release(element);
       for (const element of [...rateWatchers]) unwatchRate(element);
+      for (const element of [...playWatchers]) unwatchPlay(element);
       stopAllPresentedFrames();
       amplifier.dispose();
     }

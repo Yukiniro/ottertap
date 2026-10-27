@@ -69,6 +69,9 @@ export default defineContentScript({
     };
     const controller = createMediaController(document, reportVolume, () => {
       void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'rateLock' }).catch(() => {});
+    }, id => {
+      if (!enabled) return;
+      void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'playing', id }).catch(() => {});
     });
     const applyWatched = () => {
       if (!pageUrl || !watched) return;

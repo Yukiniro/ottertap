@@ -34,6 +34,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-other-tabs
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-commands
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-feedback
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-follow-playing
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -53,7 +54,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -3221,7 +3222,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -5402,6 +5403,203 @@ async function driveMirrorMarkFeedback(context, dir, note) {
     await popup?.close().catch(() => {});
     await restoreKeys().catch(() => {});
     await fixture?.close().catch(() => {});
+    await settings?.close().catch(() => {});
+  }
+}
+
+async function driveAutoFollowPlaying(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const names = { '#preview': 'Feed preview', '#media': 'Main player' };
+  const opposite = selector => (selector === '#preview' ? '#media' : '#preview');
+  const rateOf = (page, selector) => page.locator(selector).evaluate(element => element.playbackRate);
+  const pausedOf = (page, selector) => page.locator(selector).evaluate(element => element.paused);
+  const near = expected => value => Math.abs(value - expected) < 0.02;
+  const ready = async (page, selector) => page.locator(selector).evaluate(async element => {
+    if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+  });
+  const start = async (page, selector) => {
+    await page.locator(selector).evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+      element.pause();
+      try { await element.play(); }
+      catch { element.muted = true; await element.play(); element.muted = false; }
+    });
+    await poll(() => pausedOf(page, selector), value => value === false, `${selector} 应开始播放`);
+  };
+  const setRate = async (page, selector, rate) => {
+    await page.locator(selector).evaluate((element, next) => { element.playbackRate = next; }, rate);
+    await poll(() => rateOf(page, selector), near(rate), `${selector} 倍速应是 ${rate}`);
+  };
+  const nudge = async page => {
+    await page.bringToFront();
+    await page.mouse.click(8, 8);
+    await page.keyboard.press('Alt+Period');
+  };
+  const choose = async (popup, name) => {
+    if (!await popup.evaluate(`(() => { const trigger = document.getElementById('popup-media'); if (!trigger) return false; trigger.click(); return true; })()`)) throw new Error('没有媒体列表');
+    const picked = await popup.evaluate(`(() => {
+      const item = [...document.querySelectorAll('[role="menuitemradio"]')].find(node => (node.textContent || '').includes(${JSON.stringify(name)}));
+      if (!item) return false;
+      item.click();
+      return true;
+    })()`);
+    if (!picked) throw new Error(`没有点到 ${name}`);
+  };
+  let settings;
+  let feed;
+  let single;
+  let popup;
+  try {
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#playback`, { waitUntil: 'domcontentloaded' });
+    const toggle = settings.getByRole('switch', { name: 'Follow the media that starts playing' });
+    await toggle.waitFor({ state: 'visible', timeout: 15_000 });
+    if (await toggle.getAttribute('aria-checked') !== 'true') throw new Error('自动跟随默认应开启');
+    await settings.getByText('stays selected for a few seconds').waitFor({ state: 'visible' });
+    await settings.getByText('one media').waitFor({ state: 'visible' });
+    await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-on.png'), animations: 'disabled' });
+    note('setting on by default');
+
+    feed = await context.newPage();
+    await feed.goto(`${origin}/feed`, { waitUntil: 'domcontentloaded' });
+    await feed.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await ready(feed, '#preview');
+    await ready(feed, '#media');
+    await feed.bringToFront();
+    popup = await openActionPopup(context, feed);
+    const initial = await poll(() => popup.view(), value => value.heading === 'Feed preview' || value.heading === 'Main player', '面板应先选中 feed 里的一条');
+    const from = initial.heading === 'Feed preview' ? '#preview' : '#media';
+    const followed = opposite(from);
+    await start(feed, followed);
+    const switched = await poll(() => popup.view(), value => value.heading === names[followed], '点播另一条后面板应改到它');
+    await popup.screenshot(path.join(dir, 'popup-followed.png'));
+    note(`followed ${switched.heading} from ${initial.heading}`);
+    await popup.close();
+    popup = null;
+    const entry = feed.getByRole('button', { name: /volume pill/i });
+    await poll(() => entry.getAttribute('title'), value => (value ?? '').includes(names[followed]), '浮动入口应改到新目标');
+    await setRate(feed, '#preview', 1);
+    await setRate(feed, '#media', 1);
+    await nudge(feed);
+    const followedRate = await poll(() => rateOf(feed, followed), near(1.25), '页内 Alt+. 应作用在新目标');
+    const otherRate = await rateOf(feed, from);
+    if (Math.abs(otherRate - 1) > 0.02) throw new Error(`页内键改到了另一条：${from}=${otherRate}`);
+    note(`hotkey ${names[followed]}=${followedRate} ${names[from]}=${otherRate}`);
+    const dialog = () => feed.getByRole('dialog', { name: 'Volume pill' });
+    const playButton = () => dialog().getByRole('button', { name: 'Play', exact: true }).or(dialog().getByRole('button', { name: 'Pause', exact: true }));
+    if (!(await playButton().isVisible())) {
+      const box = await entry.boundingBox();
+      if (!box) throw new Error('浮动入口没有位置');
+      await feed.mouse.move(box.x + Math.min(8, box.width / 4), box.y + box.height / 2);
+      await entry.click();
+    }
+    await dialog().getByRole('button', { name: 'Pause', exact: true }).waitFor({ state: 'visible', timeout: 5_000 });
+    await dialog().getByRole('button', { name: 'Pause', exact: true }).click();
+    await poll(() => pausedOf(feed, followed), value => value === true, '药丸暂停应停住新目标');
+    if (await pausedOf(feed, from) !== true) throw new Error('药丸暂停停到了另一条');
+    await dialog().screenshot({ path: path.join(dir, 'pill-followed.png'), animations: 'disabled' });
+    note('pill paused the followed media');
+
+    await settings.bringToFront();
+    await toggle.click();
+    await poll(() => toggle.getAttribute('aria-checked'), value => value === 'false', '应能关掉自动跟随');
+    await poll(stored, value => value.followPlaying === false && value.floating !== false && value.hoverWheel !== false, '存储里应关掉 followPlaying，且不改浮动和悬停滚轮');
+    await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-off.png'), animations: 'disabled' });
+    note('setting off');
+    await setRate(feed, followed, 1);
+    await setRate(feed, from, 1);
+    await start(feed, from);
+    await feed.waitForTimeout(1000);
+    await feed.bringToFront();
+    popup = await openActionPopup(context, feed);
+    const heldOff = await popup.view();
+    if (heldOff.heading !== names[followed]) throw new Error(`关闭后仍自动切了：${heldOff.heading}`);
+    await popup.close();
+    popup = null;
+    await nudge(feed);
+    const stayed = await poll(() => rateOf(feed, followed), near(1.25), '关闭后页内键应留在原来那一条');
+    const ignored = await rateOf(feed, from);
+    if (Math.abs(ignored - 1) > 0.02) throw new Error(`关闭后页内键跟到了新播放：${names[from]}=${ignored}`);
+    note(`off held ${names[followed]}=${stayed}`);
+
+    await settings.bringToFront();
+    await toggle.click();
+    await poll(() => toggle.getAttribute('aria-checked'), value => value === 'true', '应能重新打开自动跟随');
+    await poll(stored, value => value.followPlaying === true, '存储里应重新打开 followPlaying');
+    await feed.bringToFront();
+    popup = await openActionPopup(context, feed);
+    await choose(popup, names[from]);
+    await poll(() => popup.view(), value => value.heading === names[from], '手动点选应改到那一条');
+    const pickedAt = Date.now();
+    await start(feed, followed);
+    await feed.waitForTimeout(800);
+    const during = await popup.view();
+    if (during.heading !== names[from]) throw new Error(`刚点选就被抢走了：${during.heading}`);
+    await popup.screenshot(path.join(dir, 'popup-held.png'));
+    await popup.close();
+    popup = null;
+    await setRate(feed, from, 1);
+    await setRate(feed, followed, 1);
+    await nudge(feed);
+    const manualRate = await poll(() => rateOf(feed, from), near(1.25), '让路时页内键应作用在刚点选的那一条');
+    const blockedRate = await rateOf(feed, followed);
+    if (Math.abs(blockedRate - 1) > 0.02) throw new Error(`让路时页内键跟到了正在播放的另一条：${blockedRate}`);
+    note(`grace held ${names[from]}=${manualRate}`);
+    const remain = 2700 - (Date.now() - pickedAt);
+    if (remain > 0) await feed.waitForTimeout(remain);
+    await start(feed, followed);
+    await feed.bringToFront();
+    popup = await openActionPopup(context, feed);
+    const afterGrace = await poll(() => popup.view(), value => value.heading === names[followed], '让路窗口过后，再次播放应跟上');
+    await popup.close();
+    popup = null;
+    note(`after grace ${afterGrace.heading}`);
+
+    single = await context.newPage();
+    await single.goto(`${origin}/video`, { waitUntil: 'domcontentloaded' });
+    await single.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await ready(single, '#media');
+    await setRate(single, '#media', 1);
+    await start(single, '#media');
+    await single.waitForTimeout(800);
+    await single.bringToFront();
+    popup = await openActionPopup(context, single);
+    const alone = await poll(() => popup.view(), value => value.heading === 'Fixture video', '单媒体页播放后面板仍是这一条');
+    await popup.screenshot(path.join(dir, 'popup-single.png'));
+    await popup.close();
+    popup = null;
+    await nudge(single);
+    const singleRate = await poll(() => rateOf(single, '#media'), near(1.25), '单媒体页的页内键应作用在这一条');
+    popup = await openActionPopup(context, single);
+    await popup.click('Pause');
+    await poll(() => pausedOf(single, '#media'), value => value === true, '单媒体页面板暂停应停住这一条');
+    if ((await popup.view()).heading !== 'Fixture video') throw new Error('暂停后单媒体页换了标题');
+    await popup.close();
+    popup = null;
+    const end = await stored();
+    if (end.followPlaying !== true) throw new Error('结束时自动跟随应仍是开');
+    note(`single ${alone.heading} rate=${singleRate}`);
+
+    const state = {
+      ok: true,
+      from: names[from],
+      followed: names[followed],
+      heldWhileOff: names[followed],
+      heldDuringGrace: names[from],
+      followedAfterGrace: names[followed],
+      single: 'Fixture video',
+      followPlaying: true,
+    };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await popup?.close().catch(() => {});
+    await single?.close().catch(() => {});
+    await feed?.close().catch(() => {});
     await settings?.close().catch(() => {});
   }
 }

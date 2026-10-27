@@ -49,7 +49,7 @@ export function useMedia(client: MediaClient, options?: { pauseWhenEmpty?: boole
   useEffect(() => {
     if (!picked && !page.selectedId && selectedId) void client.select(selectedId);
   }, [client, picked, selectedId, page.selectedId]);
-  const select = (id: string) => { setPicked(id); void client.select(id).finally(() => { void refresh(); }); };
+  const select = (id: string) => { setPicked(id); void client.select(id, true).finally(() => { void refresh(); }); };
   const command = async (value: MediaCommand) => {
     if (!selected) return false;
     try { await client.command(selected, value); setError(''); await refresh(); return true; }

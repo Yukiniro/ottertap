@@ -33,8 +33,12 @@ export type WheelDirection = (typeof wheelDirections)[number];
  * `fullscreenWheel` limits the bare hover wheel to fullscreen. Missing or unusable values stay off, so today's hover wheel remains.
  * Alt+wheel ignores it. On includes the Fullscreen API, browser fullscreen, and a web fullscreen that can be recognized reliably.
  */
-export interface Settings { theme: Theme; floating: boolean; floatingPosition: FloatingPosition; floatingNote: FloatingNote; floatingWhilePlaying: boolean; floatingHiddenSites: string[]; siteMode: SiteMode; sites: string[]; sitePrefs: Record<string, SitePref>; ratePresets: number[]; defaultRate: number | null; lockRate: boolean; holdBoost: boolean; holdBoostRate: number; holdSkip: boolean; hoverWheel: boolean; fullscreenWheel: boolean; singleKey: boolean; skipSeconds: SkipSeconds; skipWithRate: boolean; volumeStep: VolumeStep; coarseStep: VolumeStep; fineWheel: boolean; wheelDirection: WheelDirection; rateStep: RateStep; keybinds: Keybinds }
-export const defaultSettings: Settings = { theme: 'system', floating: true, floatingPosition: { side: 'right', y: .8 }, floatingNote: 'volume', floatingWhilePlaying: false, floatingHiddenSites: [], siteMode: 'all', sites: [], sitePrefs: {}, ratePresets: [...defaultRatePresets], defaultRate: null, lockRate: false, holdBoost: false, holdBoostRate: 2, holdSkip: false, hoverWheel: true, fullscreenWheel: false, singleKey: false, skipSeconds: 10, skipWithRate: false, volumeStep: 10, coarseStep: 20, fineWheel: true, wheelDirection: 'up', rateStep: defaultRateStep, keybinds: { ...defaultKeybinds } };
+/**
+ * `followPlaying` switches the selection when a different media on the page starts playing.
+ * Missing values stay on. A manual pick from the panel keeps that media for a few seconds.
+ */
+export interface Settings { theme: Theme; floating: boolean; floatingPosition: FloatingPosition; floatingNote: FloatingNote; floatingWhilePlaying: boolean; followPlaying: boolean; floatingHiddenSites: string[]; siteMode: SiteMode; sites: string[]; sitePrefs: Record<string, SitePref>; ratePresets: number[]; defaultRate: number | null; lockRate: boolean; holdBoost: boolean; holdBoostRate: number; holdSkip: boolean; hoverWheel: boolean; fullscreenWheel: boolean; singleKey: boolean; skipSeconds: SkipSeconds; skipWithRate: boolean; volumeStep: VolumeStep; coarseStep: VolumeStep; fineWheel: boolean; wheelDirection: WheelDirection; rateStep: RateStep; keybinds: Keybinds }
+export const defaultSettings: Settings = { theme: 'system', floating: true, floatingPosition: { side: 'right', y: .8 }, floatingNote: 'volume', floatingWhilePlaying: false, followPlaying: true, floatingHiddenSites: [], siteMode: 'all', sites: [], sitePrefs: {}, ratePresets: [...defaultRatePresets], defaultRate: null, lockRate: false, holdBoost: false, holdBoostRate: 2, holdSkip: false, hoverWheel: true, fullscreenWheel: false, singleKey: false, skipSeconds: 10, skipWithRate: false, volumeStep: 10, coarseStep: 20, fineWheel: true, wheelDirection: 'up', rateStep: defaultRateStep, keybinds: { ...defaultKeybinds } };
 export interface SettingsStore {
   load(): Promise<Settings>;
   /** Merge against the baseline, or replace the full value when importing a backup. */
@@ -89,6 +93,7 @@ export interface PageState { host: string; enabled: boolean; media: MediaState[]
 export interface MediaClient {
   read(): Promise<PageState>;
   command(media: MediaState, command: MediaCommand): Promise<void>;
-  select(id: string): Promise<void>;
+  /** `manual` is a pick from the panel. Auto-follow yields for a few seconds after it. */
+  select(id: string, manual?: boolean): Promise<void>;
   highlight(media: MediaState): Promise<void>;
 }

@@ -87,6 +87,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive progress-mark
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-other-tabs
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-commands
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-feedback
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-follow-playing
 ```
 
 `skip-step` 在设置页把 `Skip step` 改成 `30s` 并打开 `Single-key mode`，再看弹出面板进退按钮名和页内 `L` / `J` / `→` / `←` 让 `/long` 夹具的 `currentTime` 跟着步长变；它会改写 profile，同一会话只能跑一次。步骤见 `features/skip-step.md`。
@@ -263,6 +264,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive progress-mark
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-other-tabs
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-commands
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-feedback
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-follow-playing
 node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 ```
 
@@ -379,3 +381,13 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-feedba
 `mirror-mark-feedback` 把水平镜像、设标记、跳到标记绑成 `H` / `B` / `N`。成功时页面顶部出现和倍速提示同一块字样：`Mirror on`、`Mirror off`、`Marked`、`Back to mark`。弹出面板的开关和按钮也让页面出现同样的字样。清除标记成功时没有新字样。不能 seek、没有标记、音频镜像用原来的短说明。字样不接收点击，不盖住播放器底部控件，出现后会自己消失。铺满窗口时仍能看见。没有提示总开关，默认显示。它会改写 profile，成功时恢复默认键，同一会话只能跑一次。步骤见 `features/mirror-mark-feedback.md`。
 
 写入 `mirror-mark-feedback/`：`toast-mirror-on.png`、`toast-mirror-off.png`、`toast-marked.png`、`toast-jump.png`、`toast-fullscreen.png`、`toast-panel-mirror.png`、`toast-unseekable.png`、`toast-audio.png`、`toast-missing.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
+## 播放中自动跟随
+
+```bash
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-follow-playing
+```
+
+`auto-follow-playing` 确认设置页「Playback」的 `Follow the media that starts playing` 默认开。`/feed` 上点播另一条后，弹出面板标题、浮动入口和页内 `Alt+.` 都改到新目标，药丸里的暂停也停的是这一条。关掉开关后再点播另一条，面板和 `Alt+.` 留在原来的那条。重新打开后，在面板里点选一条，紧接着播放另一条，短时间内选中不被抢走；过了这个窗口再播放，又会跟上。`/video` 只有一条媒体，播放后面板标题仍是这条，页内倍速和面板暂停都作用在它身上。成功时开关回到开启。它会改写 profile，同一会话只能跑一次。步骤见 `features/auto-follow-playing.md`。
+
+写入 `auto-follow-playing/`：`settings-on.png`、`popup-followed.png`、`pill-followed.png`、`settings-off.png`、`popup-held.png`、`popup-single.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
