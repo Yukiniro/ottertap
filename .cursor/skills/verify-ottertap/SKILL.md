@@ -82,6 +82,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-sites-fil
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-floating-hidden-filter
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-current-site
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-clear-remembered
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive horizontal-mirror
 ```
 
 `skip-step` 在设置页把 `Skip step` 改成 `30s` 并打开 `Single-key mode`，再看弹出面板进退按钮名和页内 `L` / `J` / `→` / `←` 让 `/long` 夹具的 `currentTime` 跟着步长变；它会改写 profile，同一会话只能跑一次。步骤见 `features/skip-step.md`。
@@ -141,6 +142,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-clear-rem
 | 进度 | `slider` `Seek` |
 | 音量 | `slider` `Volume`，静音按钮 `Mute` / `Unmute` |
 | 声道 | `button` 名以 `Channels: ` 开头；菜单项是 `menuitemradio`：`Stereo`、`Mono`、`Left channel only`、`Right channel only` |
+| 水平镜像 | `switch` `Mirror horizontally`。视频默认为关。音频上禁用，说明是 `Audio has no picture, so it cannot be mirrored.` |
 | 倍速 | `button` `1.25× speed` 这种，乘号是 `×` |
 | 打开设置 | `Open settings` |
 | 浮动入口 | `/volume pill/i` |
@@ -252,6 +254,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-sites-fil
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-floating-hidden-filter
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-current-site
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-clear-remembered
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive horizontal-mirror
 node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 ```
 
@@ -318,3 +321,13 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-clear-rem
 `settings-clear-remembered` 先写入 `alpha.test`、`beta.example`、`media.ottertap.test`（40% 与 2×），网站规则排除 `rules.example`，隐藏浮动名单留下 `hidden.example`，默认倍速为 `1.25×`。夹具先套用记住的 40% 和 2×，弹出面板 `Remember this site` 为开。设置页 `Clear all` 只在记住站点区。点开确认后取消，列表和存储不变。再滤到 `example` 并确认 `Clear all remembered sites`。记住表为空，导出 JSON 的 `sitePrefs` 为 0 条，规则、隐藏名单和默认倍速仍在。重新打开夹具后音量约 100%，倍速是 1.25×，面板不再显示已记住。确认文案写明除非已有自己的备份否则无法撤销。它会改写 profile，同一会话只能跑一次。步骤见 `features/settings-clear-remembered.md`。
 
 写入 `settings-clear-remembered/`：`fixture-before.png`、`popup-before.png`、`list-before.png`、`confirm.png`、`cancelled.png`、`filtered.png`、`cleared.png`、`export.json`、`fixture-after.png`、`popup-after.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
+## 水平镜像
+
+```bash
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive horizontal-mirror
+```
+
+`horizontal-mirror` 在 `/video` 上确认弹出面板的 `Mirror horizontally` 默认关。点开后只翻转当前视频画面，音量、倍速、进度和布局盒子不变；再点关闭即恢复。重新加载后默认不镜像。`/feed` 上只翻转当前选中的那一条，换到另一条时开关为关。`/audio` 上开关禁用。打开「Remember this site」后再镜像，`sitePrefs` 不出现镜像字段；重新加载后画面仍不镜像。成功时关掉记住并忘掉该站。它会改写 profile，同一会话只能跑一次。步骤见 `features/horizontal-mirror.md`。
+
+写入 `horizontal-mirror/`：`popup-off.png`、`popup-on.png`、`fixture-on.png`、`popup-restored.png`、`feed-other.png`、`audio-disabled.png`、`remembered.png`、`reloaded.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。

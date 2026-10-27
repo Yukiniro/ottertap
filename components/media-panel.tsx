@@ -178,7 +178,13 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
           <p className="min-w-0 break-all">{page.host || selected.host}</p>
           <p>{selected.kind === 'video' ? i18n.t('video') : i18n.t('audio')} · {selected.paused ? i18n.t('paused') : i18n.t('playing')}</p>
         </div>
-        <h1 title={selected.title} className="mt-2 line-clamp-2 text-lg leading-6 font-semibold break-words">{selected.title}</h1>
+        <div className="mt-2 flex items-start justify-between gap-3">
+          <h1 title={selected.title} className="min-w-0 flex-1 line-clamp-2 text-lg leading-6 font-semibold break-words">{selected.title}</h1>
+          <div className="flex shrink-0 items-center gap-1.5 pt-0.5">
+            <label htmlFor="horizontal-mirror" className="text-xs font-medium text-muted-foreground">{i18n.t('mirror')}</label>
+            <Switch id="horizontal-mirror" size="sm" aria-label={i18n.t('mirror')} checked={selected.kind === 'video' && selected.mirrored === true} disabled={selected.kind !== 'video'} aria-describedby={selected.kind === 'video' ? undefined : 'mirror-hint'} onCheckedChange={checked => { if (selected.kind !== 'video') return; void command({ type: 'mirror', value: checked }); }} />
+          </div>
+        </div>
         <div className="mt-3 grid grid-cols-[minmax(0,1fr)_48px_44px_48px_minmax(0,1fr)] items-center gap-2">
           <div className="flex justify-end">
             <Button type="button" variant="ghost" size="icon" className="text-muted-foreground" aria-label={i18n.t('frameBack')} title={canStep ? i18n.t('frameStepHint') : i18n.t('frameStepUnavailable')} aria-describedby="frame-step-hint" disabled={!canStep} onClick={() => void command({ type: 'frame', direction: -1 })}><StepBack /></Button>
@@ -198,6 +204,7 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
         </div>
         <p id="frame-step-hint" className={canStep ? 'sr-only' : 'mt-1 text-xs text-muted-foreground'}>{canStep ? i18n.t('frameStepHint') : i18n.t('frameStepUnavailable')}</p>
         {hint ? <p id="pip-hint" className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
+        {selected.kind !== 'video' ? <p id="mirror-hint" className="mt-1 text-xs text-muted-foreground">{i18n.t('mirrorUnavailableAudio')}</p> : null}
       </div>
       <div className="border-b pb-3">
         <div className="flex items-center gap-3">

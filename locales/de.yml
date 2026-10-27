@@ -120,6 +120,8 @@ mediaMessageFailed: "Medienkommunikation fehlgeschlagen. Laden Sie die Seite neu
 mediaPanel: "Mediensteuerung"
 mediaRemoved: "Dieses Medium wurde entfernt. Wählen Sie ein anderes."
 mediaTakenOver: "Diese Seite steuert das Medium bereits, daher ist keine Lautstärke über 100 % möglich."
+mirror: "Horizontal spiegeln"
+mirrorUnavailableAudio: "Audio hat kein Bild und lässt sich nicht spiegeln."
 missingSettings: "Einstellungsstatus fehlt"
 moveRatePresetDown: "{rate}× nach unten"
 moveRatePresetUp: "{rate}× nach oben"
