@@ -211,8 +211,10 @@ export default defineBackground(() => {
   async function collect(tabId: number, host: string) {
     const frames = [...frameIds(tabId)];
     const recall = new Map<number, number | null>();
+    let typing = false;
     const results = await Promise.allSettled(frames.map(async frameId => {
       const response = await browser.tabs.sendMessage(tabId, { namespace: 'ottertap', type: 'snapshot' }, { frameId });
+      if (response?.typing === true) typing = true;
       const media: MediaState[] = response?.media ?? [];
       const remembered = response?.recallRate;
       recall.set(frameId, typeof remembered === 'number' && Number.isFinite(remembered) ? remembered : null);
@@ -224,7 +226,7 @@ export default defineBackground(() => {
       failed.add(frames[index]!);
       return [];
     });
-    return { media, failed, recall };
+    return { media, failed, recall, typing };
   }
   const lockedId = (tabId: number, media: MediaState[], failed: Set<number>) => {
     const selectedId = keptSelection(selectedIds.get(tabId) ?? '', media.map(item => item.id), failed);
@@ -313,9 +315,10 @@ export default defineBackground(() => {
     return typeof reported === 'number' && Number.isFinite(reported) ? reported : next;
   }
   async function applyTransport(tabId: number, host: string, action: HotkeyAction) {
-    const { media, failed } = await collect(tabId, host);
+    const { media, failed, typing } = await collect(tabId, host);
     const saved = lockedId(tabId, media, failed);
     if (saved && !media.some(item => item.id === saved)) return false;
+    if (typing && (action.type === 'mirror' || action.type === 'mark')) return false;
     const settings = await currentSettings();
     const plan = planHotkey({ host, enabled: true, media, selectedId: saved }, action, undefined, undefined, settings.skipWithRate);
     if (!plan) return false;
