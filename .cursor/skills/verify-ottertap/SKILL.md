@@ -27,7 +27,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs launch
 
 若 Chromium 因缺少系统库起不来，再跑与 CI 相同的 `pnpm exec playwright install-deps chromium`。已经能打开浏览器时不要跑它。
 
-`launch` 会拉起一个脱离终端的会话进程。它用 Playwright 的 `chromium.launchPersistentContext` 打开全新的 `/tmp/ottertap-verify/current/profile`，加载 `.output/chrome-mv3`，参数与 `e2e/smoke.spec.ts` 相同：`channel: 'chromium'`、`headless: true`、`locale: 'en-US'`、`--lang=en-US`，并去掉默认的 `--disable-extensions`。夹具页由这个上下文的 `route` 拦截，不访问外网，也没有单独的网站端口。
+`launch` 会拉起一个脱离终端的会话进程。它用 Playwright 的 `chromium.launchPersistentContext` 打开全新的 `/tmp/ottertap-verify/current/profile`，加载 `.output/chrome-mv3`，参数与 `e2e/smoke.spec.ts` 相同：`channel: 'chromium'`、`headless: true`、`locale: 'en-US'`、`--lang=en-US`，并去掉默认的 `--disable-extensions` 和 `--mute-audio`。去掉静音是为了让正在出声的标签能被标成 audible。夹具页由这个上下文的 `route` 拦截，不访问外网，也没有单独的网站端口。
 
 就绪的标准是扩展已经能用，而不是端口通了：service worker 已出现，UI 语言以 `en` 开头，版本与 `package.json` 一致，并且 `https://media.ottertap.test/video` 上能看见浮动入口。成功时进程打印一行后退出，浏览器继续留在会话进程里：
 
@@ -84,6 +84,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-current-s
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-clear-remembered
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive horizontal-mirror
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive progress-mark
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-other-tabs
 ```
 
 `skip-step` 在设置页把 `Skip step` 改成 `30s` 并打开 `Single-key mode`，再看弹出面板进退按钮名和页内 `L` / `J` / `→` / `←` 让 `/long` 夹具的 `currentTime` 跟着步长变；它会改写 profile，同一会话只能跑一次。步骤见 `features/skip-step.md`。
@@ -257,6 +258,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-current-s
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-clear-remembered
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive horizontal-mirror
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive progress-mark
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-other-tabs
 node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 ```
 
@@ -343,3 +345,13 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive progress-mark
 `progress-mark` 在 `/long` 上给当前视频设一个 12 秒的标记，进度条附近能看见它。前进 10 秒和下一帧之后标记还在原来的时间，再跳回去。关掉弹出面板再打开，标记仍在；清除后不能跳。关掉标签后新开的页面没有标记。`/feed` 上换到另一条媒体时标记不跟着过去。`/unseekable` 上三个按钮禁用并有短说明。全程不写扩展存储。它不改 profile。步骤见 `features/progress-mark.md`。
 
 写入 `progress-mark/`：`popup-set.png`、`popup-away.png`、`popup-reopened.png`、`popup-cleared.png`、`feed-other.png`、`unseekable-popup.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
+## 静音其他发声标签
+
+```bash
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-other-tabs
+```
+
+`mute-other-tabs` 先只开着正在出声的 `/tone-current`。弹出面板没有 `Mute others`。再打开 `/tone-music` 和 `/tone-meeting`，等浏览器把它们标成 audible 后，点 `Mute others`。这两个标签的喇叭变成静音，当前页音量仍约 40%，另外两页自己的音量数字不变，`sitePrefs` 也不变。接着用音乐那一行单独取消静音，只恢复那一条。关掉这两个标签后按钮消失。它不改 profile。步骤见 `features/mute-other-tabs.md`。
+
+写入 `mute-other-tabs/`：`popup-empty.png`、`popup-ready.png`、`popup-muted.png`、`popup-empty-again.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。

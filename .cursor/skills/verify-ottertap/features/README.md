@@ -1,6 +1,6 @@
 # OtterTap 功能地图
 
-验证主界面是扩展本身。索引里的每一条都要能从用户路径走到可观察的结束状态。`scripts/session.mjs` 目前脚本化了弹出面板播放、滚轮音量、快进快退步长、快进快退随倍速放大、音量调节步长、低音量滚轮细步长、Shift 粗调步长、倍速增减步长、扩展命令画中画、全局默认倍速、按住临时加速、同键短按跳长按加速、逐帧、页内快捷键改键、浮动药丸倍速、浮动药丸播放跳转、浮动入口旁注、从音量药丸打开弹出面板、仅在播放时显示浮动入口和滚轮方向。仅全屏时悬停滚轮、侧栏聊天和文档大纲忽略，以及记住站点、网站规则和不显示浮动站点这三份名单的本地过滤，三处名单各自的「当前站」，和记住站点的「清空全部」，以及水平镜像和进度标记也已脚本化。其余条目的选择器和断言已经写在各自文件里，用同一次 `launch` 的 Chromium（或 `pnpm e2e` 里点名的那条测试）来驱动。一条失败就报告失败原因，写进该文件的 Gotchas，不要把旅程改容易。
+验证主界面是扩展本身。索引里的每一条都要能从用户路径走到可观察的结束状态。`scripts/session.mjs` 目前脚本化了弹出面板播放、滚轮音量、快进快退步长、快进快退随倍速放大、音量调节步长、低音量滚轮细步长、Shift 粗调步长、倍速增减步长、扩展命令画中画、全局默认倍速、按住临时加速、同键短按跳长按加速、逐帧、页内快捷键改键、浮动药丸倍速、浮动药丸播放跳转、浮动入口旁注、从音量药丸打开弹出面板、仅在播放时显示浮动入口和滚轮方向。仅全屏时悬停滚轮、侧栏聊天和文档大纲忽略，以及记住站点、网站规则和不显示浮动站点这三份名单的本地过滤，三处名单各自的「当前站」，和记住站点的「清空全部」，以及水平镜像、进度标记和一键静音其他发声标签也已脚本化。其余条目的选择器和断言已经写在各自文件里，用同一次 `launch` 的 Chromium（或 `pnpm e2e` 里点名的那条测试）来驱动。一条失败就报告失败原因，写进该文件的 Gotchas，不要把旅程改容易。
 
 | 功能 | 文件 | 用户从哪里进入 | 现成回归 |
 | --- | --- | --- | --- |
@@ -16,6 +16,7 @@
 | 按住临时加速 | [hold-boost.md](hold-boost.md) | 设置页「Playback」的 `Hold for a temporary speed`，默认关；打开后按住 Alt+Shift+.（单键模式还可按住 S）用临时档，松开还原。不写站点记忆，不改默认倍速 | `drive hold-boost`；`tests/hold-boost.test.ts`、`tests/hold-boost-background.test.ts` |
 | 逐帧前进 / 后退 | [frame-step.md](frame-step.md) | 页内 `,` / `.`（不需要单键模式）；弹出面板 `Previous frame` / `Next frame`。播放中先暂停再移动一帧。直播和不可 seek 时禁用并说明 | `drive frame-step`；`tests/frame-step.test.ts`、`tests/frame-step-panel.test.ts`、`tests/frame-step-command.test.ts` |
 | 进度标记 | [progress-mark.md](progress-mark.md) | 弹出面板进度条右侧的 `Set mark` / `Jump to mark` / `Clear mark`。当前媒体一个时间点，可 seek 时画在进度条附近。只留在这一页的这一条媒体上，不写入扩展存储。直播和不可 seek 时禁用并说明 | `drive progress-mark`；`tests/progress-mark.test.ts`、`tests/progress-mark-panel.test.ts` |
+| 静音其他发声标签 | [mute-other-tabs.md](mute-other-tabs.md) | 弹出面板「其他正在播放的标签页」标题旁的 `Mute others`。一点把列表里的标签全部交给浏览器静音，当前标签页音量不变。列表为空时按钮不出现。失败时不把那一条显示成已静音 | `drive mute-other-tabs`；`tests/mute-other-tabs.test.ts` |
 | 同键短按跳、长按加速 | [hold-skip-combo.md](hold-skip-combo.md) | 设置页「Playback」的 `Short press skips, hold speeds up`，默认关，且要先打开按住临时加速。单键模式的 J / L / ← / → 短按仍按步长跳，按住满一会儿用临时档，松开还原且不再跳。Alt+Shift+. 和 S 仍可单独按住；已经在临时加速时另一路按住不会再开一段 | `drive hold-skip-combo`；`tests/hold-skip-combo.test.ts`、`tests/hold-overlap.test.ts` |
 | 快进 / 快退步长 | [skip-step.md](skip-step.md) | 设置页「Playback」的 `Skip step`，影响弹出面板进退按钮、浮动药丸、页内 J / L / ← / →、扩展命令 | `drive skip-step` |
 | 快进 / 快退随倍速放大 | [skip-with-rate.md](skip-with-rate.md) | 设置页「Playback」的 `Scale skip with speed`，默认关；打开后弹出面板、浮动药丸、页内 J / L / ← / →、扩展命令按步长 × 当前倍速跳，提示显示实际秒数 | `drive skip-with-rate`；`tests/skip-with-rate.test.ts` |
