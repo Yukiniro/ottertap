@@ -423,7 +423,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
     } catch (err) { setInputError(err instanceof Error ? err.message : i18n.t('domainRejected')); }
   };
   const disabled = loading || saving;
-  const keyText = (key: string) => keyLabel(key, i18n.t('keySpace'));
+  const keyText = (key: string) => key ? keyLabel(key, i18n.t('keySpace')) : i18n.t('shortcutUnbound');
   const ownerLabels: Record<KeybindOwner, string> = {
     toggle: i18n.t('cmdPlayPause'),
     skipBack: i18n.t('skipBack', { seconds: skipSeconds }),
@@ -434,6 +434,9 @@ export function SettingsPage({ back }: { back?: () => void }) {
     holdBoost: i18n.t('holdBoost'),
     frameBack: i18n.t('shortcutFrameBack'),
     frameForward: i18n.t('shortcutFrameForward'),
+    mirror: i18n.t('mirror'),
+    markSet: i18n.t('setMark'),
+    markJump: i18n.t('jumpToMark'),
     volumeUp: i18n.t('shortcutVolumeUp', { percent: volumeStep }),
     volumeDown: i18n.t('shortcutVolumeDown', { percent: volumeStep })
   };
@@ -631,12 +634,15 @@ export function SettingsPage({ back }: { back?: () => void }) {
             { id: 'volume-wheel', key: `Alt + ${i18n.t('shortcutWheel')}`, description: i18n.t('shortcutVolumeWheel') },
             { id: 'frame-back', key: keyButton('frameBack'), description: ownerLabels.frameBack },
             { id: 'frame-forward', key: keyButton('frameForward'), description: ownerLabels.frameForward },
+            { id: 'mirror', key: keyButton('mirror'), description: ownerLabels.mirror },
+            { id: 'mark-set', key: keyButton('markSet'), description: ownerLabels.markSet },
+            { id: 'mark-jump', key: keyButton('markJump'), description: ownerLabels.markJump },
             { id: 'speed-up', key: 'Alt + .', description: i18n.t('shortcutSpeedUp', { step: formatRate(rateStep) }) },
             { id: 'speed-down', key: 'Alt + ,', description: i18n.t('shortcutSpeedDown', { step: formatRate(rateStep) }) },
             { id: 'speed-reset', key: 'Alt + 0', description: i18n.t('shortcutSpeedReset') },
             { id: 'mute', key: 'Alt + M', description: i18n.t('cmdMute') }
           ]} />
-          {keyErrorFor(['frameBack', 'frameForward'])}
+          {keyErrorFor(['frameBack', 'frameForward', 'mirror', 'markSet', 'markJump'])}
           <p className="mt-3 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsMac')}</p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsRateKeys')}</p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsFrameKeys', { back: keyText(keybinds.frameBack), forward: keyText(keybinds.frameForward) })}</p>

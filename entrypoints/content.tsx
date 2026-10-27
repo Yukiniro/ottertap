@@ -127,8 +127,9 @@ export default defineContentScript({
         return { ok: true };
       }
       if (message.type === 'snapshot') {
-        if (!enabled) return { media: [], recallRate: null };
-        return { media: controller.snapshot(), recallRate: controller.recallRate() };
+        const typing = document.hasFocus() && isTypingFocus(document);
+        if (!enabled) return { media: [], recallRate: null, typing };
+        return { media: controller.snapshot(), recallRate: controller.recallRate(), typing };
       }
       if (message.type === 'highlight') { if (enabled && typeof message.id === 'string') controller.flash(message.id); return { ok: true }; }
       if (message.type === 'command') {

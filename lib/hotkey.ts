@@ -15,7 +15,9 @@ export type HotkeyAction =
   | { type: 'mute' }
   | { type: 'pip' }
   | { type: 'skip'; delta: number }
-  | { type: 'frame'; direction: 1 | -1 };
+  | { type: 'frame'; direction: 1 | -1 }
+  | { type: 'mirror' }
+  | { type: 'mark'; action: 'set' | 'jump' };
 
 export type ActionHintKey = 'play' | 'paused' | 'skipBack' | 'skipForward' | 'mute' | 'unmute' | 'shortcutFrameBack' | 'shortcutFrameForward' | 'frameStepUnavailable';
 
@@ -51,9 +53,12 @@ export function hotkeyFromKeyboard(event: KeyInput, { singleKey = false, onMedia
     return name === 'm' ? { type: 'mute' } : null;
   }
   const name = pressedKey(event, keybinds);
-  // Frame keys work even when single-key mode is off.
+  // Frame keys, and any mirror or mark key the user bound, work even when single-key mode is off.
   if (name === keybinds.frameBack) return { type: 'frame', direction: -1 };
   if (name === keybinds.frameForward) return { type: 'frame', direction: 1 };
+  if (keybinds.mirror && name === keybinds.mirror) return { type: 'mirror' };
+  if (keybinds.markSet && name === keybinds.markSet) return { type: 'mark', action: 'set' };
+  if (keybinds.markJump && name === keybinds.markJump) return { type: 'mark', action: 'jump' };
   if (!singleKey) return null;
   if (name === keybinds.rateUp) return rate(1);
   if (name === keybinds.rateDown) return rate(-1);
@@ -127,7 +132,8 @@ export function isHotkeyAction(value: unknown): value is HotkeyAction {
     return typeof amount === 'number' && Number.isFinite(amount) && Math.abs(amount) <= 150;
   }
   if (action.type === 'rate') return action.direction === 1 || action.direction === -1 || action.direction === 0;
-  if (action.type === 'toggle' || action.type === 'mute' || action.type === 'pip') return true;
+  if (action.type === 'toggle' || action.type === 'mute' || action.type === 'pip' || action.type === 'mirror') return true;
+  if (action.type === 'mark') return action.action === 'set' || action.action === 'jump';
   if (action.type === 'frame') return action.direction === 1 || action.direction === -1;
   return action.type === 'skip' && isSkipSeconds(Math.abs(action.delta));
 }
@@ -158,6 +164,8 @@ export function commandForHotkey(action: HotkeyAction, media: MediaState, rememb
   if (action.type === 'toggle') return { type: media.paused ? 'play' : 'pause' };
   if (action.type === 'mute') return { type: 'mute' };
   if (action.type === 'pip') return { type: 'pip' };
+  if (action.type === 'mirror') return { type: 'mirror', value: media.mirrored !== true };
+  if (action.type === 'mark') return { type: 'mark', action: action.action };
   if (action.type === 'frame') return { type: 'frame', direction: action.direction };
   if (action.type === 'skip') {
     if (!isSkipSeconds(Math.abs(action.delta))) return null;
@@ -256,6 +264,8 @@ export function createHotkeyInput(send: (action: HotkeyAction, target?: string) 
       if (!action || event.type === 'keyup') return true;
       held.add(id);
       if (event.altKey) useAlt();
+      // A held key repeats. Mirror and marks are one shot per press.
+      if (event.repeat && (action.type === 'mirror' || action.type === 'mark')) return true;
       queue(action, action.type === 'volume' ? target : undefined);
       return true;
     },

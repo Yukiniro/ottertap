@@ -10,7 +10,7 @@ const press = (key: string, code: string, extra: Partial<typeof none> = {}) => (
 
 describe('页内键位配置', () => {
   test('默认键位与改键前一致：K J L > < M S , .', () => {
-    assert.deepEqual(defaultSettings.keybinds, { toggle: 'k', skipBack: 'j', skipForward: 'l', rateUp: '>', rateDown: '<', mute: 'm', holdBoost: 's', frameBack: ',', frameForward: '.' });
+    assert.deepEqual(defaultSettings.keybinds, { toggle: 'k', skipBack: 'j', skipForward: 'l', rateUp: '>', rateDown: '<', mute: 'm', holdBoost: 's', frameBack: ',', frameForward: '.', mirror: '', markSet: '', markJump: '' });
     assert.deepEqual(normalizeSettings({}).keybinds, defaultKeybinds, '老用户没有这一项时用默认键位');
     assert.deepEqual(normalizeSettings(null).keybinds, defaultKeybinds);
     assert.notEqual(normalizeSettings(null).keybinds, defaultKeybinds, '归一化结果不能和默认对象共用引用');

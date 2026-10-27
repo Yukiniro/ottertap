@@ -11,7 +11,10 @@ export const extensionCommands = [
   { name: 'rate-faster', message: 'cmdRateFaster', action: { type: 'rate', direction: 1 } },
   { name: 'rate-slower', message: 'cmdRateSlower', action: { type: 'rate', direction: -1 } },
   { name: 'rate-reset', message: 'cmdRateReset', action: { type: 'rate', direction: 0 } },
-  { name: 'pip', message: 'cmdPictureInPicture', action: { type: 'pip' } }
+  { name: 'pip', message: 'cmdPictureInPicture', action: { type: 'pip' } },
+  { name: 'mirror', message: 'cmdMirror', action: { type: 'mirror' } },
+  { name: 'mark-set', message: 'cmdMarkSet', action: { type: 'mark', action: 'set' } },
+  { name: 'mark-jump', message: 'cmdMarkJump', action: { type: 'mark', action: 'jump' } }
 ] as const satisfies ReadonlyArray<{ name: string; message: string; suggestedKey?: { default: string; mac: string }; action: HotkeyAction }>;
 
 export type ExtensionCommandName = (typeof extensionCommands)[number]['name'];

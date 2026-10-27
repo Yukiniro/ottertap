@@ -85,6 +85,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-clear-rem
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive horizontal-mirror
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive progress-mark
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-other-tabs
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-commands
 ```
 
 `skip-step` 在设置页把 `Skip step` 改成 `30s` 并打开 `Single-key mode`，再看弹出面板进退按钮名和页内 `L` / `J` / `→` / `←` 让 `/long` 夹具的 `currentTime` 跟着步长变；它会改写 profile，同一会话只能跑一次。步骤见 `features/skip-step.md`。
@@ -259,6 +260,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-clear-rem
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive horizontal-mirror
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive progress-mark
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-other-tabs
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-commands
 node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 ```
 
@@ -355,3 +357,13 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-other-tabs
 `mute-other-tabs` 先只开着正在出声的 `/tone-current`。弹出面板没有 `Mute others`。再打开 `/tone-music` 和 `/tone-meeting`，等浏览器把它们标成 audible 后，点 `Mute others`。这两个标签的喇叭变成静音，当前页音量仍约 40%，另外两页自己的音量数字不变，`sitePrefs` 也不变。接着用音乐那一行单独取消静音，只恢复那一条。关掉这两个标签后按钮消失。它不改 profile。步骤见 `features/mute-other-tabs.md`。
 
 写入 `mute-other-tabs/`：`popup-empty.png`、`popup-ready.png`、`popup-muted.png`、`popup-empty-again.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
+## 镜像与标记的快捷键
+
+```bash
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-commands
+```
+
+`mirror-mark-commands` 在设置页确认水平镜像、设标记、跳到标记以及同名扩展命令默认都是 `Not set`，不占建议键，空键也不报占用。录到已有键时提示与现网改键一致。绑上 `H` / `B` / `N` 后，不打开单键模式，`/long` 上能翻转画面、设下标记再跳回去。文本框聚焦时这三个键不动。音频不会被镜像。`Restore default keys` 收回这三项。`sitePrefs` 一直是空的。它会改写 profile，成功时恢复默认，同一会话只能跑一次。步骤见 `features/mirror-mark-commands.md`。
+
+写入 `mirror-mark-commands/`：`settings-unbound.png`、`settings-conflict.png`、`settings-bound.png`、`fixture-mirrored.png`、`fixture-jumped.png`、`fixture-typing.png`、`audio-plain.png`、`settings-restored.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。

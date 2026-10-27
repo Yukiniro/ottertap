@@ -32,6 +32,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive horizontal-mirror
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive progress-mark
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-other-tabs
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-commands
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -51,7 +52,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -3219,7 +3220,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -4922,6 +4923,231 @@ async function driveMuteOtherTabs(context, dir, note) {
     await meeting?.close().catch(() => {});
     await music?.close().catch(() => {});
     await page.close().catch(() => {});
+  }
+}
+
+async function driveMirrorMarkCommands(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const prefsText = async () => JSON.stringify((await stored()).sitePrefs ?? {});
+  const near = (expected, slack = 0.35) => value => Math.abs(value - expected) < slack;
+  const flipped = value => value.mirrored && (value.scale === '-1 1' || value.computedScale === '-1 1');
+  const plain = value => !value.mirrored && value.scale !== '-1 1' && value.computedScale !== '-1 1';
+  const registered = await worker.evaluate(async () => {
+    const manifest = chrome.runtime.getManifest();
+    const listed = await chrome.commands.getAll();
+    const commands = manifest.commands ?? {};
+    const suggested = Object.entries(commands).filter(([, command]) => command.suggested_key).map(([name]) => name);
+    return {
+      permissions: manifest.permissions ?? [],
+      names: Object.keys(commands),
+      suggested,
+      listed: listed.map(item => ({ name: item.name ?? '', shortcut: item.shortcut ?? '', description: item.description ?? '' })),
+      commands: {
+        mirror: commands.mirror ?? null,
+        'mark-set': commands['mark-set'] ?? null,
+        'mark-jump': commands['mark-jump'] ?? null,
+      },
+    };
+  });
+  if (JSON.stringify(registered.permissions) !== JSON.stringify(['storage'])) throw new Error(`权限应仍只有 storage：${JSON.stringify(registered.permissions)}`);
+  if (registered.suggested.length !== 4 || !['play-pause', 'skip-back', 'skip-forward', 'mute'].every(name => registered.suggested.includes(name))) {
+    throw new Error(`建议键应仍是原来四个：${JSON.stringify(registered.suggested)}`);
+  }
+  const expectedCommands = [
+    ['mirror', 'Mirror or restore the video'],
+    ['mark-set', 'Set a progress mark'],
+    ['mark-jump', 'Jump to the progress mark'],
+  ];
+  for (const [name, description] of expectedCommands) {
+    const manifestCommand = registered.commands[name];
+    const listed = registered.listed.find(item => item.name === name);
+    if (!manifestCommand || manifestCommand.suggested_key) throw new Error(`${name} 不应占用建议键：${JSON.stringify(manifestCommand)}`);
+    if (!listed || listed.shortcut !== '' || listed.description !== description) throw new Error(`${name} 未按未绑定登记：${JSON.stringify(listed)}`);
+  }
+  if (registered.names.includes('mark-clear') || registered.listed.some(item => /clear mark/i.test(item.description))) throw new Error('清除标记不应有扩展命令');
+  note(`commands unbound suggested=${registered.suggested.join(',')}`);
+
+  const keyButton = (page, action) => page.getByRole('button', { name: new RegExp(`^Change the key for ${action.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\. Now `) });
+  const recording = page => page.getByRole('button', { name: 'Press a key', exact: true });
+  let settings;
+  let fixture;
+  let audio;
+  const focusFixture = async () => {
+    await fixture.bringToFront();
+    await fixture.mouse.click(12, 12);
+  };
+  try {
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
+    const section = settings.locator('#shortcuts');
+    await section.getByRole('heading', { name: 'Keyboard shortcuts' }).waitFor({ state: 'visible', timeout: 15_000 });
+    await section.getByRole('button', { name: 'Edit shortcuts' }).waitFor({ state: 'visible' });
+    for (const label of ['Mirror or restore the video', 'Set a progress mark', 'Jump to the progress mark']) {
+      const node = section.getByText(label, { exact: true });
+      if (await node.count() !== 1) throw new Error(`${label} 应只出现在扩展快捷键里`);
+      const row = node.locator('xpath=ancestor::div[contains(@class,"py-3")][1]');
+      const shortcut = (await row.locator('dt').innerText()).trim();
+      if (shortcut !== 'Not set') throw new Error(`${label} 应显示 Not set：${shortcut}`);
+    }
+    for (const action of ['Mirror horizontally', 'Set mark', 'Jump to mark']) {
+      const button = keyButton(settings, action);
+      await button.waitFor({ state: 'visible' });
+      const text = (await button.innerText()).trim();
+      if (text !== 'Not set') throw new Error(`${action} 默认应是 Not set：${text}`);
+    }
+    if (await section.getByText('Clear mark', { exact: true }).count()) throw new Error('清除标记不应出现在快捷键设置里');
+    const reset = () => settings.getByRole('button', { name: 'Restore default keys', exact: true });
+    if (!await reset().isDisabled()) throw new Error('默认键位时「Restore default keys」应禁用');
+    const singleKey = settings.getByRole('switch', { name: 'Single-key mode' });
+    if (await singleKey.getAttribute('aria-checked') !== 'false') throw new Error('单键模式应保持关闭');
+    await section.screenshot({ path: path.join(dir, 'settings-unbound.png'), animations: 'disabled' });
+    note('settings lists mirror, set mark, and jump to mark as Not set');
+
+    await keyButton(settings, 'Mirror horizontally').click();
+    await recording(settings).waitFor({ state: 'visible' });
+    await settings.keyboard.press('Comma');
+    const conflict = (await settings.locator('#keybind-error').innerText()).trim();
+    const conflictCopy = ', is already used for “Pause, then previous frame”. Press another key, or change that one first.';
+    if (conflict !== conflictCopy) throw new Error(`撞键提示不对：${conflict}`);
+    if ((await stored()).keybinds?.mirror) throw new Error('撞键时不应保存镜像键');
+    if (!await recording(settings).isVisible()) throw new Error('撞键后应继续等待新键');
+    await section.screenshot({ path: path.join(dir, 'settings-conflict.png'), animations: 'disabled' });
+    note(`conflict tip: ${conflict}`);
+    await settings.keyboard.press('KeyH');
+    await poll(stored, value => value.keybinds?.mirror === 'h' && value.singleKey !== true, '应保存 Mirror horizontally = h，且单键模式仍关');
+    await keyButton(settings, 'Set mark').click();
+    await settings.keyboard.press('KeyB');
+    await poll(stored, value => value.keybinds?.markSet === 'b', '应保存 Set mark = b');
+    await keyButton(settings, 'Jump to mark').click();
+    await settings.keyboard.press('KeyH');
+    const taken = (await settings.locator('#keybind-error').innerText()).trim();
+    const takenCopy = 'H is already used for “Mirror horizontally”. Press another key, or change that one first.';
+    if (taken !== takenCopy) throw new Error(`空键不应占位，H 的占用提示不对：${taken}`);
+    if ((await stored()).keybinds?.markJump) throw new Error('跳到标记不应保存成已被镜像占用的 H');
+    await settings.keyboard.press('KeyN');
+    const bound = await poll(stored, value => value.keybinds?.markJump === 'n' && value.keybinds?.mirror === 'h' && value.keybinds?.markSet === 'b' && value.singleKey !== true, '应保存 Jump to mark = n');
+    if (await settings.locator('#keybind-error').count()) throw new Error('改键成功后不应留着冲突提示');
+    if (await reset().isDisabled()) throw new Error('改过键之后应能恢复默认');
+    await section.screenshot({ path: path.join(dir, 'settings-bound.png'), animations: 'disabled' });
+    note(`bound ${JSON.stringify(bound.keybinds)}`);
+    if ((await prefsText()) !== '{}') throw new Error(`改键写入了 sitePrefs：${await prefsText()}`);
+
+    fixture = await context.newPage();
+    await fixture.goto(`${origin}/long`, { waitUntil: 'domcontentloaded' });
+    await fixture.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await fixture.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+      element.pause();
+      element.currentTime = 12;
+    });
+    const time = () => fixture.locator('#media').evaluate(element => element.currentTime);
+    const paused = () => fixture.locator('#media').evaluate(element => element.paused);
+    await poll(time, near(12), '长视频应停在 12 秒');
+    await focusFixture();
+    const pausedBefore = await paused();
+    await fixture.keyboard.press('KeyK');
+    await fixture.waitForTimeout(400);
+    if (await paused() !== pausedBefore) throw new Error('单键模式关闭时 K 不应播放或暂停');
+    if (!plain(await pictureOf(fixture, '#media'))) throw new Error('按镜像键之前画面应未翻转');
+    await fixture.keyboard.press('KeyH');
+    const mirrored = await poll(() => pictureOf(fixture, '#media'), flipped, 'H 应水平翻转当前视频');
+    await fixture.screenshot({ path: path.join(dir, 'fixture-mirrored.png'), animations: 'disabled' });
+    await fixture.keyboard.press('KeyH');
+    await poll(() => pictureOf(fixture, '#media'), plain, '再按 H 应恢复画面');
+    note(`mirror toggled scale=${mirrored.scale}`);
+    await focusFixture();
+    await fixture.keyboard.press('KeyB');
+    await fixture.waitForTimeout(300);
+    const markedAt = await time();
+    if (!near(12)(markedAt)) throw new Error(`设标记时进度应仍在 12 秒附近：${markedAt}`);
+    await fixture.locator('#media').evaluate(element => { element.currentTime = 40; });
+    await poll(time, near(40), '应先离开标记');
+    await focusFixture();
+    await fixture.keyboard.press('KeyN');
+    const jumped = await poll(time, near(markedAt), 'N 应跳回设下的时间');
+    await fixture.screenshot({ path: path.join(dir, 'fixture-jumped.png'), animations: 'disabled' });
+    note(`jumped to ${jumped} from mark ${markedAt}`);
+    await fixture.locator('#media').evaluate(element => { element.currentTime = 40; });
+    await poll(time, near(40), '应再次离开标记');
+    await fixture.evaluate(() => {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.setAttribute('aria-label', 'Fixture note');
+      input.style.position = 'fixed';
+      input.style.left = '720px';
+      input.style.top = '420px';
+      document.body.append(input);
+    });
+    const field = fixture.getByRole('textbox', { name: 'Fixture note' });
+    await field.focus();
+    await fixture.keyboard.type('hello');
+    if ((await field.inputValue()) !== 'hello') throw new Error('文本框应能输入');
+    await fixture.keyboard.press('KeyH');
+    await fixture.keyboard.press('KeyB');
+    await fixture.keyboard.press('KeyN');
+    await fixture.waitForTimeout(400);
+    const whileTyping = await pictureOf(fixture, '#media');
+    const typedAt = await time();
+    if (!plain(whileTyping) || !near(40)(typedAt)) throw new Error(`输入框聚焦时不应翻转或跳转：${JSON.stringify({ ...whileTyping, currentTime: typedAt })}`);
+    await fixture.screenshot({ path: path.join(dir, 'fixture-typing.png'), animations: 'disabled' });
+    note('typing ignores mirror, set mark, and jump');
+    await field.evaluate(element => element.blur());
+    await focusFixture();
+    await fixture.keyboard.press('KeyN');
+    const stillMarked = await poll(time, near(markedAt), '输入时按过设标记，跳回应仍回到原来的时间');
+    note(`mark survived typing, jump landed at ${stillMarked}`);
+    if ((await prefsText()) !== '{}') throw new Error(`页内操作写入了 sitePrefs：${await prefsText()}`);
+
+    audio = await context.newPage();
+    await audio.goto(`${origin}/audio`, { waitUntil: 'domcontentloaded' });
+    await audio.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await audio.bringToFront();
+    await audio.mouse.click(12, 12);
+    await audio.keyboard.press('KeyH');
+    await audio.waitForTimeout(400);
+    const audioPicture = await pictureOf(audio, '#media');
+    if (audioPicture.mirrored) throw new Error(`音频不应被镜像：${JSON.stringify(audioPicture)}`);
+    await audio.screenshot({ path: path.join(dir, 'audio-plain.png'), animations: 'disabled' });
+    note('audio ignores the mirror key');
+    if ((await prefsText()) !== '{}') throw new Error(`音频上的镜像键写入了 sitePrefs：${await prefsText()}`);
+
+    await settings.bringToFront();
+    await reset().click();
+    const restored = await poll(stored, value => value.keybinds?.mirror === '' && value.keybinds?.markSet === '' && value.keybinds?.markJump === '' && value.keybinds?.toggle === 'k', '恢复默认后镜像和标记应回到未绑定');
+    await keyButton(settings, 'Mirror horizontally').filter({ hasText: 'Not set' }).waitFor({ state: 'visible' });
+    if (!await reset().isDisabled()) throw new Error('恢复默认后按钮应禁用');
+    await section.screenshot({ path: path.join(dir, 'settings-restored.png'), animations: 'disabled' });
+    await focusFixture();
+    await fixture.keyboard.press('KeyH');
+    await fixture.waitForTimeout(400);
+    if (!plain(await pictureOf(fixture, '#media'))) throw new Error('恢复默认后 H 不应再翻转');
+    note(`restored ${JSON.stringify({ mirror: restored.keybinds.mirror, markSet: restored.keybinds.markSet, markJump: restored.keybinds.markJump })}`);
+
+    const state = {
+      ok: true,
+      suggested: registered.suggested,
+      commands: expectedCommands.map(([name, description]) => ({ name, description, shortcut: '' })),
+      conflict,
+      taken,
+      bound: { mirror: bound.keybinds.mirror, markSet: bound.keybinds.markSet, markJump: bound.keybinds.markJump },
+      markedAt,
+      jumped,
+      typedAt,
+      stillMarked,
+      audioMirrored: audioPicture.mirrored,
+      sitePrefs: {},
+      restored: { mirror: restored.keybinds.mirror, markSet: restored.keybinds.markSet, markJump: restored.keybinds.markJump },
+    };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await audio?.close().catch(() => {});
+    await fixture?.close().catch(() => {});
+    await settings?.close().catch(() => {});
   }
 }
 

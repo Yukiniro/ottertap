@@ -10,7 +10,7 @@ import { defaultKeybinds, type Keybinds } from '../lib/keybinds';
 import { defaultSettings, type Settings, type SettingsStore } from '../lib/types';
 
 const none = { altKey: false, shiftKey: false, ctrlKey: false, metaKey: false };
-const custom: Keybinds = { toggle: 'Space', skipBack: 'a', skipForward: 'd', rateUp: ']', rateDown: '[', mute: 'x', holdBoost: 'h', frameBack: 'q', frameForward: 'e' };
+const custom: Keybinds = { toggle: 'Space', skipBack: 'a', skipForward: 'd', rateUp: ']', rateDown: '[', mute: 'x', holdBoost: 'h', frameBack: 'q', frameForward: 'e', mirror: '', markSet: '', markJump: '' };
 
 describe('页内快捷键改键', () => {
   test('改键后新键生效、旧键让给网站；方向键与 Alt 组合不变', () => {
