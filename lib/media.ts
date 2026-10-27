@@ -123,8 +123,17 @@ export function mediaSnapshot(element: HTMLMediaElement, id: string, document: D
     ...pipFields(element, document),
     channel: amplifier?.channel(element) ?? 'stereo',
     channelAvailable: routable(element, amplifier),
-    mirrored: isHorizontallyMirrored(element)
+    mirrored: isHorizontallyMirrored(element),
+    ...progressMarkField(element)
   };
+}
+
+/** One timestamp per element for this document. It leaves with the element, and it is not settings. */
+const progressMarks = new WeakMap<HTMLMediaElement, number>();
+
+function progressMarkField(element: HTMLMediaElement): { mark: number } | Record<string, never> {
+  const mark = progressMarks.get(element);
+  return typeof mark === 'number' && Number.isFinite(mark) ? { mark } : {};
 }
 
 export function pipFields(element: HTMLMediaElement, document: Document): Pick<MediaState, 'pip' | 'pipAvailable' | 'pipBlock'> {
@@ -191,6 +200,7 @@ export function isMediaCommand(value: unknown): value is MediaCommand {
   if (command.type === 'channel') return isChannelMode(command.value);
   if (command.type === 'mirror') return typeof command.value === 'boolean';
   if (command.type === 'frame') return command.direction === 1 || command.direction === -1;
+  if (command.type === 'mark') return command.action === 'set' || command.action === 'jump' || command.action === 'clear';
   if (!('value' in command) || !Number.isFinite(command.value)) return false;
   if (command.type === 'volume') return command.value >= 0 && command.value <= maxGain;
   if (command.type === 'rate') return command.value >= minRate && command.value <= maxRate;
@@ -218,6 +228,18 @@ export async function applyMediaCommand(element: HTMLMediaElement, command: Medi
     return;
   }
   if (command.type === 'mirror') { setHorizontalMirror(element, command.value); return; }
+  if (command.type === 'mark') {
+    if (!elementCanStepFrames(element)) throw new Error(i18n.t('markUnavailable'));
+    if (command.action === 'clear') { progressMarks.delete(element); return; }
+    if (command.action === 'set') {
+      progressMarks.set(element, Number.isFinite(element.currentTime) ? element.currentTime : 0);
+      return;
+    }
+    const saved = progressMarks.get(element);
+    if (typeof saved !== 'number' || !Number.isFinite(saved)) throw new Error(i18n.t('markMissing'));
+    seekWithin(element, saved);
+    return;
+  }
   if (command.type === 'frame') {
     if (!elementCanStepFrames(element)) throw new Error(i18n.t('frameStepUnavailable'));
     if (!element.paused) element.pause();
