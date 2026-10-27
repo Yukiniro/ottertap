@@ -91,6 +91,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-follow-playin
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive selection-highlight
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive prev-next-media
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive panel-media-list
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive float-prev-next
 ```
 
 `skip-step` 在设置页把 `Skip step` 改成 `30s` 并打开 `Single-key mode`，再看弹出面板进退按钮名和页内 `L` / `J` / `→` / `←` 让 `/long` 夹具的 `currentTime` 跟着步长变；它会改写 profile，同一会话只能跑一次。步骤见 `features/skip-step.md`。
@@ -271,6 +272,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-follow-playin
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive selection-highlight
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive prev-next-media
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive panel-media-list
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive float-prev-next
 node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 ```
 
@@ -427,3 +429,13 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive panel-media-list
 `panel-media-list` 在 `/video` 上确认只有一条时没有媒体列表，也没有过滤框。`/feed` 上一条在播、另一条暂停时，列表能看出谁在播、谁被选中；点另一条后，播放和暂停作用在点中的那一条。`/playlist` 有五条，名称来自标题、文件名或 `Video 5`。`Filter media` 输入 `beta` 后只显示匹配行，标题和页面上的视频数量不变；`zzzz` 时出现 `No media match.`。它不改 profile。步骤见 `features/panel-media-list.md`。
 
 写入 `panel-media-list/`：`popup-single.png`、`popup-rows.png`、`popup-filtered.png`、`popup-nomatch.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
+## 音量药丸里的上一条 / 下一条
+
+```bash
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive float-prev-next
+```
+
+`float-prev-next` 在 `/video` 上展开药丸，确认没有 `Previous media` 和 `Next media`，`Open panel` 仍在。`/feed` 上这两个按钮出现在播放控制旁，和 `Open panel` 的盒子不相交。点下一条后，药丸、弹出面板和 `Alt+.` 都对准 `Main player`，轮廓只在这一条上；再点上一条回到 `Feed preview`。浮动入口的位置、`floatingPosition` 和 `sitePrefs` 不变。它不改 profile。步骤见 `features/float-prev-next.md`。
+
+写入 `float-prev-next/`：`pill-one.png`、`pill-two.png`、`ring-next.png`、`popup-next.png`、`ring-prev.png`、`popup-prev.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
