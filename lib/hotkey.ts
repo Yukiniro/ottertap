@@ -17,10 +17,11 @@ export type HotkeyAction =
   | { type: 'skip'; delta: number }
   | { type: 'frame'; direction: 1 | -1 }
   | { type: 'mirror' }
-  | { type: 'mark'; action: 'set' | 'jump' };
+  | { type: 'mark'; action: 'set' | 'jump' }
+  | { type: 'media'; direction: 1 | -1 };
 
 export type MirrorMarkHintKey = 'mirrorOnHint' | 'mirrorOffHint' | 'markSetHint' | 'markJumpHint';
-export type ActionHintKey = 'play' | 'paused' | 'skipBack' | 'skipForward' | 'mute' | 'unmute' | 'shortcutFrameBack' | 'shortcutFrameForward' | 'frameStepUnavailable' | 'audioSelectedHint' | MirrorMarkHintKey;
+export type ActionHintKey = 'play' | 'paused' | 'skipBack' | 'skipForward' | 'mute' | 'unmute' | 'shortcutFrameBack' | 'shortcutFrameForward' | 'frameStepUnavailable' | 'audioSelectedHint' | 'mediaOnlyOne' | MirrorMarkHintKey;
 
 export const volumeGestureEvent = 'ottertap-volume-gesture';
 export const rateHintEvent = 'ottertap-rate';
@@ -54,12 +55,14 @@ export function hotkeyFromKeyboard(event: KeyInput, { singleKey = false, onMedia
     return name === 'm' ? { type: 'mute' } : null;
   }
   const name = pressedKey(event, keybinds);
-  // Frame keys, and any mirror or mark key the user bound, work even when single-key mode is off.
+  // Frame keys, and any mirror, mark, or media key the user bound, work even when single-key mode is off.
   if (name === keybinds.frameBack) return { type: 'frame', direction: -1 };
   if (name === keybinds.frameForward) return { type: 'frame', direction: 1 };
   if (keybinds.mirror && name === keybinds.mirror) return { type: 'mirror' };
   if (keybinds.markSet && name === keybinds.markSet) return { type: 'mark', action: 'set' };
   if (keybinds.markJump && name === keybinds.markJump) return { type: 'mark', action: 'jump' };
+  if (keybinds.mediaPrev && name === keybinds.mediaPrev) return { type: 'media', direction: -1 };
+  if (keybinds.mediaNext && name === keybinds.mediaNext) return { type: 'media', direction: 1 };
   if (!singleKey) return null;
   if (name === keybinds.rateUp) return rate(1);
   if (name === keybinds.rateDown) return rate(-1);
@@ -135,6 +138,7 @@ export function isHotkeyAction(value: unknown): value is HotkeyAction {
   if (action.type === 'rate') return action.direction === 1 || action.direction === -1 || action.direction === 0;
   if (action.type === 'toggle' || action.type === 'mute' || action.type === 'pip' || action.type === 'mirror') return true;
   if (action.type === 'mark') return action.action === 'set' || action.action === 'jump';
+  if (action.type === 'media') return action.direction === 1 || action.direction === -1;
   if (action.type === 'frame') return action.direction === 1 || action.direction === -1;
   return action.type === 'skip' && isSkipSeconds(Math.abs(action.delta));
 }
@@ -194,7 +198,7 @@ export function mirrorMarkHintKey(command: MediaCommand): MirrorMarkHintKey | ''
 
 export function actionHintText(key: string, seconds?: number) {
   if (key === 'skipBack' || key === 'skipForward') return i18n.t(key, { seconds: hintSkipSeconds(seconds) });
-  if (key === 'play' || key === 'paused' || key === 'mute' || key === 'unmute' || key === 'shortcutFrameBack' || key === 'shortcutFrameForward' || key === 'frameStepUnavailable' || key === 'audioSelectedHint' || key === 'mirrorOnHint' || key === 'mirrorOffHint' || key === 'markSetHint' || key === 'markJumpHint' || key === 'mirrorUnavailableAudio' || key === 'markUnavailable' || key === 'markMissing' || key === 'cannotSeek' || isPipFailureKey(key)) return i18n.t(key);
+  if (key === 'play' || key === 'paused' || key === 'mute' || key === 'unmute' || key === 'shortcutFrameBack' || key === 'shortcutFrameForward' || key === 'frameStepUnavailable' || key === 'audioSelectedHint' || key === 'mediaOnlyOne' || key === 'mirrorOnHint' || key === 'mirrorOffHint' || key === 'markSetHint' || key === 'markJumpHint' || key === 'mirrorUnavailableAudio' || key === 'markUnavailable' || key === 'markMissing' || key === 'cannotSeek' || isPipFailureKey(key)) return i18n.t(key);
   return '';
 }
 
@@ -277,8 +281,8 @@ export function createHotkeyInput(send: (action: HotkeyAction, target?: string) 
       if (!action || event.type === 'keyup') return true;
       held.add(id);
       if (event.altKey) useAlt();
-      // A held key repeats. Mirror and marks are one shot per press.
-      if (event.repeat && (action.type === 'mirror' || action.type === 'mark')) return true;
+      // A held key repeats. Mirror, marks, and media steps are one shot per press.
+      if (event.repeat && (action.type === 'mirror' || action.type === 'mark' || action.type === 'media')) return true;
       queue(action, action.type === 'volume' ? target : undefined);
       return true;
     },

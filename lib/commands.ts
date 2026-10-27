@@ -14,7 +14,9 @@ export const extensionCommands = [
   { name: 'pip', message: 'cmdPictureInPicture', action: { type: 'pip' } },
   { name: 'mirror', message: 'cmdMirror', action: { type: 'mirror' } },
   { name: 'mark-set', message: 'cmdMarkSet', action: { type: 'mark', action: 'set' } },
-  { name: 'mark-jump', message: 'cmdMarkJump', action: { type: 'mark', action: 'jump' } }
+  { name: 'mark-jump', message: 'cmdMarkJump', action: { type: 'mark', action: 'jump' } },
+  { name: 'media-prev', message: 'cmdMediaPrev', action: { type: 'media', direction: -1 } },
+  { name: 'media-next', message: 'cmdMediaNext', action: { type: 'media', direction: 1 } }
 ] as const satisfies ReadonlyArray<{ name: string; message: string; suggestedKey?: { default: string; mac: string }; action: HotkeyAction }>;
 
 export type ExtensionCommandName = (typeof extensionCommands)[number]['name'];

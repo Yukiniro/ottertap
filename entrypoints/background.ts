@@ -2,14 +2,13 @@ import { i18n } from '#i18n';
 import { browser } from 'wxt/browser';
 import { extensionStore, settingsKey } from '../lib/extension-store';
 import { createSitePrefSession, isSiteEnabled, mergeSettingsChange, normalizeSettings, withRememberedCommand } from '../lib/settings';
-import { frameFailureKey, isMediaCommand, mirrorMarkFailureKey, pipFailureKey } from '../lib/media';
+import { cycleMediaId, frameFailureKey, isMediaCommand, keptSelection, lockedMedia, mirrorMarkFailureKey, pipFailureKey } from '../lib/media';
 import { actionForCommand } from '../lib/commands';
 import { actionHintKey, applySkipStep, applyVolumeStep, directedWheelNotches, isHotkeyAction, mirrorMarkHintKey, planHotkey, shownPercent, type HotkeyAction } from '../lib/hotkey';
 import { nextRate } from '../lib/rate';
 import { steppedVolume, volumeStepForWheel } from '../lib/volume';
 import { volumeBadgeColor, volumeBadgeFromReports, volumeBadgeTtlMs } from '../lib/volume-badge';
 import { shouldFollowPlaying } from '../lib/follow-playing';
-import { keptSelection, lockedMedia } from '../lib/media';
 import { soundingTabs } from '../lib/tabs';
 import type { MediaCommand, MediaState, Settings, SitePref } from '../lib/types';
 
@@ -357,6 +356,29 @@ export default defineBackground(() => {
     if (key) showAction(tabId, key, action.type === 'skip' ? jumped : undefined);
     return true;
   }
+  async function applyMediaStep(tabId: number, host: string, direction: 1 | -1) {
+    const { media, failed, typing } = await collect(tabId, host);
+    if (typing) return false;
+    if (media.length < 2) {
+      if (media.length === 1) showAction(tabId, 'mediaOnlyOne');
+      return media.length === 1;
+    }
+    const saved = lockedId(tabId, media, failed);
+    const current = media.find(item => item.id === saved) ?? lockedMedia(media, '');
+    if (!current) return false;
+    const nextId = cycleMediaId(media, current.id, direction);
+    if (!nextId) {
+      showAction(tabId, 'mediaOnlyOne');
+      return true;
+    }
+    manualPicks.set(tabId, Date.now());
+    if (gestures.get(tabId)?.id !== nextId) gestures.delete(tabId);
+    if (!(selectedIds.get(tabId) ?? '')) selectedIds.set(tabId, current.id);
+    rememberSelection(tabId, nextId);
+    const settings = await currentSettings();
+    await applySitePref(tabId, host, nextId, settings.sitePrefs, settings.defaultRate);
+    return true;
+  }
   async function performHotkey(tabId: number, host: string, action: HotkeyAction) {
     if (action.type === 'rate') {
       const rate = await applyRate(tabId, host, action.direction);
@@ -370,6 +392,7 @@ export default defineBackground(() => {
       reveal(tabId, percent);
       return { handled: true as const, percent };
     }
+    if (action.type === 'media') return { handled: await applyMediaStep(tabId, host, action.direction) };
     return { handled: await applyTransport(tabId, host, action) };
   }
   async function runExtensionCommand(name: string, source?: { id?: number; url?: string }) {

@@ -87,7 +87,7 @@ test('扩展命令映射到同一套媒体指令，建议键避开页内的 Alt'
   const suggested = extensionCommands.filter(command => 'suggestedKey' in command);
   assert.equal(suggested.length, 4);
   assert.deepEqual(suggested.map(command => command.name), ['play-pause', 'skip-back', 'skip-forward', 'mute']);
-  for (const name of ['volume-up', 'volume-down', 'rate-faster', 'rate-slower', 'rate-reset', 'pip', 'mirror', 'mark-set', 'mark-jump']) {
+  for (const name of ['volume-up', 'volume-down', 'rate-faster', 'rate-slower', 'rate-reset', 'pip', 'mirror', 'mark-set', 'mark-jump', 'media-prev', 'media-next']) {
     assert.equal('suggestedKey' in extensionCommands.find(command => command.name === name)!, false);
   }
   const manifest = manifestCommands();
@@ -114,6 +114,6 @@ test('扩展命令映射到同一套媒体指令，建议键避开页内的 Alt'
   assert.equal(shortcutsSettingsUrl('Mozilla/5.0 Edg/140.0.0.0'), 'edge://extensions/shortcuts');
   assert.equal(shortcutsSettingsUrl('Mozilla/5.0 Chrome/140.0.0.0'), 'chrome://extensions/shortcuts');
   assert.deepEqual(commandBindings([{ name: 'mute', shortcut: 'Alt+M' }, { name: 'volume-up', shortcut: '' }]).map(row => [row.name, row.shortcut]), [
-    ['play-pause', ''], ['skip-back', ''], ['skip-forward', ''], ['mute', 'Alt + M'], ['volume-up', ''], ['volume-down', ''], ['rate-faster', ''], ['rate-slower', ''], ['rate-reset', ''], ['pip', ''], ['mirror', ''], ['mark-set', ''], ['mark-jump', '']
+    ['play-pause', ''], ['skip-back', ''], ['skip-forward', ''], ['mute', 'Alt + M'], ['volume-up', ''], ['volume-down', ''], ['rate-faster', ''], ['rate-slower', ''], ['rate-reset', ''], ['pip', ''], ['mirror', ''], ['mark-set', ''], ['mark-jump', ''], ['media-prev', ''], ['media-next', '']
   ]);
 });
