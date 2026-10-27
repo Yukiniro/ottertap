@@ -20,7 +20,7 @@ export type HotkeyAction =
   | { type: 'mark'; action: 'set' | 'jump' };
 
 export type MirrorMarkHintKey = 'mirrorOnHint' | 'mirrorOffHint' | 'markSetHint' | 'markJumpHint';
-export type ActionHintKey = 'play' | 'paused' | 'skipBack' | 'skipForward' | 'mute' | 'unmute' | 'shortcutFrameBack' | 'shortcutFrameForward' | 'frameStepUnavailable' | MirrorMarkHintKey;
+export type ActionHintKey = 'play' | 'paused' | 'skipBack' | 'skipForward' | 'mute' | 'unmute' | 'shortcutFrameBack' | 'shortcutFrameForward' | 'frameStepUnavailable' | 'audioSelectedHint' | MirrorMarkHintKey;
 
 export const volumeGestureEvent = 'ottertap-volume-gesture';
 export const rateHintEvent = 'ottertap-rate';
@@ -194,7 +194,7 @@ export function mirrorMarkHintKey(command: MediaCommand): MirrorMarkHintKey | ''
 
 export function actionHintText(key: string, seconds?: number) {
   if (key === 'skipBack' || key === 'skipForward') return i18n.t(key, { seconds: hintSkipSeconds(seconds) });
-  if (key === 'play' || key === 'paused' || key === 'mute' || key === 'unmute' || key === 'shortcutFrameBack' || key === 'shortcutFrameForward' || key === 'frameStepUnavailable' || key === 'mirrorOnHint' || key === 'mirrorOffHint' || key === 'markSetHint' || key === 'markJumpHint' || key === 'mirrorUnavailableAudio' || key === 'markUnavailable' || key === 'markMissing' || key === 'cannotSeek' || isPipFailureKey(key)) return i18n.t(key);
+  if (key === 'play' || key === 'paused' || key === 'mute' || key === 'unmute' || key === 'shortcutFrameBack' || key === 'shortcutFrameForward' || key === 'frameStepUnavailable' || key === 'audioSelectedHint' || key === 'mirrorOnHint' || key === 'mirrorOffHint' || key === 'markSetHint' || key === 'markJumpHint' || key === 'mirrorUnavailableAudio' || key === 'markUnavailable' || key === 'markMissing' || key === 'cannotSeek' || isPipFailureKey(key)) return i18n.t(key);
   return '';
 }
 

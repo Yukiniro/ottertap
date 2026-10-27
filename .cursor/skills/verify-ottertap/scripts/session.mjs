@@ -35,6 +35,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-commands
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-feedback
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-follow-playing
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive selection-highlight
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -54,7 +55,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -238,6 +239,7 @@ function routedHtml(pathname) {
   if (pathname === '/feed') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="preview" aria-label="Feed preview" src="${wav}" preload="auto" playsinline loop style="display:block;width:240px;height:135px;margin:24px"></video><video id="media" aria-label="Main player" src="${wav}" preload="auto" playsinline loop style="display:block;width:640px;height:360px;margin:24px"></video><div style="height:1600px"></div></body></html>`;
   if (pathname === '/cards') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="card" aria-label="Feed card" src="${wav}" preload="auto" playsinline loop style="display:block;width:240px;height:135px;margin:24px"></video><div style="height:1600px"></div></body></html>`;
   if (pathname === '/audio') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><audio id="media" aria-label="Fixture audio" src="${wav}" preload="auto"></audio></body></html>`;
+  if (pathname === '/mixed') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" aria-label="Fixture video" src="${wav}" preload="auto" playsinline loop style="display:block;width:640px;height:360px;margin:48px"></video><audio id="clip" aria-label="Fixture audio" src="${wav}" preload="auto"></audio></body></html>`;
   if (pathname === '/pip-off') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" aria-label="Fixture video" src="${wav}" preload="auto" playsinline disablepictureinpicture style="display:block;width:640px;height:360px;margin:48px"></video></body></html>`;
   if (pathname === '/unseekable') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Unseekable</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" aria-label="Unseekable video" preload="none" style="display:block;width:640px;height:360px;margin:48px"></video></body></html>`;
   if (pathname === '/tone-current') return tonePage('Current show');
@@ -3222,7 +3224,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -5599,6 +5601,167 @@ async function driveAutoFollowPlaying(context, dir, note) {
   } finally {
     await popup?.close().catch(() => {});
     await single?.close().catch(() => {});
+    await feed?.close().catch(() => {});
+    await settings?.close().catch(() => {});
+  }
+}
+
+async function driveSelectionHighlight(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const names = { '#preview': 'Feed preview', '#media': 'Main player' };
+  const opposite = selector => (selector === '#preview' ? '#media' : '#preview');
+  const rings = page => page.evaluate(() => ({
+    preview: document.querySelector('#preview')?.classList.contains('ottertap-selection-ring') === true,
+    media: document.querySelector('#media')?.classList.contains('ottertap-selection-ring') === true,
+    clip: document.querySelector('#clip')?.classList.contains('ottertap-selection-ring') === true,
+  }));
+  const ringDetail = (page, selector) => page.locator(selector).evaluate(element => {
+    const animation = element.getAnimations().find(item => item.animationName === 'ottertap-selection-ring');
+    const timing = animation?.effect?.getTiming?.();
+    const style = getComputedStyle(element);
+    const rect = element.getBoundingClientRect();
+    const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + Math.min(24, rect.height / 2));
+    return {
+      on: element.classList.contains('ottertap-selection-ring'),
+      duration: typeof timing?.duration === 'number' ? timing.duration : 0,
+      outline: style.outlineStyle,
+      width: style.outlineWidth,
+      events: style.pointerEvents,
+      hit: hit === element || (!!hit && element.contains(hit)),
+    };
+  });
+  const hints = page => page.evaluate(() => {
+    const root = document.querySelector('ottertap-controller')?.shadowRoot;
+    return [...(root?.querySelectorAll('[role="status"]') ?? [])].map(node => ({
+      text: (node.textContent || '').trim(),
+      events: getComputedStyle(node).pointerEvents,
+    }));
+  });
+  const ready = async (page, selector) => page.locator(selector).evaluate(async element => {
+    if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+  });
+  const start = async (page, selector) => {
+    await page.locator(selector).evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+      element.pause();
+      try { await element.play(); }
+      catch { element.muted = true; await element.play(); }
+    });
+    await poll(() => page.locator(selector).evaluate(element => element.paused), value => value === false, `${selector} 应开始播放`);
+  };
+  const choose = async (popup, name) => {
+    if (!await popup.evaluate(`(() => { const trigger = document.getElementById('popup-media'); if (!trigger) return false; trigger.click(); return true; })()`)) throw new Error('没有媒体列表');
+    const picked = await popup.evaluate(`(() => {
+      const item = [...document.querySelectorAll('[role="menuitemradio"]')].find(node => (node.textContent || '').includes(${JSON.stringify(name)}));
+      if (!item) return false;
+      item.click();
+      return true;
+    })()`);
+    if (!picked) throw new Error(`没有点到 ${name}`);
+  };
+  let settings;
+  let feed;
+  let mixed;
+  let popup;
+  try {
+    feed = await context.newPage();
+    await feed.goto(`${origin}/feed`, { waitUntil: 'domcontentloaded' });
+    await feed.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await ready(feed, '#preview');
+    await ready(feed, '#media');
+    await feed.bringToFront();
+    popup = await openActionPopup(context, feed);
+    const initial = await poll(() => popup.view(), value => value.heading === 'Feed preview' || value.heading === 'Main player', '面板应先选中 feed 里的一条');
+    const from = initial.heading === 'Feed preview' ? '#preview' : '#media';
+    const followed = opposite(from);
+    await start(feed, followed);
+    const shown = await poll(async () => {
+      const marks = await rings(feed);
+      const detail = await ringDetail(feed, followed);
+      return { marks, detail };
+    }, value => value.marks[followed.slice(1)] === true && value.marks[from.slice(1)] === false && value.detail.duration >= 900 && value.detail.duration <= 1100 && value.detail.outline === 'solid' && value.detail.width === '2px' && value.detail.events !== 'none' && value.detail.hit, '跟随之后只有新视频有一圈约一秒的轮廓，且不挡住画面');
+    await feed.screenshot({ path: path.join(dir, 'ring-followed.png') });
+    note(`followed ring on ${names[followed]} duration=${shown.detail.duration}`);
+    await feed.bringToFront();
+    await feed.mouse.click(8, 8);
+    await feed.keyboard.press('Alt+Period');
+    const withSpeed = await poll(async () => ({ marks: await rings(feed), hints: await hints(feed) }), value => value.marks[followed.slice(1)] === true && value.marks[from.slice(1)] === false && value.hints.some(item => item.text === 'Speed 1.25×'), '轮廓还在时倍速提示应同时出现');
+    await feed.screenshot({ path: path.join(dir, 'ring-with-speed.png') });
+    note(`speed hint with ring: ${withSpeed.hints.map(item => item.text).filter(Boolean).join(' | ')}`);
+    await poll(() => rings(feed), value => value.preview === false && value.media === false, '轮廓应在大约一秒后消失', 2_500);
+    const after = await ringDetail(feed, followed);
+    if (!after.hit) throw new Error('轮廓消失后画面中心不再命中视频');
+    note('ring faded');
+
+    await choose(popup, names[from]);
+    await poll(() => popup.view(), value => value.heading === names[from], '面板点选应改到原来那一条');
+    const panelRing = await poll(() => rings(feed), value => value[from.slice(1)] === true && value[followed.slice(1)] === false, '面板点选后只高亮点中的那一条');
+    await feed.screenshot({ path: path.join(dir, 'ring-panel.png') });
+    note(`panel ring ${JSON.stringify(panelRing)}`);
+    await popup.close();
+    popup = null;
+
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
+    const toggle = settings.getByRole('switch', { name: 'Single-key mode' });
+    await toggle.waitFor({ state: 'visible', timeout: 15_000 });
+    if (await toggle.getAttribute('aria-checked') !== 'false') throw new Error('单键模式默认应关闭');
+    await toggle.click();
+    await poll(() => toggle.getAttribute('aria-checked'), value => value === 'true', '应能打开单键模式');
+    await poll(stored, value => value.singleKey === true && value.followPlaying !== false, '存储里应打开单键模式，且不关掉自动跟随');
+    await feed.bringToFront();
+    const box = await feed.locator(followed).boundingBox();
+    if (!box) throw new Error('键切的视频没有位置');
+    await feed.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await feed.keyboard.press('ArrowUp');
+    const keyed = await poll(() => rings(feed), value => value[followed.slice(1)] === true && value[from.slice(1)] === false, '指着另一条按向上键后只高亮这一条');
+    await feed.screenshot({ path: path.join(dir, 'ring-key.png') });
+    note(`key ring ${JSON.stringify(keyed)}`);
+    await settings.bringToFront();
+    await toggle.click();
+    await poll(() => toggle.getAttribute('aria-checked'), value => value === 'false', '应关掉单键模式');
+    await poll(stored, value => value.singleKey === false, '存储里单键模式应关闭');
+
+    mixed = await context.newPage();
+    await mixed.goto(`${origin}/mixed`, { waitUntil: 'domcontentloaded' });
+    await mixed.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await ready(mixed, '#media');
+    await ready(mixed, '#clip');
+    await mixed.bringToFront();
+    popup = await openActionPopup(context, mixed);
+    await poll(() => popup.view(), value => value.heading === 'Fixture video', '混合页应先选中视频');
+    await start(mixed, '#clip');
+    const audioHint = await poll(async () => ({ marks: await rings(mixed), hints: await hints(mixed), heading: (await popup.view()).heading }), value => value.heading === 'Fixture audio' && value.marks.media === false && value.marks.clip === false && value.hints.some(item => item.text === 'Audio selected' && item.events === 'none'), '选中音频时应出现短提示，并且不画轮廓');
+    await mixed.screenshot({ path: path.join(dir, 'toast-audio.png') });
+    note(`audio hint ${audioHint.hints.map(item => item.text).filter(Boolean).join(' | ')}`);
+    await choose(popup, 'Fixture video');
+    await poll(() => popup.view(), value => value.heading === 'Fixture video', '点回视频后面板应回到视频');
+    await poll(() => rings(mixed), value => value.media === true && value.clip === false, '点回视频后只高亮视频');
+    await popup.close();
+    popup = null;
+    const end = await stored();
+    if (end.singleKey !== false) throw new Error('结束时单键模式应关闭');
+    if (end.followPlaying === false) throw new Error('结束时自动跟随应仍开启');
+    if (end.sitePrefs && Object.keys(end.sitePrefs).length) throw new Error(`选中反馈写入了站点记忆：${JSON.stringify(end.sitePrefs)}`);
+    const state = {
+      ok: true,
+      followed: names[followed],
+      panel: names[from],
+      keyed: names[followed],
+      audioHint: 'Audio selected',
+      speedHint: 'Speed 1.25×',
+      singleKey: false,
+      followPlaying: end.followPlaying !== false,
+    };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await popup?.close().catch(() => {});
+    await mixed?.close().catch(() => {});
     await feed?.close().catch(() => {});
     await settings?.close().catch(() => {});
   }

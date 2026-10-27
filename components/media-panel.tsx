@@ -220,7 +220,7 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
         <ChevronDown data-icon="inline-end" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-72">
-        <DropdownMenuRadioGroup value={selected?.id ?? ''} onValueChange={id => { select(id); setSeekDraft(null); showMedia(id); }}>
+        <DropdownMenuRadioGroup value={selected?.id ?? ''} onValueChange={id => { select(id); setSeekDraft(null); }}>
           {page.media.map((media, index) => <DropdownMenuRadioItem key={media.id} value={media.id}><span className="truncate">{mediaChoiceLabel(media, index)}</span></DropdownMenuRadioItem>)}
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>

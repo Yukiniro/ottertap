@@ -53,7 +53,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs doctor
 
 ## Drive
 
-脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、低音量滚轮细步长（见 `features/fine-wheel.md`）、Shift 粗调步长（见 `features/coarse-step.md`）、倍速增减步长（见 `features/rate-step.md`）、扩展命令画中画（见 `features/extension-pip.md`）、按住临时加速（见 `features/hold-boost.md`）、同键短按跳长按加速（见 `features/hold-skip-combo.md`）、逐帧（见 `features/frame-step.md`）、页内快捷键改键（见 `features/hotkey-remap.md`）、浮动药丸倍速（见 `features/floating-speed.md`）、浮动药丸播放跳转（见 `features/floating-playback.md`）、浮动入口旁注（见 `features/floating-entry-note.md`）、从音量药丸打开弹出面板（见 `features/floating-open-panel.md`）、仅在播放时显示浮动入口（见 `features/floating-while-playing.md`）和滚轮方向（见 `features/wheel-direction.md`）。仅全屏时悬停滚轮见 `features/fullscreen-wheel.md`。侧栏聊天和文档大纲忽略见 `features/sidebar-ignore.md`。设置页三处名单的「当前站」见 `features/settings-current-site.md`。记住站点的「清空全部」见 `features/settings-clear-remembered.md`。镜像与标记的页内提示见 `features/mirror-mark-feedback.md`。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
+脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、低音量滚轮细步长（见 `features/fine-wheel.md`）、Shift 粗调步长（见 `features/coarse-step.md`）、倍速增减步长（见 `features/rate-step.md`）、扩展命令画中画（见 `features/extension-pip.md`）、按住临时加速（见 `features/hold-boost.md`）、同键短按跳长按加速（见 `features/hold-skip-combo.md`）、逐帧（见 `features/frame-step.md`）、页内快捷键改键（见 `features/hotkey-remap.md`）、浮动药丸倍速（见 `features/floating-speed.md`）、浮动药丸播放跳转（见 `features/floating-playback.md`）、浮动入口旁注（见 `features/floating-entry-note.md`）、从音量药丸打开弹出面板（见 `features/floating-open-panel.md`）、仅在播放时显示浮动入口（见 `features/floating-while-playing.md`）和滚轮方向（见 `features/wheel-direction.md`）。仅全屏时悬停滚轮见 `features/fullscreen-wheel.md`。侧栏聊天和文档大纲忽略见 `features/sidebar-ignore.md`。设置页三处名单的「当前站」见 `features/settings-current-site.md`。记住站点的「清空全部」见 `features/settings-clear-remembered.md`。镜像与标记的页内提示见 `features/mirror-mark-feedback.md`。选中变化时的短暂轮廓见 `features/selection-highlight.md`。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
 
 ```bash
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
@@ -88,6 +88,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-other-tabs
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-commands
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-feedback
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-follow-playing
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive selection-highlight
 ```
 
 `skip-step` 在设置页把 `Skip step` 改成 `30s` 并打开 `Single-key mode`，再看弹出面板进退按钮名和页内 `L` / `J` / `→` / `←` 让 `/long` 夹具的 `currentTime` 跟着步长变；它会改写 profile，同一会话只能跑一次。步骤见 `features/skip-step.md`。
@@ -265,6 +266,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-other-tabs
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-commands
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-feedback
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-follow-playing
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive selection-highlight
 node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 ```
 
@@ -391,3 +393,13 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-follow-playin
 `auto-follow-playing` 确认设置页「Playback」的 `Follow the media that starts playing` 默认开。`/feed` 上点播另一条后，弹出面板标题、浮动入口和页内 `Alt+.` 都改到新目标，药丸里的暂停也停的是这一条。关掉开关后再点播另一条，面板和 `Alt+.` 留在原来的那条。重新打开后，在面板里点选一条，紧接着播放另一条，短时间内选中不被抢走；过了这个窗口再播放，又会跟上。`/video` 只有一条媒体，播放后面板标题仍是这条，页内倍速和面板暂停都作用在它身上。成功时开关回到开启。它会改写 profile，同一会话只能跑一次。步骤见 `features/auto-follow-playing.md`。
 
 写入 `auto-follow-playing/`：`settings-on.png`、`popup-followed.png`、`pill-followed.png`、`settings-off.png`、`popup-held.png`、`popup-single.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
+## 选中变化的短暂反馈
+
+```bash
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive selection-highlight
+```
+
+`selection-highlight` 在 `/feed` 上先等面板选中一条，再播放另一条。只有新的那一条带约一秒的外沿轮廓，画面中心仍点在视频上。轮廓还在时 `Alt+.` 出现 `Speed 1.25×`。轮廓随后消失。面板点回原来那一条时，轮廓只留在点中的那一条。打开单键模式，指针放在另一条上按 `↑`，轮廓改到这一条，成功后关掉单键模式。`/mixed` 上播放音频时，顶部出现 `Audio selected`，视频和音频都没有轮廓；再点回视频，轮廓只在视频上。`sitePrefs` 保持为空。它会暂时改写 profile，同一会话只能跑一次。步骤见 `features/selection-highlight.md`。
+
+写入 `selection-highlight/`：`ring-followed.png`、`ring-with-speed.png`、`ring-panel.png`、`ring-key.png`、`toast-audio.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。

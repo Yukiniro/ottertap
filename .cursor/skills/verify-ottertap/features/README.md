@@ -1,6 +1,6 @@
 # OtterTap 功能地图
 
-验证主界面是扩展本身。索引里的每一条都要能从用户路径走到可观察的结束状态。`scripts/session.mjs` 目前脚本化了弹出面板播放、滚轮音量、快进快退步长、快进快退随倍速放大、音量调节步长、低音量滚轮细步长、Shift 粗调步长、倍速增减步长、扩展命令画中画、全局默认倍速、按住临时加速、同键短按跳长按加速、逐帧、页内快捷键改键、浮动药丸倍速、浮动药丸播放跳转、浮动入口旁注、从音量药丸打开弹出面板、仅在播放时显示浮动入口和滚轮方向。仅全屏时悬停滚轮、侧栏聊天和文档大纲忽略，以及记住站点、网站规则和不显示浮动站点这三份名单的本地过滤，三处名单各自的「当前站」，和记住站点的「清空全部」，以及水平镜像、进度标记、一键静音其他发声标签，和镜像与标记的快捷键也已脚本化。镜像与标记的页内提示也已脚本化。播放中自动跟随当前媒体也已脚本化。其余条目的选择器和断言已经写在各自文件里，用同一次 `launch` 的 Chromium（或 `pnpm e2e` 里点名的那条测试）来驱动。一条失败就报告失败原因，写进该文件的 Gotchas，不要把旅程改容易。
+验证主界面是扩展本身。索引里的每一条都要能从用户路径走到可观察的结束状态。`scripts/session.mjs` 目前脚本化了弹出面板播放、滚轮音量、快进快退步长、快进快退随倍速放大、音量调节步长、低音量滚轮细步长、Shift 粗调步长、倍速增减步长、扩展命令画中画、全局默认倍速、按住临时加速、同键短按跳长按加速、逐帧、页内快捷键改键、浮动药丸倍速、浮动药丸播放跳转、浮动入口旁注、从音量药丸打开弹出面板、仅在播放时显示浮动入口和滚轮方向。仅全屏时悬停滚轮、侧栏聊天和文档大纲忽略，以及记住站点、网站规则和不显示浮动站点这三份名单的本地过滤，三处名单各自的「当前站」，和记住站点的「清空全部」，以及水平镜像、进度标记、一键静音其他发声标签，和镜像与标记的快捷键也已脚本化。镜像与标记的页内提示也已脚本化。播放中自动跟随当前媒体也已脚本化。选中换到另一条时的短暂轮廓也已脚本化。其余条目的选择器和断言已经写在各自文件里，用同一次 `launch` 的 Chromium（或 `pnpm e2e` 里点名的那条测试）来驱动。一条失败就报告失败原因，写进该文件的 Gotchas，不要把旅程改容易。
 
 | 功能 | 文件 | 用户从哪里进入 | 现成回归 |
 | --- | --- | --- | --- |
@@ -44,3 +44,4 @@
 | 设置名单定位当前站 | [settings-current-site.md](settings-current-site.md) | 设置页记住站点、网站规则、隐藏浮动名单各自的 `Current site`。点一处只把该处过滤设成当前标签页主机名，并把该列表滚进视野。读不到主机名时按钮不可用。另外两处的过滤不动 | `drive settings-current-site`；`tests/settings-current-site-locate.test.ts` |
 | 清空全部已记住的站点 | [settings-clear-remembered.md](settings-clear-remembered.md) | 设置页「Remembered sites」标题旁的 `Clear all`。二次确认后删除全部 `sitePrefs`，包括筛选藏起来的行。取消则不变。不改网站规则、不显示浮动按钮的站点和其他设置。确认文案写明除非已有自己的备份否则无法撤销 | `drive settings-clear-remembered`；`tests/settings-clear-remembered.test.ts` |
 | 播放中自动跟随 | [auto-follow-playing.md](auto-follow-playing.md) | 设置页「Playback」的 `Follow the media that starts playing`，默认开。另一条媒体开始播放时，面板、浮动控制和页内快捷键改去控制它。刚在面板里点选的媒体会再保持几秒。关掉后不再自动切。只有一条媒体时和现在一样 | `drive auto-follow-playing`；`tests/follow-playing.test.ts`、`tests/follow-playing-background.test.ts` |
+| 选中变化的短暂反馈 | [selection-highlight.md](selection-highlight.md) | 自动跟随、面板点选，或单键模式下指着另一条按音量键。视频外沿一圈轻轮廓约一秒淡出；音频用和倍速提示同一块字样说明已选中。不挡画面，也不写入记住此站点 | `drive selection-highlight`；`tests/selection-highlight.test.ts`、`tests/selection-highlight-background.test.ts` |

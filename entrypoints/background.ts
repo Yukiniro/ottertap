@@ -185,9 +185,12 @@ export default defineBackground(() => {
     }
   };
   const rememberSelection = (tabId: number, id: string) => {
-    if (selectedIds.get(tabId) === id) return;
+    const previous = selectedIds.get(tabId) ?? '';
+    if (previous === id) return;
     selectedIds.set(tabId, id);
     publishSelection(tabId);
+    // The first lock only records who is controlled. A later change is what the ring and the audio hint announce.
+    if (previous) void cueSelection(tabId, id);
   };
   const clearSelection = (tabId: number) => {
     if (!selectedIds.has(tabId)) return;
@@ -243,6 +246,12 @@ export default defineBackground(() => {
   };
   const showAction = (tabId: number, key: string, seconds?: number) => {
     void browser.tabs.sendMessage(tabId, { namespace: 'ottertap', type: 'actionHint', key, seconds }, { frameId: 0 }).catch(() => {});
+  };
+  const cueSelection = async (tabId: number, id: string) => {
+    try {
+      const result = await deliver(tabId, id, 'highlight');
+      if (result?.kind === 'audio') showAction(tabId, 'audioSelectedHint');
+    } catch { /* The frame navigated away before the ring could show. */ }
   };
   const showRateLock = (tabId: number) => {
     void browser.tabs.sendMessage(tabId, { namespace: 'ottertap', type: 'rateLockHint' }, { frameId: 0 }).catch(() => {});
@@ -527,7 +536,9 @@ export default defineBackground(() => {
         }
         if (message.type === 'highlight') {
           if (!mediaId) throw new Error(i18n.t('invalidCommand'));
-          await deliver(tabId, mediaId, 'highlight');
+          // Opening the list asks to show whoever is selected. A click that already moved on must not ring the previous one.
+          if ((selectedIds.get(tabId) ?? '') !== mediaId) return { ok: true };
+          await cueSelection(tabId, mediaId);
           return { ok: true };
         }
         if (message.type === 'holdRate') {
