@@ -5,6 +5,7 @@ import { assignedRateAttribute, assignedRateEvent, installAssignedRateHook } fro
 import { clampRate, maxRate, minRate, noteRecallRate, readSettledRate, recallableRate, sameRate } from './rate';
 import type { ChannelMode, MediaCommand, MediaState } from './types';
 import { adjacentFrameTime, frameStepSeconds, stopAllPresentedFrames, stopPresentedFrames, watchPresentedFrames } from './frame';
+import { isHorizontallyMirrored, setHorizontalMirror } from './mirror';
 import { formatTime } from './utils';
 
 export const mediaPresenceEvent = 'ottertap-media';
@@ -121,7 +122,8 @@ export function mediaSnapshot(element: HTMLMediaElement, id: string, document: D
     seekable: Array.from({ length: ranges.length }, (_, index) => ({ start: ranges.start(index), end: ranges.end(index) })),
     ...pipFields(element, document),
     channel: amplifier?.channel(element) ?? 'stereo',
-    channelAvailable: routable(element, amplifier)
+    channelAvailable: routable(element, amplifier),
+    mirrored: isHorizontallyMirrored(element)
   };
 }
 
@@ -187,6 +189,7 @@ export function isMediaCommand(value: unknown): value is MediaCommand {
   const command = value as MediaCommand;
   if (command.type === 'play' || command.type === 'pause' || command.type === 'mute' || command.type === 'pip') return true;
   if (command.type === 'channel') return isChannelMode(command.value);
+  if (command.type === 'mirror') return typeof command.value === 'boolean';
   if (command.type === 'frame') return command.direction === 1 || command.direction === -1;
   if (!('value' in command) || !Number.isFinite(command.value)) return false;
   if (command.type === 'volume') return command.value >= 0 && command.value <= maxGain;
@@ -214,6 +217,7 @@ export async function applyMediaCommand(element: HTMLMediaElement, command: Medi
     await amplifier?.setChannel(element, command.value);
     return;
   }
+  if (command.type === 'mirror') { setHorizontalMirror(element, command.value); return; }
   if (command.type === 'frame') {
     if (!elementCanStepFrames(element)) throw new Error(i18n.t('frameStepUnavailable'));
     if (!element.paused) element.pause();

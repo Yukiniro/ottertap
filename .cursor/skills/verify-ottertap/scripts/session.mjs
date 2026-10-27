@@ -29,6 +29,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-floating-hidden-filter
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-current-site
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-clear-remembered
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive horizontal-mirror
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -48,7 +49,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -3180,7 +3181,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -4286,6 +4287,213 @@ async function driveSettingsClearRemembered(context, dir, note) {
     await popup?.close().catch(() => {});
     await settings?.close().catch(() => {});
     await fixture?.close().catch(() => {});
+  }
+}
+
+const mirrorSwitchExpr = `(() => {
+  const node = document.querySelector('[role="switch"][aria-label="Mirror horizontally"]');
+  return {
+    checked: node?.getAttribute('aria-checked') ?? '',
+    disabled: !!(node && (node.disabled || node.hasAttribute('data-disabled') || node.getAttribute('aria-disabled') === 'true')),
+    hint: document.querySelector('#mirror-hint')?.textContent ?? '',
+    heading: document.querySelector('h1')?.textContent?.trim() ?? '',
+    alert: document.querySelector('[role="alert"]')?.textContent?.trim() ?? '',
+  };
+})()`;
+
+function mirrorClickExpr(label) {
+  return `(() => {
+    const node = document.querySelector('[role="switch"][aria-label=${JSON.stringify(label)}]');
+    if (!node || node.disabled || node.hasAttribute('data-disabled') || node.getAttribute('aria-disabled') === 'true') return false;
+    node.click();
+    return true;
+  })()`;
+}
+
+function pictureOf(page, selector) {
+  return page.locator(selector).evaluate(element => {
+    const box = element.getBoundingClientRect();
+    const computed = getComputedStyle(element);
+    return {
+      scale: element.style.getPropertyValue('scale'),
+      computedScale: computed.getPropertyValue('scale'),
+      transform: computed.transform,
+      volume: element.volume,
+      muted: element.muted,
+      rate: element.playbackRate,
+      currentTime: element.currentTime,
+      width: Math.round(box.width),
+      height: Math.round(box.height),
+      mirrored: element.hasAttribute('data-ottertap-mirror'),
+    };
+  });
+}
+
+function soundSame(before, after) {
+  return Math.abs(after.volume - before.volume) < 0.001 && after.muted === before.muted && Math.abs(after.rate - before.rate) < 0.001 && Math.abs(after.currentTime - before.currentTime) < 0.25;
+}
+
+async function driveHorizontalMirror(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const prefsText = async () => JSON.stringify((await stored()).sitePrefs ?? {});
+  const flipped = value => value.mirrored && (value.scale === '-1 1' || value.computedScale === '-1 1');
+  const plain = value => !value.mirrored && value.scale !== '-1 1' && value.computedScale !== '-1 1';
+  let popup = null;
+  let feed = null;
+  let audio = null;
+  const page = await context.newPage();
+  try {
+    await page.goto(`${origin}/video`, { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await page.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+      element.pause();
+      element.style.borderLeft = '28px solid #e4572e';
+    });
+    const before = await pictureOf(page, '#media');
+    if (!plain(before)) throw new Error(`视频默认应未镜像：${JSON.stringify(before)}`);
+    if ((await prefsText()).includes('mirror')) throw new Error('空配置里已有 mirror');
+
+    popup = await openActionPopup(context, page);
+    const off = await popup.evaluate(mirrorSwitchExpr);
+    if (off.checked !== 'false' || off.disabled || off.hint || off.alert) throw new Error(`默认开关不对：${JSON.stringify(off)}`);
+    await popup.screenshot(path.join(dir, 'popup-off.png'));
+    note('switch off by default');
+    if (!await popup.evaluate(mirrorClickExpr('Mirror horizontally'))) throw new Error('点不到水平镜像开关');
+    const onPicture = await poll(() => pictureOf(page, '#media'), flipped, '开启后当前视频应水平翻转');
+    if (!soundSame(before, onPicture)) throw new Error(`镜像改了声音或进度：${JSON.stringify({ before, onPicture })}`);
+    if (onPicture.width !== before.width || onPicture.height !== before.height) throw new Error(`镜像改了布局盒子：${JSON.stringify({ before, onPicture })}`);
+    if (onPicture.transform !== before.transform) throw new Error(`镜像改了 transform：${before.transform} -> ${onPicture.transform}`);
+    const onSwitch = await poll(() => popup.evaluate(mirrorSwitchExpr), value => value.checked === 'true' && !value.disabled && !value.hint && !value.alert, '开关应为开，且没有报错');
+    await popup.screenshot(path.join(dir, 'popup-on.png'));
+    await page.screenshot({ path: path.join(dir, 'fixture-on.png'), animations: 'disabled' });
+    if ((await prefsText()).includes('mirror')) throw new Error('未记住站点时镜像写入了 sitePrefs');
+    note(`on ${JSON.stringify({ switch: onSwitch.checked, scale: onPicture.scale, volume: onPicture.volume, rate: onPicture.rate })}`);
+
+    if (!await popup.evaluate(mirrorClickExpr('Mirror horizontally'))) throw new Error('关不掉水平镜像');
+    const restored = await poll(() => pictureOf(page, '#media'), plain, '关闭后画面应恢复');
+    if (!soundSame(before, restored)) throw new Error(`关闭后声音变了：${JSON.stringify({ before, restored })}`);
+    const restoredSwitch = await poll(() => popup.evaluate(mirrorSwitchExpr), value => value.checked === 'false', '关闭后开关应为关');
+    await popup.screenshot(path.join(dir, 'popup-restored.png'));
+    note(`restored checked=${restoredSwitch.checked}`);
+    await popup.close();
+    popup = null;
+
+    popup = await openActionPopup(context, page);
+    if (!await popup.evaluate(mirrorClickExpr('Mirror horizontally'))) throw new Error('重新打开后面板点不到开关');
+    await poll(() => pictureOf(page, '#media'), flipped, '再次开启应再次翻转');
+    await popup.close();
+    popup = null;
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    const reloaded = await poll(() => pictureOf(page, '#media'), plain, '重新加载后新媒体默认不镜像');
+    note(`reload plain scale=${reloaded.scale}`);
+
+    feed = await context.newPage();
+    await feed.goto(`${origin}/feed`, { waitUntil: 'domcontentloaded' });
+    await feed.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await feed.bringToFront();
+    popup = await openActionPopup(context, feed);
+    const feedStart = await popup.evaluate(mirrorSwitchExpr);
+    const selectedSelector = feedStart.heading === 'Feed preview' ? '#preview' : feedStart.heading === 'Main player' ? '#media' : '';
+    if (!selectedSelector || feedStart.checked !== 'false') throw new Error(`feed 初始选中不对：${JSON.stringify(feedStart)}`);
+    const otherSelector = selectedSelector === '#preview' ? '#media' : '#preview';
+    const otherName = otherSelector === '#media' ? 'Main player' : 'Feed preview';
+    if (!await popup.evaluate(mirrorClickExpr('Mirror horizontally'))) throw new Error('feed 上点不到开关');
+    const selectedOn = await poll(() => pictureOf(feed, selectedSelector), flipped, 'feed 上只应翻转当前选中的视频');
+    const otherOff = await pictureOf(feed, otherSelector);
+    if (!plain(otherOff)) throw new Error(`另一条视频被镜像了：${JSON.stringify(otherOff)}`);
+    note(`feed selected=${feedStart.heading} other plain volume=${otherOff.volume}`);
+    if (!await popup.evaluate(`(() => { const trigger = document.getElementById('popup-media'); if (!trigger) return false; trigger.click(); return true; })()`)) throw new Error('feed 上没有媒体列表');
+    const chose = await poll(async () => popup.evaluate(`(() => {
+      const item = [...document.querySelectorAll('[role="menuitemradio"]')].find(node => (node.textContent || '').includes(${JSON.stringify(otherName)}));
+      if (!item) return false;
+      item.click();
+      return true;
+    })()`), value => value === true, `应能选中 ${otherName}`);
+    if (!chose) throw new Error(`没有点到 ${otherName}`);
+    const otherSwitch = await poll(() => popup.evaluate(mirrorSwitchExpr), value => value.heading === otherName && value.checked === 'false' && !value.alert, '换媒体后开关应关着，标题换成另一条');
+    const otherStill = await pictureOf(feed, otherSelector);
+    const selectedStill = await pictureOf(feed, selectedSelector);
+    if (!plain(otherStill) || !flipped(selectedOn) || !flipped(selectedStill)) throw new Error(`换媒体串了镜像：${JSON.stringify({ otherStill, selectedStill })}`);
+    if (Math.abs(otherStill.volume - otherOff.volume) > 0.001 || Math.abs(otherStill.rate - otherOff.rate) > 0.001) throw new Error('换媒体改了另一条的声音');
+    await popup.screenshot(path.join(dir, 'feed-other.png'));
+    note(`switched to ${otherSwitch.heading} checked=${otherSwitch.checked}`);
+    await popup.close();
+    popup = null;
+    await feed.reload({ waitUntil: 'domcontentloaded' });
+    await feed.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    const feedFreshPreview = await poll(() => pictureOf(feed, '#preview'), plain, '刷新后预览默认不镜像');
+    const feedFreshMain = await pictureOf(feed, '#media');
+    if (!plain(feedFreshMain)) throw new Error(`刷新后主视频仍镜像：${JSON.stringify(feedFreshMain)}`);
+    note(`feed reload preview=${feedFreshPreview.scale} main=${feedFreshMain.scale}`);
+
+    audio = await context.newPage();
+    await audio.goto(`${origin}/audio`, { waitUntil: 'domcontentloaded' });
+    await audio.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await audio.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+      element.pause();
+    });
+    const audioBefore = await pictureOf(audio, '#media');
+    await audio.bringToFront();
+    popup = await openActionPopup(context, audio);
+    const audioSwitch = await popup.evaluate(mirrorSwitchExpr);
+    if (!audioSwitch.disabled || audioSwitch.checked !== 'false' || audioSwitch.hint !== 'Audio has no picture, so it cannot be mirrored.') {
+      throw new Error(`音频开关不对：${JSON.stringify(audioSwitch)}`);
+    }
+    if (await popup.evaluate(mirrorClickExpr('Mirror horizontally'))) throw new Error('音频开关不应能点');
+    const audioAfter = await pictureOf(audio, '#media');
+    if (!plain(audioAfter) || !soundSame(audioBefore, audioAfter)) throw new Error(`音频被改了：${JSON.stringify({ audioBefore, audioAfter })}`);
+    await popup.screenshot(path.join(dir, 'audio-disabled.png'));
+    note('audio switch disabled');
+    await popup.close();
+    popup = null;
+
+    await page.bringToFront();
+    popup = await openActionPopup(context, page);
+    const beforeRemember = await prefsText();
+    if (!await popup.evaluate(mirrorClickExpr('Remember this site'))) throw new Error('点不到记住此站点');
+    await poll(async () => (await stored()).sitePrefs?.['media.ottertap.test'], value => value && typeof value === 'object', '记住此站点应写下当前音量和倍速');
+    if (!await popup.evaluate(mirrorClickExpr('Mirror horizontally'))) throw new Error('记住之后点不到水平镜像');
+    const rememberedPicture = await poll(() => pictureOf(page, '#media'), flipped, '记住站点之后仍应能翻转画面');
+    const rememberedPrefs = (await stored()).sitePrefs?.['media.ottertap.test'] ?? {};
+    if (Object.hasOwn(rememberedPrefs, 'mirror') || JSON.stringify(rememberedPrefs).includes('mirror')) throw new Error(`镜像写进了 sitePrefs：${JSON.stringify(rememberedPrefs)}`);
+    await popup.screenshot(path.join(dir, 'remembered.png'));
+    note(`remembered keys=${Object.keys(rememberedPrefs).join(',')} scale=${rememberedPicture.scale}`);
+    await popup.close();
+    popup = null;
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    const afterRemember = await poll(() => pictureOf(page, '#media'), plain, '记住站点并重新加载后画面仍默认不镜像');
+    popup = await openActionPopup(context, page);
+    const afterSwitch = await popup.evaluate(mirrorSwitchExpr);
+    if (afterSwitch.checked !== 'false') throw new Error(`重新加载后开关不是关：${JSON.stringify(afterSwitch)}`);
+    if (!await popup.evaluate(mirrorClickExpr('Remember this site'))) throw new Error('关不掉记住此站点');
+    await poll(async () => (await stored()).sitePrefs?.['media.ottertap.test'], value => value == null, '关掉记住此站点后应忘掉这一条');
+    if ((await prefsText()).includes('mirror')) throw new Error('清理后 sitePrefs 仍有 mirror');
+    await popup.screenshot(path.join(dir, 'reloaded.png'));
+    note(`after reload plain volume=${afterRemember.volume} prefsWere=${beforeRemember}`);
+
+    const state = {
+      ok: true,
+      on: { scale: onPicture.scale, width: onPicture.width, height: onPicture.height, volume: onPicture.volume, rate: onPicture.rate },
+      restored: { scale: restored.scale, mirrored: restored.mirrored },
+      feed: { selected: feedStart.heading, other: otherName },
+      audioDisabled: true,
+      rememberedKeys: Object.keys(rememberedPrefs),
+      reloadedMirrored: afterRemember.mirrored,
+    };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await popup?.close().catch(() => {});
+    await audio?.close().catch(() => {});
+    await feed?.close().catch(() => {});
+    await page.close().catch(() => {});
   }
 }
 

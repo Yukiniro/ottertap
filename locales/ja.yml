@@ -120,6 +120,8 @@ mediaMessageFailed: "メディアの通信に失敗しました。ページを�
 mediaPanel: "メディア操作"
 mediaRemoved: "そのメディアは削除されました。別のものを選んでください。"
 mediaTakenOver: "このページがメディアを制御しているため、100% を超えられません。"
+mirror: "左右反転"
+mirrorUnavailableAudio: "音声には映像がないので、左右反転できません。"
 missingSettings: "設定の状態がありません"
 moveRatePresetDown: "{rate}× を下へ"
 moveRatePresetUp: "{rate}× を上へ"

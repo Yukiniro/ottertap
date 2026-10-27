@@ -198,6 +198,11 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
         </div>
         <p id="frame-step-hint" className={canStep ? 'sr-only' : 'mt-1 text-xs text-muted-foreground'}>{canStep ? i18n.t('frameStepHint') : i18n.t('frameStepUnavailable')}</p>
         {hint ? <p id="pip-hint" className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
+        <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/70 pt-3">
+          <label htmlFor="horizontal-mirror" className="text-sm font-medium">{i18n.t('mirror')}</label>
+          <Switch id="horizontal-mirror" aria-label={i18n.t('mirror')} checked={selected.kind === 'video' && selected.mirrored === true} disabled={selected.kind !== 'video'} aria-describedby={selected.kind === 'video' ? undefined : 'mirror-hint'} onCheckedChange={checked => { if (selected.kind !== 'video') return; void command({ type: 'mirror', value: checked }); }} />
+        </div>
+        {selected.kind !== 'video' ? <p id="mirror-hint" className="mt-1 text-xs text-muted-foreground">{i18n.t('mirrorUnavailableAudio')}</p> : null}
       </div>
       <div className="border-b pb-3">
         <div className="flex items-center gap-3">

@@ -63,6 +63,12 @@ export interface MediaState {
   channel: ChannelMode;
   /** False when routing through Web Audio would silence the media, as with cross-origin media without CORS. */
   channelAvailable: boolean;
+  /**
+   * Horizontal flip of this video element on the current page.
+   * Absent or false means off. A newly selected element stays off until its own toggle.
+   * Never stored in `sitePrefs`.
+   */
+  mirrored?: boolean;
   /** Set when rate lock has surrendered on this element. */
   rateLock?: 'given-up';
   frameId?: number;
@@ -71,6 +77,7 @@ export type MediaCommand =
   | { type: 'play' | 'pause' | 'mute' | 'pip' }
   | { type: 'seek' | 'skip' | 'volume' | 'rate'; value: number }
   | { type: 'channel'; value: ChannelMode }
+  | { type: 'mirror'; value: boolean }
   | { type: 'frame'; direction: 1 | -1 };
 export interface PageState { host: string; enabled: boolean; media: MediaState[]; selectedId: string }
 export interface MediaClient {

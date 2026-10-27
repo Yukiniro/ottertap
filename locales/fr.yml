@@ -120,6 +120,8 @@ mediaMessageFailed: "La communication avec le média a échoué. Actualisez la p
 mediaPanel: "Commandes multimédias"
 mediaRemoved: "Ce média a été retiré. Choisissez-en un autre."
 mediaTakenOver: "Cette page contrôle déjà ce média : le volume ne peut pas dépasser 100 %."
+mirror: "Miroir horizontal"
+mirrorUnavailableAudio: "L'audio n'a pas d'image, donc il ne peut pas être mis en miroir."
 missingSettings: "État des paramètres manquant"
 moveRatePresetDown: "Descendre {rate}×"
 moveRatePresetUp: "Monter {rate}×"
