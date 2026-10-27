@@ -5316,7 +5316,7 @@ async function drivePrevNextMedia(context, dir, note) {
     popup = null;
     await focusFixture();
     await fixture.keyboard.press('BracketRight');
-    const nextRing = await poll(rings, value => value.media === true && value.preview === false && value.ghost === false, '] 应只标出主视频');
+    const nextRing = await poll(() => rings(fixture), value => value.media === true && value.preview === false && value.ghost === false, '] 应只标出主视频');
     await fixture.screenshot({ path: path.join(dir, 'fixture-next.png'), animations: 'disabled' });
     popup = await openActionPopup(context, fixture);
     const nextHeading = await poll(() => popup.view(), value => value.heading === 'Main player', '下一条应是主视频，而不是已卸下的节点');
@@ -5325,7 +5325,7 @@ async function drivePrevNextMedia(context, dir, note) {
     note(`next ${nextHeading.heading} ring=${JSON.stringify(nextRing)}`);
     await focusFixture();
     await fixture.keyboard.press('BracketRight');
-    await poll(rings, value => value.preview === true && value.media === false, '再按 ] 应回到第一条');
+    await poll(() => rings(fixture), value => value.preview === true && value.media === false, '再按 ] 应回到第一条');
     await fixture.screenshot({ path: path.join(dir, 'fixture-wrap.png'), animations: 'disabled' });
     popup = await openActionPopup(context, fixture);
     const wrapped = await poll(() => popup.view(), value => value.heading === 'Feed preview', '循环应回到 Feed preview');
@@ -5333,7 +5333,7 @@ async function drivePrevNextMedia(context, dir, note) {
     popup = null;
     await focusFixture();
     await fixture.keyboard.press('BracketLeft');
-    await poll(rings, value => value.media === true && value.preview === false, '[ 应从第一条回到最后一条');
+    await poll(() => rings(fixture), value => value.media === true && value.preview === false, '[ 应从第一条回到最后一条');
     await fixture.screenshot({ path: path.join(dir, 'fixture-prev.png'), animations: 'disabled' });
     popup = await openActionPopup(context, fixture);
     const previous = await poll(() => popup.view(), value => value.heading === 'Main player', '上一条应回到主视频');
@@ -5372,7 +5372,7 @@ async function drivePrevNextMedia(context, dir, note) {
     await alone.bringToFront();
     await alone.mouse.click(12, 12);
     await alone.keyboard.press('BracketRight');
-    const onlyHint = await poll(hints, value => value.includes('This page only has one media.'), '只有一条媒体时应出现短说明');
+    const onlyHint = await poll(() => hints(alone), value => value.includes('This page only has one media.'), '只有一条媒体时应出现短说明');
     await alone.screenshot({ path: path.join(dir, 'fixture-only.png'), animations: 'disabled' });
     popup = await openActionPopup(context, alone);
     const onlyHeading = await poll(() => popup.view(), value => value.heading === 'Fixture video', '只有一条时标题应仍是这条视频');
