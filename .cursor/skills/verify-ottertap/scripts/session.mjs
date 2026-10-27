@@ -5678,6 +5678,8 @@ async function driveSelectionHighlight(context, dir, note) {
     const initial = await poll(() => popup.view(), value => value.heading === 'Feed preview' || value.heading === 'Main player', '面板应先选中 feed 里的一条');
     const from = initial.heading === 'Feed preview' ? '#preview' : '#media';
     const followed = opposite(from);
+    await popup.close();
+    popup = null;
     await start(feed, followed);
     const shown = await poll(async () => {
       const marks = await rings(feed);
@@ -5697,6 +5699,7 @@ async function driveSelectionHighlight(context, dir, note) {
     if (!after.hit) throw new Error('轮廓消失后画面中心不再命中视频');
     note('ring faded');
 
+    popup = await openActionPopup(context, feed);
     await choose(popup, names[from]);
     await poll(() => popup.view(), value => value.heading === names[from], '面板点选应改到原来那一条');
     const panelRing = await poll(() => rings(feed), value => value[from.slice(1)] === true && value[followed.slice(1)] === false, '面板点选后只高亮点中的那一条');
