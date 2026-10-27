@@ -31,6 +31,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-clear-remembered
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive horizontal-mirror
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive progress-mark
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-other-tabs
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -50,7 +51,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -190,6 +191,39 @@ function silentWav(seconds = 1) {
 const wav = silentWav();
 const longWav = silentWav(120);
 
+function toneWav() {
+  const rate = 8000;
+  const frames = rate;
+  const bytes = new Uint8Array(44 + frames * 2);
+  const view = new DataView(bytes.buffer);
+  const text = (offset, value) => {
+    for (let index = 0; index < value.length; index += 1) bytes[offset + index] = value.charCodeAt(index);
+  };
+  text(0, 'RIFF');
+  view.setUint32(4, 36 + frames * 2, true);
+  text(8, 'WAVE');
+  text(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, rate, true);
+  view.setUint32(28, rate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  text(36, 'data');
+  view.setUint32(40, frames * 2, true);
+  for (let frame = 0; frame < frames; frame += 1) {
+    view.setInt16(44 + frame * 2, Math.round(Math.sin((2 * Math.PI * 440 * frame) / rate) * 0.5 * 32767), true);
+  }
+  return `data:audio/wav;base64,${Buffer.from(bytes).toString('base64')}`;
+}
+
+const tone = toneWav();
+
+function tonePage(title) {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${title}</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><audio id="media" aria-label="${title}" src="${tone}" preload="auto" loop></audio></body></html>`;
+}
+
 function fixtureHtml() {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" aria-label="Fixture video" src="${wav}" preload="auto" playsinline loop controls style="display:block;width:640px;height:360px;margin:48px"></video></body></html>`;
 }
@@ -203,6 +237,9 @@ function routedHtml(pathname) {
   if (pathname === '/audio') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><audio id="media" aria-label="Fixture audio" src="${wav}" preload="auto"></audio></body></html>`;
   if (pathname === '/pip-off') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" aria-label="Fixture video" src="${wav}" preload="auto" playsinline disablepictureinpicture style="display:block;width:640px;height:360px;margin:48px"></video></body></html>`;
   if (pathname === '/unseekable') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Unseekable</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" aria-label="Unseekable video" preload="none" style="display:block;width:640px;height:360px;margin:48px"></video></body></html>`;
+  if (pathname === '/tone-current') return tonePage('Current show');
+  if (pathname === '/tone-music') return tonePage('Music tab');
+  if (pathname === '/tone-meeting') return tonePage('Meeting tab');
   if (pathname === '/chat') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><div id="stage" style="position:relative;width:960px;height:540px;margin:24px"><video id="media" aria-label="Main player" src="${wav}" preload="auto" playsinline loop style="display:block;width:960px;height:540px;background:#111"></video><div id="chat" data-test-selector="chat-scrollable-area__message-container" class="chat-scrollable-area__message-container" style="position:absolute;top:0;right:0;width:280px;height:540px;overflow:auto;z-index:2;background:#fff;color:#111"><div style="height:2400px;padding:12px">live chat</div></div><aside id="outline" class="VPDocAside" style="position:absolute;top:16px;left:16px;width:180px;height:160px;overflow:auto;z-index:2;background:#fff;color:#111"><div style="height:800px;padding:8px">outline</div></aside><div id="overlay" style="position:absolute;left:16px;bottom:16px;width:140px;height:64px;z-index:2;background:#ddd">notes</div></div></body></html>`;
   return null;
 }
@@ -3182,7 +3219,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -4712,6 +4749,178 @@ async function driveProgressMark(context, dir, note) {
     await blocked?.close().catch(() => {});
     await feed?.close().catch(() => {});
     await fresh?.close().catch(() => {});
+    await page.close().catch(() => {});
+  }
+}
+
+const otherTabsView = `(() => {
+  const button = document.querySelector('button[aria-label="Mute others"]');
+  const empty = [...document.querySelectorAll('p')].some(node => (node.textContent || '').trim() === 'No other tabs are playing audio.');
+  const rows = [...document.querySelectorAll('[role="listitem"]')].flatMap(node => {
+    const opener = [...node.querySelectorAll('button')].find(item => (item.getAttribute('aria-label') || '').startsWith('Switch to '));
+    if (!opener) return [];
+    const mute = node.querySelector('button[aria-pressed]');
+    return [{
+      title: (node.querySelector('span')?.textContent || '').trim(),
+      pressed: mute?.getAttribute('aria-pressed') || '',
+      muteLabel: mute?.getAttribute('aria-label') || '',
+    }];
+  });
+  return {
+    heading: document.querySelector('h1')?.textContent?.trim() || '',
+    empty,
+    button: Boolean(button),
+    disabled: Boolean(button?.disabled),
+    alert: document.querySelector('[role="alert"]')?.textContent?.trim() || '',
+    rows,
+  };
+})()`;
+
+async function driveMuteOtherTabs(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const level = page => page.locator('#media').evaluate(element => ({ volume: element.volume, muted: element.muted, paused: element.paused, rate: element.playbackRate }));
+  const tabs = () => worker.evaluate(async () => (await chrome.tabs.query({})).flatMap(tab => {
+    if (typeof tab.url !== 'string' || !tab.url.startsWith('https://media.ottertap.test/tone-')) return [];
+    return [{ id: tab.id, url: tab.url, title: tab.title ?? '', audible: tab.audible === true, muted: tab.mutedInfo?.muted === true }];
+  }));
+  const byPath = (listed, path) => listed.find(tab => tab.url.endsWith(path));
+  const stored = () => worker.evaluate(async () => JSON.stringify(await chrome.storage.local.get(null)));
+  const play = async (page, volume) => {
+    await page.bringToFront();
+    await page.locator('body').click({ position: { x: 8, y: 8 } });
+    await page.locator('#media').evaluate(async (element, level) => {
+      element.volume = level;
+      element.muted = true;
+      await element.play();
+      element.muted = false;
+      element.volume = level;
+      if (element.paused) await element.play();
+    }, volume);
+    await poll(() => level(page), value => value.paused === false && value.muted === false && Math.abs(value.volume - volume) < 0.02, `应开始播放且音量约为 ${volume}`);
+  };
+  const showList = async popup => {
+    await popup.evaluate(`(() => {
+      const button = document.querySelector('button[aria-label="Mute others"]');
+      const empty = [...document.querySelectorAll('p')].find(node => (node.textContent || '').includes('No other tabs are playing audio.'));
+      (button || empty)?.scrollIntoView({ block: 'center' });
+      return true;
+    })()`);
+  };
+  let popup = null;
+  let music = null;
+  let meeting = null;
+  const page = await context.newPage();
+  try {
+    await page.goto(`${origin}/tone-current`, { waitUntil: 'domcontentloaded' });
+    await play(page, 0.4);
+    const currentBefore = await level(page);
+    popup = await openActionPopup(context, page);
+    const empty = await poll(() => popup.evaluate(otherTabsView), value => value.heading === 'Current show' && value.empty && !value.button && !value.alert && value.rows.length === 0, '没有其他发声标签时不应出现静音其他');
+    await showList(popup);
+    await popup.screenshot(path.join(dir, 'popup-empty.png'));
+    note(`empty heading=${empty.heading}`);
+    await popup.close();
+    popup = null;
+
+    music = await context.newPage();
+    await music.goto(`${origin}/tone-music`, { waitUntil: 'domcontentloaded' });
+    await play(music, 0.7);
+    meeting = await context.newPage();
+    await meeting.goto(`${origin}/tone-meeting`, { waitUntil: 'domcontentloaded' });
+    await play(meeting, 0.55);
+    const heard = await poll(tabs, listed => {
+      const musicTab = byPath(listed, '/tone-music');
+      const meetingTab = byPath(listed, '/tone-meeting');
+      return Boolean(musicTab?.audible && !musicTab.muted && meetingTab?.audible && !meetingTab.muted);
+    }, '另外两个标签应在出声且未静音', 12_000);
+    note(`audible ${heard.map(tab => `${tab.title}:${tab.audible}`).join(',')}`);
+
+    await page.bringToFront();
+    popup = await openActionPopup(context, page);
+    const ready = await poll(() => popup.evaluate(otherTabsView), value => {
+      const titles = value.rows.map(row => row.title).sort();
+      return value.heading === 'Current show' && value.button && !value.disabled && !value.alert && titles.join(',') === 'Meeting tab,Music tab' && value.rows.every(row => row.pressed === 'false' && row.muteLabel === 'Mute');
+    }, '列表应有两个未静音标签，并且可以静音其他');
+    await showList(popup);
+    await popup.screenshot(path.join(dir, 'popup-ready.png'));
+    note(`ready ${ready.rows.map(row => row.title).join(',')}`);
+    let storage = await stored();
+    await page.waitForTimeout(300);
+    const settled = await stored();
+    if (settled !== storage) storage = settled;
+    const musicBefore = await level(music);
+    const meetingBefore = await level(meeting);
+    const currentAtClick = await level(page);
+
+    await popup.click('Mute others');
+    const mutedTabs = await poll(tabs, listed => {
+      const musicTab = byPath(listed, '/tone-music');
+      const meetingTab = byPath(listed, '/tone-meeting');
+      const currentTab = byPath(listed, '/tone-current');
+      return Boolean(musicTab?.muted && meetingTab?.muted && currentTab && !currentTab.muted);
+    }, '其他标签应被浏览器静音，当前标签保持有声');
+    const mutedView = await poll(() => popup.evaluate(otherTabsView), value => !value.alert && value.rows.length === 2 && value.rows.every(row => row.pressed === 'true' && row.muteLabel === 'Unmute'), '列表喇叭应与浏览器静音一致');
+    const currentAfter = await level(page);
+    const musicAfter = await level(music);
+    const meetingAfter = await level(meeting);
+    if (Math.abs(currentAfter.volume - currentAtClick.volume) > 0.02 || currentAfter.muted || currentAfter.paused || Math.abs(currentAfter.rate - currentAtClick.rate) > 0.001) {
+      throw new Error(`当前页声音变了：${JSON.stringify({ currentAtClick, currentAfter })}`);
+    }
+    if (Math.abs(musicAfter.volume - musicBefore.volume) > 0.02 || musicAfter.muted !== musicBefore.muted || Math.abs(meetingAfter.volume - meetingBefore.volume) > 0.02 || meetingAfter.muted !== meetingBefore.muted) {
+      throw new Error(`其他页的音量滑块变了：${JSON.stringify({ musicBefore, musicAfter, meetingBefore, meetingAfter })}`);
+    }
+    const storageAfter = await stored();
+    if (storageAfter !== storage) throw new Error(`静音其他写了扩展存储：before=${storage} after=${storageAfter}`);
+    await showList(popup);
+    await popup.screenshot(path.join(dir, 'popup-muted.png'));
+    note(`muted ${mutedTabs.filter(tab => tab.muted).map(tab => tab.title).join(',')} view=${mutedView.rows.map(row => row.muteLabel).join(',')}`);
+
+    const restored = await popup.evaluate(`(() => {
+      const row = [...document.querySelectorAll('[role="listitem"]')].find(node => (node.textContent || '').includes('Music tab'));
+      const button = row?.querySelector('button[aria-label="Unmute"]');
+      if (!button) return false;
+      button.click();
+      return true;
+    })()`);
+    if (!restored) throw new Error('音乐那一行没有取消静音按钮');
+    await poll(tabs, listed => {
+      const musicTab = byPath(listed, '/tone-music');
+      const meetingTab = byPath(listed, '/tone-meeting');
+      const currentTab = byPath(listed, '/tone-current');
+      return Boolean(musicTab && !musicTab.muted && meetingTab?.muted && currentTab && !currentTab.muted);
+    }, '逐条取消静音应只恢复音乐标签');
+    const currentStill = await level(page);
+    if (Math.abs(currentStill.volume - currentAfter.volume) > 0.02 || currentStill.muted) throw new Error('逐条取消静音改了当前页音量');
+    note('row unmute kept the meeting muted');
+
+    await music.close();
+    music = null;
+    await meeting.close();
+    meeting = null;
+    const cleared = await poll(() => popup.evaluate(otherTabsView), value => value.empty && !value.button && value.rows.length === 0 && !value.alert, '其他标签关掉后按钮应消失');
+    await showList(popup);
+    await popup.screenshot(path.join(dir, 'popup-empty-again.png'));
+    note(`cleared empty=${cleared.empty}`);
+
+    const state = {
+      ok: true,
+      emptyHidden: true,
+      currentVolume: currentAfter.volume,
+      currentMuted: false,
+      othersMuted: true,
+      musicVolume: musicAfter.volume,
+      meetingVolume: meetingAfter.volume,
+      rowUnmuted: true,
+      storageSame: true,
+    };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await popup?.close().catch(() => {});
+    await meeting?.close().catch(() => {});
+    await music?.close().catch(() => {});
     await page.close().catch(() => {});
   }
 }

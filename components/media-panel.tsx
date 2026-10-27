@@ -40,22 +40,30 @@ function TabIcon({ src }: { src: string }) {
 function useSoundingTabs(client?: SoundingTabsClient) {
   const [tabs, setTabs] = useState<SoundingTab[]>([]);
   const [ready, setReady] = useState(false);
-  const loadRef = useRef<() => Promise<void>>(async () => {});
+  const [pending, setPending] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const aliveRef = useRef(true);
+  const pendingRef = useRef(false);
+  const loadRef = useRef<() => Promise<SoundingTab[] | null | undefined>>(async () => undefined);
   useEffect(() => {
     if (!client) return;
     let alive = true;
+    aliveRef.current = true;
     let ticket = 0;
     const load = async () => {
       const current = ++ticket;
       try {
         const next = await client.list();
-        if (alive && current === ticket) { setTabs(next); setReady(true); }
-      } catch { /* A later tab event retries. */ }
+        if (!alive || current !== ticket) return undefined;
+        setTabs(next);
+        setReady(true);
+        return next;
+      } catch { return null; }
     };
     loadRef.current = load;
     void load();
     const stop = client.watch(() => { void load(); });
-    return () => { alive = false; stop(); };
+    return () => { alive = false; aliveRef.current = false; stop(); };
   }, [client]);
   const focus = (tabId: number) => { void client?.focus(tabId).catch(() => {}); };
   const mute = (tab: SoundingTab) => {
@@ -64,14 +72,51 @@ function useSoundingTabs(client?: SoundingTabsClient) {
     setTabs(current => current.map(item => item.id === tab.id ? { ...item, muted } : item));
     void client.mute(tab.id, muted).catch(() => {}).finally(() => { void loadRef.current(); });
   };
-  return { tabs: client && ready ? tabs : [], ready: !!client && ready, focus, mute };
+  const muteOthers = () => {
+    if (!client || pendingRef.current || !tabs.length) return;
+    const ids = tabs.map(tab => tab.id);
+    pendingRef.current = true;
+    setPending(true);
+    setFailed(false);
+    void (async () => {
+      const missed = new Set<number>();
+      try {
+        await Promise.all(ids.map(async id => {
+          try { await client.mute(id, true); }
+          catch { missed.add(id); }
+        }));
+        if (!aliveRef.current) return;
+        const next = await loadRef.current();
+        if (!aliveRef.current || next === undefined) {
+          if (missed.size) setFailed(true);
+          return;
+        }
+        if (!next) {
+          setFailed(true);
+          return;
+        }
+        for (const id of ids) {
+          if (next.some(tab => tab.id === id && !tab.muted)) missed.add(id);
+        }
+        setFailed(missed.size > 0);
+      } finally {
+        pendingRef.current = false;
+        if (aliveRef.current) setPending(false);
+      }
+    })();
+  };
+  return { tabs: client && ready ? tabs : [], ready: !!client && ready, focus, mute, muteOthers, pending, failed };
 }
 function OtherPlaying({ client }: { client?: SoundingTabsClient }) {
-  const { tabs, ready, focus, mute } = useSoundingTabs(client);
+  const { tabs, ready, focus, mute, muteOthers, pending, failed } = useSoundingTabs(client);
   if (!ready) return null;
   if (!tabs.length) return <p className="pb-1 text-center text-xs text-muted-foreground">{i18n.t('otherPlayingEmpty')}</p>;
   return <section aria-labelledby="other-playing-tabs" className="shrink-0">
-    <h2 id="other-playing-tabs" className="px-1 pb-1 text-xs font-medium text-muted-foreground">{i18n.t('otherPlayingTabs')}</h2>
+    <div className="flex items-center justify-between gap-2 px-1 pb-1">
+      <h2 id="other-playing-tabs" className="min-w-0 text-xs font-medium text-muted-foreground">{i18n.t('otherPlayingTabs')}</h2>
+      <Button type="button" variant="ghost" size="xs" className="shrink-0" disabled={pending} aria-label={i18n.t('muteOthers')} onClick={muteOthers}>{i18n.t('muteOthers')}</Button>
+    </div>
+    {failed ? <p role="alert" className="px-1 pb-1 text-xs text-destructive">{i18n.t('muteOthersFailed')}</p> : null}
     <div role="list" className="max-h-28 overflow-y-auto overscroll-contain rounded-lg border">
       {tabs.map(tab => <div role="listitem" key={tab.id} className="flex items-center gap-1 border-b border-border/70 px-1.5 py-1 last:border-b-0">
         <button type="button" className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1.5 py-1 text-left hover:bg-muted" aria-label={i18n.t('switchToTab', { title: tab.title || '—' })} onClick={() => focus(tab.id)}>
