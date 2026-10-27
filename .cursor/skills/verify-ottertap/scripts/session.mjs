@@ -3153,7 +3153,7 @@ async function serve() {
     viewport: { width: 1280, height: 720 },
     locale: 'en-US',
     deviceScaleFactor: 1,
-    ignoreDefaultArgs: ['--disable-extensions'],
+    ignoreDefaultArgs: ['--disable-extensions', '--mute-audio'],
     args: [
       `--disable-extensions-except=${extensionPath}`,
       `--load-extension=${extensionPath}`,

@@ -41,5 +41,5 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-other-tabs
 ## Gotchas
 
 - 列表来自浏览器的 `audible` 或标签静音，不是页面里的 `video.muted`。静音其他写的是标签静音，所以网页里的音量滑块数字不变。
-- 无头 Chromium 带 `--mute-audio`。静音短音频不会让标签变成 audible，所以这条旅程用有声循环短音，并等到 `chrome.tabs` 的 `audible` 为真再点按钮。
+- 无头 Chromium 默认带 `--mute-audio`，正在播放的标签不会变成 audible。验证会话去掉了这个参数。夹具用有声循环短音，并等到 `chrome.tabs` 的 `audible` 为真再点按钮。静音的短音频仍然不会进列表。
 - 当前标签由打开弹出面板时的活动标签决定，不会出现在「其他」列表里。

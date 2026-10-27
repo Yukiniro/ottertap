@@ -27,7 +27,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs launch
 
 若 Chromium 因缺少系统库起不来，再跑与 CI 相同的 `pnpm exec playwright install-deps chromium`。已经能打开浏览器时不要跑它。
 
-`launch` 会拉起一个脱离终端的会话进程。它用 Playwright 的 `chromium.launchPersistentContext` 打开全新的 `/tmp/ottertap-verify/current/profile`，加载 `.output/chrome-mv3`，参数与 `e2e/smoke.spec.ts` 相同：`channel: 'chromium'`、`headless: true`、`locale: 'en-US'`、`--lang=en-US`，并去掉默认的 `--disable-extensions`。夹具页由这个上下文的 `route` 拦截，不访问外网，也没有单独的网站端口。
+`launch` 会拉起一个脱离终端的会话进程。它用 Playwright 的 `chromium.launchPersistentContext` 打开全新的 `/tmp/ottertap-verify/current/profile`，加载 `.output/chrome-mv3`，参数与 `e2e/smoke.spec.ts` 相同：`channel: 'chromium'`、`headless: true`、`locale: 'en-US'`、`--lang=en-US`，并去掉默认的 `--disable-extensions` 和 `--mute-audio`。去掉静音是为了让正在出声的标签能被标成 audible。夹具页由这个上下文的 `route` 拦截，不访问外网，也没有单独的网站端口。
 
 就绪的标准是扩展已经能用，而不是端口通了：service worker 已出现，UI 语言以 `en` 开头，版本与 `package.json` 一致，并且 `https://media.ottertap.test/video` 上能看见浮动入口。成功时进程打印一行后退出，浏览器继续留在会话进程里：
 
