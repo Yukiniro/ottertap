@@ -46,5 +46,5 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-comman
 - 空字符串表示未绑定。冲突检测要跳过它，否则三项都未绑定时会被当成互相占用，整组键位被打回默认。
 - 这三项不要求单键模式。没绑定的键不会拦截页面。
 - 清除标记没有页内键，也没有扩展命令。
-- 页内提示留给下一项。这一项成功或失败都不新做短暂提示。
+- 成功和失败的页内字样见 [mirror-mark-feedback.md](mirror-mark-feedback.md)。这一项本身不另做提示。
 - 设置页地址是 `chrome-extension://<extensionId>/options.html#shortcuts`，不是 `https://`。

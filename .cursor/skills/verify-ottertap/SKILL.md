@@ -53,7 +53,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs doctor
 
 ## Drive
 
-脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、低音量滚轮细步长（见 `features/fine-wheel.md`）、Shift 粗调步长（见 `features/coarse-step.md`）、倍速增减步长（见 `features/rate-step.md`）、扩展命令画中画（见 `features/extension-pip.md`）、按住临时加速（见 `features/hold-boost.md`）、同键短按跳长按加速（见 `features/hold-skip-combo.md`）、逐帧（见 `features/frame-step.md`）、页内快捷键改键（见 `features/hotkey-remap.md`）、浮动药丸倍速（见 `features/floating-speed.md`）、浮动药丸播放跳转（见 `features/floating-playback.md`）、浮动入口旁注（见 `features/floating-entry-note.md`）、从音量药丸打开弹出面板（见 `features/floating-open-panel.md`）、仅在播放时显示浮动入口（见 `features/floating-while-playing.md`）和滚轮方向（见 `features/wheel-direction.md`）。仅全屏时悬停滚轮见 `features/fullscreen-wheel.md`。侧栏聊天和文档大纲忽略见 `features/sidebar-ignore.md`。设置页三处名单的「当前站」见 `features/settings-current-site.md`。记住站点的「清空全部」见 `features/settings-clear-remembered.md`。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
+脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、低音量滚轮细步长（见 `features/fine-wheel.md`）、Shift 粗调步长（见 `features/coarse-step.md`）、倍速增减步长（见 `features/rate-step.md`）、扩展命令画中画（见 `features/extension-pip.md`）、按住临时加速（见 `features/hold-boost.md`）、同键短按跳长按加速（见 `features/hold-skip-combo.md`）、逐帧（见 `features/frame-step.md`）、页内快捷键改键（见 `features/hotkey-remap.md`）、浮动药丸倍速（见 `features/floating-speed.md`）、浮动药丸播放跳转（见 `features/floating-playback.md`）、浮动入口旁注（见 `features/floating-entry-note.md`）、从音量药丸打开弹出面板（见 `features/floating-open-panel.md`）、仅在播放时显示浮动入口（见 `features/floating-while-playing.md`）和滚轮方向（见 `features/wheel-direction.md`）。仅全屏时悬停滚轮见 `features/fullscreen-wheel.md`。侧栏聊天和文档大纲忽略见 `features/sidebar-ignore.md`。设置页三处名单的「当前站」见 `features/settings-current-site.md`。记住站点的「清空全部」见 `features/settings-clear-remembered.md`。镜像与标记的页内提示见 `features/mirror-mark-feedback.md`。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
 
 ```bash
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
@@ -86,6 +86,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive horizontal-mirror
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive progress-mark
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-other-tabs
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-commands
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-feedback
 ```
 
 `skip-step` 在设置页把 `Skip step` 改成 `30s` 并打开 `Single-key mode`，再看弹出面板进退按钮名和页内 `L` / `J` / `→` / `←` 让 `/long` 夹具的 `currentTime` 跟着步长变；它会改写 profile，同一会话只能跑一次。步骤见 `features/skip-step.md`。
@@ -261,6 +262,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive horizontal-mirror
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive progress-mark
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-other-tabs
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-commands
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-feedback
 node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 ```
 
@@ -367,3 +369,13 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-comman
 `mirror-mark-commands` 在设置页确认水平镜像、设标记、跳到标记以及同名扩展命令默认都是 `Not set`，不占建议键，空键也不报占用。录到已有键时提示与现网改键一致。绑上 `H` / `B` / `N` 后，不打开单键模式，`/long` 上能翻转画面、设下标记再跳回去。文本框聚焦时这三个键不动。音频不会被镜像。`Restore default keys` 收回这三项。`sitePrefs` 一直是空的。它会改写 profile，成功时恢复默认，同一会话只能跑一次。步骤见 `features/mirror-mark-commands.md`。
 
 写入 `mirror-mark-commands/`：`settings-unbound.png`、`settings-conflict.png`、`settings-bound.png`、`fixture-mirrored.png`、`fixture-jumped.png`、`fixture-typing.png`、`audio-plain.png`、`settings-restored.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
+## 镜像与标记的页内提示
+
+```bash
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-feedback
+```
+
+`mirror-mark-feedback` 把水平镜像、设标记、跳到标记绑成 `H` / `B` / `N`。成功时页面顶部出现和倍速提示同一块字样：`Mirror on`、`Mirror off`、`Marked`、`Back to mark`。弹出面板的开关和按钮也让页面出现同样的字样。清除标记成功时没有新字样。不能 seek、没有标记、音频镜像用原来的短说明。字样不接收点击，不盖住播放器底部控件，出现后会自己消失。铺满窗口时仍能看见。没有提示总开关，默认显示。它会改写 profile，成功时恢复默认键，同一会话只能跑一次。步骤见 `features/mirror-mark-feedback.md`。
+
+写入 `mirror-mark-feedback/`：`toast-mirror-on.png`、`toast-mirror-off.png`、`toast-marked.png`、`toast-jump.png`、`toast-fullscreen.png`、`toast-panel-mirror.png`、`toast-unseekable.png`、`toast-audio.png`、`toast-missing.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。

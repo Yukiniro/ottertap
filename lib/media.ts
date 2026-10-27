@@ -277,6 +277,15 @@ export function frameFailureKey(message: string): 'frameStepUnavailable' | '' {
   return message === i18n.t('frameStepUnavailable') ? 'frameStepUnavailable' : '';
 }
 
+const mirrorMarkFailureKeys = ['mirrorUnavailableAudio', 'markUnavailable', 'markMissing', 'cannotSeek'] as const;
+export type MirrorMarkFailureKey = (typeof mirrorMarkFailureKeys)[number];
+
+/** Map a rejected mirror or mark command back to the existing short explanation. */
+export function mirrorMarkFailureKey(message: string): MirrorMarkFailureKey | '' {
+  for (const key of mirrorMarkFailureKeys) if (message === i18n.t(key)) return key;
+  return '';
+}
+
 interface RateSlot { state: RateLockState; timer: number; listening: boolean; onEvent: () => void }
 
 export function createMediaController(document: Document, onChange?: () => void, onRateLockGiveUp?: () => void) {

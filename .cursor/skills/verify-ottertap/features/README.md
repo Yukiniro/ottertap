@@ -1,6 +1,6 @@
 # OtterTap 功能地图
 
-验证主界面是扩展本身。索引里的每一条都要能从用户路径走到可观察的结束状态。`scripts/session.mjs` 目前脚本化了弹出面板播放、滚轮音量、快进快退步长、快进快退随倍速放大、音量调节步长、低音量滚轮细步长、Shift 粗调步长、倍速增减步长、扩展命令画中画、全局默认倍速、按住临时加速、同键短按跳长按加速、逐帧、页内快捷键改键、浮动药丸倍速、浮动药丸播放跳转、浮动入口旁注、从音量药丸打开弹出面板、仅在播放时显示浮动入口和滚轮方向。仅全屏时悬停滚轮、侧栏聊天和文档大纲忽略，以及记住站点、网站规则和不显示浮动站点这三份名单的本地过滤，三处名单各自的「当前站」，和记住站点的「清空全部」，以及水平镜像、进度标记、一键静音其他发声标签，和镜像与标记的快捷键也已脚本化。其余条目的选择器和断言已经写在各自文件里，用同一次 `launch` 的 Chromium（或 `pnpm e2e` 里点名的那条测试）来驱动。一条失败就报告失败原因，写进该文件的 Gotchas，不要把旅程改容易。
+验证主界面是扩展本身。索引里的每一条都要能从用户路径走到可观察的结束状态。`scripts/session.mjs` 目前脚本化了弹出面板播放、滚轮音量、快进快退步长、快进快退随倍速放大、音量调节步长、低音量滚轮细步长、Shift 粗调步长、倍速增减步长、扩展命令画中画、全局默认倍速、按住临时加速、同键短按跳长按加速、逐帧、页内快捷键改键、浮动药丸倍速、浮动药丸播放跳转、浮动入口旁注、从音量药丸打开弹出面板、仅在播放时显示浮动入口和滚轮方向。仅全屏时悬停滚轮、侧栏聊天和文档大纲忽略，以及记住站点、网站规则和不显示浮动站点这三份名单的本地过滤，三处名单各自的「当前站」，和记住站点的「清空全部」，以及水平镜像、进度标记、一键静音其他发声标签，和镜像与标记的快捷键也已脚本化。镜像与标记的页内提示也已脚本化。其余条目的选择器和断言已经写在各自文件里，用同一次 `launch` 的 Chromium（或 `pnpm e2e` 里点名的那条测试）来驱动。一条失败就报告失败原因，写进该文件的 Gotchas，不要把旅程改容易。
 
 | 功能 | 文件 | 用户从哪里进入 | 现成回归 |
 | --- | --- | --- | --- |
@@ -30,6 +30,7 @@
 | 扩展命令 → 画中画 | [extension-pip.md](extension-pip.md) | 设置页「Keyboard shortcuts」的扩展命令列表；绑定后对活动标签页里当前媒体切换画中画 | `drive extension-pip`；命令分发见 `tests/pip-command.test.ts`；面板按钮见 `e2e/smoke.spec.ts` 中画中画那条 |
 | 页内快捷键改键 | [hotkey-remap.md](hotkey-remap.md) | 设置页「Keyboard shortcuts」里带铅笔图标的按键按钮：播放暂停、快进快退、倍速增减、静音、按住临时加速、逐帧。点一下再按新键，已打开的网页立即生效；撞键时提示被谁占用；`Restore default keys` 恢复默认 | `drive hotkey-remap`；`tests/keybinds.test.ts`、`tests/hotkey-remap.test.ts` |
 | 镜像与标记的快捷键 | [mirror-mark-commands.md](mirror-mark-commands.md) | 设置页「Keyboard shortcuts」里的水平镜像、设标记、跳到标记，以及同名扩展命令。默认不占键。输入框聚焦时不触发。清除标记仍只在面板 | `drive mirror-mark-commands`；`tests/mirror-mark-keybinds.test.ts`、`tests/mirror-mark-command.test.ts` |
+| 镜像与标记的页内提示 | [mirror-mark-feedback.md](mirror-mark-feedback.md) | 页内键、扩展命令和弹出面板在切换镜像、设标记、跳到标记成功时，用倍速那一块短暂字样。失败用原来的短说明。没有提示总开关，默认显示 | `drive mirror-mark-feedback`；`tests/mirror-mark-feedback.test.ts` |
 | 浮动入口旁注 | [floating-entry-note.md](floating-entry-note.md) | 收起或半隐藏的浮动入口旁边。默认显示页内音量百分比；100% 且倍速不是 1× 时改显倍速。设置页「Floating controller」的 `Entry note` 可选优先音量、优先倍速或关闭 | `drive floating-entry-note`；`tests/floating-note.test.ts` |
 | 从音量药丸打开弹出面板 | [floating-open-panel.md](floating-open-panel.md) | 展开页面边缘的音量药丸，倍速下面的 `Open panel`。打开工具栏弹出面板并沿用当前媒体；浏览器拒绝时显示 `Click the toolbar icon`。不替换工具栏按钮 | `drive floating-open-panel`；`tests/floating-open-panel.test.ts`、`tests/open-popup-background.test.ts` |
 | 仅在播放时显示浮动入口 | [floating-while-playing.md](floating-while-playing.md) | 设置页「Floating controller」的 `Show only while the selected media is playing`，默认关。打开后，入口只在当前选中媒体播放时出现；暂停稍后再隐藏，没有选中马上隐藏。悬停滚轮仍按自己的开关工作 | `drive floating-while-playing`；`tests/floating-while-playing.test.ts` |
