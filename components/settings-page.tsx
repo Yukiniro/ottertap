@@ -438,6 +438,8 @@ export function SettingsPage({ back }: { back?: () => void }) {
     mirror: i18n.t('mirror'),
     markSet: i18n.t('setMark'),
     markJump: i18n.t('jumpToMark'),
+    mediaPrev: i18n.t('mediaPrev'),
+    mediaNext: i18n.t('mediaNext'),
     volumeUp: i18n.t('shortcutVolumeUp', { percent: volumeStep }),
     volumeDown: i18n.t('shortcutVolumeDown', { percent: volumeStep })
   };
@@ -641,12 +643,14 @@ export function SettingsPage({ back }: { back?: () => void }) {
             { id: 'mirror', key: keyButton('mirror'), description: ownerLabels.mirror },
             { id: 'mark-set', key: keyButton('markSet'), description: ownerLabels.markSet },
             { id: 'mark-jump', key: keyButton('markJump'), description: ownerLabels.markJump },
+            { id: 'media-prev', key: keyButton('mediaPrev'), description: ownerLabels.mediaPrev },
+            { id: 'media-next', key: keyButton('mediaNext'), description: ownerLabels.mediaNext },
             { id: 'speed-up', key: 'Alt + .', description: i18n.t('shortcutSpeedUp', { step: formatRate(rateStep) }) },
             { id: 'speed-down', key: 'Alt + ,', description: i18n.t('shortcutSpeedDown', { step: formatRate(rateStep) }) },
             { id: 'speed-reset', key: 'Alt + 0', description: i18n.t('shortcutSpeedReset') },
             { id: 'mute', key: 'Alt + M', description: i18n.t('cmdMute') }
           ]} />
-          {keyErrorFor(['frameBack', 'frameForward', 'mirror', 'markSet', 'markJump'])}
+          {keyErrorFor(['frameBack', 'frameForward', 'mirror', 'markSet', 'markJump', 'mediaPrev', 'mediaNext'])}
           <p className="mt-3 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsMac')}</p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsRateKeys')}</p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsFrameKeys', { back: keyText(keybinds.frameBack), forward: keyText(keybinds.frameForward) })}</p>

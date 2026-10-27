@@ -49,7 +49,7 @@ test('设置同页展示全部项，保存只改对应字段，失败时不误�
     assert.match(host.querySelector('[role="list"][aria-label="网站列表"]')!.textContent!, /bilibili.com/);
     assert.doesNotMatch(host.querySelector('#shortcuts')!.textContent!, /Shift/);
     const pageKeys = [...host.querySelectorAll('dl[aria-label="页内快捷键"] dt')].map(node => node.textContent);
-    assert.deepEqual(pageKeys, ['Alt + 滚轮', ',', '.', '未设置', '未设置', '未设置', 'Alt + .', 'Alt + ,', 'Alt + 0', 'Alt + M']);
+    assert.deepEqual(pageKeys, ['Alt + 滚轮', ',', '.', '未设置', '未设置', '未设置', '未设置', '未设置', 'Alt + .', 'Alt + ,', 'Alt + 0', 'Alt + M']);
     const singleKeys = [...host.querySelectorAll('dl[aria-label="单键模式按键"] dt')].map(node => node.textContent);
     assert.deepEqual(singleKeys, ['K', 'J/←', 'L/→', '↑', '↓', 'M', '>', '<', 'S']);
     assert.match(host.textContent!, /输入框或可编辑区域/);

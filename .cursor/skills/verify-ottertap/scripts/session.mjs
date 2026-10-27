@@ -36,6 +36,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-feedback
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-follow-playing
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive selection-highlight
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive prev-next-media
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -55,7 +56,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -3224,7 +3225,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -5150,6 +5151,273 @@ async function driveMirrorMarkCommands(context, dir, note) {
     return state;
   } finally {
     await audio?.close().catch(() => {});
+    await fixture?.close().catch(() => {});
+    await settings?.close().catch(() => {});
+  }
+}
+
+async function drivePrevNextMedia(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const prefsText = async () => JSON.stringify((await stored()).sitePrefs ?? {});
+  const registered = await worker.evaluate(async () => {
+    const manifest = chrome.runtime.getManifest();
+    const listed = await chrome.commands.getAll();
+    const commands = manifest.commands ?? {};
+    const suggested = Object.entries(commands).filter(([, command]) => command.suggested_key).map(([name]) => name);
+    return {
+      permissions: manifest.permissions ?? [],
+      suggested,
+      listed: listed.map(item => ({ name: item.name ?? '', shortcut: item.shortcut ?? '', description: item.description ?? '' })),
+      commands: {
+        'media-prev': commands['media-prev'] ?? null,
+        'media-next': commands['media-next'] ?? null,
+      },
+    };
+  });
+  if (JSON.stringify(registered.permissions) !== JSON.stringify(['storage'])) throw new Error(`权限应仍只有 storage：${JSON.stringify(registered.permissions)}`);
+  if (registered.suggested.length !== 4 || !['play-pause', 'skip-back', 'skip-forward', 'mute'].every(name => registered.suggested.includes(name))) {
+    throw new Error(`建议键应仍是原来四个：${JSON.stringify(registered.suggested)}`);
+  }
+  const expectedCommands = [
+    ['media-prev', 'Select the previous media'],
+    ['media-next', 'Select the next media'],
+  ];
+  for (const [name, description] of expectedCommands) {
+    const manifestCommand = registered.commands[name];
+    const listed = registered.listed.find(item => item.name === name);
+    if (!manifestCommand || manifestCommand.suggested_key) throw new Error(`${name} 不应占用建议键：${JSON.stringify(manifestCommand)}`);
+    if (!listed || listed.shortcut !== '' || listed.description !== description) throw new Error(`${name} 未按未绑定登记：${JSON.stringify(listed)}`);
+  }
+  note(`commands unbound suggested=${registered.suggested.join(',')}`);
+
+  const keyButton = (page, action) => page.getByRole('button', { name: new RegExp(`^Change the key for ${action.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\. Now `) });
+  const recording = page => page.getByRole('button', { name: 'Press a key', exact: true });
+  const rings = page => page.evaluate(() => ({
+    preview: document.querySelector('#preview')?.classList.contains('ottertap-selection-ring') === true,
+    media: document.querySelector('#media')?.classList.contains('ottertap-selection-ring') === true,
+    ghost: document.querySelector('#ghost')?.classList.contains('ottertap-selection-ring') === true,
+  }));
+  const hints = page => page.evaluate(() => {
+    const root = document.querySelector('ottertap-controller')?.shadowRoot;
+    return [...(root?.querySelectorAll('[role="status"]') ?? [])].map(node => (node.textContent || '').trim());
+  });
+  const menuLabels = async popup => {
+    const labels = await popup.evaluate(`(() => {
+      const trigger = document.getElementById('popup-media');
+      if (!trigger) return null;
+      if (trigger.getAttribute('aria-expanded') !== 'true') trigger.click();
+      return [...document.querySelectorAll('[role="menuitemradio"]')].map(node => (node.textContent || '').replace(/\\s+/g, ' ').trim());
+    })()`);
+    await popup.evaluate(`(() => {
+      const trigger = document.getElementById('popup-media');
+      if (trigger && trigger.getAttribute('aria-expanded') === 'true') trigger.click();
+    })()`);
+    return labels ?? [];
+  };
+  let settings;
+  let fixture;
+  let alone;
+  let popup = null;
+  const focusFixture = async () => {
+    await fixture.bringToFront();
+    await fixture.mouse.click(12, 12);
+  };
+  try {
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
+    const section = settings.locator('#shortcuts');
+    await section.getByRole('heading', { name: 'Keyboard shortcuts' }).waitFor({ state: 'visible', timeout: 15_000 });
+    await section.getByRole('button', { name: 'Edit shortcuts' }).waitFor({ state: 'visible' });
+    for (const label of ['Select the previous media', 'Select the next media']) {
+      const node = section.getByText(label, { exact: true });
+      if (await node.count() !== 1) throw new Error(`${label} 应只出现在扩展快捷键里`);
+      const row = node.locator('xpath=ancestor::div[contains(@class,"py-3")][1]');
+      const shortcut = (await row.locator('dt').innerText()).trim();
+      if (shortcut !== 'Not set') throw new Error(`${label} 应显示 Not set：${shortcut}`);
+    }
+    for (const action of ['Previous media', 'Next media']) {
+      const button = keyButton(settings, action);
+      await button.waitFor({ state: 'visible' });
+      const text = (await button.innerText()).trim();
+      if (text !== 'Not set') throw new Error(`${action} 默认应是 Not set：${text}`);
+    }
+    const reset = () => settings.getByRole('button', { name: 'Restore default keys', exact: true });
+    if (!await reset().isDisabled()) throw new Error('默认键位时「Restore default keys」应禁用');
+    const singleKey = settings.getByRole('switch', { name: 'Single-key mode' });
+    if (await singleKey.getAttribute('aria-checked') !== 'false') throw new Error('单键模式应保持关闭');
+    await section.screenshot({ path: path.join(dir, 'settings-unbound.png'), animations: 'disabled' });
+    note('settings lists previous and next media as Not set');
+
+    await keyButton(settings, 'Next media').click();
+    await recording(settings).waitFor({ state: 'visible' });
+    await settings.keyboard.press('Comma');
+    const conflict = (await settings.locator('#keybind-error').innerText()).trim();
+    const conflictCopy = ', is already used for “Pause, then previous frame”. Press another key, or change that one first.';
+    if (conflict !== conflictCopy) throw new Error(`撞键提示不对：${conflict}`);
+    if ((await stored()).keybinds?.mediaNext) throw new Error('撞键时不应保存下一条');
+    if (!await recording(settings).isVisible()) throw new Error('撞键后应继续等待新键');
+    await section.screenshot({ path: path.join(dir, 'settings-conflict.png'), animations: 'disabled' });
+    note(`conflict tip: ${conflict}`);
+    await settings.keyboard.press('BracketRight');
+    await poll(stored, value => value.keybinds?.mediaNext === ']' && value.singleKey !== true, '应保存 Next media = ]，且单键模式仍关');
+    await keyButton(settings, 'Previous media').click();
+    await settings.keyboard.press('BracketLeft');
+    await poll(stored, value => value.keybinds?.mediaPrev === '[', '应保存 Previous media = [');
+    await keyButton(settings, 'Next media').click();
+    await settings.keyboard.press('BracketLeft');
+    const taken = (await settings.locator('#keybind-error').innerText()).trim();
+    const takenCopy = '[ is already used for “Previous media”. Press another key, or change that one first.';
+    if (taken !== takenCopy) throw new Error(`空键不应占位，[ 的占用提示不对：${taken}`);
+    if ((await stored()).keybinds?.mediaNext !== ']') throw new Error('下一条不应保存成已被上一条占用的 [');
+    await settings.keyboard.press('BracketRight');
+    const bound = await poll(stored, value => value.keybinds?.mediaPrev === '[' && value.keybinds?.mediaNext === ']' && value.singleKey !== true, '下一条应仍是 ]');
+    if (await settings.locator('#keybind-error').count()) throw new Error('改键成功后不应留着冲突提示');
+    if (await reset().isDisabled()) throw new Error('改过键之后应能恢复默认');
+    await section.screenshot({ path: path.join(dir, 'settings-bound.png'), animations: 'disabled' });
+    note(`bound ${JSON.stringify({ mediaPrev: bound.keybinds.mediaPrev, mediaNext: bound.keybinds.mediaNext })}`);
+    if ((await prefsText()) !== '{}') throw new Error(`改键写入了 sitePrefs：${await prefsText()}`);
+
+    fixture = await context.newPage();
+    await fixture.goto(`${origin}/feed`, { waitUntil: 'domcontentloaded' });
+    await fixture.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await fixture.locator('#preview, #media').evaluateAll(async nodes => {
+      for (const element of nodes) {
+        if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+        element.pause();
+      }
+    });
+    await fixture.bringToFront();
+    popup = await openActionPopup(context, fixture);
+    const initial = await poll(() => popup.view(), value => value.heading === 'Feed preview', '暂停的信息流应先选中页面顺序的第一条');
+    await popup.close();
+    popup = null;
+    await fixture.evaluate(() => {
+      const ghost = document.createElement('video');
+      ghost.id = 'ghost';
+      ghost.setAttribute('aria-label', 'Ghost video');
+      ghost.preload = 'none';
+      document.querySelector('#media').before(ghost);
+      const detached = document.createElement('video');
+      detached.id = 'detached';
+      detached.setAttribute('aria-label', 'Detached video');
+      window.__detached = detached;
+    });
+    popup = await openActionPopup(context, fixture);
+    const withGhost = await poll(() => menuLabels(popup), value => value.some(label => label.includes('Ghost video')) && value.some(label => label.includes('Feed preview')) && value.some(label => label.includes('Main player')), '卸下之前，列表里应能看见刚插入的视频');
+    if (withGhost.some(label => label.includes('Detached video'))) throw new Error(`从未插入的视频进了列表：${JSON.stringify(withGhost)}`);
+    await fixture.evaluate(() => document.querySelector('#ghost')?.remove());
+    const withoutGhost = await poll(() => menuLabels(popup), value => value.length === 2 && value.every(label => !label.includes('Ghost video') && !label.includes('Detached video')), '卸下之后，列表只剩原来的两条');
+    note(`menu after removal ${JSON.stringify(withoutGhost)}`);
+    await popup.close();
+    popup = null;
+    await focusFixture();
+    await fixture.keyboard.press('BracketRight');
+    const nextRing = await poll(() => rings(fixture), value => value.media === true && value.preview === false && value.ghost === false, '] 应只标出主视频');
+    await fixture.screenshot({ path: path.join(dir, 'fixture-next.png'), animations: 'disabled' });
+    popup = await openActionPopup(context, fixture);
+    const nextHeading = await poll(() => popup.view(), value => value.heading === 'Main player', '下一条应是主视频，而不是已卸下的节点');
+    await popup.close();
+    popup = null;
+    note(`next ${nextHeading.heading} ring=${JSON.stringify(nextRing)}`);
+    await focusFixture();
+    await fixture.keyboard.press('BracketRight');
+    await poll(() => rings(fixture), value => value.preview === true && value.media === false, '再按 ] 应回到第一条');
+    await fixture.screenshot({ path: path.join(dir, 'fixture-wrap.png'), animations: 'disabled' });
+    popup = await openActionPopup(context, fixture);
+    const wrapped = await poll(() => popup.view(), value => value.heading === 'Feed preview', '循环应回到 Feed preview');
+    await popup.close();
+    popup = null;
+    await focusFixture();
+    await fixture.keyboard.press('BracketLeft');
+    await poll(() => rings(fixture), value => value.media === true && value.preview === false, '[ 应从第一条回到最后一条');
+    await fixture.screenshot({ path: path.join(dir, 'fixture-prev.png'), animations: 'disabled' });
+    popup = await openActionPopup(context, fixture);
+    const previous = await poll(() => popup.view(), value => value.heading === 'Main player', '上一条应回到主视频');
+    await popup.close();
+    popup = null;
+    note(`wrapped ${wrapped.heading} previous ${previous.heading}`);
+
+    await fixture.evaluate(() => {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.setAttribute('aria-label', 'Fixture note');
+      input.style.position = 'fixed';
+      input.style.left = '720px';
+      input.style.top = '420px';
+      document.body.append(input);
+    });
+    const field = fixture.getByRole('textbox', { name: 'Fixture note' });
+    await field.focus();
+    await fixture.keyboard.type('hello');
+    if ((await field.inputValue()) !== 'hello') throw new Error('文本框应能输入');
+    await fixture.keyboard.press('BracketRight');
+    await fixture.keyboard.press('BracketLeft');
+    await fixture.waitForTimeout(400);
+    popup = await openActionPopup(context, fixture);
+    const whileTyping = await popup.view();
+    if (whileTyping.heading !== 'Main player') throw new Error(`输入框聚焦时选中变了：${whileTyping.heading}`);
+    await popup.close();
+    popup = null;
+    await fixture.screenshot({ path: path.join(dir, 'fixture-typing.png'), animations: 'disabled' });
+    note('typing ignores previous and next');
+    if ((await prefsText()) !== '{}') throw new Error(`页内操作写入了 sitePrefs：${await prefsText()}`);
+
+    alone = await context.newPage();
+    await alone.goto(`${origin}/video`, { waitUntil: 'domcontentloaded' });
+    await alone.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await alone.bringToFront();
+    await alone.mouse.click(12, 12);
+    await alone.keyboard.press('BracketRight');
+    const onlyHint = await poll(() => hints(alone), value => value.includes('This page only has one media.'), '只有一条媒体时应出现短说明');
+    await alone.screenshot({ path: path.join(dir, 'fixture-only.png'), animations: 'disabled' });
+    popup = await openActionPopup(context, alone);
+    const onlyHeading = await poll(() => popup.view(), value => value.heading === 'Fixture video', '只有一条时标题应仍是这条视频');
+    await popup.close();
+    popup = null;
+    note(`only ${onlyHeading.heading} hints=${JSON.stringify(onlyHint)}`);
+
+    await settings.bringToFront();
+    await reset().click();
+    const restored = await poll(stored, value => value.keybinds?.mediaPrev === '' && value.keybinds?.mediaNext === '' && value.keybinds?.toggle === 'k', '恢复默认后上一条和下一条应回到未绑定');
+    await keyButton(settings, 'Next media').filter({ hasText: 'Not set' }).waitFor({ state: 'visible' });
+    if (!await reset().isDisabled()) throw new Error('恢复默认后按钮应禁用');
+    await section.screenshot({ path: path.join(dir, 'settings-restored.png'), animations: 'disabled' });
+    await focusFixture();
+    await fixture.keyboard.press('BracketRight');
+    await fixture.waitForTimeout(400);
+    popup = await openActionPopup(context, fixture);
+    const stayed = await popup.view();
+    if (stayed.heading !== 'Main player') throw new Error(`恢复默认后 ] 不应再切换：${stayed.heading}`);
+    await popup.close();
+    popup = null;
+    if ((await prefsText()) !== '{}') throw new Error(`结束时写入了 sitePrefs：${await prefsText()}`);
+    note(`restored prev=${restored.keybinds.mediaPrev} next=${restored.keybinds.mediaNext}`);
+
+    const state = {
+      ok: true,
+      suggested: registered.suggested,
+      commands: expectedCommands.map(([name, description]) => ({ name, description, shortcut: '' })),
+      conflict,
+      taken,
+      bound: { mediaPrev: bound.keybinds.mediaPrev, mediaNext: bound.keybinds.mediaNext },
+      initial: initial.heading,
+      next: nextHeading.heading,
+      wrapped: wrapped.heading,
+      previous: previous.heading,
+      whileTyping: whileTyping.heading,
+      only: onlyHeading.heading,
+      sitePrefs: {},
+      restored: { mediaPrev: restored.keybinds.mediaPrev, mediaNext: restored.keybinds.mediaNext },
+    };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await popup?.close().catch(() => {});
+    await alone?.close().catch(() => {});
     await fixture?.close().catch(() => {});
     await settings?.close().catch(() => {});
   }

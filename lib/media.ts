@@ -31,6 +31,19 @@ export function lockedMedia(media: MediaState[], selectedId: string) {
   return media.find(item => item.id === selectedId) ?? pickMedia(media);
 }
 
+/**
+ * The neighbor in the list's current order, wrapping around.
+ * The list is the live page order. An id that is not in it is not a place to stand, and one item cannot move.
+ */
+export function cycleMediaId(media: readonly { id: string }[], selectedId: string, direction: 1 | -1): string | null {
+  if (media.length < 2) return null;
+  const index = media.findIndex(item => item.id === selectedId);
+  if (index < 0) return null;
+  const next = (index + direction + media.length) % media.length;
+  const id = media[next]?.id;
+  return id && id !== selectedId ? id : null;
+}
+
 type HoverMedia = Pick<MediaState, 'id' | 'paused' | 'muted' | 'volume'>;
 
 const audiblePlayback = (item: HoverMedia) => !item.paused && !item.muted && item.volume > 0;
@@ -465,7 +478,7 @@ export function createMediaController(document: Document, onChange?: () => void,
         if (element.paused) stopPresentedFrames(element);
         else watchPresentedFrames(element);
       }
-      return elements.map(element => {
+      return elements.filter(element => element.isConnected).map(element => {
         if (!holds.has(element)) noteSeen(element, element.playbackRate);
         const snap = mediaSnapshot(element, idOf(element), document, amplifier);
         return slots.get(element)?.state.givenUp ? { ...snap, rateLock: 'given-up' as const } : snap;
