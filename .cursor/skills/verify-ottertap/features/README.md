@@ -24,7 +24,7 @@
 | 1× 与之前倍速来回切换 | [rate-recall.md](rate-recall.md) | 页内 Alt+0，或扩展命令 rate-reset | `e2e/smoke.spec.ts` 中「1× 与之前的倍速」 |
 | 设置导出导入 | [settings-backup.md](settings-backup.md) | 设置页「Backup and restore」 | `e2e/smoke.spec.ts` 的「备份导出」；格式见 `tests/settings-backup.test.ts` |
 | 单声道与左右声道 | [channel-mode.md](channel-mode.md) | 弹出面板音量区的声道菜单 | `e2e/smoke.spec.ts` 中声道三条 |
-| 水平镜像 | [horizontal-mirror.md](horizontal-mirror.md) | 弹出面板播放卡片底部的 `Mirror horizontally`。只翻转当前选中的视频画面，不写入记住此站点。换一条媒体时那一条默认关。音频上开关禁用 | `drive horizontal-mirror`；`tests/mirror.test.ts`、`tests/mirror-panel.test.ts` |
+| 水平镜像 | [horizontal-mirror.md](horizontal-mirror.md) | 弹出面板播放卡片标题右侧的 `Mirror horizontally`。只翻转当前选中的视频画面，不写入记住此站点。换一条媒体时那一条默认关。音频上开关禁用 | `drive horizontal-mirror`；`tests/mirror.test.ts`、`tests/mirror-panel.test.ts` |
 | 扩展命令 → 画中画 | [extension-pip.md](extension-pip.md) | 设置页「Keyboard shortcuts」的扩展命令列表；绑定后对活动标签页里当前媒体切换画中画 | `drive extension-pip`；命令分发见 `tests/pip-command.test.ts`；面板按钮见 `e2e/smoke.spec.ts` 中画中画那条 |
 | 页内快捷键改键 | [hotkey-remap.md](hotkey-remap.md) | 设置页「Keyboard shortcuts」里带铅笔图标的按键按钮：播放暂停、快进快退、倍速增减、静音、按住临时加速、逐帧。点一下再按新键，已打开的网页立即生效；撞键时提示被谁占用；`Restore default keys` 恢复默认 | `drive hotkey-remap`；`tests/keybinds.test.ts`、`tests/hotkey-remap.test.ts` |
 | 浮动入口旁注 | [floating-entry-note.md](floating-entry-note.md) | 收起或半隐藏的浮动入口旁边。默认显示页内音量百分比；100% 且倍速不是 1× 时改显倍速。设置页「Floating controller」的 `Entry note` 可选优先音量、优先倍速或关闭 | `drive floating-entry-note`；`tests/floating-note.test.ts` |
