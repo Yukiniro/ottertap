@@ -37,6 +37,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-follow-playing
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive selection-highlight
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive prev-next-media
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive panel-media-list
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -56,7 +57,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -241,6 +242,7 @@ function routedHtml(pathname) {
   if (pathname === '/cards') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="card" aria-label="Feed card" src="${wav}" preload="auto" playsinline loop style="display:block;width:240px;height:135px;margin:24px"></video><div style="height:1600px"></div></body></html>`;
   if (pathname === '/audio') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><audio id="media" aria-label="Fixture audio" src="${wav}" preload="auto"></audio></body></html>`;
   if (pathname === '/mixed') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" aria-label="Fixture video" src="${wav}" preload="auto" playsinline loop style="display:block;width:640px;height:360px;margin:48px"></video><audio id="clip" aria-label="Fixture audio" src="${wav}" preload="auto"></audio></body></html>`;
+  if (pathname === '/playlist') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Playlist page</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="alpha" title="Alpha reel" src="${wav}" preload="auto" playsinline style="display:block;width:160px;height:90px;margin:8px"></video><video id="beta" title="Beta reel" src="${wav}" preload="auto" playsinline style="display:block;width:160px;height:90px;margin:8px"></video><video id="gamma" title="Gamma reel" src="${wav}" preload="auto" playsinline style="display:block;width:160px;height:90px;margin:8px"></video><video id="delta" src="delta-reel.mp4" preload="none" style="display:block;width:160px;height:90px;margin:8px"></video><video id="echo" preload="none" style="display:block;width:160px;height:90px;margin:8px"></video></body></html>`;
   if (pathname === '/pip-off') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" aria-label="Fixture video" src="${wav}" preload="auto" playsinline disablepictureinpicture style="display:block;width:640px;height:360px;margin:48px"></video></body></html>`;
   if (pathname === '/unseekable') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Unseekable</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" aria-label="Unseekable video" preload="none" style="display:block;width:640px;height:360px;margin:48px"></video></body></html>`;
   if (pathname === '/tone-current') return tonePage('Current show');
@@ -3225,7 +3227,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -6035,6 +6037,153 @@ async function driveSelectionHighlight(context, dir, note) {
     await mixed?.close().catch(() => {});
     await feed?.close().catch(() => {});
     await settings?.close().catch(() => {});
+  }
+}
+
+async function drivePanelMediaList(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const listView = `(() => {
+    const rows = [...document.querySelectorAll('[role="menuitemradio"]')].filter(node => !node.hasAttribute('data-filtered')).map(node => ({
+      text: (node.textContent || '').replace(/\\s+/g, ' ').trim(),
+      checked: node.getAttribute('aria-checked') === 'true',
+    }));
+    return {
+      rows,
+      list: !!document.getElementById('popup-media'),
+      filter: !!document.getElementById('popup-media-filter'),
+      empty: (document.body.innerText || '').includes('No media match.'),
+      heading: document.querySelector('h1')?.textContent?.trim() ?? '',
+    };
+  })()`;
+  const openList = `(() => {
+    if (document.querySelector('[role="menuitemradio"]')) return true;
+    const trigger = document.getElementById('popup-media');
+    if (!trigger) return false;
+    trigger.click();
+    return true;
+  })()`;
+  const setFilter = value => `(() => {
+    const input = document.getElementById('popup-media-filter');
+    if (!input) return false;
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+    setter.call(input, ${JSON.stringify(value)});
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    return input.value;
+  })()`;
+  const choose = async (popup, name) => {
+    if (!await popup.evaluate(openList)) throw new Error('没有媒体列表');
+    const picked = await popup.evaluate(`(() => {
+      const item = [...document.querySelectorAll('[role="menuitemradio"]')].find(node => !node.hasAttribute('data-filtered') && (node.textContent || '').includes(${JSON.stringify(name)}));
+      if (!item) return false;
+      item.click();
+      return true;
+    })()`);
+    if (!picked) throw new Error(`没有点到 ${name}`);
+  };
+  const play = async (page, selector) => {
+    await page.locator(selector).evaluate(async element => {
+      try { await element.play(); }
+      catch { element.muted = true; await element.play(); }
+    });
+    await poll(() => page.locator(selector).evaluate(element => element.paused), value => value === false, `${selector} 应开始播放`);
+  };
+  let popup = null;
+  let single = null;
+  let feed = null;
+  let playlist = null;
+  try {
+    single = await context.newPage();
+    await single.goto(`${origin}/video`, { waitUntil: 'domcontentloaded' });
+    await single.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await single.bringToFront();
+    popup = await openActionPopup(context, single);
+    const quiet = await poll(() => popup.evaluate(listView), value => value.heading === 'Fixture video' && value.list === false && value.filter === false, '单媒体页不应出现媒体列表或过滤');
+    await popup.screenshot(path.join(dir, 'popup-single.png'));
+    note(`single heading=${quiet.heading}`);
+    await popup.close();
+    popup = null;
+
+    feed = await context.newPage();
+    await feed.goto(`${origin}/feed`, { waitUntil: 'domcontentloaded' });
+    await feed.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await feed.evaluate(async () => {
+      for (const element of [document.querySelector('#preview'), document.querySelector('#media')]) {
+        if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+        element.pause();
+      }
+    });
+    await feed.bringToFront();
+    popup = await openActionPopup(context, feed);
+    const initial = await poll(() => popup.view(), value => value.heading === 'Feed preview' || value.heading === 'Main player', 'feed 应先选中一条');
+    const playingSelector = initial.heading === 'Feed preview' ? '#media' : '#preview';
+    const playingName = playingSelector === '#media' ? 'Main player' : 'Feed preview';
+    const heldName = initial.heading;
+    const heldSelector = heldName === 'Feed preview' ? '#preview' : '#media';
+    await play(feed, playingSelector);
+    await poll(() => popup.view(), value => value.heading === playingName, '播放另一条后面板应跟过去');
+    if (!await popup.evaluate(openList)) throw new Error('feed 上没有媒体列表');
+    const feedRows = await poll(() => popup.evaluate(listView), value => {
+      const playing = value.rows.find(row => row.text.includes(playingName));
+      const held = value.rows.find(row => row.text.includes(heldName));
+      return value.filter === false && value.rows.length === 2 && playing?.text.includes('Playing') && playing.checked && held?.text.includes('Paused') && !held.checked;
+    }, '列表应标出正在播放的一条和当前选中');
+    await popup.screenshot(path.join(dir, 'popup-rows.png'));
+    note(`rows ${feedRows.rows.map(row => row.text).join(' | ')}`);
+    await choose(popup, heldName);
+    await poll(() => popup.view(), value => value.heading === heldName, '点选应改到那一条');
+    await popup.click('Play');
+    await poll(() => feed.locator(heldSelector).evaluate(element => element.paused), value => value === false, '点选后播放应作用在这一条');
+    if (await feed.locator(playingSelector).evaluate(element => element.paused) !== false) throw new Error('点选后把另一条停了');
+    await popup.click('Pause');
+    await poll(() => feed.locator(heldSelector).evaluate(element => element.paused), value => value === true, '点选后暂停应作用在这一条');
+    if (await feed.locator(playingSelector).evaluate(element => element.paused) !== false) throw new Error('暂停串到了正在播放的另一条');
+    note(`control landed on ${heldName}`);
+    await popup.close();
+    popup = null;
+
+    playlist = await context.newPage();
+    await playlist.goto(`${origin}/playlist`, { waitUntil: 'domcontentloaded' });
+    await playlist.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await playlist.bringToFront();
+    popup = await openActionPopup(context, playlist);
+    await poll(() => popup.view(), value => value.heading === 'Alpha reel', '五条里应先选中 Alpha reel');
+    if (!await popup.evaluate(openList)) throw new Error('playlist 上没有媒体列表');
+    const labels = await poll(() => popup.evaluate(listView), value => value.filter === true && value.rows.length === 5 && ['Alpha reel', 'Beta reel', 'Gamma reel', 'delta-reel', 'Video 5'].every(name => value.rows.some(row => row.text.includes(name))) && value.rows.every(row => !row.text.includes('Playlist page')), '五条都应有短标签，且不用页面标题');
+    note(`labels ${labels.rows.map(row => row.text).join(' | ')}`);
+    if (await popup.evaluate(setFilter('beta')) !== 'beta') throw new Error('过滤框没有写上 beta');
+    const filtered = await poll(() => popup.evaluate(listView), value => value.rows.length === 1 && value.rows[0].text.includes('Beta reel') && value.heading === 'Alpha reel', '过滤只留下 Beta reel，选中仍是 Alpha');
+    await popup.screenshot(path.join(dir, 'popup-filtered.png'));
+    const count = await playlist.evaluate(() => document.querySelectorAll('video').length);
+    if (count !== 5) throw new Error(`过滤改了页面上的媒体数量：${count}`);
+    note(`filtered heading=${filtered.heading} videos=${count}`);
+    if (await popup.evaluate(setFilter('zzzz')) !== 'zzzz') throw new Error('过滤框没有写上 zzzz');
+    await poll(() => popup.evaluate(listView), value => value.rows.length === 0 && value.empty && value.heading === 'Alpha reel', '没有匹配时列表空着，选中不变');
+    await popup.screenshot(path.join(dir, 'popup-nomatch.png'));
+    if (await popup.evaluate(setFilter('')) !== '') throw new Error('过滤框没有清空');
+    await poll(() => popup.evaluate(listView), value => value.rows.length === 5 && !value.empty, '清空过滤后五条都回来');
+    await choose(popup, 'Beta reel');
+    await poll(() => popup.view(), value => value.heading === 'Beta reel', '过滤清空后点选应改到 Beta reel');
+    await popup.click('Play');
+    await poll(() => playlist.locator('#beta').evaluate(element => element.paused), value => value === false, '点选 Beta 后播放应作用在它身上');
+    const others = await playlist.evaluate(() => ['#alpha', '#gamma', '#delta', '#echo'].map(selector => document.querySelector(selector).paused));
+    if (others.some(paused => paused !== true)) throw new Error(`播放 Beta 带动了其他条：${JSON.stringify(others)}`);
+    note('playlist control landed on Beta reel');
+    await popup.close();
+    popup = null;
+
+    const prefs = await stored();
+    if (prefs.sitePrefs && Object.keys(prefs.sitePrefs).length) throw new Error(`媒体列表写入了站点记忆：${JSON.stringify(prefs.sitePrefs)}`);
+    const state = { ok: true, single: 'Fixture video', feedPlaying: playingName, feedSelected: heldName, filtered: 'Beta reel', fallback: 'Video 5', file: 'delta-reel', sitePrefs: prefs.sitePrefs ?? {} };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await popup?.close().catch(() => {});
+    await playlist?.close().catch(() => {});
+    await feed?.close().catch(() => {});
+    await single?.close().catch(() => {});
   }
 }
 

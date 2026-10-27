@@ -7,7 +7,6 @@ import type { ChannelMode, MediaCommand, MediaState } from './types';
 import { adjacentFrameTime, frameStepSeconds, stopAllPresentedFrames, stopPresentedFrames, watchPresentedFrames } from './frame';
 import { isHorizontallyMirrored, setHorizontalMirror } from './mirror';
 import { clearSelectionRings, showSelectionRing } from './selection-ring';
-import { formatTime } from './utils';
 
 export const mediaPresenceEvent = 'ottertap-media';
 
@@ -114,19 +113,43 @@ export function keptSelection(selectedId: string, ids: string[], failedFrames: S
   return failedFrames.has(Number(selectedId.split(':')[0])) ? selectedId : '';
 }
 
-export function mediaChoiceLabel(media: MediaState, index: number) {
+/** Filename stem only. Signed query strings and blob or data addresses stay out of the panel. */
+export function mediaFileName(src: string) {
+  const trimmed = src.trim();
+  if (!trimmed || /^(?:blob|data):/i.test(trimmed)) return '';
+  let segment = '';
+  try { segment = new URL(trimmed, 'https://media.invalid').pathname.split('/').filter(Boolean).pop() ?? ''; }
+  catch { return ''; }
+  try { segment = decodeURIComponent(segment); }
+  catch { /* keep the encoded segment */ }
+  const stem = segment.replace(/\.[a-z0-9]{1,8}$/i, '');
+  const text = (stem || segment).trim();
+  if (!text || text === '.' || text === '..') return '';
+  return text.length > 48 ? `${text.slice(0, 47)}…` : text;
+}
+
+/** Short list name: the element's own name, else the filename, else "Video 2". Not the page title. */
+export function mediaListLabel(media: Pick<MediaState, 'kind' | 'label'> & { file?: string }, index: number) {
+  const named = media.label.trim();
+  if (named) return named;
+  const file = media.file?.trim() ?? '';
+  if (file) return file;
   const kind = media.kind === 'video' ? i18n.t('video') : i18n.t('audio');
-  const playback = media.paused ? i18n.t('paused') : i18n.t('playing');
-  const sound = !media.muted && media.volume > 0 ? i18n.t('audible') : i18n.t('muted');
-  const text = `${index + 1}. ${kind} · ${playback} · ${sound} · ${formatTime(media.currentTime)}`;
-  return media.label ? `${text} · ${media.label}` : text;
+  return i18n.t('mediaListFallback', { kind, n: index + 1 });
+}
+
+/** A blob or data currentSrc hides a filename that is still on the attribute. */
+function mediaAddress(element: HTMLMediaElement) {
+  const current = element.currentSrc || '';
+  if (current && !/^(?:blob|data):/i.test(current)) return current;
+  return element.getAttribute('src')?.trim() || '';
 }
 
 export function mediaSnapshot(element: HTMLMediaElement, id: string, document: Document, amplifier?: Amplifier): MediaState {
   const ranges = element.seekable;
   const label = element.getAttribute('aria-label')?.trim() || element.getAttribute('title')?.trim() || '';
   return {
-    id, label, title: label || document.title || i18n.t('unnamedMedia'),
+    id, label, file: mediaFileName(mediaAddress(element)), title: label || document.title || i18n.t('unnamedMedia'),
     host: new URL(document.URL).hostname,
     kind: element.localName === 'video' ? 'video' : 'audio',
     paused: element.paused, muted: element.muted, volume: element.volume * (amplifier?.gain(element) ?? 1), maxVolume: maxVolume(element, amplifier), rate: element.playbackRate,

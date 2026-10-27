@@ -8,6 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from './ui/empty';
 import { Item, ItemActions, ItemContent, ItemGroup, ItemMedia, ItemTitle } from './ui/item';
 import { Popover, PopoverContent, PopoverDescription, PopoverTrigger } from './ui/popover';
+import { Input } from './ui/input';
 import { Slider } from './ui/slider';
 import { VolumeSlider } from './volume-slider';
 import { Switch } from './ui/switch';
@@ -16,7 +17,7 @@ import { Brand } from './brand';
 import { useMedia } from '../hooks/use-media';
 import { channelModes, isChannelMode } from '../lib/amplifier';
 import { canStepFrames } from '../lib/frame';
-import { channelLabel, mediaChoiceLabel, pipHint } from '../lib/media';
+import { channelLabel, mediaListLabel, pipHint } from '../lib/media';
 import { formatRate, nextRate, sameRate } from '../lib/rate';
 import { actualSkipSeconds } from '../lib/skip';
 import type { SoundingTab, SoundingTabsClient } from '../lib/tabs';
@@ -128,6 +129,38 @@ function OtherPlaying({ client }: { client?: SoundingTabsClient }) {
     </div>
   </section>;
 }
+function MediaChoices({ media, host, selectedId, onSelect, onOpen }: { media: MediaState[]; host: string; selectedId: string; onSelect: (id: string) => void; onOpen: () => void }) {
+  const [query, setQuery] = useState('');
+  const filtering = media.length >= 5;
+  useEffect(() => { setQuery(''); }, [host]);
+  useEffect(() => { if (!filtering) setQuery(''); }, [filtering]);
+  const needle = filtering ? query.trim().toLocaleLowerCase() : '';
+  const rows = media.map((item, index) => ({ item, index, label: mediaListLabel(item, index), state: item.paused ? i18n.t('paused') : i18n.t('playing') }));
+  const selected = rows.find(row => row.item.id === selectedId);
+  const trigger = selected ? `${selected.label} · ${selected.state}` : i18n.t('chooseMedia');
+  const shownCount = rows.filter(row => !needle || row.label.toLocaleLowerCase().includes(needle)).length;
+  return <div className="flex flex-col gap-1.5">
+    {filtering && <Input id="popup-media-filter" type="search" className="h-8" aria-label={i18n.t('mediaListFilter')} placeholder={i18n.t('mediaListFilter')} value={query} autoComplete="off" spellCheck={false} onChange={event => setQuery(event.target.value)} />}
+    <DropdownMenu onOpenChange={open => { if (open) onOpen(); }}>
+      <DropdownMenuTrigger id="popup-media" render={<Button variant="ghost" size="sm" />} className="h-8 w-full justify-between rounded-md bg-secondary px-2 font-normal">
+        <span className="truncate">{trigger}</span>
+        <ChevronDown data-icon="inline-end" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-72">
+        <DropdownMenuRadioGroup value={selectedId} onValueChange={onSelect}>
+          {rows.map(row => {
+            const shown = !needle || row.label.toLocaleLowerCase().includes(needle);
+            return <DropdownMenuRadioItem key={row.item.id} value={row.item.id} hidden={!shown} data-filtered={shown ? undefined : ''} className={shown ? 'data-checked:bg-accent' : 'hidden data-checked:bg-accent'}>
+              <span title={row.label} className="min-w-0 flex-1 truncate">{row.label}</span>
+              <span className={row.item.paused ? 'shrink-0 text-xs text-muted-foreground' : 'shrink-0 text-xs font-medium text-primary'}>{row.state}</span>
+            </DropdownMenuRadioItem>;
+          })}
+        </DropdownMenuRadioGroup>
+        {filtering && shownCount === 0 ? <p className="px-2 py-3 text-center text-xs text-muted-foreground">{i18n.t('mediaListNoMatch')}</p> : null}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  </div>;
+}
 export function MediaPanel({ client, openSettings, sounding, initial }: { client: MediaClient; openSettings: () => void; sounding?: SoundingTabsClient; initial?: PageState }) {
   const { page, selected, select, command, refresh, loading, error } = useMedia(client, { initial });
   const { floatingAtom, floatingHiddenSitesAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, skipSecondsAtom, skipWithRateAtom, rateStepAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
@@ -214,17 +247,7 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
       <Brand className="text-sm [&_img]:size-6" />
       <Button variant="ghost" size="icon" aria-label={i18n.t('openSettings')} onClick={openSettings}><SettingsIcon className="size-5" /></Button>
     </header>
-    {page.media.length > 1 && <DropdownMenu onOpenChange={open => { if (open && selected) showMedia(selected.id); }}>
-      <DropdownMenuTrigger id="popup-media" render={<Button variant="ghost" size="sm" />} className="h-8 w-full justify-between rounded-md bg-secondary px-2 font-normal">
-        <span className="truncate">{selected ? mediaChoiceLabel(selected, page.media.findIndex(media => media.id === selected.id)) : i18n.t('chooseMedia')}</span>
-        <ChevronDown data-icon="inline-end" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-72">
-        <DropdownMenuRadioGroup value={selected?.id ?? ''} onValueChange={id => { select(id); setSeekDraft(null); }}>
-          {page.media.map((media, index) => <DropdownMenuRadioItem key={media.id} value={media.id}><span className="truncate">{mediaChoiceLabel(media, index)}</span></DropdownMenuRadioItem>)}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>}
+    {page.media.length > 1 && <MediaChoices media={page.media} host={page.host} selectedId={selected?.id ?? ''} onSelect={id => { select(id); setSeekDraft(null); }} onOpen={() => { if (selected) showMedia(selected.id); }} />}
     {selected ? <>
       <div className="rounded-xl bg-secondary/60 p-3">
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">

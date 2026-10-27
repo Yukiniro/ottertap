@@ -4,7 +4,7 @@ import { Window } from 'happy-dom';
 import { defaultRatePresets } from '../lib/rate';
 import { normalizeDomain, normalizeSettings, isSiteEnabled, disableSite, enableSite } from '../lib/settings';
 import { defaultSettings, type ChannelMode } from '../lib/types';
-import { applyMediaCommand, createMediaController, hoverPrimaryId, hoverWheelTarget, isMainStageSize, isMediaCommand, keptSelection, lockedMedia, mediaChoiceLabel, mediaSnapshot, stageViewport } from '../lib/media';
+import { applyMediaCommand, createMediaController, hoverPrimaryId, hoverWheelTarget, isMainStageSize, isMediaCommand, keptSelection, lockedMedia, mediaSnapshot, stageViewport } from '../lib/media';
 import { commandForHotkey, hotkeyFromKeyboard, wheelVolumeDelta } from '../lib/hotkey';
 import { formatTime } from '../lib/utils';
 import { canAmplify, maxGain, splitVolume, type Amplifier } from '../lib/amplifier';
@@ -173,9 +173,6 @@ test('播放失败向上传递；未知时长正确序列化为直播', async ()
   const unnamed = mediaSnapshot(media, '1', document);
   assert.equal(unnamed.label, '');
   assert.equal(unnamed.title, '示例媒体');
-  assert.equal(mediaChoiceLabel(unnamed, 0).includes('示例媒体'), false);
-  media.setAttribute('aria-label', '正片');
-  assert.match(mediaChoiceLabel(mediaSnapshot(media, '1', document), 0), /正片/);
 });
 test('多个媒体优先锁定在播且有声的一个，快捷键按锁定目标调节', () => {
   const base = { host: 'example.com', kind: 'video' as const, label: '', title: '页面', maxVolume: maxGain, rate: 1, currentTime: 10, duration: 100, live: false, seekable: [{ start: 0, end: 100 }], pip: false, pipAvailable: true, pipBlock: '' as const, channel: 'stereo' as const, channelAvailable: true };
