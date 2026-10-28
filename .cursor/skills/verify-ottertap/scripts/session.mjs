@@ -6692,7 +6692,7 @@ async function drivePagePip(context, dir, note) {
       await fixture.screenshot({ path: path.join(dir, 'fixture-entered.png'), animations: 'disabled' });
       await focusFixture();
       await fixture.keyboard.press('KeyP');
-      await poll(inPip, value => value === false, '再按 P 应退出画中画');
+      await poll(() => inPip(fixture), value => value === false, '再按 P 应退出画中画');
       await fixture.screenshot({ path: path.join(dir, 'fixture-exited.png'), animations: 'disabled' });
       toggled = { entered: true, exited: true };
       note('entered and exited picture-in-picture');
