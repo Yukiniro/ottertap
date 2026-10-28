@@ -53,7 +53,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs doctor
 
 ## Drive
 
-脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、低音量滚轮细步长（见 `features/fine-wheel.md`）、Shift 粗调步长（见 `features/coarse-step.md`）、倍速增减步长（见 `features/rate-step.md`）、扩展命令画中画（见 `features/extension-pip.md`）、按住临时加速（见 `features/hold-boost.md`）、同键短按跳长按加速（见 `features/hold-skip-combo.md`）、逐帧（见 `features/frame-step.md`）、页内快捷键改键（见 `features/hotkey-remap.md`）、浮动药丸倍速（见 `features/floating-speed.md`）、浮动药丸播放跳转（见 `features/floating-playback.md`）、浮动入口旁注（见 `features/floating-entry-note.md`）、从音量药丸打开弹出面板（见 `features/floating-open-panel.md`）、仅在播放时显示浮动入口（见 `features/floating-while-playing.md`）和滚轮方向（见 `features/wheel-direction.md`）。仅全屏时悬停滚轮见 `features/fullscreen-wheel.md`。侧栏聊天和文档大纲忽略见 `features/sidebar-ignore.md`。设置页三处名单的「当前站」见 `features/settings-current-site.md`。记住站点的「清空全部」见 `features/settings-clear-remembered.md`。镜像与标记的页内提示见 `features/mirror-mark-feedback.md`。选中变化时的短暂轮廓见 `features/selection-highlight.md`。上一条和下一条媒体见 `features/prev-next-media.md`。弹出面板媒体列表见 `features/panel-media-list.md`。音量药丸里的画中画见 `features/float-pip.md`。页内画中画快捷键见 `features/page-pip.md`。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
+脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、低音量滚轮细步长（见 `features/fine-wheel.md`）、Shift 粗调步长（见 `features/coarse-step.md`）、倍速增减步长（见 `features/rate-step.md`）、扩展命令画中画（见 `features/extension-pip.md`）、按住临时加速（见 `features/hold-boost.md`）、同键短按跳长按加速（见 `features/hold-skip-combo.md`）、逐帧（见 `features/frame-step.md`）、页内快捷键改键（见 `features/hotkey-remap.md`）、浮动药丸倍速（见 `features/floating-speed.md`）、浮动药丸播放跳转（见 `features/floating-playback.md`）、浮动入口旁注（见 `features/floating-entry-note.md`）、从音量药丸打开弹出面板（见 `features/floating-open-panel.md`）、仅在播放时显示浮动入口（见 `features/floating-while-playing.md`）和滚轮方向（见 `features/wheel-direction.md`）。仅全屏时悬停滚轮见 `features/fullscreen-wheel.md`。侧栏聊天和文档大纲忽略见 `features/sidebar-ignore.md`。设置页三处名单的「当前站」见 `features/settings-current-site.md`。记住站点的「清空全部」见 `features/settings-clear-remembered.md`。镜像与标记的页内提示见 `features/mirror-mark-feedback.md`。进出画中画的页内提示见 `features/pip-feedback.md`。选中变化时的短暂轮廓见 `features/selection-highlight.md`。上一条和下一条媒体见 `features/prev-next-media.md`。弹出面板媒体列表见 `features/panel-media-list.md`。音量药丸里的画中画见 `features/float-pip.md`。页内画中画快捷键见 `features/page-pip.md`。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
 
 ```bash
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
@@ -94,6 +94,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive panel-media-list
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive float-prev-next
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive float-pip
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive page-pip
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-feedback
 ```
 
 `skip-step` 在设置页把 `Skip step` 改成 `30s` 并打开 `Single-key mode`，再看弹出面板进退按钮名和页内 `L` / `J` / `→` / `←` 让 `/long` 夹具的 `currentTime` 跟着步长变；它会改写 profile，同一会话只能跑一次。步骤见 `features/skip-step.md`。
@@ -223,6 +224,8 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive page-pip
 
 `drive page-pip` 写入 `page-pip/`：`settings-unbound.png`、`settings-conflict.png`、`settings-bound.png`、`fixture-typing.png`、`fixture-audio.png`、`fixture-off.png`、`fixture-waiting.png`、`settings-restored.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。进入时还有 `fixture-entered.png` 与 `fixture-exited.png`；拒绝时还有 `fixture-failed.png` 与 `popup-failed.png`。它会改写 profile，成功时恢复默认，同一会话只能跑一次。步骤见 `features/page-pip.md`。
 
+`drive pip-feedback` 写入 `pip-feedback/`：`fixture-before.png`、`toast-float-on.png`、`toast-float-off.png`、`toast-panel-on.png`、`toast-panel-off.png`、`toast-key-on.png`、`toast-key-off.png`、`toast-fullscreen.png`、`toast-fullscreen-off.png`、`fixture-typing.png`、`toast-audio.png`、`toast-off.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。它会改写 profile，成功时恢复默认，同一会话只能跑一次。步骤见 `features/pip-feedback.md`。
+
 `launch` 成功后还会留下 `launch-probe.png`（浮动入口已经出现）。失败时同目录可能有 `error.txt`，那不算通过。
 
 换了 `OTTERTAP_VERIFY_ID` 时，文件名变成 `<id>-popup-playback/`。不要把这些截图提交进仓库。
@@ -282,6 +285,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive panel-media-list
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive float-prev-next
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive float-pip
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive page-pip
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-feedback
 node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 ```
 
@@ -468,3 +472,13 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive page-pip
 `page-pip` 在设置页确认 `Enter or exit picture-in-picture` 和同名扩展命令默认都是 `Not set`，不占建议键，空键也不报占用。录到已有键时提示与现网改键一致。绑上 `P` 后，不打开单键模式。`/video` 补一帧画面后按 `P` 进入画中画再退出；浏览器拒绝时，页面短句是面板已有的失败说明。文本框聚焦时 `P` 留给输入框。`/audio`、`/pip-off`、`/unseekable` 上的短句与弹出面板 `#pip-hint` 相同。`Restore default keys` 收回这一项。扩展命令的快捷键一直是空的。`sitePrefs` 一直是空的。它会改写 profile，成功时恢复默认，同一会话只能跑一次。步骤见 `features/page-pip.md`。
 
 写入 `page-pip/`：`settings-unbound.png`、`settings-conflict.png`、`settings-bound.png`、`fixture-typing.png`、`fixture-audio.png`、`fixture-off.png`、`fixture-waiting.png`、`settings-restored.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。进入时还有 `fixture-entered.png` 与 `fixture-exited.png`；拒绝时还有 `fixture-failed.png` 与 `popup-failed.png`。
+
+## 进出画中画的页内提示
+
+```bash
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-feedback
+```
+
+`pip-feedback` 把页内画中画绑成 `P`。成功进入时页面顶部出现和倍速提示同一块字样 `Picture-in-picture on`，成功退出时是 `Picture-in-picture off`。音量药丸、弹出面板和页内键都会让页面出现这两句。字样不接收点击，不盖住播放器底部控件，出现后会自己消失。铺满窗口时仍在顶部。输入框聚焦时不切换，也不出现字样。音频和网站关掉画中画时，字样是原来的短说明。没有提示总开关。`sitePrefs` 保持为空，权限仍只有 `storage`。扩展命令的成功字样由 `tests/pip-feedback.test.ts` 覆盖，无头 Chromium 按键不会派发扩展命令。它会改写 profile，成功时恢复默认，同一会话只能跑一次。步骤见 `features/pip-feedback.md`。
+
+写入 `pip-feedback/`：`fixture-before.png`、`toast-float-on.png`、`toast-float-off.png`、`toast-panel-on.png`、`toast-panel-off.png`、`toast-key-on.png`、`toast-key-off.png`、`toast-fullscreen.png`、`toast-fullscreen-off.png`、`fixture-typing.png`、`toast-audio.png`、`toast-off.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。

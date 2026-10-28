@@ -41,6 +41,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive float-prev-next
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive float-pip
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive page-pip
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-feedback
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -60,7 +61,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip', 'page-pip'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip', 'page-pip', 'pip-feedback'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -3231,7 +3232,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip, 'page-pip': drivePagePip };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip, 'page-pip': drivePagePip, 'pip-feedback': drivePipFeedback };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -6803,6 +6804,244 @@ async function drivePagePip(context, dir, note) {
     await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
     return state;
   } finally {
+    await fixture?.close().catch(() => {});
+    await settings?.close().catch(() => {});
+  }
+}
+
+async function drivePipFeedback(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const prefsText = async () => JSON.stringify((await stored()).sitePrefs ?? {});
+  const onCopy = 'Picture-in-picture on';
+  const offCopy = 'Picture-in-picture off';
+  const dialog = page => page.getByRole('dialog', { name: 'Volume pill' });
+  const trigger = page => page.getByRole('button', { name: /volume pill/i });
+  const keyButton = (page, action) => page.getByRole('button', { name: new RegExp(`^Change the key for ${action.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\. Now `) });
+  let settings;
+  let fixture;
+  let popup = null;
+  const focusFixture = async () => {
+    await fixture.bringToFront();
+    await fixture.mouse.click(12, 12);
+  };
+  const hint = text => fixture.getByText(text, { exact: true });
+  const inPip = () => fixture.locator('#media').evaluate(element => element.isConnected && element.ownerDocument.pictureInPictureElement === element);
+  const showHint = async text => {
+    const node = hint(text);
+    await node.waitFor({ state: 'visible', timeout: 8_000 });
+    const pass = await node.evaluate(element => element.className.includes('pointer-events-none') && element.getAttribute('role') === 'status');
+    if (!pass) throw new Error(`${text} 不是不挡点击的状态字样`);
+    const toast = await node.boundingBox();
+    const media = await fixture.locator('#media').boundingBox();
+    if (!toast || !media) throw new Error(`${text} 没有位置`);
+    const controlsTop = media.y + Math.max(media.height - 48, media.height * 0.75);
+    const coversControls = toast.y + toast.height > controlsTop && toast.x < media.x + media.width && toast.x + toast.width > media.x;
+    if (coversControls) throw new Error(`${text} 盖住了播放控件：${JSON.stringify({ toast, media })}`);
+    return toast;
+  };
+  const hideHint = async text => {
+    await hint(text).waitFor({ state: 'hidden', timeout: 3_000 });
+  };
+  const alerts = async () => (await fixture.getByRole('alert').allInnerTexts()).map(text => text.trim()).filter(Boolean);
+  const expectCopy = async (copy, pip, shot) => {
+    const seen = await poll(async () => ({
+      copy: await hint(copy).isVisible().catch(() => false),
+      pip: await inPip(),
+      alert: (await alerts()).find(text => Object.values(pipHintText).includes(text)) || '',
+    }), value => value.copy || Boolean(value.alert), `应出现「${copy}」，或已有的失败说明`);
+    if (!seen.copy || seen.pip !== pip) throw new Error(`「${copy}」没有和画中画状态一起出现：${JSON.stringify(seen)}`);
+    const toast = await showHint(copy);
+    await fixture.screenshot({ path: path.join(dir, shot), animations: 'disabled' });
+    return toast;
+  };
+  const restoreKeys = async () => {
+    if (!settings || settings.isClosed()) return;
+    await settings.bringToFront();
+    const reset = settings.getByRole('button', { name: 'Restore default keys', exact: true });
+    if (await reset.isDisabled()) return;
+    await reset.click();
+    await poll(stored, value => value.keybinds?.pip === '' && value.keybinds?.toggle === 'k', '应恢复默认键');
+  };
+  const place = async () => {
+    const box = await trigger(fixture).boundingBox();
+    if (!box) throw new Error('浮动入口没有位置');
+    return { x: Math.round(box.x), y: Math.round(box.y) };
+  };
+  const expand = async () => {
+    const box = await trigger(fixture).boundingBox();
+    if (!box) throw new Error('浮动入口没有位置');
+    await fixture.mouse.move(box.x + Math.min(8, box.width / 4), box.y + box.height / 2);
+    await trigger(fixture).click();
+    await dialog(fixture).waitFor({ state: 'visible', timeout: 5_000 });
+  };
+  const paint = async page => page.locator('#media').evaluate(async element => {
+    if (element.readyState < 1) {
+      await Promise.race([
+        new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true })),
+        new Promise(resolve => setTimeout(resolve, 2_000)),
+      ]);
+    }
+    const describe = pictured => ({
+      readyState: element.readyState,
+      videoWidth: element.videoWidth,
+      enabled: document.pictureInPictureEnabled === true,
+      request: typeof element.requestPictureInPicture === 'function',
+      disabledBySite: element.disablePictureInPicture === true,
+      pictured,
+    });
+    if (element.videoWidth > 0 || document.pictureInPictureEnabled !== true || typeof element.requestPictureInPicture !== 'function') return describe(element.videoWidth > 0 ? 'native' : 'none');
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 36;
+    const context = canvas.getContext('2d');
+    if (!context || typeof canvas.captureStream !== 'function') return describe('none');
+    context.fillStyle = '#c45c26';
+    context.fillRect(0, 0, 64, 36);
+    element.srcObject = canvas.captureStream(5);
+    element.muted = true;
+    try { await element.play(); } catch { /* the click is the gesture */ }
+    const deadline = performance.now() + 2_000;
+    while (element.videoWidth === 0 && performance.now() < deadline) await new Promise(resolve => setTimeout(resolve, 50));
+    return describe(element.videoWidth > 0 ? 'canvas' : 'none');
+  });
+  try {
+    const registered = await worker.evaluate(async () => {
+      const manifest = chrome.runtime.getManifest();
+      return { permissions: manifest.permissions ?? [], hostPermissions: manifest.host_permissions ?? [] };
+    });
+    if (JSON.stringify(registered.permissions) !== JSON.stringify(['storage'])) throw new Error(`权限应仍只有 storage：${JSON.stringify(registered.permissions)}`);
+    if (JSON.stringify([...registered.hostPermissions].sort()) !== JSON.stringify(['http://*/*', 'https://*/*'])) throw new Error(`主机权限不应扩大：${JSON.stringify(registered.hostPermissions)}`);
+    if ((await prefsText()) !== '{}') throw new Error(`开始时 sitePrefs 不是空的：${await prefsText()}`);
+
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
+    await settings.locator('#shortcuts').getByRole('heading', { name: 'Keyboard shortcuts' }).waitFor({ state: 'visible', timeout: 15_000 });
+    const singleKey = settings.getByRole('switch', { name: 'Single-key mode' });
+    if (await singleKey.getAttribute('aria-checked') !== 'false') throw new Error('单键模式应保持关闭');
+    await keyButton(settings, 'Enter or exit picture-in-picture').click();
+    await settings.getByRole('button', { name: 'Press a key', exact: true }).waitFor({ state: 'visible' });
+    await settings.keyboard.press('KeyP');
+    await poll(stored, value => value.keybinds?.pip === 'p' && value.singleKey !== true, '应绑上 P，且单键模式仍关');
+    note('bound P');
+
+    fixture = await context.newPage();
+    await fixture.goto(`${origin}/video`, { waitUntil: 'domcontentloaded' });
+    await trigger(fixture).waitFor({ state: 'visible', timeout: 15_000 });
+    const picture = await paint(fixture);
+    note(`video ${JSON.stringify(picture)}`);
+    if (!picture.enabled || !picture.request || picture.videoWidth < 1) throw new Error(`夹具视频进不了画中画：${JSON.stringify(picture)}`);
+    const originPlace = await place();
+    const positionBefore = JSON.stringify((await stored()).floatingPosition ?? null);
+    await fixture.screenshot({ path: path.join(dir, 'fixture-before.png'), animations: 'disabled' });
+    if (await hint(onCopy).isVisible() || await hint(offCopy).isVisible()) throw new Error('还没切换时不该有画中画字样');
+
+    await expand();
+    const enter = dialog(fixture).getByRole('button', { name: 'Picture-in-picture', exact: true });
+    if (await enter.isDisabled()) throw new Error(`药丸画中画不可用：${await dialog(fixture).locator('#floating-pip-hint').innerText().catch(() => '')}`);
+    await enter.click();
+    await expectCopy(onCopy, true, 'toast-float-on.png');
+    await dialog(fixture).getByRole('button', { name: 'Exit picture-in-picture', exact: true }).click();
+    await expectCopy(offCopy, false, 'toast-float-off.png');
+    await hideHint(offCopy);
+    note('floating toasts faded');
+
+    popup = await openActionPopup(context, fixture);
+    if (!await popup.evaluate(clickLabel('Picture-in-picture'))) throw new Error('面板点不到 Picture-in-picture');
+    await expectCopy(onCopy, true, 'toast-panel-on.png');
+    if (!await popup.evaluate(clickLabel('Exit picture-in-picture'))) throw new Error('面板点不到 Exit picture-in-picture');
+    await expectCopy(offCopy, false, 'toast-panel-off.png');
+    await hideHint(offCopy);
+    await popup.close();
+    popup = null;
+    note('panel toasts faded');
+
+    await focusFixture();
+    await fixture.keyboard.press('KeyP');
+    await expectCopy(onCopy, true, 'toast-key-on.png');
+    await focusFixture();
+    await fixture.keyboard.press('KeyP');
+    await expectCopy(offCopy, false, 'toast-key-off.png');
+    await hideHint(offCopy);
+    note('page key toasts faded');
+
+    await focusFixture();
+    await fixture.evaluate(enabled => {
+      const video = document.querySelector('#media');
+      if (!(video instanceof HTMLVideoElement)) throw new Error('没有夹具视频');
+      video.style.cssText = enabled
+        ? 'position:fixed;inset:0;z-index:1;width:100vw;height:100vh;background:#111'
+        : '';
+    }, true);
+    await fixture.keyboard.press('KeyP');
+    const fullToast = await expectCopy(onCopy, true, 'toast-fullscreen.png');
+    if (fullToast.y > 80) throw new Error(`铺满窗口时提示不在顶部：${fullToast.y}`);
+    await focusFixture();
+    await fixture.keyboard.press('KeyP');
+    await expectCopy(offCopy, false, 'toast-fullscreen-off.png');
+    await fixture.evaluate(() => {
+      const video = document.querySelector('#media');
+      if (video instanceof HTMLVideoElement) video.style.cssText = 'display:block;width:640px;height:360px;margin:48px';
+    });
+    await hideHint(offCopy);
+    note('filled window still shows the hint');
+
+    await fixture.evaluate(() => {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.setAttribute('aria-label', 'Fixture note');
+      input.style.position = 'fixed';
+      input.style.left = '720px';
+      input.style.top = '420px';
+      document.body.append(input);
+    });
+    const field = fixture.getByRole('textbox', { name: 'Fixture note' });
+    await field.focus();
+    await fixture.keyboard.press('KeyP');
+    await fixture.waitForTimeout(500);
+    if (await inPip()) throw new Error('输入框聚焦时不应进入画中画');
+    if (await hint(onCopy).isVisible() || await hint(offCopy).isVisible()) throw new Error('输入框聚焦时不应出现画中画字样');
+    await fixture.screenshot({ path: path.join(dir, 'fixture-typing.png'), animations: 'disabled' });
+    note('typing shows no picture-in-picture hint');
+
+    const blocked = async (pathname, shot, expected) => {
+      const page = await context.newPage();
+      try {
+        await page.goto(`${origin}${pathname}`, { waitUntil: 'domcontentloaded' });
+        await page.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+        await page.bringToFront();
+        await page.mouse.click(12, 12);
+        await page.keyboard.press('KeyP');
+        const node = page.getByText(expected, { exact: true });
+        await node.waitFor({ state: 'visible', timeout: 8_000 });
+        const pass = await node.evaluate(element => element.className.includes('pointer-events-none') && element.getAttribute('role') === 'status');
+        if (!pass) throw new Error(`${expected} 不是不挡点击的状态字样`);
+        if (await page.getByText(onCopy, { exact: true }).isVisible()) throw new Error(`${pathname} 失败时不该出现进入字样`);
+        const pip = await page.locator('#media').evaluate(element => element.ownerDocument.pictureInPictureElement === element);
+        if (pip) throw new Error(`${pathname} 不应进入画中画`);
+        await page.screenshot({ path: path.join(dir, shot), animations: 'disabled' });
+        await node.waitFor({ state: 'hidden', timeout: 3_000 });
+        note(`${pathname} hint faded`);
+      } finally { await page.close().catch(() => {}); }
+    };
+    await blocked('/audio', 'toast-audio.png', pipHintText.audio);
+    const offHint = picture.enabled && picture.request ? pipHintText.disabled : pipHintText.unsupported;
+    await blocked('/pip-off', 'toast-off.png', offHint);
+
+    const endPlace = await place();
+    if (endPlace.x !== originPlace.x || endPlace.y !== originPlace.y) throw new Error(`浮动入口挪动了：${JSON.stringify({ originPlace, endPlace })}`);
+    if (JSON.stringify((await stored()).floatingPosition ?? null) !== positionBefore) throw new Error('floatingPosition 变了');
+    if ((await prefsText()) !== '{}') throw new Error(`画中画写入了 sitePrefs：${await prefsText()}`);
+    await restoreKeys();
+    const state = { ok: true, picture, paths: { float: true, panel: true, key: true, extensionCommand: 'tests/pip-feedback.test.ts' }, sitePrefs: {} };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await popup?.close().catch(() => {});
+    await restoreKeys().catch(() => {});
     await fixture?.close().catch(() => {});
     await settings?.close().catch(() => {});
   }

@@ -39,12 +39,12 @@ test('扩展命令 pip 复用画中画指令，失败时显示同一句提示', 
 
     await fire('pip');
     assert.deepEqual(applied.at(-1), { id: '1', command: { type: 'pip' } });
-    assert.deepEqual(hints, []);
+    assert.deepEqual(hints, ['pipOnHint']);
 
     media = [{ ...media[0]!, pip: true }];
     await fire('pip');
     assert.deepEqual(applied.at(-1), { id: '1', command: { type: 'pip' } });
-    assert.deepEqual(hints, []);
+    assert.deepEqual(hints, ['pipOnHint', 'pipOffHint']);
 
     media = [{ ...media[0]!, pip: false, pipAvailable: false, pipBlock: 'audio' }];
     pipError = messages.pipUnavailableAudio ?? '';

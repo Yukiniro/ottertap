@@ -21,7 +21,8 @@ export type HotkeyAction =
   | { type: 'media'; direction: 1 | -1 };
 
 export type MirrorMarkHintKey = 'mirrorOnHint' | 'mirrorOffHint' | 'markSetHint' | 'markJumpHint';
-export type ActionHintKey = 'play' | 'paused' | 'skipBack' | 'skipForward' | 'mute' | 'unmute' | 'shortcutFrameBack' | 'shortcutFrameForward' | 'frameStepUnavailable' | 'audioSelectedHint' | 'mediaOnlyOne' | MirrorMarkHintKey;
+export type PipSuccessHintKey = 'pipOnHint' | 'pipOffHint';
+export type ActionHintKey = 'play' | 'paused' | 'skipBack' | 'skipForward' | 'mute' | 'unmute' | 'shortcutFrameBack' | 'shortcutFrameForward' | 'frameStepUnavailable' | 'audioSelectedHint' | 'mediaOnlyOne' | MirrorMarkHintKey | PipSuccessHintKey;
 
 export const volumeGestureEvent = 'ottertap-volume-gesture';
 export const rateHintEvent = 'ottertap-rate';
@@ -197,9 +198,14 @@ export function mirrorMarkHintKey(command: MediaCommand): MirrorMarkHintKey | ''
   return '';
 }
 
+/** Success copy for picture-in-picture. `inPip` is the state before the toggle. */
+export function pipSuccessHintKey(inPip: boolean): PipSuccessHintKey {
+  return inPip ? 'pipOffHint' : 'pipOnHint';
+}
+
 export function actionHintText(key: string, seconds?: number) {
   if (key === 'skipBack' || key === 'skipForward') return i18n.t(key, { seconds: hintSkipSeconds(seconds) });
-  if (key === 'play' || key === 'paused' || key === 'mute' || key === 'unmute' || key === 'shortcutFrameBack' || key === 'shortcutFrameForward' || key === 'frameStepUnavailable' || key === 'audioSelectedHint' || key === 'mediaOnlyOne' || key === 'mirrorOnHint' || key === 'mirrorOffHint' || key === 'markSetHint' || key === 'markJumpHint' || key === 'mirrorUnavailableAudio' || key === 'markUnavailable' || key === 'markMissing' || key === 'cannotSeek' || isPipFailureKey(key)) return i18n.t(key);
+  if (key === 'play' || key === 'paused' || key === 'mute' || key === 'unmute' || key === 'shortcutFrameBack' || key === 'shortcutFrameForward' || key === 'frameStepUnavailable' || key === 'audioSelectedHint' || key === 'mediaOnlyOne' || key === 'mirrorOnHint' || key === 'mirrorOffHint' || key === 'markSetHint' || key === 'markJumpHint' || key === 'pipOnHint' || key === 'pipOffHint' || key === 'mirrorUnavailableAudio' || key === 'markUnavailable' || key === 'markMissing' || key === 'cannotSeek' || isPipFailureKey(key)) return i18n.t(key);
   return '';
 }
 
@@ -208,6 +214,7 @@ export function actionHintKey(action: HotkeyAction, media: MediaState): ActionHi
   if (action.type === 'skip') return action.delta < 0 ? 'skipBack' : 'skipForward';
   if (action.type === 'frame') return action.direction < 0 ? 'shortcutFrameBack' : 'shortcutFrameForward';
   if (action.type === 'mute') return media.muted ? 'unmute' : 'mute';
+  if (action.type === 'pip') return pipSuccessHintKey(media.pip === true);
   if (action.type === 'mirror' || action.type === 'mark') {
     const command = commandForHotkey(action, media);
     return command ? mirrorMarkHintKey(command) : '';
