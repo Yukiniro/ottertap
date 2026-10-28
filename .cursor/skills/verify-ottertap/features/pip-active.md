@@ -40,6 +40,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-active
 ## Gotchas
 
 - 短状态是单独的 `#pip-status` / `#floating-pip-status`，不写进 `Video · Playing` 那一行，免得别的旅程对不上这句。
+- 药丸在开放 shadow root 里。读 `#floating-pip-status` 要从按钮的 `getRootNode()` 取，对话框的 `innerText` 会是空的。
 - 列表短标记是 `PiP`，和短状态 `In picture-in-picture` 不是同一句。过滤仍只看短名称。
 - 无头 Chromium 里没有画面的 wav 进不了画中画。旅程先给选中的视频补一帧。
 - 音频页的禁用说明里有 picture-in-picture 这几个词，但没有 `In picture-in-picture` 这一句。

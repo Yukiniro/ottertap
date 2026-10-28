@@ -7063,15 +7063,17 @@ async function drivePipActive(context, dir, note) {
   const readPill = async page => {
     const button = pipControl(page);
     await button.waitFor({ state: 'visible', timeout: 5_000 });
-    const statusNode = dialog(page).locator('#floating-pip-status');
-    const status = await statusNode.count() ? (await statusNode.innerText()).trim() : '';
-    const state = await button.evaluate(element => ({
-      label: element.getAttribute('aria-label') ?? '',
-      pressed: element.getAttribute('aria-pressed') ?? '',
-      describedBy: element.getAttribute('aria-describedby') ?? '',
-      disabled: element.disabled === true,
-    }));
-    return { ...state, status };
+    return button.evaluate(element => {
+      const root = element.getRootNode();
+      const status = root.querySelector('#floating-pip-status');
+      return {
+        label: element.getAttribute('aria-label') ?? '',
+        pressed: element.getAttribute('aria-pressed') ?? '',
+        describedBy: element.getAttribute('aria-describedby') ?? '',
+        disabled: element.disabled === true,
+        status: status?.textContent?.trim() ?? '',
+      };
+    });
   };
   const panelState = `(() => {
     const button = [...document.querySelectorAll('button')].find(item => {
@@ -7235,7 +7237,7 @@ async function drivePipActive(context, dir, note) {
     await trigger(page).waitFor({ state: 'visible', timeout: 15_000 });
     await expand(page);
     const audioPill = await poll(() => readPill(page), value => value.label === 'Picture-in-picture' && value.disabled === true && value.status === '' && value.pressed !== 'true', '音频药丸不应是画中画中');
-    const pillText = await dialog(page).innerText();
+    const pillText = await pipControl(page).evaluate(element => element.getRootNode().textContent ?? '');
     if (pillText.includes(active)) throw new Error(`音频药丸出现了短状态：${pillText}`);
     await dialog(page).screenshot({ path: path.join(dir, 'pill-audio.png'), animations: 'disabled' });
     popup = await openActionPopup(context, page);
