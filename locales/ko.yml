@@ -174,6 +174,8 @@ pipDisabledBySite: "이 사이트에서 화면 속 화면을 꺼 두었습니다
 pipFailed: "화면 속 화면을 전환하지 못했습니다. 다시 시도하세요."
 pipNeedsGesture: "브라우저가 이번 클릭을 인식하지 못해 화면 속 화면을 열지 못했습니다. 다시 시도하세요."
 pipNotReady: "동영상이 로드된 뒤 다시 시도하세요."
+pipOffHint: "화면 속 화면 꺼짐"
+pipOnHint: "화면 속 화면 켜짐"
 pipUnavailableAudio: "오디오는 화면 속 화면으로 열 수 없습니다."
 pipUnsupported: "이 브라우저는 화면 속 화면을 지원하지 않습니다."
 play: "재생"

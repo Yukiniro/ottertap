@@ -71,7 +71,8 @@ test('扩展命令映射到同一套媒体指令，建议键避开页内的 Alt'
   assert.deepEqual(actionForCommand('pip'), { type: 'pip' });
   assert.deepEqual(commandForHotkey(actionForCommand('pip')!, media), { type: 'pip' });
   assert.deepEqual(commandForHotkey(actionForCommand('pip')!, { ...media, pip: true }), { type: 'pip' });
-  assert.equal(actionHintKey(actionForCommand('pip')!, media), '');
+  assert.equal(actionHintKey(actionForCommand('pip')!, media), 'pipOnHint');
+  assert.equal(actionHintKey(actionForCommand('pip')!, { ...media, pip: true }), 'pipOffHint');
   assert.equal(isHotkeyAction({ type: 'pip' }), true);
   assert.equal(hotkeyFromKeyboard({ key: 'p', code: 'KeyP', altKey: true, shiftKey: false, ctrlKey: false, metaKey: false }), null);
   assert.equal(hotkeyFromKeyboard({ key: 'p', code: 'KeyP', altKey: false, shiftKey: false, ctrlKey: false, metaKey: false }, { singleKey: true }), null);

@@ -4,7 +4,7 @@ import { extensionStore, settingsKey } from '../lib/extension-store';
 import { createSitePrefSession, isSiteEnabled, mergeSettingsChange, normalizeSettings, withRememberedCommand } from '../lib/settings';
 import { cycleMediaId, frameFailureKey, isMediaCommand, keptSelection, lockedMedia, mirrorMarkFailureKey, pipFailureKey } from '../lib/media';
 import { actionForCommand } from '../lib/commands';
-import { actionHintKey, applySkipStep, applyVolumeStep, directedWheelNotches, isHotkeyAction, mirrorMarkHintKey, planHotkey, shownPercent, type HotkeyAction } from '../lib/hotkey';
+import { actionHintKey, applySkipStep, applyVolumeStep, directedWheelNotches, isHotkeyAction, mirrorMarkHintKey, pipSuccessHintKey, planHotkey, shownPercent, type HotkeyAction } from '../lib/hotkey';
 import { nextRate } from '../lib/rate';
 import { steppedVolume, volumeStepForWheel } from '../lib/volume';
 import { volumeBadgeColor, volumeBadgeFromReports, volumeBadgeTtlMs } from '../lib/volume-badge';
@@ -580,6 +580,12 @@ export default defineBackground(() => {
         if (message.type === 'command') {
           if (!isMediaCommand(message.command) || !mediaId) throw new Error(i18n.t('invalidCommand'));
           if (message.command.type === 'volume' || message.command.type === 'mute') gestures.delete(tabId);
+          let pipWasOn: boolean | null = null;
+          if (message.command.type === 'pip') {
+            const { media } = await collect(tabId, host);
+            const current = media.find(item => item.id === mediaId);
+            if (current) pipWasOn = current.pip === true;
+          }
           try {
             await deliver(tabId, mediaId, 'command', message.command);
           } catch (error) {
@@ -590,7 +596,7 @@ export default defineBackground(() => {
             throw error;
           }
           await rememberCommand(host, message.command);
-          const hint = mirrorMarkHintKey(message.command);
+          const hint = message.command.type === 'pip' ? (pipWasOn === null ? '' : pipSuccessHintKey(pipWasOn)) : mirrorMarkHintKey(message.command);
           if (hint) showAction(tabId, hint);
           return { ok: true };
         }
