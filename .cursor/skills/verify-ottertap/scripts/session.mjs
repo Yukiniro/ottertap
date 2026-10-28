@@ -6414,8 +6414,8 @@ async function driveFloatPip(context, dir, note) {
       return describe(element.videoWidth > 0 ? 'canvas' : 'none');
     });
     note(`video ${JSON.stringify(picture)}`);
-    const anchored = await place(page);
     await expand(page);
+    const anchored = await place(page);
     const expectEnabled = picture.enabled && picture.request && !picture.disabledBySite && picture.videoWidth > 0;
     const ready = await poll(() => readPill(page), value => {
       if (value.label !== 'Picture-in-picture' && value.label !== 'Exit picture-in-picture') return false;
@@ -6509,8 +6509,8 @@ async function driveFloatPip(context, dir, note) {
     await page.goto(`${origin}/feed`, { waitUntil: 'domcontentloaded' });
     await trigger(page).waitFor({ state: 'visible', timeout: 15_000 });
     await poll(async () => (await trigger(page).getAttribute('title')) ?? '', value => value.startsWith('Feed preview'), '信息流应先选中第一条');
-    const feedAnchored = await place(page);
     await expand(page);
+    const feedAnchored = await place(page);
     await dialog(page).getByRole('button', { name: 'Previous media', exact: true }).waitFor({ state: 'visible' });
     await dialog(page).getByRole('button', { name: 'Next media', exact: true }).waitFor({ state: 'visible' });
     const playback = dialog(page).getByRole('group', { name: 'Playback', exact: true });
