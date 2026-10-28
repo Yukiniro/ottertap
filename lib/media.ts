@@ -180,6 +180,7 @@ export function pipFields(element: HTMLMediaElement, document: Document): Pick<M
   const supported = typeof video.requestPictureInPicture === 'function' && document.pictureInPictureEnabled === true;
   if (!supported) return { pip, pipAvailable: pip, pipBlock: pip ? '' : 'unsupported' };
   if (video.disablePictureInPicture && !pip) return { pip: false, pipAvailable: false, pipBlock: 'disabled' };
+  if (video.readyState < 1 && !pip) return { pip: false, pipAvailable: false, pipBlock: 'not-ready' };
   return { pip, pipAvailable: true, pipBlock: '' };
 }
 
@@ -187,6 +188,7 @@ export function pipHint(media: Pick<MediaState, 'pip' | 'pipAvailable' | 'pipBlo
   if (media.pip || media.pipAvailable) return '';
   if (media.pipBlock === 'audio') return i18n.t('pipUnavailableAudio');
   if (media.pipBlock === 'disabled') return i18n.t('pipDisabledBySite');
+  if (media.pipBlock === 'not-ready') return i18n.t('pipNotReady');
   return i18n.t('pipUnsupported');
 }
 

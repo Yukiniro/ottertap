@@ -39,6 +39,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive prev-next-media
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive panel-media-list
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive float-prev-next
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive float-pip
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -58,7 +59,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -3228,7 +3229,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -6301,6 +6302,237 @@ async function driveFloatPrevNext(context, dir, note) {
     if (JSON.stringify(after.floatingPosition ?? null) !== JSON.stringify(before.floatingPosition ?? null)) throw new Error(`位置记忆变了：${JSON.stringify(before.floatingPosition)} -> ${JSON.stringify(after.floatingPosition)}`);
     if (after.sitePrefs && Object.keys(after.sitePrefs).length) throw new Error(`切换写入了站点记忆：${JSON.stringify(after.sitePrefs)}`);
     const state = { ok: true, from: 'Feed preview', next: nextHeading.heading, previous: prevHeading.heading, place: stayed, floatingPosition: after.floatingPosition ?? null };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    note(`place ${JSON.stringify(stayed)}`);
+    return state;
+  } finally {
+    await popup?.close().catch(() => {});
+    await page?.close().catch(() => {});
+  }
+}
+
+async function driveFloatPip(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const dialog = page => page.getByRole('dialog', { name: 'Volume pill' });
+  const trigger = page => page.getByRole('button', { name: /volume pill/i });
+  const overlaps = (a, b) => a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+  const place = async page => {
+    const box = await trigger(page).boundingBox();
+    if (!box) throw new Error('浮动入口没有位置');
+    return { x: Math.round(box.x), y: Math.round(box.y) };
+  };
+  const expand = async page => {
+    const box = await trigger(page).boundingBox();
+    if (!box) throw new Error('浮动入口没有位置');
+    await page.mouse.move(box.x + Math.min(8, box.width / 4), box.y + box.height / 2);
+    await trigger(page).click();
+    await dialog(page).waitFor({ state: 'visible', timeout: 5_000 });
+  };
+  const pipControl = page => dialog(page).getByRole('button', { name: /picture-in-picture$/i });
+  const readPill = async page => {
+    const button = pipControl(page);
+    await button.waitFor({ state: 'visible', timeout: 5_000 });
+    const hint = dialog(page).locator('#floating-pip-hint');
+    const hintText = await hint.count() ? (await hint.innerText()).trim() : '';
+    const state = await button.evaluate(element => ({
+      label: element.getAttribute('aria-label') ?? '',
+      disabled: element.disabled === true || element.getAttribute('aria-disabled') === 'true',
+      pressed: element.getAttribute('aria-pressed') ?? '',
+    }));
+    const playback = dialog(page).getByRole('group', { name: 'Playback', exact: true });
+    if (await playback.getByRole('button', { name: state.label, exact: true }).count() !== 1) throw new Error('画中画不在播放那一组');
+    if (await playback.getByRole('button', { name: 'Open panel', exact: true }).count() !== 0) throw new Error('画中画不应放在打开面板那一栏');
+    return { ...state, hint: hintText };
+  };
+  const alerts = async page => (await page.getByRole('alert').allInnerTexts()).map(text => text.trim()).filter(Boolean);
+  const mediaPip = page => page.locator('#media').evaluate(element => ({
+    pip: element.isConnected && element.ownerDocument.pictureInPictureElement === element,
+    any: element.ownerDocument.pictureInPictureElement != null,
+    readyState: element.readyState,
+    videoWidth: element.videoWidth,
+    kind: element.localName,
+  }));
+  const panelState = async page => {
+    const popup = await openActionPopup(context, page);
+    try {
+      const button = await poll(() => popup.evaluate(pipButtonState), value => Boolean(value?.label), '弹出面板应有画中画按钮');
+      return { popup, button };
+    } catch (error) {
+      await popup.close().catch(() => {});
+      throw error;
+    }
+  };
+  const sameReason = async (page, shot) => {
+    const pill = await readPill(page);
+    const opened = await panelState(page);
+    try {
+      if (pill.label !== opened.button.label || pill.disabled !== opened.button.disabled || pill.hint !== opened.button.hint) {
+        throw new Error(`药丸和面板的画中画原因不一致：${JSON.stringify({ pill, panel: opened.button })}`);
+      }
+      await dialog(page).screenshot({ path: path.join(dir, shot), animations: 'disabled' });
+      return { pill, panel: opened.button };
+    } finally { await opened.popup.close().catch(() => {}); }
+  };
+  let page;
+  let popup;
+  try {
+    const before = await stored();
+    page = await context.newPage();
+    await page.goto(`${origin}/video`, { waitUntil: 'domcontentloaded' });
+    await trigger(page).waitFor({ state: 'visible', timeout: 15_000 });
+    const picture = await page.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) {
+        await Promise.race([
+          new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true })),
+          new Promise(resolve => setTimeout(resolve, 2_000)),
+        ]);
+      }
+      const describe = pictured => ({
+        readyState: element.readyState,
+        videoWidth: element.videoWidth,
+        enabled: document.pictureInPictureEnabled === true,
+        request: typeof element.requestPictureInPicture === 'function',
+        disabledBySite: element.disablePictureInPicture === true,
+        pictured,
+      });
+      if (element.videoWidth > 0 || document.pictureInPictureEnabled !== true || typeof element.requestPictureInPicture !== 'function') return describe(element.videoWidth > 0 ? 'native' : 'none');
+      const canvas = document.createElement('canvas');
+      canvas.width = 64;
+      canvas.height = 36;
+      const context = canvas.getContext('2d');
+      if (!context || typeof canvas.captureStream !== 'function') return describe('none');
+      context.fillStyle = '#c45c26';
+      context.fillRect(0, 0, 64, 36);
+      element.srcObject = canvas.captureStream(5);
+      element.muted = true;
+      try { await element.play(); } catch { /* a muted play can still be rejected; the button click is the gesture */ }
+      const deadline = performance.now() + 2_000;
+      while (element.videoWidth === 0 && performance.now() < deadline) await new Promise(resolve => setTimeout(resolve, 50));
+      return describe(element.videoWidth > 0 ? 'canvas' : 'none');
+    });
+    note(`video ${JSON.stringify(picture)}`);
+    await expand(page);
+    const anchored = await place(page);
+    const expectEnabled = picture.enabled && picture.request && !picture.disabledBySite && picture.videoWidth > 0;
+    const ready = await poll(() => readPill(page), value => {
+      if (value.label !== 'Picture-in-picture' && value.label !== 'Exit picture-in-picture') return false;
+      if (!expectEnabled) return true;
+      return value.disabled === false && value.hint === '' && value.label === 'Picture-in-picture';
+    }, '药丸应有画中画按钮');
+    const openBox = await dialog(page).getByRole('button', { name: 'Open panel', exact: true }).boundingBox();
+    const pipBox = await pipControl(page).boundingBox();
+    if (!openBox || !pipBox) throw new Error('画中画或打开面板没有位置');
+    if (overlaps(openBox, pipBox)) throw new Error('画中画挡住了打开面板');
+    await dialog(page).screenshot({ path: path.join(dir, 'pill-video.png'), animations: 'disabled' });
+    note(`pill video disabled=${ready.disabled} hint=${JSON.stringify(ready.hint)}`);
+
+    let toggled = null;
+    if (!ready.disabled) {
+      await pipControl(page).click();
+      const entered = await poll(async () => ({
+        media: await mediaPip(page),
+        pill: await readPill(page),
+        alerts: await alerts(page),
+      }), value => value.media.pip === true || value.pill.label === 'Exit picture-in-picture' || value.alerts.some(text => Object.values(pipHintText).includes(text)), '点击画中画后应进入，或显示和面板相同的失败说明');
+      if (entered.media.pip === true || entered.pill.label === 'Exit picture-in-picture') {
+        if (entered.pill.label !== 'Exit picture-in-picture' || entered.pill.pressed !== 'true' || entered.media.pip !== true) {
+          throw new Error(`进入画中画后药丸应改成退出：${JSON.stringify(entered)}`);
+        }
+        await dialog(page).screenshot({ path: path.join(dir, 'pill-entered.png'), animations: 'disabled' });
+        await pipControl(page).click();
+        const left = await poll(async () => ({
+          media: await mediaPip(page),
+          pill: await readPill(page),
+        }), value => value.media.pip === false && value.pill.label === 'Picture-in-picture', '再点一次应退出画中画');
+        if (left.pill.pressed === 'true') throw new Error('退出后不应保持按下');
+        await dialog(page).screenshot({ path: path.join(dir, 'pill-exited.png'), animations: 'disabled' });
+        toggled = { entered: true, exited: true };
+        note('entered and exited picture-in-picture');
+      } else {
+        const pillAlert = entered.alerts.find(text => Object.values(pipHintText).includes(text)) ?? '';
+        await dialog(page).screenshot({ path: path.join(dir, 'pill-failed.png'), animations: 'disabled' });
+        popup = await openActionPopup(context, page);
+        if (!await popup.evaluate(clickLabel('Picture-in-picture'))) throw new Error('弹出面板点不到 Picture-in-picture');
+        const panelAfter = await poll(() => popup.evaluate(pipButtonState), value => Object.values(pipHintText).includes(value?.alert ?? ''), '弹出面板应显示画中画失败说明');
+        if (panelAfter.alert !== pillAlert) throw new Error(`药丸和面板的失败说明不一致：${JSON.stringify({ pillAlert, panel: panelAfter.alert })}`);
+        await popup.screenshot(path.join(dir, 'popup-failed.png'));
+        await popup.close();
+        popup = null;
+        if (await mediaPip(page).then(value => value.any)) throw new Error('失败时页面不应留在画中画');
+        toggled = { entered: false, reason: pillAlert };
+        note(`picture-in-picture refused: ${pillAlert}`);
+      }
+    } else {
+      const matched = await sameReason(page, 'pill-video.png');
+      toggled = { entered: false, unavailable: matched.pill.hint };
+      note(`video unavailable: ${matched.pill.hint}`);
+    }
+    const stayed = await place(page);
+    if (stayed.x !== anchored.x || stayed.y !== anchored.y) throw new Error(`浮动入口挪动了：${JSON.stringify(anchored)} -> ${JSON.stringify(stayed)}`);
+
+    await page.goto(`${origin}/audio`, { waitUntil: 'domcontentloaded' });
+    await trigger(page).waitFor({ state: 'visible', timeout: 15_000 });
+    await page.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+    });
+    await expand(page);
+    const audio = await sameReason(page, 'pill-audio.png');
+    if (audio.pill.hint !== pipHintText.audio || audio.pill.disabled !== true) throw new Error(`音频应禁用画中画：${JSON.stringify(audio)}`);
+    if ((await mediaPip(page)).any) throw new Error('音频不应进入画中画');
+    note('audio matches the panel');
+
+    await page.goto(`${origin}/pip-off`, { waitUntil: 'domcontentloaded' });
+    await trigger(page).waitFor({ state: 'visible', timeout: 15_000 });
+    await page.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await Promise.race([
+        new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true })),
+        new Promise(resolve => setTimeout(resolve, 2_000)),
+      ]);
+    });
+    await expand(page);
+    const blocked = await sameReason(page, 'pill-off.png');
+    const offHint = picture.enabled && picture.request ? pipHintText.disabled : pipHintText.unsupported;
+    if (blocked.pill.hint !== offHint || blocked.pill.disabled !== true) throw new Error(`站点关闭画中画时说明不对：${JSON.stringify(blocked)}`);
+    note(`pip-off matches the panel: ${blocked.pill.hint}`);
+
+    await page.goto(`${origin}/unseekable`, { waitUntil: 'domcontentloaded' });
+    await trigger(page).waitFor({ state: 'visible', timeout: 15_000 });
+    await expand(page);
+    const waiting = await sameReason(page, 'pill-waiting.png');
+    const waitingHint = picture.enabled && picture.request ? pipHintText.notReady : pipHintText.unsupported;
+    if (waiting.pill.hint !== waitingHint || waiting.pill.disabled !== true) throw new Error(`尚未就绪时说明不对：${JSON.stringify(waiting)}`);
+    note(`waiting matches the panel: ${waiting.pill.hint}`);
+
+    await page.goto(`${origin}/feed`, { waitUntil: 'domcontentloaded' });
+    await trigger(page).waitFor({ state: 'visible', timeout: 15_000 });
+    await poll(async () => (await trigger(page).getAttribute('title')) ?? '', value => value.startsWith('Feed preview'), '信息流应先选中第一条');
+    await expand(page);
+    const feedAnchored = await place(page);
+    await dialog(page).getByRole('button', { name: 'Previous media', exact: true }).waitFor({ state: 'visible' });
+    await dialog(page).getByRole('button', { name: 'Next media', exact: true }).waitFor({ state: 'visible' });
+    const playback = dialog(page).getByRole('group', { name: 'Playback', exact: true });
+    const boxes = {};
+    for (const label of ['Previous media', 'Next media', 'Picture-in-picture', 'Open panel']) {
+      const target = label === 'Open panel' ? dialog(page) : playback;
+      boxes[label] = await target.getByRole('button', { name: label, exact: true }).boundingBox();
+      if (!boxes[label]) throw new Error(`${label} 没有位置`);
+    }
+    if (overlaps(boxes['Picture-in-picture'], boxes['Open panel']) || overlaps(boxes['Previous media'], boxes['Open panel']) || overlaps(boxes['Next media'], boxes['Open panel'])) {
+      throw new Error('画中画或上一条、下一条挡住了打开面板');
+    }
+    if (overlaps(boxes['Picture-in-picture'], boxes['Previous media']) || overlaps(boxes['Picture-in-picture'], boxes['Next media'])) {
+      throw new Error('画中画挡住了上一条或下一条');
+    }
+    await dialog(page).screenshot({ path: path.join(dir, 'pill-feed.png'), animations: 'disabled' });
+    const feedStayed = await place(page);
+    if (feedStayed.x !== feedAnchored.x || feedStayed.y !== feedAnchored.y) throw new Error(`信息流上浮动入口挪动了：${JSON.stringify(feedAnchored)} -> ${JSON.stringify(feedStayed)}`);
+    const after = await stored();
+    if (JSON.stringify(after.floatingPosition ?? null) !== JSON.stringify(before.floatingPosition ?? null)) throw new Error(`位置记忆变了：${JSON.stringify(before.floatingPosition)} -> ${JSON.stringify(after.floatingPosition)}`);
+    if (after.sitePrefs && Object.keys(after.sitePrefs).length) throw new Error(`画中画写入了站点记忆：${JSON.stringify(after.sitePrefs)}`);
+    const state = { ok: true, picture, toggled, audio: audio.pill, pipOff: blocked.pill, waiting: waiting.pill, place: stayed, floatingPosition: after.floatingPosition ?? null };
     await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
     note(`place ${JSON.stringify(stayed)}`);
     return state;

@@ -45,7 +45,7 @@ export interface SettingsStore {
   save(settings: Settings, previous: Settings, replace?: boolean): Promise<void>;
   watch(callback: (settings: Settings) => void): () => void;
 }
-export type PipBlock = '' | 'audio' | 'unsupported' | 'disabled';
+export type PipBlock = '' | 'audio' | 'unsupported' | 'disabled' | 'not-ready';
 export interface MediaState {
   id: string;
   title: string;
