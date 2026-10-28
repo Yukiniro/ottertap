@@ -5,7 +5,7 @@
 ## Sub-features
 
 - 命令登记。`chrome.commands.getAll()` 里有 `pip`，说明是 `Enter or exit picture-in-picture`，未绑定时 `shortcut` 为空。清单权限仍只有 `storage`。
-- 设置页。`chrome-extension://<extensionId>/options.html#shortcuts` 的扩展快捷键列表多一行，未绑定显示 `Not set`。`Edit shortcuts` 仍在。这一行只出现在扩展快捷键里，页内快捷键表不增加画中画。
+- 设置页。`chrome-extension://<extensionId>/options.html#shortcuts` 的扩展快捷键列表有这一行，未绑定显示 `Not set`。`Edit shortcuts` 仍在。页内快捷键可以另绑同一个动作，默认仍是未设置，见 [page-pip.md](page-pip.md)。
 - 面板路径。视频上按钮可点（浏览器不支持时按钮禁用，提示 `This browser can't use picture-in-picture.`）。音频提示 `Audio can't use picture-in-picture.`。带 `disablepictureinpicture` 的视频，在浏览器支持画中画时提示 `This site has turned off picture-in-picture.`。
 - 命令执行。对当前选中媒体发送 `{ type: 'pip' }`。站点停用、没有媒体、或页面不是 http(s) 时不发送。失败时页内提示复用面板那几句：音频、站点禁用、浏览器不支持、缺少手势、未加载、切换失败。其它错误不显示提示。
 
@@ -37,8 +37,10 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive extension-pip
 
 - 第二次 `openPopup()` 报错时，先查旧 popup target 是否仍存在。对媒体页发送 Escape 不能代替关闭独立弹窗；助手的 `close()` 会显式关闭并等待目标销毁。
 - 不要给 `pip` 加 `suggested_key`。四个名额已经占满。
-- 页内 Alt / 单键模式没有画中画键。`Alt+P` 只有在用户把它绑成扩展命令之后才切换画中画。
+- 页内 Alt / 单键模式没有默认的画中画键。`Alt+P` 只有在用户把它绑成扩展命令之后才走扩展命令。页内可以另绑一个键，见 [page-pip.md](page-pip.md)。
 - 音量药丸的播放控制里也有画中画按钮，和这条命令、面板按钮是同一次切换。见 `float-pip.md`。
 - 扩展命令触发的 `requestPictureInPicture` 若被拒绝（`NotAllowedError`），页面提示用现有的 `pipNeedsGesture`，和面板点击失败是同一句，里面仍写「这次点击」。其它拒绝（例如无头 Chromium 里这次点击得到的 `Couldn't switch picture-in-picture. Try again.`）走 `pipFailed`。都不是静默。不要为此加 `scripting` 或其它权限。
 - 这次无头 Chromium 里 `pictureInPictureEnabled` 为 true，按钮可点，但 `button.click()` 没有进入画中画，面板底部出现 `Couldn't switch picture-in-picture. Try again.`。
 - 设置页地址是 `chrome-extension://<extensionId>/options.html#shortcuts`，不是 `https://`。
+
+页内快捷键现在也可以绑定同一个动作，默认仍是 `Not set`。扩展命令这一行保持原样：没有建议键，未绑定显示 `Not set`。同一句 `Enter or exit picture-in-picture` 会同时出现在扩展快捷键和页内快捷键里，核对扩展命令时只看「Extension shortcuts」那一列。页内改键见 [page-pip.md](page-pip.md)。

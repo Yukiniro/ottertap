@@ -40,6 +40,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive panel-media-list
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive float-prev-next
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive float-pip
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive page-pip
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -59,7 +60,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip', 'page-pip'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -2013,9 +2014,10 @@ async function driveExtensionPip(context, dir, note) {
     await settings.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
     const section = settings.locator('#shortcuts');
     await section.getByRole('heading', { name: 'Keyboard shortcuts' }).waitFor({ state: 'visible', timeout: 15_000 });
-    const label = section.getByText('Enter or exit picture-in-picture', { exact: true });
+    const extensionList = section.getByRole('heading', { name: 'Extension shortcuts', exact: true }).locator('xpath=following-sibling::dl[1]');
+    const label = extensionList.getByText('Enter or exit picture-in-picture', { exact: true });
     await label.waitFor({ state: 'visible' });
-    if (await label.count() !== 1) throw new Error('画中画命令说明应只出现在扩展快捷键列表里');
+    if (await label.count() !== 1) throw new Error('扩展快捷键列表里应有一行画中画');
     const row = label.locator('xpath=ancestor::div[contains(@class,"py-3")][1]');
     const shortcut = (await row.locator('dt').innerText()).trim();
     if (shortcut !== 'Not set') throw new Error(`未绑定的画中画命令应显示 Not set：${shortcut}`);
@@ -3229,7 +3231,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip, 'page-pip': drivePagePip };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -6539,6 +6541,270 @@ async function driveFloatPip(context, dir, note) {
   } finally {
     await popup?.close().catch(() => {});
     await page?.close().catch(() => {});
+  }
+}
+
+async function drivePagePip(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const prefsText = async () => JSON.stringify((await stored()).sitePrefs ?? {});
+  const pipCommand = () => worker.evaluate(async () => {
+    const listed = await chrome.commands.getAll();
+    const item = listed.find(command => command.name === 'pip');
+    return { shortcut: item?.shortcut ?? null, description: item?.description ?? '' };
+  });
+  const notes = page => page.evaluate(() => {
+    const root = document.querySelector('ottertap-controller')?.shadowRoot;
+    return [...(root?.querySelectorAll('[role="status"]') ?? [])].map(node => (node.textContent || '').trim()).filter(Boolean);
+  });
+  const pipNote = texts => texts.find(text => Object.values(pipHintText).includes(text)) ?? '';
+  const inPip = page => page.locator('#media').evaluate(element => element.isConnected && (element.ownerDocument.pictureInPictureElement === element));
+  const keyButton = (page, action) => page.getByRole('button', { name: new RegExp(`^Change the key for ${action.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\. Now `) });
+  const recording = page => page.getByRole('button', { name: 'Press a key', exact: true });
+  const registered = await worker.evaluate(async () => {
+    const manifest = chrome.runtime.getManifest();
+    const listed = await chrome.commands.getAll();
+    const commands = manifest.commands ?? {};
+    const suggested = Object.entries(commands).filter(([, command]) => command.suggested_key).map(([name]) => name);
+    return {
+      permissions: manifest.permissions ?? [],
+      pip: commands.pip ?? null,
+      suggested,
+      listed: listed.find(item => item.name === 'pip') ?? null,
+    };
+  });
+  if (JSON.stringify(registered.permissions) !== JSON.stringify(['storage'])) throw new Error(`权限应仍只有 storage：${JSON.stringify(registered.permissions)}`);
+  if (!registered.pip || registered.pip.suggested_key) throw new Error(`pip 不应占用建议键：${JSON.stringify(registered.pip)}`);
+  if (registered.suggested.length !== 4 || !['play-pause', 'skip-back', 'skip-forward', 'mute'].every(name => registered.suggested.includes(name))) {
+    throw new Error(`建议键应仍是原来四个：${JSON.stringify(registered.suggested)}`);
+  }
+  if (!registered.listed || registered.listed.shortcut !== '' || registered.listed.description !== 'Enter or exit picture-in-picture') {
+    throw new Error(`扩展命令 pip 未按未绑定登记：${JSON.stringify(registered.listed)}`);
+  }
+  note(`commands pip shortcut=${JSON.stringify(registered.listed.shortcut)}`);
+
+  let settings;
+  let fixture;
+  const focusFixture = async () => {
+    await fixture.bringToFront();
+    await fixture.mouse.click(12, 12);
+  };
+  try {
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
+    const section = settings.locator('#shortcuts');
+    await section.getByRole('heading', { name: 'Keyboard shortcuts' }).waitFor({ state: 'visible', timeout: 15_000 });
+    const extensionList = section.getByRole('heading', { name: 'Extension shortcuts', exact: true }).locator('xpath=following-sibling::dl[1]');
+    const extensionLabel = extensionList.getByText('Enter or exit picture-in-picture', { exact: true });
+    await extensionLabel.waitFor({ state: 'visible' });
+    const extensionRow = extensionLabel.locator('xpath=ancestor::div[contains(@class,"py-3")][1]');
+    if ((await extensionRow.locator('dt').innerText()).trim() !== 'Not set') throw new Error('扩展命令画中画应显示 Not set');
+    const action = 'Enter or exit picture-in-picture';
+    const button = keyButton(settings, action);
+    await button.waitFor({ state: 'visible' });
+    if ((await button.innerText()).trim() !== 'Not set') throw new Error(`页内画中画默认应是 Not set：${await button.innerText()}`);
+    const reset = () => settings.getByRole('button', { name: 'Restore default keys', exact: true });
+    if (!await reset().isDisabled()) throw new Error('默认键位时「Restore default keys」应禁用');
+    const singleKey = settings.getByRole('switch', { name: 'Single-key mode' });
+    if (await singleKey.getAttribute('aria-checked') !== 'false') throw new Error('单键模式应保持关闭');
+    await section.screenshot({ path: path.join(dir, 'settings-unbound.png'), animations: 'disabled' });
+    note('settings lists picture-in-picture as Not set');
+
+    await button.click();
+    await recording(settings).waitFor({ state: 'visible' });
+    await settings.keyboard.press('Comma');
+    const conflict = (await settings.locator('#keybind-error').innerText()).trim();
+    const conflictCopy = ', is already used for “Pause, then previous frame”. Press another key, or change that one first.';
+    if (conflict !== conflictCopy) throw new Error(`撞键提示不对：${conflict}`);
+    if ((await stored()).keybinds?.pip) throw new Error('撞键时不应保存画中画键');
+    if (!await recording(settings).isVisible()) throw new Error('撞键后应继续等待新键');
+    await section.screenshot({ path: path.join(dir, 'settings-conflict.png'), animations: 'disabled' });
+    note(`conflict tip: ${conflict}`);
+    await settings.keyboard.press('KeyP');
+    await poll(stored, value => value.keybinds?.pip === 'p' && value.singleKey !== true, '应保存 Enter or exit picture-in-picture = p，且单键模式仍关');
+    await keyButton(settings, 'Mirror horizontally').click();
+    await settings.keyboard.press('KeyP');
+    const taken = (await settings.locator('#keybind-error').innerText()).trim();
+    const takenCopy = 'P is already used for “Enter or exit picture-in-picture”. Press another key, or change that one first.';
+    if (taken !== takenCopy) throw new Error(`空键不应占位，P 的占用提示不对：${taken}`);
+    if ((await stored()).keybinds?.mirror) throw new Error('水平镜像不应保存成已被画中画占用的 P');
+    await section.screenshot({ path: path.join(dir, 'settings-bound.png'), animations: 'disabled' });
+    await settings.keyboard.press('Escape');
+    await recording(settings).waitFor({ state: 'hidden' });
+    const commandAfter = await pipCommand();
+    if (commandAfter.shortcut !== '' || commandAfter.description !== 'Enter or exit picture-in-picture') {
+      throw new Error(`页内改键不应改掉扩展命令：${JSON.stringify(commandAfter)}`);
+    }
+    if ((await prefsText()) !== '{}') throw new Error(`改键写入了 sitePrefs：${await prefsText()}`);
+    note('page key is p; extension command stays unbound');
+
+    fixture = await context.newPage();
+    await fixture.goto(`${origin}/video`, { waitUntil: 'domcontentloaded' });
+    await fixture.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    const picture = await fixture.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) {
+        await Promise.race([
+          new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true })),
+          new Promise(resolve => setTimeout(resolve, 2_000)),
+        ]);
+      }
+      const describe = pictured => ({
+        readyState: element.readyState,
+        videoWidth: element.videoWidth,
+        enabled: document.pictureInPictureEnabled === true,
+        request: typeof element.requestPictureInPicture === 'function',
+        disabledBySite: element.disablePictureInPicture === true,
+        pictured,
+      });
+      if (element.videoWidth > 0 || document.pictureInPictureEnabled !== true || typeof element.requestPictureInPicture !== 'function') return describe(element.videoWidth > 0 ? 'native' : 'none');
+      const canvas = document.createElement('canvas');
+      canvas.width = 64;
+      canvas.height = 36;
+      const context = canvas.getContext('2d');
+      if (!context || typeof canvas.captureStream !== 'function') return describe('none');
+      context.fillStyle = '#c45c26';
+      context.fillRect(0, 0, 64, 36);
+      element.srcObject = canvas.captureStream(5);
+      element.muted = true;
+      try { await element.play(); } catch { /* the key press is the gesture */ }
+      const deadline = performance.now() + 2_000;
+      while (element.videoWidth === 0 && performance.now() < deadline) await new Promise(resolve => setTimeout(resolve, 50));
+      return describe(element.videoWidth > 0 ? 'canvas' : 'none');
+    });
+    note(`video ${JSON.stringify(picture)}`);
+    const paused = () => fixture.locator('#media').evaluate(element => element.paused);
+    await focusFixture();
+    const pausedBefore = await paused();
+    await fixture.keyboard.press('KeyK');
+    await fixture.waitForTimeout(400);
+    if (await paused() !== pausedBefore) throw new Error('单键模式关闭时 K 不应播放或暂停');
+    await focusFixture();
+    await fixture.keyboard.press('KeyP');
+    const outcome = await poll(async () => ({
+      pip: await inPip(fixture),
+      note: pipNote(await notes(fixture)),
+    }), value => value.pip === true || Object.values(pipHintText).includes(value.note), 'P 应进入画中画，或显示面板已有的失败说明');
+    let toggled = null;
+    if (outcome.pip === true) {
+      await fixture.screenshot({ path: path.join(dir, 'fixture-entered.png'), animations: 'disabled' });
+      await focusFixture();
+      await fixture.keyboard.press('KeyP');
+      await poll(inPip, value => value === false, '再按 P 应退出画中画');
+      await fixture.screenshot({ path: path.join(dir, 'fixture-exited.png'), animations: 'disabled' });
+      toggled = { entered: true, exited: true };
+      note('entered and exited picture-in-picture');
+    } else {
+      await fixture.screenshot({ path: path.join(dir, 'fixture-failed.png'), animations: 'disabled' });
+      const popup = await openActionPopup(context, fixture);
+      let panelAlert = '';
+      try {
+        const buttonState = await poll(() => popup.evaluate(pipButtonState), value => Boolean(value?.label), '弹出面板应有画中画按钮');
+        if (buttonState.disabled) {
+          panelAlert = buttonState.hint;
+          if (panelAlert && !Object.values(pipHintText).includes(panelAlert)) throw new Error(`面板说明不在已有句子里：${panelAlert}`);
+        } else {
+          if (!await popup.evaluate(clickLabel('Picture-in-picture'))) throw new Error('弹出面板点不到 Picture-in-picture');
+          const after = await poll(() => popup.evaluate(pipButtonState), value => value?.label === 'Exit picture-in-picture' || Object.values(pipHintText).includes(value?.alert ?? ''), '弹出面板点击后应进入画中画，或显示已有的失败说明');
+          panelAlert = after.alert || (after.label === 'Exit picture-in-picture' ? 'entered' : after.hint);
+          if (after.label === 'Exit picture-in-picture') {
+            if (!await popup.evaluate(clickLabel('Exit picture-in-picture'))) throw new Error('弹出面板点不到 Exit picture-in-picture');
+            await poll(() => fixture.locator('#media').evaluate(element => element.ownerDocument.pictureInPictureElement !== element), value => value === true, '面板进入画中画后应能退出');
+          }
+        }
+        await popup.screenshot(path.join(dir, 'popup-failed.png'));
+      } finally { await popup.close().catch(() => {}); }
+      if (!Object.values(pipHintText).includes(outcome.note)) throw new Error(`页内失败说明不在面板那几句里：${outcome.note}`);
+      if (await inPip(fixture)) throw new Error('核对之后页面不应留在画中画');
+      toggled = { entered: false, reason: outcome.note, panel: panelAlert };
+      note(`picture-in-picture refused: ${outcome.note}; panel=${panelAlert}`);
+    }
+
+    await fixture.evaluate(() => {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.setAttribute('aria-label', 'Fixture note');
+      input.style.position = 'fixed';
+      input.style.left = '16px';
+      input.style.top = '16px';
+      document.body.append(input);
+    });
+    await fixture.waitForTimeout(1300);
+    const field = fixture.getByRole('textbox', { name: 'Fixture note' });
+    await field.focus();
+    await fixture.keyboard.type('hi');
+    await fixture.keyboard.press('KeyP');
+    await fixture.waitForTimeout(500);
+    if ((await field.inputValue()) !== 'hip') throw new Error(`输入框应收到 P：${await field.inputValue()}`);
+    if (await inPip(fixture)) throw new Error('输入框聚焦时不应进入画中画');
+    if (pipNote(await notes(fixture))) throw new Error(`输入框聚焦时不应出现画中画说明：${pipNote(await notes(fixture))}`);
+    await fixture.screenshot({ path: path.join(dir, 'fixture-typing.png'), animations: 'disabled' });
+    note('typing ignores the picture-in-picture key');
+
+    const blocked = async (pathname, shot, expected) => {
+      await fixture.goto(`${origin}${pathname}`, { waitUntil: 'domcontentloaded' });
+      await fixture.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+      await fixture.locator('#media').evaluate(async element => {
+        if (element.readyState >= 1) return;
+        await Promise.race([
+          new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true })),
+          new Promise(resolve => setTimeout(resolve, 1_500)),
+        ]);
+      });
+      const popup = await openActionPopup(context, fixture);
+      let hint = '';
+      try {
+        const buttonState = await poll(() => popup.evaluate(pipButtonState), value => Boolean(value?.label), `${pathname} 的弹出面板应有画中画按钮`);
+        hint = buttonState.hint;
+        if (hint !== expected || buttonState.disabled !== true) throw new Error(`${pathname} 面板说明不对：${JSON.stringify(buttonState)}`);
+      } finally { await popup.close().catch(() => {}); }
+      await focusFixture();
+      await fixture.keyboard.press('KeyP');
+      const shown = await poll(async () => pipNote(await notes(fixture)), value => value === expected, `${pathname} 按 P 后应显示和面板相同的说明`);
+      if (await inPip(fixture)) throw new Error(`${pathname} 不应进入画中画`);
+      await fixture.screenshot({ path: path.join(dir, shot), animations: 'disabled' });
+      note(`${pathname} hint=${shown}`);
+      return shown;
+    };
+    const audioHint = await blocked('/audio', 'fixture-audio.png', pipHintText.audio);
+    const offHint = picture.enabled && picture.request ? pipHintText.disabled : pipHintText.unsupported;
+    const siteHint = await blocked('/pip-off', 'fixture-off.png', offHint);
+    const waitingHint = picture.enabled && picture.request ? pipHintText.notReady : pipHintText.unsupported;
+    const waiting = await blocked('/unseekable', 'fixture-waiting.png', waitingHint);
+    await fixture.waitForTimeout(1300);
+
+    await settings.bringToFront();
+    await reset().click();
+    await poll(stored, value => value.keybinds?.pip === '' && value.keybinds?.toggle === 'k' && value.keybinds?.mirror === '', '恢复默认后画中画应回到未绑定');
+    await keyButton(settings, action).filter({ hasText: 'Not set' }).waitFor({ state: 'visible' });
+    if (!await reset().isDisabled()) throw new Error('恢复默认后按钮应禁用');
+    await section.screenshot({ path: path.join(dir, 'settings-restored.png'), animations: 'disabled' });
+    await focusFixture();
+    await fixture.keyboard.press('KeyP');
+    await fixture.waitForTimeout(500);
+    if (pipNote(await notes(fixture))) throw new Error(`恢复默认后 P 不应再提示：${pipNote(await notes(fixture))}`);
+    if (await inPip(fixture)) throw new Error('恢复默认后 P 不应进入画中画');
+    if ((await prefsText()) !== '{}') throw new Error(`页内画中画写入了 sitePrefs：${await prefsText()}`);
+    const state = {
+      ok: true,
+      suggested: registered.suggested,
+      conflict,
+      taken,
+      command: commandAfter,
+      picture,
+      toggled,
+      audioHint,
+      siteHint,
+      waiting,
+      sitePrefs: {},
+    };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await fixture?.close().catch(() => {});
+    await settings?.close().catch(() => {});
   }
 }
 

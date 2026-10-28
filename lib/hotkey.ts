@@ -55,7 +55,7 @@ export function hotkeyFromKeyboard(event: KeyInput, { singleKey = false, onMedia
     return name === 'm' ? { type: 'mute' } : null;
   }
   const name = pressedKey(event, keybinds);
-  // Frame keys, and any mirror, mark, or media key the user bound, work even when single-key mode is off.
+  // Frame keys, and any mirror, mark, media, or picture-in-picture key the user bound, work even when single-key mode is off.
   if (name === keybinds.frameBack) return { type: 'frame', direction: -1 };
   if (name === keybinds.frameForward) return { type: 'frame', direction: 1 };
   if (keybinds.mirror && name === keybinds.mirror) return { type: 'mirror' };
@@ -63,6 +63,7 @@ export function hotkeyFromKeyboard(event: KeyInput, { singleKey = false, onMedia
   if (keybinds.markJump && name === keybinds.markJump) return { type: 'mark', action: 'jump' };
   if (keybinds.mediaPrev && name === keybinds.mediaPrev) return { type: 'media', direction: -1 };
   if (keybinds.mediaNext && name === keybinds.mediaNext) return { type: 'media', direction: 1 };
+  if (keybinds.pip && name === keybinds.pip) return { type: 'pip' };
   if (!singleKey) return null;
   if (name === keybinds.rateUp) return rate(1);
   if (name === keybinds.rateDown) return rate(-1);
@@ -281,8 +282,8 @@ export function createHotkeyInput(send: (action: HotkeyAction, target?: string) 
       if (!action || event.type === 'keyup') return true;
       held.add(id);
       if (event.altKey) useAlt();
-      // A held key repeats. Mirror, marks, and media steps are one shot per press.
-      if (event.repeat && (action.type === 'mirror' || action.type === 'mark' || action.type === 'media')) return true;
+      // A held key repeats. Mirror, marks, media steps, and picture-in-picture are one shot per press.
+      if (event.repeat && (action.type === 'mirror' || action.type === 'mark' || action.type === 'media' || action.type === 'pip')) return true;
       queue(action, action.type === 'volume' ? target : undefined);
       return true;
     },
