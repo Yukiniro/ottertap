@@ -1,6 +1,6 @@
 # 扩展命令 → 画中画
 
-扩展命令 `pip` 对活动标签页里当前选中的媒体切换画中画，和弹出面板的「Picture-in-picture」按钮是同一条 `{ type: 'pip' }`。已在画中画里再触发则退出。没有默认建议键：Chrome 只接受四个 `suggested_key`，名额仍是 `play-pause`、`skip-back`、`skip-forward`、`mute`。用户在 `chrome://extensions/shortcuts` 自行绑定。
+没有画中画时，扩展命令 `pip` 对活动标签页里当前选中的媒体切换画中画，和弹出面板的「Picture-in-picture」按钮是同一条 `{ type: 'pip' }`。别的标签上选中媒体正在画中画时，命令改打到那一条，见 [pip-away-tab.md](pip-away-tab.md)。已在画中画里再触发则退出。没有默认建议键：Chrome 只接受四个 `suggested_key`，名额仍是 `play-pause`、`skip-back`、`skip-forward`、`mute`。用户在 `chrome://extensions/shortcuts` 自行绑定。
 
 ## Sub-features
 

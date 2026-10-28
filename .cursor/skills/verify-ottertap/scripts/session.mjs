@@ -43,6 +43,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive page-pip
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-feedback
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-active
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-away-tab
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -62,7 +63,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip', 'page-pip', 'pip-feedback', 'pip-active'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip', 'page-pip', 'pip-feedback', 'pip-active', 'pip-away-tab'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -3233,7 +3234,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip, 'page-pip': drivePagePip, 'pip-feedback': drivePipFeedback, 'pip-active': drivePipActive };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip, 'page-pip': drivePagePip, 'pip-feedback': drivePipFeedback, 'pip-active': drivePipActive, 'pip-away-tab': drivePipAwayTab };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -7266,6 +7267,130 @@ async function drive(feature) {
   const result = await callSession(session, 'POST', '/drive', { feature });
   console.log(`ottertap-verify drove feature=${result.feature} evidence=${result.evidenceDir}`);
   console.log(JSON.stringify(result.state, null, 2));
+}
+
+async function drivePipAwayTab(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const permissions = await worker.evaluate(() => chrome.runtime.getManifest().permissions ?? []);
+  if (JSON.stringify(permissions) !== JSON.stringify(['storage'])) throw new Error(`权限应仍只有 storage：${JSON.stringify(permissions)}`);
+  const noteText = 'After you switch tabs, use an extension shortcut for picture-in-picture media.';
+  const dialog = page => page.getByRole('dialog', { name: 'Volume pill' });
+  const trigger = page => page.getByRole('button', { name: /volume pill/i });
+  const videoState = () => video.locator('#media').evaluate(element => ({
+    pip: element.isConnected && element.ownerDocument.pictureInPictureElement === element,
+    paused: element.paused,
+    muted: element.muted,
+    rate: element.playbackRate,
+  }));
+  const paint = page => page.locator('#media').evaluate(async element => {
+    if (!(element instanceof HTMLVideoElement)) return { ok: false, reason: 'not-video' };
+    if (element.readyState < 1) {
+      await Promise.race([
+        new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true })),
+        new Promise(resolve => setTimeout(resolve, 2_000)),
+      ]);
+    }
+    if (element.videoWidth > 0) return { ok: true, reason: 'native', videoWidth: element.videoWidth };
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 36;
+    const context = canvas.getContext('2d');
+    if (!context || typeof canvas.captureStream !== 'function') return { ok: false, reason: 'no-canvas' };
+    context.fillStyle = '#c45c26';
+    context.fillRect(0, 0, 64, 36);
+    element.srcObject = canvas.captureStream(5);
+    element.muted = true;
+    try { await element.play(); } catch { /* the pill click is the gesture */ }
+    const deadline = performance.now() + 2_000;
+    while (element.videoWidth === 0 && performance.now() < deadline) await new Promise(resolve => setTimeout(resolve, 50));
+    return { ok: element.videoWidth > 0, reason: element.videoWidth > 0 ? 'canvas' : 'none', videoWidth: element.videoWidth };
+  });
+  let settings;
+  let video;
+  let away;
+  try {
+    if (JSON.stringify((await stored()).sitePrefs ?? {}) !== '{}') throw new Error('开始时 sitePrefs 不是空的');
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
+    const description = settings.locator('#shortcuts p').first();
+    await description.waitFor({ state: 'visible', timeout: 15_000 });
+    const copy = (await description.innerText()).replace(/\s+/g, ' ').trim();
+    if (!copy.includes(noteText)) throw new Error(`快捷键说明没有切走标签后的那一句：${copy}`);
+    if (!copy.includes('Extension shortcuts work only while the browser window is focused.')) throw new Error('原来的扩展快捷键说明被换掉了');
+    await description.scrollIntoViewIfNeeded();
+    await settings.locator('#shortcuts').screenshot({ path: path.join(dir, 'settings-note.png'), animations: 'disabled' });
+    note('settings mentions the extension shortcut after leaving the tab');
+
+    video = await context.newPage();
+    await video.goto(`${origin}/video`, { waitUntil: 'domcontentloaded' });
+    await trigger(video).waitFor({ state: 'visible', timeout: 15_000 });
+    const picture = await paint(video);
+    note(`video ${JSON.stringify(picture)}`);
+    if (!picture.ok) throw new Error(`夹具没有画面，无法进入画中画：${JSON.stringify(picture)}`);
+    const box = await trigger(video).boundingBox();
+    if (!box) throw new Error('浮动入口没有位置');
+    await video.mouse.move(box.x + Math.min(8, box.width / 4), box.y + box.height / 2);
+    await trigger(video).click();
+    await dialog(video).waitFor({ state: 'visible', timeout: 5_000 });
+    const enter = dialog(video).getByRole('button', { name: 'Picture-in-picture', exact: true });
+    if (await enter.isDisabled()) throw new Error(`药丸画中画不可用：${await dialog(video).locator('#floating-pip-hint').innerText().catch(() => '')}`);
+    await enter.click();
+    const entered = await poll(videoState, value => value.pip === true && value.paused === false && value.muted === true, '进入画中画后视频应在播且保持静音');
+    note(`entered ${JSON.stringify(entered)}`);
+
+    away = await context.newPage();
+    await away.goto(`${origin}/audio`, { waitUntil: 'domcontentloaded' });
+    await trigger(away).waitFor({ state: 'visible', timeout: 15_000 });
+    await away.bringToFront();
+    await away.mouse.click(12, 12);
+    await away.keyboard.press('Alt+KeyM');
+    const audioMuted = await poll(() => away.locator('#media').evaluate(element => element.muted), value => value === true, '页内静音键应作用在眼前的音频');
+    const still = await videoState();
+    if (!still.pip || still.paused !== false || still.muted !== true || still.rate !== 1) {
+      throw new Error(`别的标签上的页内键改到了画中画视频：${JSON.stringify(still)}`);
+    }
+    await away.screenshot({ path: path.join(dir, 'away-tab.png'), animations: 'disabled' });
+    note(`away tab muted audio=${audioMuted}; video ${JSON.stringify(still)}`);
+
+    await video.bringToFront();
+    await video.mouse.click(12, 12);
+    await video.keyboard.press('Alt+KeyM');
+    const unmuted = await poll(videoState, value => value.muted === false && value.pip === true && value.paused === false, '回到视频页后页内静音键应取消这条视频的静音');
+    note(`media page key ${JSON.stringify(unmuted)}`);
+
+    await video.evaluate(() => {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.setAttribute('aria-label', 'Fixture note');
+      input.style.position = 'fixed';
+      input.style.left = '24px';
+      input.style.top = '24px';
+      document.body.append(input);
+    });
+    const field = video.getByRole('textbox', { name: 'Fixture note' });
+    await field.focus();
+    await video.keyboard.press('Alt+KeyM');
+    await video.waitForTimeout(400);
+    const typing = await videoState();
+    if (typing.muted !== false || typing.pip !== true || typing.paused !== false) {
+      throw new Error(`输入框聚焦时页内键仍作用在视频上：${JSON.stringify(typing)}`);
+    }
+    const typed = await field.inputValue();
+    await video.screenshot({ path: path.join(dir, 'typing.png'), animations: 'disabled' });
+    note(`typing leaves the video ${JSON.stringify(typing)} field=${JSON.stringify(typed)}`);
+    if (JSON.stringify((await stored()).sitePrefs ?? {}) !== '{}') throw new Error(`静音写入了 sitePrefs：${JSON.stringify((await stored()).sitePrefs)}`);
+    const state = { ok: true, entered, away: still, onMediaPage: unmuted, typing, sitePrefs: {}, permissions };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await away?.close().catch(() => {});
+    await video?.close().catch(() => {});
+    await settings?.close().catch(() => {});
+  }
 }
 
 async function cleanup() {

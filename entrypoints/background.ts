@@ -395,12 +395,29 @@ export default defineBackground(() => {
     if (action.type === 'media') return { handled: await applyMediaStep(tabId, host, action.direction) };
     return { handled: await applyTransport(tabId, host, action) };
   }
+  // Chrome passes the focused tab. Picture-in-picture keeps the element on the tab that opened it.
+  async function pictureInPictureTab(settings: Settings) {
+    for (const tabId of frames.keys()) {
+      let url = '';
+      try { url = (await browser.tabs.get(tabId))?.url ?? ''; }
+      catch { continue; }
+      if (!/^https?:\/\//.test(url) || !isSiteEnabled(url, settings)) continue;
+      const { media, failed } = await collect(tabId, new URL(url).hostname);
+      const saved = keptSelection(selectedIds.get(tabId) ?? '', media.map(item => item.id), failed);
+      if (saved && !media.some(item => item.id === saved)) continue;
+      if (lockedMedia(media, saved)?.pip === true) return { id: tabId, url };
+    }
+    return null;
+  }
   async function runExtensionCommand(name: string, source?: { id?: number; url?: string }) {
     const raw = actionForCommand(name);
     if (!raw) return;
     try {
-      let tabId = source?.id;
-      let url = source?.url;
+      await framesReady;
+      const settings = await currentSettings();
+      const pip = await pictureInPictureTab(settings);
+      let tabId = pip?.id ?? source?.id;
+      let url = pip?.url ?? source?.url;
       if (typeof tabId !== 'number') {
         const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
         tabId = tab?.id;
@@ -410,8 +427,6 @@ export default defineBackground(() => {
       if (!url) url = (await browser.tabs.get(tabId))?.url;
       if (!url || !/^https?:\/\//.test(url)) return;
       const pageUrl = url;
-      await framesReady;
-      const settings = await currentSettings();
       if (!isSiteEnabled(pageUrl, settings)) return;
       const action = applyVolumeStep(applySkipStep(raw, settings.skipSeconds), settings.volumeStep);
       await enqueueCommand(tabId, () => performHotkey(tabId, new URL(pageUrl).hostname, action));

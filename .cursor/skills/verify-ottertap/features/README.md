@@ -1,6 +1,6 @@
 # OtterTap 功能地图
 
-验证主界面是扩展本身。索引里的每一条都要能从用户路径走到可观察的结束状态。`scripts/session.mjs` 目前脚本化了弹出面板播放、滚轮音量、快进快退步长、快进快退随倍速放大、音量调节步长、低音量滚轮细步长、Shift 粗调步长、倍速增减步长、扩展命令画中画、全局默认倍速、按住临时加速、同键短按跳长按加速、逐帧、页内快捷键改键、浮动药丸倍速、浮动药丸播放跳转、浮动入口旁注、从音量药丸打开弹出面板、仅在播放时显示浮动入口和滚轮方向。仅全屏时悬停滚轮、侧栏聊天和文档大纲忽略，以及记住站点、网站规则和不显示浮动站点这三份名单的本地过滤，三处名单各自的「当前站」，和记住站点的「清空全部」，以及水平镜像、进度标记、一键静音其他发声标签，和镜像与标记的快捷键也已脚本化。镜像与标记的页内提示也已脚本化。播放中自动跟随当前媒体也已脚本化。选中换到另一条时的短暂轮廓也已脚本化。上一条和下一条媒体也已脚本化。弹出面板的媒体列表也已脚本化。音量药丸里的上一条和下一条也已脚本化。音量药丸里的画中画也已脚本化。页内画中画快捷键也已脚本化。进出画中画的页内提示也已脚本化。画中画中的面板与浮动状态也已脚本化。其余条目的选择器和断言已经写在各自文件里，用同一次 `launch` 的 Chromium（或 `pnpm e2e` 里点名的那条测试）来驱动。一条失败就报告失败原因，写进该文件的 Gotchas，不要把旅程改容易。
+验证主界面是扩展本身。索引里的每一条都要能从用户路径走到可观察的结束状态。`scripts/session.mjs` 目前脚本化了弹出面板播放、滚轮音量、快进快退步长、快进快退随倍速放大、音量调节步长、低音量滚轮细步长、Shift 粗调步长、倍速增减步长、扩展命令画中画、全局默认倍速、按住临时加速、同键短按跳长按加速、逐帧、页内快捷键改键、浮动药丸倍速、浮动药丸播放跳转、浮动入口旁注、从音量药丸打开弹出面板、仅在播放时显示浮动入口和滚轮方向。仅全屏时悬停滚轮、侧栏聊天和文档大纲忽略，以及记住站点、网站规则和不显示浮动站点这三份名单的本地过滤，三处名单各自的「当前站」，和记住站点的「清空全部」，以及水平镜像、进度标记、一键静音其他发声标签，和镜像与标记的快捷键也已脚本化。镜像与标记的页内提示也已脚本化。播放中自动跟随当前媒体也已脚本化。选中换到另一条时的短暂轮廓也已脚本化。上一条和下一条媒体也已脚本化。弹出面板的媒体列表也已脚本化。音量药丸里的上一条和下一条也已脚本化。音量药丸里的画中画也已脚本化。页内画中画快捷键也已脚本化。进出画中画的页内提示也已脚本化。画中画中的面板与浮动状态也已脚本化。切走标签后扩展命令仍控画中画媒体也已脚本化。其余条目的选择器和断言已经写在各自文件里，用同一次 `launch` 的 Chromium（或 `pnpm e2e` 里点名的那条测试）来驱动。一条失败就报告失败原因，写进该文件的 Gotchas，不要把旅程改容易。
 
 | 功能 | 文件 | 用户从哪里进入 | 现成回归 |
 | --- | --- | --- | --- |
@@ -27,7 +27,7 @@
 | 设置导出导入 | [settings-backup.md](settings-backup.md) | 设置页「Backup and restore」 | `e2e/smoke.spec.ts` 的「备份导出」；格式见 `tests/settings-backup.test.ts` |
 | 单声道与左右声道 | [channel-mode.md](channel-mode.md) | 弹出面板音量区的声道菜单 | `e2e/smoke.spec.ts` 中声道三条 |
 | 水平镜像 | [horizontal-mirror.md](horizontal-mirror.md) | 弹出面板播放卡片标题右侧的 `Mirror horizontally`。只翻转当前选中的视频画面，不写入记住此站点。换一条媒体时那一条默认关。音频上开关禁用 | `drive horizontal-mirror`；`tests/mirror.test.ts`、`tests/mirror-panel.test.ts` |
-| 扩展命令 → 画中画 | [extension-pip.md](extension-pip.md) | 设置页「Keyboard shortcuts」的扩展命令列表；绑定后对活动标签页里当前媒体切换画中画 | `drive extension-pip`；命令分发见 `tests/pip-command.test.ts`；面板按钮见 `e2e/smoke.spec.ts` 中画中画那条 |
+| 扩展命令 → 画中画 | [extension-pip.md](extension-pip.md) | 设置页「Keyboard shortcuts」的扩展命令列表；没有画中画时对活动标签页里当前媒体切换画中画 | `drive extension-pip`；命令分发见 `tests/pip-command.test.ts`；面板按钮见 `e2e/smoke.spec.ts` 中画中画那条 |
 | 页内快捷键改键 | [hotkey-remap.md](hotkey-remap.md) | 设置页「Keyboard shortcuts」里带铅笔图标的按键按钮：播放暂停、快进快退、倍速增减、静音、按住临时加速、逐帧。点一下再按新键，已打开的网页立即生效；撞键时提示被谁占用；`Restore default keys` 恢复默认 | `drive hotkey-remap`；`tests/keybinds.test.ts`、`tests/hotkey-remap.test.ts` |
 | 镜像与标记的快捷键 | [mirror-mark-commands.md](mirror-mark-commands.md) | 设置页「Keyboard shortcuts」里的水平镜像、设标记、跳到标记，以及同名扩展命令。默认不占键。输入框聚焦时不触发。清除标记仍只在面板 | `drive mirror-mark-commands`；`tests/mirror-mark-keybinds.test.ts`、`tests/mirror-mark-command.test.ts` |
 | 镜像与标记的页内提示 | [mirror-mark-feedback.md](mirror-mark-feedback.md) | 页内键、扩展命令和弹出面板在切换镜像、设标记、跳到标记成功时，用倍速那一块短暂字样。失败用原来的短说明。没有提示总开关，默认显示 | `drive mirror-mark-feedback`；`tests/mirror-mark-feedback.test.ts` |
@@ -49,6 +49,7 @@
 | 弹出面板媒体列表 | [panel-media-list.md](panel-media-list.md) | 工具栏弹出面板。不止一条时列出短名称、播放或暂停，以及当前选中。点一条就改控制目标。满五条时 `Filter media` 按名称子串过滤，只改能看见的行。只有一条时不出现 | `drive panel-media-list`；`tests/panel-media-list.test.ts` |
 | 音量药丸里的上一条 / 下一条 | [float-prev-next.md](float-prev-next.md) | 展开音量药丸，播放控制旁的 `Previous media` / `Next media`。本页至少两条时才出现。切换后药丸、弹出面板和页内快捷键对准新目标，并出现和选中变化相同的短暂轮廓。不改贴边和位置 | `drive float-prev-next`；`tests/float-prev-next.test.ts` |
 | 面板与浮动标出画中画中 | [pip-active.md](pip-active.md) | 当前视频处于画中画时，弹出面板和展开的音量药丸改成退出并显示短状态；媒体列表可为那一条标短标记 | `drive pip-active`；`tests/pip-active.test.ts` |
+| 切走标签后扩展命令仍控画中画 | [pip-away-tab.md](pip-away-tab.md) | 某一标签的选中媒体正在画中画时，扩展命令仍作用在那一条上。页内快捷键仍只在媒体页聚焦且未在输入时生效。设置说明写明切走后用扩展快捷键 | `drive pip-away-tab`；`tests/pip-away-tab.test.ts` |
 | 音量药丸里的画中画 | [float-pip.md](float-pip.md) | 展开音量药丸，播放控制旁的 `Picture-in-picture` / `Exit picture-in-picture`。一点进入，再点退出。音频、网站禁用、浏览器不支持或尚未就绪时禁用，说明与弹出面板相同。不改贴边和位置 | `drive float-pip`；`tests/float-pip.test.ts` |
 | 页内快捷键 → 画中画 | [page-pip.md](page-pip.md) | 设置页「Keyboard shortcuts」里的 `Enter or exit picture-in-picture`。默认不占键。绑上后页内切换，和面板、药丸、扩展命令同一条路径。输入框聚焦时不触发。不可用时短句与面板相同 | `drive page-pip`；`tests/page-pip-keybinds.test.ts`、`tests/page-pip-command.test.ts` |
 | 进出画中画的页内提示 | [pip-feedback.md](pip-feedback.md) | 弹出面板、音量药丸、页内键和扩展命令在进入或退出画中画成功时，用倍速那一块短暂字样。失败用原来的短说明。没有提示总开关，默认显示 | `drive pip-feedback`；`tests/pip-feedback.test.ts` |
