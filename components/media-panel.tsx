@@ -17,7 +17,7 @@ import { Brand } from './brand';
 import { useMedia } from '../hooks/use-media';
 import { channelModes, isChannelMode } from '../lib/amplifier';
 import { canStepFrames } from '../lib/frame';
-import { channelLabel, mediaListLabel, pipHint } from '../lib/media';
+import { channelLabel, mediaListLabel, pipHint, showsPictureInPicture } from '../lib/media';
 import { formatRate, nextRate, sameRate } from '../lib/rate';
 import { actualSkipSeconds } from '../lib/skip';
 import type { SoundingTab, SoundingTabsClient } from '../lib/tabs';
@@ -135,9 +135,9 @@ function MediaChoices({ media, host, selectedId, onSelect, onOpen }: { media: Me
   useEffect(() => { setQuery(''); }, [host]);
   useEffect(() => { if (!filtering) setQuery(''); }, [filtering]);
   const needle = filtering ? query.trim().toLocaleLowerCase() : '';
-  const rows = media.map((item, index) => ({ item, index, label: mediaListLabel(item, index), state: item.paused ? i18n.t('paused') : i18n.t('playing') }));
+  const rows = media.map((item, index) => ({ item, index, label: mediaListLabel(item, index), state: item.paused ? i18n.t('paused') : i18n.t('playing'), pip: showsPictureInPicture(item) }));
   const selected = rows.find(row => row.item.id === selectedId);
-  const trigger = selected ? `${selected.label} · ${selected.state}` : i18n.t('chooseMedia');
+  const trigger = selected ? `${selected.label} · ${selected.state}${selected.pip ? ` · ${i18n.t('pipMark')}` : ''}` : i18n.t('chooseMedia');
   const shownCount = rows.filter(row => !needle || row.label.toLocaleLowerCase().includes(needle)).length;
   return <div className="flex flex-col gap-1.5">
     {filtering && <Input id="popup-media-filter" type="search" className="h-8" aria-label={i18n.t('mediaListFilter')} placeholder={i18n.t('mediaListFilter')} value={query} autoComplete="off" spellCheck={false} onChange={event => setQuery(event.target.value)} />}
@@ -152,7 +152,7 @@ function MediaChoices({ media, host, selectedId, onSelect, onOpen }: { media: Me
             const shown = !needle || row.label.toLocaleLowerCase().includes(needle);
             return <DropdownMenuRadioItem key={row.item.id} value={row.item.id} hidden={!shown} data-filtered={shown ? undefined : ''} className={shown ? 'data-checked:bg-accent' : 'hidden data-checked:bg-accent'}>
               <span title={row.label} className="min-w-0 flex-1 truncate">{row.label}</span>
-              <span className={row.item.paused ? 'shrink-0 text-xs text-muted-foreground' : 'shrink-0 text-xs font-medium text-primary'}>{row.state}</span>
+              <span className={row.item.paused ? 'shrink-0 text-xs text-muted-foreground' : 'shrink-0 text-xs font-medium text-primary'}>{row.state}{row.pip ? <span className="font-medium text-primary">{` · ${i18n.t('pipMark')}`}</span> : null}</span>
             </DropdownMenuRadioItem>;
           })}
         </DropdownMenuRadioGroup>
@@ -237,6 +237,7 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
   const progressMarkLeft = progressMark == null ? null : markLeft(progressMark, seekMin, seekMax);
   const volume = selected ? Math.round((selected.muted ? 0 : selected.volume) * 100) : 0;
   const hint = selected ? pipHint(selected) : '';
+  const inPip = selected ? showsPictureInPicture(selected) : false;
   const channelHint = selected && !selected.channelAvailable ? i18n.t('channelCrossOrigin') : '';
   const activePreset = selected ? ratePresets.find(speed => sameRate(speed, playbackRate)) : undefined;
   const slowerRate = selected ? nextRate(playbackRate, -1, null, rateStep) : 1;
@@ -252,7 +253,10 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
       <div className="rounded-xl bg-secondary/60 p-3">
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">
           <p className="min-w-0 break-all">{page.host || selected.host}</p>
-          <p>{selected.kind === 'video' ? i18n.t('video') : i18n.t('audio')} · {selected.paused ? i18n.t('paused') : i18n.t('playing')}</p>
+          <div className="flex flex-wrap items-center justify-end gap-x-2">
+            <p>{selected.kind === 'video' ? i18n.t('video') : i18n.t('audio')} · {selected.paused ? i18n.t('paused') : i18n.t('playing')}</p>
+            {inPip ? <p id="pip-status" role="status" className="font-medium text-primary">{i18n.t('pipActive')}</p> : null}
+          </div>
         </div>
         <div className="mt-2 flex items-start justify-between gap-3">
           <h1 title={selected.title} className="min-w-0 flex-1 line-clamp-2 text-lg leading-6 font-semibold break-words">{selected.title}</h1>
@@ -270,7 +274,7 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
           <Button variant="ghost" size="sm" className="h-9 w-12 gap-1 px-2 tabular-nums" aria-label={i18n.t('skipForward', { seconds: jump })} disabled={!canSeek} onClick={() => void command({ type: 'skip', value: jump })}><span className="text-xs">{jump}</span><RotateCw /></Button>
           <div className="flex items-center justify-between">
             <Button type="button" variant="ghost" size="icon" className="text-muted-foreground" aria-label={i18n.t('frameForward')} title={canStep ? i18n.t('frameStepHint') : i18n.t('frameStepUnavailable')} aria-describedby="frame-step-hint" disabled={!canStep} onClick={() => void command({ type: 'frame', direction: 1 })}><StepForward /></Button>
-            <Button type="button" variant="ghost" size="icon" className="text-muted-foreground aria-pressed:bg-accent aria-pressed:text-primary" aria-pressed={selected.pip} title={selected.pip ? i18n.t('exitPictureInPicture') : i18n.t('pictureInPicture')} aria-label={selected.pip ? i18n.t('exitPictureInPicture') : i18n.t('pictureInPicture')} aria-describedby={hint ? 'pip-hint' : undefined} disabled={!!hint} onClick={() => void command({ type: 'pip' })}><PictureInPicture2 /></Button>
+            <Button type="button" variant="ghost" size="icon" className="text-muted-foreground aria-pressed:bg-accent aria-pressed:text-primary" aria-pressed={inPip} title={inPip ? i18n.t('exitPictureInPicture') : i18n.t('pictureInPicture')} aria-label={inPip ? i18n.t('exitPictureInPicture') : i18n.t('pictureInPicture')} aria-describedby={inPip ? 'pip-status' : hint ? 'pip-hint' : undefined} disabled={!!hint} onClick={() => void command({ type: 'pip' })}><PictureInPicture2 /></Button>
           </div>
         </div>
         <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground tabular-nums">
