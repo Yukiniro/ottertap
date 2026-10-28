@@ -12,7 +12,7 @@ import { useMedia } from '../hooks/use-media';
 import { dockedPoint, dockSize, dropPosition, nudgePosition, type Viewport } from '../lib/dock';
 import { actionHintEvent, commandForHotkey, createHotkeySession, rateHintEvent, volumeGestureEvent } from '../lib/hotkey';
 import { floatingEntryNote } from '../lib/floating-note';
-import { cycleMediaId, pipHint } from '../lib/media';
+import { cycleMediaId, pipHint, showsPictureInPicture } from '../lib/media';
 import { createFloatingWhilePlayingGate, floatingWhilePlayingHideMs, stepFloatingWhilePlaying } from '../lib/floating-play';
 import { formatRate, nextRate, sameRate } from '../lib/rate';
 import { hideFloating, isFloatingHidden } from '../lib/settings';
@@ -205,8 +205,9 @@ export function FloatingController({ client, openPanel, hideOnSite }: { client: 
     const nextId = cycleMediaId(page.media, selected.id, direction);
     if (nextId) select(nextId);
   };
+  const inPip = showsPictureInPicture(selected);
   const pipReason = pipHint(selected);
-  const pipLabel = selected.pip ? i18n.t('exitPictureInPicture') : i18n.t('pictureInPicture');
+  const pipLabel = inPip ? i18n.t('exitPictureInPicture') : i18n.t('pictureInPicture');
   const requestPanel = async () => {
     if (!openPanel || openingPanel) return;
     setOpeningPanel(true);
@@ -270,8 +271,9 @@ export function FloatingController({ client, openPanel, hideOnSite }: { client: 
                 <Button type="button" variant="ghost" size="sm" className="h-8 min-w-0 flex-1 text-muted-foreground" aria-label={i18n.t('mediaPrev')} title={i18n.t('mediaPrev')} onClick={() => stepMedia(-1)}><SkipBack /></Button>
                 <Button type="button" variant="ghost" size="sm" className="h-8 min-w-0 flex-1 text-muted-foreground" aria-label={i18n.t('mediaNext')} title={i18n.t('mediaNext')} onClick={() => stepMedia(1)}><SkipForward /></Button>
               </>}
-              <Button type="button" variant="ghost" size="sm" className={`${page.media.length > 1 ? 'min-w-0 flex-1' : 'w-8'} h-8 text-muted-foreground aria-pressed:bg-accent aria-pressed:text-primary`} aria-pressed={selected.pip} title={pipLabel} aria-label={pipLabel} aria-describedby={pipReason ? 'floating-pip-hint' : undefined} disabled={!!pipReason} onClick={() => void command({ type: 'pip' })}><PictureInPicture2 /></Button>
+              <Button type="button" variant="ghost" size="sm" className={`${page.media.length > 1 ? 'min-w-0 flex-1' : 'w-8'} h-8 text-muted-foreground aria-pressed:bg-accent aria-pressed:text-primary`} aria-pressed={inPip} title={pipLabel} aria-label={pipLabel} aria-describedby={inPip ? 'floating-pip-status' : pipReason ? 'floating-pip-hint' : undefined} disabled={!!pipReason} onClick={() => void command({ type: 'pip' })}><PictureInPicture2 /></Button>
             </div>
+            {inPip ? <p id="floating-pip-status" role="status" className="px-1 pt-1 text-center text-[11px] leading-4 font-medium text-primary">{i18n.t('pipActive')}</p> : null}
             {pipReason ? <p id="floating-pip-hint" className="px-1 pt-1 text-center text-[11px] leading-4 text-muted-foreground">{pipReason}</p> : null}
           </div>
           <div role="group" aria-labelledby="floating-speed-label" className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-hidden p-2">

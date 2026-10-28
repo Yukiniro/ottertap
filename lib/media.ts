@@ -173,6 +173,11 @@ function progressMarkField(element: HTMLMediaElement): { mark: number } | Record
   return typeof mark === 'number' && Number.isFinite(mark) ? { mark } : {};
 }
 
+/** The selected video is the picture-in-picture element. Audio never counts. */
+export function showsPictureInPicture(media: Pick<MediaState, 'kind' | 'pip'>) {
+  return media.kind === 'video' && media.pip === true;
+}
+
 export function pipFields(element: HTMLMediaElement, document: Document): Pick<MediaState, 'pip' | 'pipAvailable' | 'pipBlock'> {
   if (element.localName !== 'video') return { pip: false, pipAvailable: false, pipBlock: 'audio' };
   const video = element as HTMLVideoElement;
@@ -184,7 +189,8 @@ export function pipFields(element: HTMLMediaElement, document: Document): Pick<M
   return { pip, pipAvailable: true, pipBlock: '' };
 }
 
-export function pipHint(media: Pick<MediaState, 'pip' | 'pipAvailable' | 'pipBlock'>) {
+export function pipHint(media: Pick<MediaState, 'pip' | 'pipAvailable' | 'pipBlock'> & Partial<Pick<MediaState, 'kind'>>) {
+  if (media.kind === 'audio') return i18n.t('pipUnavailableAudio');
   if (media.pip || media.pipAvailable) return '';
   if (media.pipBlock === 'audio') return i18n.t('pipUnavailableAudio');
   if (media.pipBlock === 'disabled') return i18n.t('pipDisabledBySite');
