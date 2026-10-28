@@ -38,7 +38,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive extension-pip
 - 第二次 `openPopup()` 报错时，先查旧 popup target 是否仍存在。对媒体页发送 Escape 不能代替关闭独立弹窗；助手的 `close()` 会显式关闭并等待目标销毁。
 - 不要给 `pip` 加 `suggested_key`。四个名额已经占满。
 - 页内 Alt / 单键模式没有画中画键。`Alt+P` 只有在用户把它绑成扩展命令之后才切换画中画。
-- 浮动入口没有画中画按钮。
+- 音量药丸的播放控制里也有画中画按钮，和这条命令、面板按钮是同一次切换。见 `float-pip.md`。
 - 扩展命令触发的 `requestPictureInPicture` 若被拒绝（`NotAllowedError`），页面提示用现有的 `pipNeedsGesture`，和面板点击失败是同一句，里面仍写「这次点击」。其它拒绝（例如无头 Chromium 里这次点击得到的 `Couldn't switch picture-in-picture. Try again.`）走 `pipFailed`。都不是静默。不要为此加 `scripting` 或其它权限。
 - 这次无头 Chromium 里 `pictureInPictureEnabled` 为 true，按钮可点，但 `button.click()` 没有进入画中画，面板底部出现 `Couldn't switch picture-in-picture. Try again.`。
 - 设置页地址是 `chrome-extension://<extensionId>/options.html#shortcuts`，不是 `https://`。

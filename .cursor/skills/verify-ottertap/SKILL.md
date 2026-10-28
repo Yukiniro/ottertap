@@ -53,7 +53,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs doctor
 
 ## Drive
 
-脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、低音量滚轮细步长（见 `features/fine-wheel.md`）、Shift 粗调步长（见 `features/coarse-step.md`）、倍速增减步长（见 `features/rate-step.md`）、扩展命令画中画（见 `features/extension-pip.md`）、按住临时加速（见 `features/hold-boost.md`）、同键短按跳长按加速（见 `features/hold-skip-combo.md`）、逐帧（见 `features/frame-step.md`）、页内快捷键改键（见 `features/hotkey-remap.md`）、浮动药丸倍速（见 `features/floating-speed.md`）、浮动药丸播放跳转（见 `features/floating-playback.md`）、浮动入口旁注（见 `features/floating-entry-note.md`）、从音量药丸打开弹出面板（见 `features/floating-open-panel.md`）、仅在播放时显示浮动入口（见 `features/floating-while-playing.md`）和滚轮方向（见 `features/wheel-direction.md`）。仅全屏时悬停滚轮见 `features/fullscreen-wheel.md`。侧栏聊天和文档大纲忽略见 `features/sidebar-ignore.md`。设置页三处名单的「当前站」见 `features/settings-current-site.md`。记住站点的「清空全部」见 `features/settings-clear-remembered.md`。镜像与标记的页内提示见 `features/mirror-mark-feedback.md`。选中变化时的短暂轮廓见 `features/selection-highlight.md`。上一条和下一条媒体见 `features/prev-next-media.md`。弹出面板媒体列表见 `features/panel-media-list.md`。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
+脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、低音量滚轮细步长（见 `features/fine-wheel.md`）、Shift 粗调步长（见 `features/coarse-step.md`）、倍速增减步长（见 `features/rate-step.md`）、扩展命令画中画（见 `features/extension-pip.md`）、按住临时加速（见 `features/hold-boost.md`）、同键短按跳长按加速（见 `features/hold-skip-combo.md`）、逐帧（见 `features/frame-step.md`）、页内快捷键改键（见 `features/hotkey-remap.md`）、浮动药丸倍速（见 `features/floating-speed.md`）、浮动药丸播放跳转（见 `features/floating-playback.md`）、浮动入口旁注（见 `features/floating-entry-note.md`）、从音量药丸打开弹出面板（见 `features/floating-open-panel.md`）、仅在播放时显示浮动入口（见 `features/floating-while-playing.md`）和滚轮方向（见 `features/wheel-direction.md`）。仅全屏时悬停滚轮见 `features/fullscreen-wheel.md`。侧栏聊天和文档大纲忽略见 `features/sidebar-ignore.md`。设置页三处名单的「当前站」见 `features/settings-current-site.md`。记住站点的「清空全部」见 `features/settings-clear-remembered.md`。镜像与标记的页内提示见 `features/mirror-mark-feedback.md`。选中变化时的短暂轮廓见 `features/selection-highlight.md`。上一条和下一条媒体见 `features/prev-next-media.md`。弹出面板媒体列表见 `features/panel-media-list.md`。音量药丸里的画中画见 `features/float-pip.md`。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
 
 ```bash
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
@@ -92,6 +92,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive selection-highligh
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive prev-next-media
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive panel-media-list
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive float-prev-next
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive float-pip
 ```
 
 `skip-step` 在设置页把 `Skip step` 改成 `30s` 并打开 `Single-key mode`，再看弹出面板进退按钮名和页内 `L` / `J` / `→` / `←` 让 `/long` 夹具的 `currentTime` 跟着步长变；它会改写 profile，同一会话只能跑一次。步骤见 `features/skip-step.md`。
@@ -157,6 +158,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive float-prev-next
 | 浮动入口 | `/volume pill/i` |
 | 浮动倍速 | 展开后的 `group` `Speed`。加快 / 减慢与弹出面板同名，预设是 `1.25× speed` 这种 |
 | 浮动播放 | 展开后的 `group` `Playback`。`Play` / `Pause`，以及与弹出面板同名的 `Back {n} seconds` / `Forward {n} seconds`。不可跳转时说明是 `Live streams and media that can't be seeked can't jump.` |
+| 浮动画中画 | 展开后的 `group` `Playback` 里的 `Picture-in-picture` / `Exit picture-in-picture`。不可用时禁用，说明与弹出面板 `#pip-hint` 相同 |
 | 设置页备份 | `chrome-extension://<extensionId>/options.html#backup`，按钮 `Export settings`、`Import settings`、确认 `Replace settings` |
 | 设置页步长 | `chrome-extension://<extensionId>/options.html#playback`，`group` `Skip step` 里的 `button` `5s` / `10s` / `15s` / `30s`，默认 `10s` 按下 |
 | 设置页音量步长 | 同一节的 `group` `Volume step`，`button` `5%` / `10%` / `20%`，默认 `10%` 按下 |
@@ -216,6 +218,8 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive float-prev-next
 
 `drive sidebar-ignore` 写入 `sidebar-ignore/`：`chat-before.png`、`chat-scrolled.png`、`outline-scrolled.png`、`player-after.png`、`overlay-after.png`、`chat-alt.png`、`chat-shift.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。它不改 profile。步骤见 `features/sidebar-ignore.md`。
 
+`drive float-pip` 写入 `float-pip/`：`pill-video.png`、`pill-audio.png`、`pill-off.png`、`pill-waiting.png`、`pill-feed.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。进入画中画时还有 `pill-entered.png` 和 `pill-exited.png`；浏览器拒绝时还有 `pill-failed.png` 和 `popup-failed.png`。
+
 `launch` 成功后还会留下 `launch-probe.png`（浮动入口已经出现）。失败时同目录可能有 `error.txt`，那不算通过。
 
 换了 `OTTERTAP_VERIFY_ID` 时，文件名变成 `<id>-popup-playback/`。不要把这些截图提交进仓库。
@@ -273,6 +277,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive selection-highligh
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive prev-next-media
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive panel-media-list
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive float-prev-next
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive float-pip
 node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 ```
 
@@ -439,3 +444,13 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive float-prev-next
 `float-prev-next` 在 `/video` 上展开药丸，确认没有 `Previous media` 和 `Next media`，`Open panel` 仍在。`/feed` 上这两个按钮出现在播放控制旁，和 `Open panel` 的盒子不相交。点下一条后，药丸、弹出面板和 `Alt+.` 都对准 `Main player`，轮廓只在这一条上；再点上一条回到 `Feed preview`。浮动入口的位置、`floatingPosition` 和 `sitePrefs` 不变。它不改 profile。步骤见 `features/float-prev-next.md`。
 
 写入 `float-prev-next/`：`pill-one.png`、`pill-two.png`、`ring-next.png`、`popup-next.png`、`ring-prev.png`、`popup-prev.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
+## 音量药丸里的画中画
+
+```bash
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive float-pip
+```
+
+`float-pip` 在 `/video` 上给夹具补一帧画面后展开药丸，点 `Picture-in-picture` 进入，再点 `Exit picture-in-picture` 退出。浏览器拒绝时，警告须与弹出面板点击同一按钮的警告相同。`/audio`、`/pip-off`、`/unseekable` 上按钮禁用，说明与弹出面板 `#pip-hint` 相同。`/feed` 上画中画与上一条、下一条同在 `Playback`，且不与 `Open panel` 相交。浮动入口位置、`floatingPosition` 和 `sitePrefs` 不变。它不改 profile。步骤见 `features/float-pip.md`。
+
+写入 `float-pip/`：`pill-video.png`、`pill-audio.png`、`pill-off.png`、`pill-waiting.png`、`pill-feed.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。进入时还有 `pill-entered.png` 与 `pill-exited.png`；拒绝时还有 `pill-failed.png` 与 `popup-failed.png`。
