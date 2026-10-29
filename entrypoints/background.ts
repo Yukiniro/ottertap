@@ -10,6 +10,7 @@ import { steppedVolume, volumeStepForWheel } from '../lib/volume';
 import { volumeBadgeColor, volumeBadgeFromReports, volumeBadgeTtlMs } from '../lib/volume-badge';
 import { shouldFollowPlaying } from '../lib/follow-playing';
 import { soundingTabs } from '../lib/tabs';
+import { resumePage, writeResume, type ResumeReport } from '../lib/resume';
 import type { MediaCommand, MediaState, Settings, SitePref } from '../lib/types';
 
 export default defineBackground(() => {
@@ -53,6 +54,12 @@ export default defineBackground(() => {
       settingsCache = next;
     });
     settingsTail = run.catch(() => {});
+    return run;
+  };
+  let resumeTail = Promise.resolve();
+  const recordResume = (page: string, report: ResumeReport) => {
+    const run = resumeTail.then(() => writeResume(browser.storage.local, page, report, Date.now()));
+    resumeTail = run.catch(() => {});
     return run;
   };
   const selectedIds = new Map<number, string>();
@@ -477,7 +484,7 @@ export default defineBackground(() => {
       if (sender.tab?.id !== undefined) void browser.tabs.sendMessage(sender.tab.id, { namespace: 'ottertap', type: 'altUsed' }).catch(() => {});
       return;
     }
-    if (!['settings', 'options', 'context', 'register', 'read', 'command', 'select', 'highlight', 'hotkey', 'holdRate', 'soundingTabs', 'focusTab', 'muteTab', 'rateLock', 'openPopup', 'playing'].includes(message.type)) return;
+    if (!['settings', 'options', 'context', 'register', 'read', 'command', 'select', 'highlight', 'hotkey', 'holdRate', 'soundingTabs', 'focusTab', 'muteTab', 'rateLock', 'openPopup', 'playing', 'resume'].includes(message.type)) return;
     const tabId = sender.tab?.id ?? message.tabId;
     async function handle() {
       if (message.type === 'settings') {
@@ -546,6 +553,16 @@ export default defineBackground(() => {
           const playingId = `${sender.frameId ?? 0}:${local}`;
           if (!shouldFollowPlaying({ enabled: settings.followPlaying, selectedId: selectedIds.get(tabId) ?? '', playingId, manualAt: manualPicks.get(tabId) ?? null, now: Date.now() })) return { ok: true };
           rememberSelection(tabId, playingId);
+          return { ok: true };
+        }
+        if (message.type === 'resume') {
+          const local = typeof message.id === 'string' && /^\d+$/.test(message.id) ? message.id : '';
+          const frameId = sender.frameId ?? 0;
+          const selected = selectedIds.get(tabId) ?? '';
+          // Private windows leave no history behind. Another media on the page is not the one being watched.
+          if (!sender.tab || sender.tab.incognito || !enabled || !local || (selected && selected !== `${frameId}:${local}`)) return { ok: true };
+          const page = resumePage(sender.url || (frameId === 0 ? url : ''));
+          await recordResume(page, { media: message.media, time: message.time, duration: message.duration });
           return { ok: true };
         }
         // Only extension pages and this tab's content scripts can request controls.

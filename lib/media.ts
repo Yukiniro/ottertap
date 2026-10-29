@@ -333,7 +333,7 @@ export function mirrorMarkFailureKey(message: string): MirrorMarkFailureKey | ''
 
 interface RateSlot { state: RateLockState; timer: number; listening: boolean; onEvent: () => void }
 
-export function createMediaController(document: Document, onChange?: () => void, onRateLockGiveUp?: () => void, onPlaying?: (localId: string) => void) {
+export function createMediaController(document: Document, onChange?: () => void, onRateLockGiveUp?: () => void, onPlaying?: (localId: string) => void, onProgress?: (localId: string, element: HTMLMediaElement, paused: boolean) => void) {
   let nextId = 0;
   const ids = new WeakMap<HTMLMediaElement, string>();
   let elements: HTMLMediaElement[] = [];
@@ -481,14 +481,28 @@ export function createMediaController(document: Document, onChange?: () => void,
     if (!element?.isConnected) return;
     onPlaying?.(idOf(element));
   };
+  // Per element, because media events do not cross a shadow root to reach the document.
+  const onElementProgress = (event: Event) => {
+    const element = event.currentTarget as HTMLMediaElement | null;
+    if (!element?.isConnected) return;
+    const paused = event.type === 'pause';
+    if (!paused && element.paused) return;
+    onProgress?.(idOf(element), element, paused);
+  };
   const unwatchPlay = (element: HTMLMediaElement) => {
     if (!playWatchers.delete(element)) return;
     element.removeEventListener('play', onElementPlay);
+    element.removeEventListener('timeupdate', onElementProgress);
+    element.removeEventListener('pause', onElementProgress);
   };
   const watchPlay = (element: HTMLMediaElement) => {
-    if (!onPlaying || playWatchers.has(element)) return;
+    if ((!onPlaying && !onProgress) || playWatchers.has(element)) return;
     playWatchers.add(element);
-    element.addEventListener('play', onElementPlay);
+    if (onPlaying) element.addEventListener('play', onElementPlay);
+    if (onProgress) {
+      element.addEventListener('timeupdate', onElementProgress);
+      element.addEventListener('pause', onElementProgress);
+    }
   };
   const refresh = () => {
     // shortcut: late Shadow Roots need an outer DOM mutation; add attachShadow tracking if target sites require it.
