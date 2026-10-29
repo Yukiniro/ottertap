@@ -44,6 +44,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-feedback
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-active
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-away-tab
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive resume-save
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -63,7 +64,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip', 'page-pip', 'pip-feedback', 'pip-active', 'pip-away-tab'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip', 'page-pip', 'pip-feedback', 'pip-active', 'pip-away-tab', 'resume-save'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -3234,7 +3235,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip, 'page-pip': drivePagePip, 'pip-feedback': drivePipFeedback, 'pip-active': drivePipActive, 'pip-away-tab': drivePipAwayTab };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip, 'page-pip': drivePagePip, 'pip-feedback': drivePipFeedback, 'pip-active': drivePipActive, 'pip-away-tab': drivePipAwayTab, 'resume-save': driveResumeSave };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -7390,6 +7391,194 @@ async function drivePipAwayTab(context, dir, note) {
     await away?.close().catch(() => {});
     await video?.close().catch(() => {});
     await settings?.close().catch(() => {});
+  }
+}
+
+function silentWavBytes(seconds, rate = 8000) {
+  const samples = rate * seconds;
+  const bytes = Buffer.alloc(44 + samples, 128);
+  bytes.write('RIFF', 0, 'ascii');
+  bytes.writeUInt32LE(36 + samples, 4);
+  bytes.write('WAVE', 8, 'ascii');
+  bytes.write('fmt ', 12, 'ascii');
+  bytes.writeUInt32LE(16, 16);
+  bytes.writeUInt16LE(1, 20);
+  bytes.writeUInt16LE(1, 22);
+  bytes.writeUInt32LE(rate, 24);
+  bytes.writeUInt32LE(rate, 28);
+  bytes.writeUInt16LE(1, 32);
+  bytes.writeUInt16LE(8, 34);
+  bytes.write('data', 36, 'ascii');
+  bytes.writeUInt32LE(samples, 40);
+  return bytes;
+}
+
+async function driveResumeSave(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const prefix = 'ottertap-resume-v1:';
+  const lectureOrigin = 'https://lecture.ottertap.test';
+  const lecturePage = `${lectureOrigin}/watch?v=1`;
+  const lectureMedia = `src:${lectureOrigin}/media/lecture.wav`;
+  const lectureWav = silentWavBytes(300);
+  const lectureHtml = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Lecture page</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" aria-label="Lecture" src="/media/lecture.wav" preload="auto" playsinline controls style="display:block;width:640px;height:360px;margin:48px"></video></body></html>`;
+  const serveLecture = async route => {
+    const request = route.request();
+    const pathname = new URL(request.url()).pathname;
+    if (pathname === '/watch') {
+      await route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', headers: { 'cache-control': 'no-store' }, body: lectureHtml });
+      return;
+    }
+    if (pathname !== '/media/lecture.wav') { await route.fulfill({ status: 404, contentType: 'text/plain', body: 'not found' }); return; }
+    const total = lectureWav.length;
+    const range = /^bytes=(\d+)-(\d*)$/.exec((await request.allHeaders()).range ?? '');
+    if (!range) {
+      await route.fulfill({ status: 200, headers: { 'content-type': 'audio/wav', 'accept-ranges': 'bytes', 'content-length': String(total) }, body: lectureWav });
+      return;
+    }
+    const start = Math.min(Number(range[1]), total - 1);
+    const end = range[2] ? Math.min(Number(range[2]), total - 1) : total - 1;
+    await route.fulfill({ status: 206, headers: { 'content-type': 'audio/wav', 'accept-ranges': 'bytes', 'content-range': `bytes ${start}-${end}/${total}`, 'content-length': String(end - start + 1) }, body: lectureWav.subarray(start, end + 1) });
+  };
+  const ledger = () => worker.evaluate(async prefix => Object.entries(await chrome.storage.local.get(null)).filter(([key]) => key.startsWith(prefix)).map(([key, value]) => ({ key, ...value })), prefix);
+  const clearLedger = () => worker.evaluate(async prefix => {
+    const keys = Object.keys(await chrome.storage.local.get(null)).filter(key => key.startsWith(prefix));
+    if (keys.length) await chrome.storage.local.remove(keys);
+  }, prefix);
+  const settingsText = () => worker.evaluate(async () => JSON.stringify((await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? null));
+  const ready = async (page, selector = '#media') => {
+    await page.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await page.locator(selector).evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+    });
+  };
+  const play = async page => {
+    await page.bringToFront();
+    await page.locator('body').click({ position: { x: 8, y: 8 } });
+    await page.locator('#media').evaluate(element => element.play());
+  };
+  const time = page => page.locator('#media').evaluate(element => element.currentTime);
+  const permissions = await worker.evaluate(() => chrome.runtime.getManifest().permissions ?? []);
+  if (JSON.stringify(permissions) !== JSON.stringify(['storage'])) throw new Error(`权限应仍只有 storage：${JSON.stringify(permissions)}`);
+  let lecture;
+  let popup;
+  let reopened;
+  let clip;
+  let long;
+  let blocked;
+  let fresh;
+  await context.route(`${lectureOrigin}/**`, serveLecture);
+  try {
+    await clearLedger();
+    const settingsBefore = await settingsText();
+
+    lecture = await context.newPage();
+    await lecture.goto(`${lecturePage}#t=5`, { waitUntil: 'domcontentloaded' });
+    await ready(lecture);
+    const loaded = await lecture.locator('#media').evaluate(element => ({ duration: element.duration, seekableEnd: element.seekable.length ? element.seekable.end(element.seekable.length - 1) : 0, src: element.currentSrc }));
+    if (!(Math.abs(loaded.duration - 300) < 1) || !(loaded.seekableEnd > 200)) throw new Error(`讲座夹具应约 300 秒且可 seek：${JSON.stringify(loaded)}`);
+    await lecture.locator('#media').evaluate(element => { element.currentTime = 40; });
+    await poll(() => time(lecture), value => Math.abs(value - 40) < 0.5, '讲座应停在 40 秒');
+    note(`lecture loaded ${JSON.stringify(loaded)}`);
+
+    popup = await openActionPopup(context, lecture);
+    await poll(() => popup.view(), value => value.heading === 'Lecture' && value.button === 'Play', '弹出面板应控制 Lecture');
+    await popup.click('Play');
+    await poll(() => popup.view(), value => value.button === 'Pause' && value.status === 'Video · Playing', '点播放后应在播');
+    await lecture.waitForTimeout(3_000);
+    const early = await ledger();
+    if (early.length) throw new Error(`刚开始播放就写了账本：${JSON.stringify(early)}`);
+    note('3s into playback the ledger is still empty');
+    const periodic = await poll(ledger, list => list.some(entry => entry.page === lecturePage && entry.media === lectureMedia), '播放约 10 秒后应写入讲座进度', 15_000);
+    const first = periodic.find(entry => entry.page === lecturePage);
+    if (!(first.time >= 49 && first.time <= 60) || Math.abs(first.duration - 300) > 1) throw new Error(`周期写入的进度不对：${JSON.stringify(first)}`);
+    await lecture.screenshot({ path: path.join(dir, 'lecture-playing.png'), animations: 'disabled' });
+    note(`periodic save ${JSON.stringify(first)}`);
+
+    await popup.click('Pause');
+    await poll(() => popup.view(), value => value.button === 'Play' && value.status === 'Video · Paused', '点暂停后应停下');
+    const pausedAt = await time(lecture);
+    const paused = await poll(ledger, list => list.some(entry => entry.page === lecturePage && Math.abs(entry.time - pausedAt) < 0.6), '暂停应立刻写入暂停处的进度');
+    const pausedEntry = paused.find(entry => entry.page === lecturePage);
+    await popup.screenshot(path.join(dir, 'popup-paused.png'));
+    note(`pause save ${JSON.stringify(pausedEntry)} pausedAt=${pausedAt}`);
+    await popup.close();
+    popup = null;
+    await lecture.close();
+    lecture = null;
+
+    reopened = await context.newPage();
+    await reopened.goto(lecturePage, { waitUntil: 'domcontentloaded' });
+    await ready(reopened);
+    await reopened.waitForTimeout(1_000);
+    const afterReopen = await ledger();
+    const kept = afterReopen.find(entry => entry.page === lecturePage && entry.media === lectureMedia);
+    if (!kept || kept.time !== pausedEntry.time || kept.savedAt !== pausedEntry.savedAt) throw new Error(`关标签再开后账本里应留着原来的进度：${JSON.stringify(afterReopen)}`);
+    await writeFile(path.join(dir, 'ledger.json'), `${JSON.stringify(afterReopen, null, 2)}\n`);
+    await reopened.screenshot({ path: path.join(dir, 'reopened.png'), animations: 'disabled' });
+    note(`reopened tab still has ${kept.key} time=${kept.time}`);
+
+    clip = await context.newPage();
+    await clip.goto(`${origin}/video`, { waitUntil: 'domcontentloaded' });
+    await ready(clip);
+    long = await context.newPage();
+    await long.goto(`${origin}/long`, { waitUntil: 'domcontentloaded' });
+    await ready(long);
+    await long.locator('#media').evaluate(element => { element.currentTime = 12; });
+    await play(clip);
+    await play(long);
+    await long.waitForTimeout(11_500);
+    const clipDuration = await clip.locator('#media').evaluate(element => element.duration);
+    const longDuration = await long.locator('#media').evaluate(element => element.duration);
+    await clip.locator('#media').evaluate(element => element.pause());
+    await long.locator('#media').evaluate(element => element.pause());
+    const longPaused = await time(long);
+    const mixed = await poll(ledger, list => list.some(entry => entry.page === `${origin}/long` && Math.abs(entry.time - longPaused) < 0.6), '/long（data 地址、120 秒）应按时长记下', 5_000);
+    const longEntry = mixed.find(entry => entry.page === `${origin}/long`);
+    if (longEntry.media !== 'dur:120') throw new Error(`data 地址应按整秒时长作媒体标识：${JSON.stringify(longEntry)}`);
+    if (mixed.some(entry => entry.page === `${origin}/video`)) throw new Error(`短片写进了账本：${JSON.stringify(mixed)}`);
+    await long.screenshot({ path: path.join(dir, 'long-saved.png'), animations: 'disabled' });
+    note(`clip duration=${clipDuration} not saved; /long duration=${longDuration} saved ${JSON.stringify(longEntry)}`);
+
+    blocked = await context.newPage();
+    await blocked.goto(`${origin}/unseekable`, { waitUntil: 'domcontentloaded' });
+    await blocked.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await blocked.locator('body').click({ position: { x: 8, y: 8 } });
+    // Without a source the play() promise never settles, so it is not awaited.
+    await blocked.locator('#media').evaluate(element => { element.play().catch(() => {}); });
+    await blocked.waitForTimeout(400);
+    await blocked.locator('#media').evaluate(element => element.pause());
+    await blocked.waitForTimeout(800);
+    if ((await ledger()).some(entry => entry.page === `${origin}/unseekable`)) throw new Error('不可 seek 的媒体写进了账本');
+    note('unseekable not saved');
+
+    await reopened.locator('#media').evaluate(element => { element.currentTime = 285; });
+    await play(reopened);
+    await reopened.waitForTimeout(600);
+    await reopened.locator('#media').evaluate(element => element.pause());
+    const finished = await poll(ledger, list => !list.some(entry => entry.page === lecturePage), '看到片尾后应删掉讲座这一条', 5_000);
+    note(`near end removed lecture; left ${finished.map(entry => entry.key).join(', ')}`);
+
+    await clearLedger();
+    fresh = await context.newPage();
+    await fresh.goto(`${origin}/long`, { waitUntil: 'domcontentloaded' });
+    await ready(fresh);
+    await fresh.waitForTimeout(1_000);
+    const cleared = await ledger();
+    if (cleared.length) throw new Error(`清掉存储后又冒出旧进度：${JSON.stringify(cleared)}`);
+    note('after clearing storage the reopened page has no progress');
+
+    const settingsAfter = await settingsText();
+    if (settingsAfter !== settingsBefore) throw new Error(`接着看改写了设置：before=${settingsBefore} after=${settingsAfter}`);
+    if (settingsAfter.includes('resume')) throw new Error('设置里出现了 resume');
+    const state = { ok: true, permissions, periodic: first, paused: pausedEntry, reopened: kept, long: longEntry, clipDuration, finishedRemoved: true, clearedEmpty: true, settingsSame: true };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await context.unroute(`${lectureOrigin}/**`, serveLecture).catch(() => {});
+    await popup?.close().catch(() => {});
+    for (const page of [lecture, reopened, clip, long, blocked, fresh]) await page?.close().catch(() => {});
   }
 }
 
