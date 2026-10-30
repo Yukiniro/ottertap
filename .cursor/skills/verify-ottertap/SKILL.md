@@ -53,7 +53,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs doctor
 
 ## Drive
 
-脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、低音量滚轮细步长（见 `features/fine-wheel.md`）、Shift 粗调步长（见 `features/coarse-step.md`）、倍速增减步长（见 `features/rate-step.md`）、扩展命令画中画（见 `features/extension-pip.md`）、按住临时加速（见 `features/hold-boost.md`）、同键短按跳长按加速（见 `features/hold-skip-combo.md`）、逐帧（见 `features/frame-step.md`）、页内快捷键改键（见 `features/hotkey-remap.md`）、浮动药丸倍速（见 `features/floating-speed.md`）、浮动药丸播放跳转（见 `features/floating-playback.md`）、浮动入口旁注（见 `features/floating-entry-note.md`）、从音量药丸打开弹出面板（见 `features/floating-open-panel.md`）、仅在播放时显示浮动入口（见 `features/floating-while-playing.md`）和滚轮方向（见 `features/wheel-direction.md`）。仅全屏时悬停滚轮见 `features/fullscreen-wheel.md`。侧栏聊天和文档大纲忽略见 `features/sidebar-ignore.md`。设置页三处名单的「当前站」见 `features/settings-current-site.md`。记住站点的「清空全部」见 `features/settings-clear-remembered.md`。镜像与标记的页内提示见 `features/mirror-mark-feedback.md`。进出画中画的页内提示见 `features/pip-feedback.md`。选中视频处于画中画时，面板与浮动标出退出态见 `features/pip-active.md`。切走标签后扩展命令仍控画中画媒体见 `features/pip-away-tab.md`。选中变化时的短暂轮廓见 `features/selection-highlight.md`。上一条和下一条媒体见 `features/prev-next-media.md`。弹出面板媒体列表见 `features/panel-media-list.md`。音量药丸里的画中画见 `features/float-pip.md`。页内画中画快捷键见 `features/page-pip.md`。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
+脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、低音量滚轮细步长（见 `features/fine-wheel.md`）、Shift 粗调步长（见 `features/coarse-step.md`）、倍速增减步长（见 `features/rate-step.md`）、扩展命令画中画（见 `features/extension-pip.md`）、按住临时加速（见 `features/hold-boost.md`）、同键短按跳长按加速（见 `features/hold-skip-combo.md`）、逐帧（见 `features/frame-step.md`）、页内快捷键改键（见 `features/hotkey-remap.md`）、浮动药丸倍速（见 `features/floating-speed.md`）、浮动药丸播放跳转（见 `features/floating-playback.md`）、浮动入口旁注（见 `features/floating-entry-note.md`）、从音量药丸打开弹出面板（见 `features/floating-open-panel.md`）、仅在播放时显示浮动入口（见 `features/floating-while-playing.md`）和滚轮方向（见 `features/wheel-direction.md`）。仅全屏时悬停滚轮见 `features/fullscreen-wheel.md`。侧栏聊天和文档大纲忽略见 `features/sidebar-ignore.md`。设置页三处名单的「当前站」见 `features/settings-current-site.md`。记住站点的「清空全部」见 `features/settings-clear-remembered.md`。镜像与标记的页内提示见 `features/mirror-mark-feedback.md`。进出画中画的页内提示见 `features/pip-feedback.md`。选中视频处于画中画时，面板与浮动标出退出态见 `features/pip-active.md`。切走标签后扩展命令仍控画中画媒体见 `features/pip-away-tab.md`。接着看的进度保存见 `features/resume-save.md`。选中变化时的短暂轮廓见 `features/selection-highlight.md`。上一条和下一条媒体见 `features/prev-next-media.md`。弹出面板媒体列表见 `features/panel-media-list.md`。音量药丸里的画中画见 `features/float-pip.md`。页内画中画快捷键见 `features/page-pip.md`。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
 
 ```bash
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
@@ -97,6 +97,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive page-pip
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-feedback
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-active
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-away-tab
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive resume-save
 ```
 
 `skip-step` 在设置页把 `Skip step` 改成 `30s` 并打开 `Single-key mode`，再看弹出面板进退按钮名和页内 `L` / `J` / `→` / `←` 让 `/long` 夹具的 `currentTime` 跟着步长变；它会改写 profile，同一会话只能跑一次。步骤见 `features/skip-step.md`。
@@ -294,6 +295,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive page-pip
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-feedback
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-active
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-away-tab
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive resume-save
 node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 ```
 
@@ -510,3 +512,13 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-away-tab
 `pip-away-tab` 打开设置页，快捷键说明里有一句：离开标签后，画中画里的媒体用扩展快捷键。`/video` 补一帧后从音量药丸进入画中画，再打开 `/audio`。`Alt+M` 静音的是音频，画中画里的视频仍静音、仍在播放、仍在画中画。回到视频页，`Alt+M` 能取消这条视频的静音。焦点在文本框里时再按，视频保持有声。不写 `sitePrefs`，权限仍只有 `storage`。扩展命令改投到画中画标签由 `tests/pip-away-tab.test.ts` 覆盖，无头 Chromium 按键不会派发扩展命令。它不改 profile。步骤见 `features/pip-away-tab.md`。
 
 写入 `pip-away-tab/`：`settings-note.png`、`away-tab.png`、`typing.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
+## 接着看：保存进度
+
+```bash
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive resume-save
+```
+
+`resume-save` 临时拦截 `https://lecture.ottertap.test`，打开 300 秒、按 Range 返回 https 地址的讲座视频，停在 40 秒后从弹出面板播放。3 秒时 `chrome.storage.local` 里还没有 `ottertap-resume-v1:` 键；约 10 秒后出现一条，`page` 去掉了 `#` 片段，`media` 是 `src:` 加来源和路径。点暂停立刻写成暂停处的时间。关标签再开，这条和写入时间都不变。`/long`（data 地址、120 秒）记成 `dur:120`，`/video` 短片和 `/unseekable` 不写。拖到片尾附近再播放暂停，这一条被删掉。清掉账本键后重开页面不会冒出旧进度。设置原文不变，权限仍只有 `storage`。这一程不自动跳回，那属于后续功能。它只动账本键，不改设置。步骤见 `features/resume-save.md`。
+
+写入 `resume-save/`：`lecture-playing.png`、`popup-paused.png`、`reopened.png`、`long-saved.png`、`ledger.json`、`state.json`（成功时 `ok: true`）、`transcript.txt`。

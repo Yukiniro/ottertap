@@ -7,6 +7,7 @@ import { holdRateEvent } from '../lib/hold-rate';
 import { actionHintEvent, actionHintText, bareVolumeWheel, createHotkeyInput, isFloatingEvent, isTypingEvent, isTypingFocus, keepShiftWheel, rateHintEvent, volumeGestureEvent } from '../lib/hotkey';
 import { createMediaController, isMediaCommand, mediaPresenceEvent } from '../lib/media';
 import { rateLockEvent } from '../lib/rate-lock';
+import { createResumeClock, readResume } from '../lib/resume';
 import { maxEffectiveVolume, shouldReportVolume, volumeReportIntervalMs } from '../lib/volume-badge';
 import { isSiteEnabled, normalizeHoldRate, normalizeSkipSeconds, normalizeVolumeStep } from '../lib/settings';
 import { normalizeKeybinds } from '../lib/keybinds';
@@ -67,11 +68,16 @@ export default defineContentScript({
       reported = decision.volume;
       void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'register', volume: decision.volume }).catch(() => {});
     };
+    const resumeDue = createResumeClock();
     const controller = createMediaController(document, reportVolume, () => {
       void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'rateLock' }).catch(() => {});
     }, id => {
       if (!enabled) return;
       void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'playing', id }).catch(() => {});
+    }, (id, element, paused) => {
+      if (!enabled || !resumeDue(element, paused, Date.now())) return;
+      const report = readResume(element);
+      if (report) void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'resume', id, ...report }).catch(() => {});
     });
     const applyWatched = () => {
       if (!pageUrl || !watched) return;
