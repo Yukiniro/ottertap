@@ -1,7 +1,7 @@
 import { i18n } from '#i18n';
 import { browser } from 'wxt/browser';
 import { extensionStore, settingsKey } from '../lib/extension-store';
-import { createSitePrefSession, isSiteEnabled, mergeSettingsChange, normalizeSettings, withRememberedCommand } from '../lib/settings';
+import { createSitePrefSession, isResumeExcluded, isSiteEnabled, mergeSettingsChange, normalizeSettings, withRememberedCommand } from '../lib/settings';
 import { cycleMediaId, frameFailureKey, isMediaCommand, keptSelection, lockedMedia, mirrorMarkFailureKey, pipFailureKey } from '../lib/media';
 import { actionForCommand } from '../lib/commands';
 import { actionHintKey, applySkipStep, applyVolumeStep, directedWheelNotches, isHotkeyAction, mirrorMarkHintKey, pipSuccessHintKey, planHotkey, shownPercent, type HotkeyAction } from '../lib/hotkey';
@@ -10,7 +10,7 @@ import { steppedVolume, volumeStepForWheel } from '../lib/volume';
 import { volumeBadgeColor, volumeBadgeFromReports, volumeBadgeTtlMs } from '../lib/volume-badge';
 import { shouldFollowPlaying } from '../lib/follow-playing';
 import { soundingTabs } from '../lib/tabs';
-import { resumePage, writeResume, type ResumeReport } from '../lib/resume';
+import { isResumeEntry, resumePage, writeResume, type ResumeReport } from '../lib/resume';
 import type { MediaCommand, MediaState, Settings, SitePref } from '../lib/types';
 
 export default defineBackground(() => {
@@ -484,7 +484,7 @@ export default defineBackground(() => {
       if (sender.tab?.id !== undefined) void browser.tabs.sendMessage(sender.tab.id, { namespace: 'ottertap', type: 'altUsed' }).catch(() => {});
       return;
     }
-    if (!['settings', 'options', 'context', 'register', 'read', 'command', 'select', 'highlight', 'hotkey', 'holdRate', 'soundingTabs', 'focusTab', 'muteTab', 'rateLock', 'openPopup', 'playing', 'resume'].includes(message.type)) return;
+    if (!['settings', 'options', 'context', 'register', 'read', 'command', 'select', 'highlight', 'hotkey', 'holdRate', 'soundingTabs', 'focusTab', 'muteTab', 'rateLock', 'openPopup', 'playing', 'resume', 'resumeJumped'].includes(message.type)) return;
     const tabId = sender.tab?.id ?? message.tabId;
     async function handle() {
       if (message.type === 'settings') {
@@ -504,6 +504,12 @@ export default defineBackground(() => {
         return { ok: await openToolbarPopup(typeof tab?.windowId === 'number' ? tab.windowId : undefined) };
       }
       if (message.type === 'options') { await browser.runtime.openOptionsPage(); return { ok: true }; }
+      if (message.type === 'resumeJumped') {
+        // The page itself did the jumping; only the top frame shows the short note.
+        const jumped = sender.tab?.id;
+        if (typeof jumped === 'number' && typeof message.time === 'number' && Number.isFinite(message.time)) showAction(jumped, 'resumeJumpHint', message.time);
+        return { ok: true };
+      }
       if (message.type === 'soundingTabs' || message.type === 'focusTab' || message.type === 'muteTab') {
         if (!extensionPage(sender.url)) return { error: i18n.t('extensionMessageFailed') };
         try {
@@ -559,9 +565,11 @@ export default defineBackground(() => {
           const local = typeof message.id === 'string' && /^\d+$/.test(message.id) ? message.id : '';
           const frameId = sender.frameId ?? 0;
           const selected = selectedIds.get(tabId) ?? '';
+          const address = sender.url || (frameId === 0 ? url : '');
           // Private windows leave no history behind. Another media on the page is not the one being watched.
           if (!sender.tab || sender.tab.incognito || !enabled || !local || (selected && selected !== `${frameId}:${local}`)) return { ok: true };
-          const page = resumePage(sender.url || (frameId === 0 ? url : ''));
+          try { if (isResumeExcluded(new URL(address).hostname, settings.resumeExcludedSites)) return { ok: true }; } catch { /* Not a usable address. */ }
+          const page = resumePage(address);
           await recordResume(page, { media: message.media, time: message.time, duration: message.duration });
           return { ok: true };
         }
@@ -570,14 +578,25 @@ export default defineBackground(() => {
         const mediaId = typeof message.id === 'string' && /^\d+:\d+$/.test(message.id) ? message.id : '';
         if (message.type === 'read') {
           if (!enabled) return { host, enabled, media: [], selectedId: '' };
+          // Only the panel (an extension page) pays for the ledger read; the in-page pill skips it.
+          const attachResume = sender.tab ? (media: MediaState[]) => media : async (media: MediaState[]) => {
+            if (isResumeExcluded(host, settings.resumeExcludedSites)) return media;
+            const keys = [...new Set(media.map(item => item.resumeKey).filter((key): key is string => typeof key === 'string'))];
+            if (!keys.length) return media;
+            const stored = await browser.storage.local.get(keys);
+            return media.map(item => {
+              const entry = typeof item.resumeKey === 'string' ? stored[item.resumeKey] : undefined;
+              return isResumeEntry(entry) ? { ...item, resume: entry.time } : item;
+            });
+          };
           const { media, failed } = await collect(tabId, host);
           const selectedId = lockedId(tabId, media, failed);
           const target = lockedMedia(media, selectedId);
           if (target && await applySitePref(tabId, host, target.id, settings.sitePrefs, settings.defaultRate)) {
             const refreshed = await collect(tabId, host);
-            return { host, enabled, media: refreshed.media, selectedId: lockedId(tabId, refreshed.media, refreshed.failed) };
+            return { host, enabled, media: await attachResume(refreshed.media), selectedId: lockedId(tabId, refreshed.media, refreshed.failed) };
           }
-          return { host, enabled, media, selectedId };
+          return { host, enabled, media: await attachResume(media), selectedId };
         }
         if (message.type === 'holdRate' && message.phase === 'end') { await endHold(tabId); return { ok: true }; }
         if (!enabled) throw new Error(i18n.t('siteDisabled'));
@@ -618,18 +637,22 @@ export default defineBackground(() => {
             const current = media.find(item => item.id === mediaId);
             if (current) pipWasOn = current.pip === true;
           }
+          let applied: unknown;
           try {
-            await deliver(tabId, mediaId, 'command', message.command);
+            applied = await deliver(tabId, mediaId, 'command', message.command);
           } catch (error) {
-            if ((message.command.type === 'mirror' || message.command.type === 'mark') && error instanceof Error) {
+            if ((message.command.type === 'mirror' || message.command.type === 'mark' || message.command.type === 'resume') && error instanceof Error) {
               const key = mirrorMarkFailureKey(error.message);
               if (key) showAction(tabId, key);
             }
             throw error;
           }
           await rememberCommand(host, message.command);
-          const hint = message.command.type === 'pip' ? (pipWasOn === null ? '' : pipSuccessHintKey(pipWasOn)) : mirrorMarkHintKey(message.command);
-          if (hint) showAction(tabId, hint);
+          const resumeTime = typeof applied === 'object' && applied !== null && 'resumeTime' in applied ? (applied as { resumeTime?: unknown }).resumeTime : undefined;
+          const hint = message.command.type === 'pip' ? (pipWasOn === null ? '' : pipSuccessHintKey(pipWasOn))
+            : message.command.type === 'resume' ? (typeof resumeTime === 'number' && Number.isFinite(resumeTime) ? 'resumeJumpHint' : '')
+              : mirrorMarkHintKey(message.command);
+          if (hint) showAction(tabId, hint, hint === 'resumeJumpHint' ? resumeTime as number : undefined);
           return { ok: true };
         }
       } catch (error) { return { error: error instanceof Error ? error.message : i18n.t('pageUnavailable') }; }

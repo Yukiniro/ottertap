@@ -88,6 +88,8 @@ export function normalizeSettings(value: unknown): Settings {
     floatingWhilePlaying: source.floatingWhilePlaying === true,
     followPlaying: typeof source.followPlaying === 'boolean' ? source.followPlaying : true,
     floatingHiddenSites: normalizeDomains(source.floatingHiddenSites),
+    resumeJump: typeof source.resumeJump === 'boolean' ? source.resumeJump : true,
+    resumeExcludedSites: normalizeDomains(source.resumeExcludedSites),
     siteMode: ['all', 'allow', 'exclude'].includes(source.siteMode ?? '') ? source.siteMode! : 'all',
     sites: normalizeDomains(source.sites),
     sitePrefs: normalizeSitePrefs(source.sitePrefs),
@@ -129,7 +131,7 @@ export function mergeSettingsChange(current: Settings, previous: Settings, next:
     return result;
   };
   const merged = { ...merge(current, previous, next) as Settings };
-  for (const key of ['sites', 'floatingHiddenSites'] as const) {
+  for (const key of ['sites', 'floatingHiddenSites', 'resumeExcludedSites'] as const) {
     merged[key] = JSON.stringify(current[key]) === JSON.stringify(previous[key]) ? next[key]
       : [...new Set([...current[key].filter(site => !previous[key].includes(site) || next[key].includes(site)), ...next[key].filter(site => !previous[key].includes(site))])];
   }
@@ -225,6 +227,12 @@ export function filterFloatingHiddenSites(sites: readonly string[], query: strin
 }
 
 export function isFloatingHidden(host: string, sites: readonly string[]) {
+  const name = hostKey(host);
+  return !!name && sites.some(site => matchesSite(name, site));
+}
+
+/** Whether resume progress is turned off for this host, subdomains included. */
+export function isResumeExcluded(host: string, sites: readonly string[]) {
   const name = hostKey(host);
   return !!name && sites.some(site => matchesSite(name, site));
 }

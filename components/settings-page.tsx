@@ -2,7 +2,7 @@ import { i18n } from '#i18n';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { commandBindings, extensionShortcutApis, shortcutsSettingsUrl } from '../lib/commands';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { Sun, AppWindow, Keyboard, Gauge, Globe, Bookmark, Archive, X, CircleCheck, ArrowLeft, CircleAlert, ChevronUp, ChevronDown, EyeOff } from 'lucide-react';
+import { Sun, AppWindow, Keyboard, Gauge, Globe, Bookmark, Archive, X, CircleCheck, ArrowLeft, CircleAlert, ChevronUp, ChevronDown, EyeOff, History } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -21,12 +21,15 @@ import { defaultKeybinds, keybindOwner, keyLabel, recordedKey, sameKeybinds, typ
 import { downloadSettingsBackup, parseSettingsBackup, readExtensionVersion, settingsBackupErrors, type SettingsBackupError } from '../lib/settings-backup';
 import { readCurrentSiteHost, watchSiteTabs } from '../lib/current-site';
 import { clearRememberedSites, filterFloatingHiddenSites, filterRememberedSites, filterSiteList, forgetSitePref, isFloatingNote, isRateStep, isSkipSeconds, isVolumeStep, isWheelDirection, normalizeDomain } from '../lib/settings';
+import { resumeEntryHost, resumeEntryTitle, type ResumeEntry } from '../lib/resume';
+import { clearResumeLedger, forgetResumeEntry, readResumeLedger, watchResumeLedger } from '../lib/resume-store';
+import { formatTime } from '../lib/utils';
 import { rateSteps, skipSteps, volumeSteps, type Settings, type SitePref } from '../lib/types';
 import { useSettingsAtoms } from './theme';
 
 const themes = [{ value: 'light', label: () => i18n.t('themeLight') }, { value: 'dark', label: () => i18n.t('themeDark') }, { value: 'system', label: () => i18n.t('themeSystem') }] as const;
 const siteModes = [{ value: 'all', label: () => i18n.t('modeAll'), description: () => i18n.t('modeAllDescription') }, { value: 'allow', label: () => i18n.t('modeAllow'), description: () => i18n.t('modeAllowDescription') }, { value: 'exclude', label: () => i18n.t('modeExclude'), description: () => i18n.t('modeExcludeDescription') }] as const;
-const nav = [{ id: 'appearance', label: () => i18n.t('appearance'), icon: Sun }, { id: 'floating', label: () => i18n.t('floatingController'), icon: AppWindow }, { id: 'playback', label: () => i18n.t('playback'), icon: Gauge }, { id: 'shortcuts', label: () => i18n.t('shortcuts'), icon: Keyboard }, { id: 'presets', label: () => i18n.t('ratePresets'), icon: Gauge }, { id: 'sites', label: () => i18n.t('siteRules'), icon: Globe }, { id: 'memory', label: () => i18n.t('rememberedSites'), icon: Bookmark }, { id: 'backup', label: () => i18n.t('backup'), icon: Archive }] as const;
+const nav = [{ id: 'appearance', label: () => i18n.t('appearance'), icon: Sun }, { id: 'floating', label: () => i18n.t('floatingController'), icon: AppWindow }, { id: 'playback', label: () => i18n.t('playback'), icon: Gauge }, { id: 'shortcuts', label: () => i18n.t('shortcuts'), icon: Keyboard }, { id: 'presets', label: () => i18n.t('ratePresets'), icon: Gauge }, { id: 'sites', label: () => i18n.t('siteRules'), icon: Globe }, { id: 'memory', label: () => i18n.t('rememberedSites'), icon: Bookmark }, { id: 'resume', label: () => i18n.t('resumeWatching'), icon: History }, { id: 'backup', label: () => i18n.t('backup'), icon: Archive }] as const;
 const importErrorMessage: Record<SettingsBackupError, () => string> = {
   [settingsBackupErrors.invalidJson]: () => i18n.t('importInvalidJson'),
   [settingsBackupErrors.notOttertap]: () => i18n.t('importNotOttertap'),
@@ -272,6 +275,100 @@ function RememberedSitesSection({ prefs, disabled, onForget, onClear, host, read
   </section>;
 }
 
+/** Rough age for the resume list: "just now", then minutes, hours, days. */
+function resumeAge(savedAt: number, now = Date.now()) {
+  const minutes = Math.floor(Math.max(0, now - savedAt) / 60_000);
+  if (minutes < 1) return i18n.t('resumeUpdatedJustNow');
+  if (minutes < 60) return i18n.t('resumeUpdatedMinutesAgo', { minutes });
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return i18n.t('resumeUpdatedHoursAgo', { hours });
+  return i18n.t('resumeUpdatedDaysAgo', { days: Math.floor(hours / 24) });
+}
+
+function ResumeMemoryList({ disabled }: { disabled: boolean }) {
+  const [entries, setEntries] = useState<ResumeEntry[] | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    const load = () => { void readResumeLedger().then(value => { if (alive) setEntries(value); }).catch(() => { if (alive) setEntries([]); }); };
+    load();
+    const stop = watchResumeLedger(load);
+    return () => { alive = false; stop(); };
+  }, []);
+  const list = entries ?? [];
+  useEffect(() => { if (!list.length) setConfirming(false); }, [list.length]);
+  return <div className="rounded-lg bg-secondary/60 px-3 py-3">
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="min-w-0 flex-1">
+        <h3 id="resume-memory-label" className="text-sm font-medium">{i18n.t('resumeMemoryTitle')}</h3>
+        <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('resumeMemoryDescription')}</p>
+      </div>
+      {list.length > 0 && <Button type="button" variant="outline" className="shrink-0" disabled={disabled} onClick={() => setConfirming(true)}>{i18n.t('resumeClearAll')}</Button>}
+    </div>
+    {confirming && <div className="mt-3 rounded-lg border bg-muted/40 p-4" role="region" aria-labelledby="clear-resume-title">
+      <h3 id="clear-resume-title" className="text-base font-semibold">{i18n.t('resumeClearTitle')}</h3>
+      <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('resumeClearConfirm')}</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button type="button" variant="destructive" disabled={disabled} onClick={() => { void clearResumeLedger(); setConfirming(false); }}>{i18n.t('resumeClearAction')}</Button>
+        <Button type="button" variant="outline" disabled={disabled} onClick={() => setConfirming(false)}>{i18n.t('clearRememberedCancel')}</Button>
+      </div>
+    </div>}
+    {entries == null ? null : list.length
+      ? <ItemGroup aria-label={i18n.t('resumeMemoryTitle')} className="mt-3 gap-0 overflow-hidden rounded-lg bg-background/80">{list.map(entry => {
+        const title = resumeEntryTitle(entry);
+        return <Item key={`${entry.page} ${entry.media}`} role="listitem" className="rounded-none border-b-border px-3 not-last:border-b">
+          <ItemMedia variant="icon" className="text-muted-foreground"><History className="size-4" /></ItemMedia>
+          <ItemContent><ItemTitle className="line-clamp-none font-normal break-all">{title || resumeEntryHost(entry)}</ItemTitle><p className="text-xs text-muted-foreground">{[resumeEntryHost(entry), formatTime(entry.time), resumeAge(entry.savedAt)].filter(Boolean).join(' · ')}</p></ItemContent>
+          <ItemActions><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={i18n.t('resumeForgetEntry', { title: title || resumeEntryHost(entry) })} disabled={disabled} onClick={() => void forgetResumeEntry(entry)}><X /></Button></ItemActions>
+        </Item>;
+      })}</ItemGroup>
+      : <p className="mt-3 rounded-lg bg-background/80 px-3 py-3 text-sm text-muted-foreground">{i18n.t('resumeMemoryEmpty')}</p>}
+  </div>;
+}
+
+function ResumeSection({ jump, excludedSites, disabled, save }: { jump: boolean; excludedSites: readonly string[]; disabled: boolean; save: (next: Partial<Settings>) => Promise<boolean> }) {
+  const [input, setInput] = useState('');
+  const [error, setError] = useState('');
+  const add = async () => {
+    try {
+      const domain = normalizeDomain(input);
+      if (excludedSites.includes(domain)) { setError(i18n.t('siteDuplicate')); return; }
+      if (await save({ resumeExcludedSites: [...excludedSites, domain] })) { setInput(''); setError(''); }
+    } catch (err) { setError(err instanceof Error ? err.message : i18n.t('domainRejected')); }
+  };
+  return <section id="resume" aria-labelledby="resume-heading" className="scroll-mt-32 rounded-xl border bg-card md:scroll-mt-8">
+    <div className="px-5 py-5 sm:px-6">
+      <h2 id="resume-heading" className="text-base font-semibold">{i18n.t('resumeWatching')}</h2>
+      <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('resumeSectionDescription')}</p>
+    </div>
+    <div className="flex flex-col gap-3 px-5 pb-5 sm:px-6">
+      <SwitchRow id="settings-resume-jump" label={i18n.t('resumeJump')} description={i18n.t('resumeJumpDescription')} checked={jump} disabled={disabled} onChange={checked => void save({ resumeJump: checked })} />
+      <div className="rounded-lg bg-secondary/60 px-3 py-3">
+        <h3 id="resume-excluded-label" className="text-sm font-medium">{i18n.t('resumeExcludedSites')}</h3>
+        <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('resumeExcludedSitesDescription')}</p>
+        <form className="mt-3" onSubmit={event => { event.preventDefault(); void add(); }}>
+          <Field data-invalid={!!error}>
+            <FieldLabel htmlFor="resume-excluded-domain" className="sr-only">{i18n.t('resumeExcludedSites')}</FieldLabel>
+            <div className="flex gap-2 max-sm:flex-col">
+              <Input id="resume-excluded-domain" className="h-10 flex-1 px-3" value={input} disabled={disabled} placeholder={i18n.t('sitePlaceholder')} aria-invalid={!!error} aria-describedby={error ? 'resume-domain-error' : undefined} onChange={event => { setInput(event.target.value); setError(''); }} />
+              <Button type="submit" className="h-10 px-5" disabled={disabled || !input.trim()}>{i18n.t('addSite')}</Button>
+            </div>
+            <FieldError id="resume-domain-error">{error}</FieldError>
+          </Field>
+        </form>
+        {excludedSites.length
+          ? <ItemGroup aria-label={i18n.t('resumeExcludedSites')} className="mt-3 gap-0 overflow-hidden rounded-lg bg-background/80">{excludedSites.map(site => <Item key={site} role="listitem" className="rounded-none border-b-border px-3 not-last:border-b">
+            <ItemMedia variant="icon" className="text-muted-foreground"><Globe className="size-4" /></ItemMedia>
+            <ItemContent><ItemTitle className="line-clamp-none font-normal break-all">{site}</ItemTitle></ItemContent>
+            <ItemActions><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={i18n.t('removeSite', { site })} disabled={disabled} onClick={() => void save({ resumeExcludedSites: excludedSites.filter(value => value !== site) })}><X /></Button></ItemActions>
+          </Item>)}</ItemGroup>
+          : <p className="mt-3 rounded-lg bg-background/80 px-3 py-3 text-sm text-muted-foreground">{i18n.t('resumeExcludedEmpty')}</p>}
+      </div>
+      <ResumeMemoryList disabled={disabled} />
+    </div>
+  </section>;
+}
+
 function ThemeThumb({ value }: { value: 'light' | 'dark' | 'system' }) {
   const frame = 'mb-2 block h-11 w-16 overflow-hidden rounded-md border';
   if (value === 'system') return <span aria-hidden="true" className={cn(frame, 'relative border-border')}>
@@ -353,13 +450,15 @@ function Row({ title, description, titleId, children }: { title: string; descrip
 }
 
 export function SettingsPage({ back }: { back?: () => void }) {
-  const { themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, followPlayingAtom, floatingHiddenSitesAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, fullscreenWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, coarseStepAtom, fineWheelAtom, wheelDirectionAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, followPlayingAtom, floatingHiddenSitesAtom, resumeJumpAtom, resumeExcludedSitesAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, fullscreenWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, coarseStepAtom, fineWheelAtom, wheelDirectionAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const theme = useAtomValue(themeAtom);
   const floating = useAtomValue(floatingAtom);
   const floatingNote = useAtomValue(floatingNoteAtom);
   const floatingWhilePlaying = useAtomValue(floatingWhilePlayingAtom);
   const followPlaying = useAtomValue(followPlayingAtom);
   const floatingHiddenSites = useAtomValue(floatingHiddenSitesAtom);
+  const resumeJump = useAtomValue(resumeJumpAtom);
+  const resumeExcludedSites = useAtomValue(resumeExcludedSitesAtom);
   const defaultRate = useAtomValue(defaultRateAtom);
   const lockRate = useAtomValue(lockRateAtom);
   const holdBoost = useAtomValue(holdBoostAtom);
@@ -713,6 +812,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
         </Row>
       </section>
       <RememberedSitesSection prefs={sitePrefs} disabled={disabled} onForget={site => void save({ sitePrefs: forgetSitePref(sitePrefs, site) })} onClear={() => save({ sitePrefs: clearRememberedSites(sitePrefs) })} host={currentHost} readHost={readCurrentHost} />
+      <ResumeSection jump={resumeJump} excludedSites={resumeExcludedSites} disabled={disabled} save={save} />
       <BackupSection disabled={disabled} save={save} />
       {error && <Alert variant="destructive"><CircleAlert /><AlertDescription>{error}</AlertDescription></Alert>}
       <p className="px-1 text-xs leading-5 text-muted-foreground md:hidden">{i18n.t('localOnly')}</p>
