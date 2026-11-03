@@ -6,7 +6,7 @@
 
 - 默认开。设置页「接着看」里的开关「自动跳回上次进度」（`resumeJump`），关掉后仍照常保存进度，只是重开时不跳。
 - 目标是 `time - 3` 秒，回到 0 为止。站方把进度放到比目标还后面（差 5 秒以内算「附近」）时不往回跳，尊重页面自己的进度。
-- 每条媒体只尝试一次。元数据就绪（`loadedmetadata` / `durationchange`）时查账本，同一条媒体后续事件不再跳，手动 seek 不触发也不重置。
+- 每条媒体身份只尝试一次。发现时元数据已就绪（缓存、预载的视频）直接尝试，不等事件；`loadedmetadata`、`durationchange` 和 `progress`（可 seek 范围晚到时）都会触发。设置还没加载完时的尝试不算数，之后的事件会补上。播放器复用同一元素换源后算新身份，再尝试一次；同一条媒体内手动 seek 不触发也不重置。
 - 排除站点不跳（见 [resume-excluded-sites.md](resume-excluded-sites.md)），扩展总开关关掉时也不跳。
 - 跳回成功走页内短提示，见 [resume-jump-feedback.md](resume-jump-feedback.md)。
 

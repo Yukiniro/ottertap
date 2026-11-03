@@ -219,7 +219,7 @@ export default defineBackground(() => {
     if (typeof send !== 'function') return;
     void send(tabId, { namespace: 'ottertap', type: 'tabMedia', hasMedia: present }, { frameId: 0 }).catch(() => {});
   };
-  async function collect(tabId: number, host: string) {
+  async function collect(tabId: number) {
     const frames = [...frameIds(tabId)];
     const recall = new Map<number, number | null>();
     let typing = false;
@@ -229,7 +229,7 @@ export default defineBackground(() => {
       const media: MediaState[] = response?.media ?? [];
       const remembered = response?.recallRate;
       recall.set(frameId, typeof remembered === 'number' && Number.isFinite(remembered) ? remembered : null);
-      return media.map(item => ({ ...item, frameId, host, id: `${frameId}:${item.id}` }));
+      return media.map(item => ({ ...item, frameId, id: `${frameId}:${item.id}` }));
     }));
     const failed = new Set<number>();
     const media = results.flatMap((result, index) => {
@@ -265,8 +265,8 @@ export default defineBackground(() => {
   const showHold = (tabId: number, rate: number | null) => {
     void browser.tabs.sendMessage(tabId, { namespace: 'ottertap', type: 'holdHint', rate }, { frameId: 0 }).catch(() => {});
   };
-  async function startHold(tabId: number, host: string, rate: number) {
-    const { media, failed } = await collect(tabId, host);
+  async function startHold(tabId: number, rate: number) {
+    const { media, failed } = await collect(tabId);
     const saved = lockedId(tabId, media, failed);
     if (saved && !media.some(item => item.id === saved)) return false;
     const target = lockedMedia(media, saved);
@@ -292,7 +292,7 @@ export default defineBackground(() => {
     let gesture = gestures.get(tabId);
     const selected = selectedIds.get(tabId);
     if (!gesture || gesture.id !== selected || Date.now() - gesture.at > 300) {
-      const { media, failed } = await collect(tabId, host);
+      const { media, failed } = await collect(tabId);
       const saved = lockedId(tabId, media, failed);
       if (saved && !media.some(item => item.id === saved)) return;
       const target = lockedMedia(media, saved);
@@ -316,7 +316,7 @@ export default defineBackground(() => {
     return gesture.percent;
   }
   async function applyRate(tabId: number, host: string, direction: 1 | -1 | 0) {
-    const { media, failed, recall } = await collect(tabId, host);
+    const { media, failed, recall } = await collect(tabId);
     const saved = lockedId(tabId, media, failed);
     if (saved && !media.some(item => item.id === saved)) return;
     const target = lockedMedia(media, saved);
@@ -332,7 +332,7 @@ export default defineBackground(() => {
     return typeof reported === 'number' && Number.isFinite(reported) ? reported : next;
   }
   async function applyTransport(tabId: number, host: string, action: HotkeyAction) {
-    const { media, failed, typing } = await collect(tabId, host);
+    const { media, failed, typing } = await collect(tabId);
     const saved = lockedId(tabId, media, failed);
     if (saved && !media.some(item => item.id === saved)) return false;
     if (typing && (action.type === 'mirror' || action.type === 'mark')) return false;
@@ -364,7 +364,7 @@ export default defineBackground(() => {
     return true;
   }
   async function applyMediaStep(tabId: number, host: string, direction: 1 | -1) {
-    const { media, failed, typing } = await collect(tabId, host);
+    const { media, failed, typing } = await collect(tabId);
     if (typing) return false;
     if (media.length < 2) {
       if (media.length === 1) showAction(tabId, 'mediaOnlyOne');
@@ -409,7 +409,7 @@ export default defineBackground(() => {
       try { url = (await browser.tabs.get(tabId))?.url ?? ''; }
       catch { continue; }
       if (!/^https?:\/\//.test(url) || !isSiteEnabled(url, settings)) continue;
-      const { media, failed } = await collect(tabId, new URL(url).hostname);
+      const { media, failed } = await collect(tabId);
       const saved = keptSelection(selectedIds.get(tabId) ?? '', media.map(item => item.id), failed);
       if (saved && !media.some(item => item.id === saved)) continue;
       if (lockedMedia(media, saved)?.pip === true) return { id: tabId, url };
@@ -579,9 +579,10 @@ export default defineBackground(() => {
         if (message.type === 'read') {
           if (!enabled) return { host, enabled, media: [], selectedId: '' };
           // Only the panel (an extension page) pays for the ledger read; the in-page pill skips it.
+          // Exclusion follows each media's own document host, like the save gate: an excluded iframe
+          // inside an unexcluded page shows no resume controls for that media.
           const attachResume = sender.tab ? (media: MediaState[]) => media : async (media: MediaState[]) => {
-            if (isResumeExcluded(host, settings.resumeExcludedSites)) return media;
-            const keys = [...new Set(media.map(item => item.resumeKey).filter((key): key is string => typeof key === 'string'))];
+            const keys = [...new Set(media.filter(item => !isResumeExcluded(item.host ?? '', settings.resumeExcludedSites)).map(item => item.resumeKey).filter((key): key is string => typeof key === 'string'))];
             if (!keys.length) return media;
             const stored = await browser.storage.local.get(keys);
             return media.map(item => {
@@ -589,11 +590,11 @@ export default defineBackground(() => {
               return isResumeEntry(entry) ? { ...item, resume: entry.time } : item;
             });
           };
-          const { media, failed } = await collect(tabId, host);
+          const { media, failed } = await collect(tabId);
           const selectedId = lockedId(tabId, media, failed);
           const target = lockedMedia(media, selectedId);
           if (target && await applySitePref(tabId, host, target.id, settings.sitePrefs, settings.defaultRate)) {
-            const refreshed = await collect(tabId, host);
+            const refreshed = await collect(tabId);
             return { host, enabled, media: await attachResume(refreshed.media), selectedId: lockedId(tabId, refreshed.media, refreshed.failed) };
           }
           return { host, enabled, media: await attachResume(media), selectedId };
@@ -617,7 +618,7 @@ export default defineBackground(() => {
         }
         if (message.type === 'holdRate') {
           if (!settings.holdBoost) return { handled: false };
-          return { handled: await startHold(tabId, host, settings.holdBoostRate) };
+          return { handled: await startHold(tabId, settings.holdBoostRate) };
         }
         if (message.type === 'hotkey') {
           if (!isHotkeyAction(message.action)) throw new Error(i18n.t('invalidCommand'));
@@ -633,9 +634,15 @@ export default defineBackground(() => {
           if (message.command.type === 'volume' || message.command.type === 'mute') gestures.delete(tabId);
           let pipWasOn: boolean | null = null;
           if (message.command.type === 'pip') {
-            const { media } = await collect(tabId, host);
+            const { media } = await collect(tabId);
             const current = media.find(item => item.id === mediaId);
             if (current) pipWasOn = current.pip === true;
+          }
+          // Excluded sites do not jump; the panel hides the entry, so this only stops stale panels.
+          if (message.command.type === 'resume' && message.command.action === 'jump') {
+            const { media } = await collect(tabId);
+            const current = media.find(item => item.id === mediaId);
+            if (current && isResumeExcluded(current.host ?? '', settings.resumeExcludedSites)) return { ok: true };
           }
           let applied: unknown;
           try {

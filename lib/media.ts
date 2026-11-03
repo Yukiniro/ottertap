@@ -489,27 +489,31 @@ export function createMediaController(document: Document, onChange?: () => void,
     return ids.get(element)!;
   };
   const playWatchers = new Set<HTMLMediaElement>();
-  // A media counts as tried for resume once its duration and seekable ranges are known, jump or not.
-  const resumeTried = new WeakSet<HTMLMediaElement>();
   const onElementPlay = (event: Event) => {
     const element = event.currentTarget as HTMLMediaElement | null;
     if (!element?.isConnected) return;
     onPlaying?.(idOf(element));
   };
-  const onElementReady = (event: Event) => {
-    const element = event.currentTarget as HTMLMediaElement | null;
-    if (!element?.isConnected || !resume || resumeTried.has(element)) return;
+  // Keyed by media identity, not the element: a player reusing its element for another source still resumes once.
+  const resumeTried = new WeakMap<HTMLMediaElement, string>();
+  const attemptResume = (element: HTMLMediaElement) => {
+    if (!element.isConnected || !resume) return;
     const report = readResume(element);
-    // Short, live, or not yet seekable. A later durationchange retries, so the clock only starts here.
+    // Short, live, or not yet seekable. Becoming seekable only fires progress, so that retries too.
     if (!report) return;
-    resumeTried.add(element);
     if (!resume.auto()) return;
+    if (resumeTried.get(element) === report.media) return;
+    resumeTried.set(element, report.media);
     void readResumeEntry(resume.area, resumePage(document.URL), report.media).then(entry => {
       if (!entry || !element.isConnected) return;
       const target = resumeJumpTarget(entry, element.currentTime);
       if (target == null) return;
       void applyMediaCommand(element, { type: 'seek', value: target }).then(() => resume.onJumped(idOf(element), target), () => {});
     }).catch(() => {});
+  };
+  const onElementReady = (event: Event) => {
+    const element = event.currentTarget as HTMLMediaElement | null;
+    if (element) attemptResume(element);
   };
   // Per element, because media events do not cross a shadow root to reach the document.
   const onElementProgress = (event: Event) => {
@@ -526,6 +530,7 @@ export function createMediaController(document: Document, onChange?: () => void,
     element.removeEventListener('pause', onElementProgress);
     element.removeEventListener('loadedmetadata', onElementReady);
     element.removeEventListener('durationchange', onElementReady);
+    element.removeEventListener('progress', onElementReady);
   };
   const watchPlay = (element: HTMLMediaElement) => {
     if ((!onPlaying && !onProgress && !resume) || playWatchers.has(element)) return;
@@ -538,6 +543,9 @@ export function createMediaController(document: Document, onChange?: () => void,
     if (resume) {
       element.addEventListener('loadedmetadata', onElementReady);
       element.addEventListener('durationchange', onElementReady);
+      element.addEventListener('progress', onElementReady);
+      // Media whose metadata arrived before discovery never fires those events again.
+      if (element.readyState >= 1) attemptResume(element);
     }
   };
   const refresh = () => {

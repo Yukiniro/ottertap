@@ -69,7 +69,8 @@ export default defineContentScript({
       void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'register', volume: decision.volume }).catch(() => {});
     };
     const resumeDue = createResumeClock();
-    const pageHost = () => { try { return new URL(pageUrl).hostname; } catch { return ''; } };
+    // The exclusion list follows the media's own document (an iframe counts its own host, like the save gate), not the tab's.
+    const pageHost = () => { try { return new URL(document.URL).hostname; } catch { return ''; } };
     const controller = createMediaController(document, reportVolume, () => {
       void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'rateLock' }).catch(() => {});
     }, id => {
@@ -284,6 +285,9 @@ export default defineContentScript({
     const floatingWhilePlayingLoad = floatingWhilePlayingEpoch;
     void extensionStore.load().then(settings => {
       if (floatingWhilePlayingEpoch !== floatingWhilePlayingLoad) return;
+      // Without this, watched only fills on a settings change and auto-resume never fires on a plain load.
+      watched = settings;
+      applyWatched();
       floatingWhilePlaying = settings.floatingWhilePlaying;
     }).catch(() => {});
     ctx.onInvalidated(() => {
