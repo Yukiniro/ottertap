@@ -3,6 +3,7 @@ import { canAmplify, createAmplifier, isChannelMode, maxGain, splitVolume, type 
 import { armRateEcho, createRateLockState, noteDesiredRate, observePlaybackRate, rateLockEpsilon, type RateLockState } from './rate-lock';
 import { assignedRateAttribute, assignedRateEvent, installAssignedRateHook } from './assigned-rate';
 import { clampRate, maxRate, minRate, noteRecallRate, readSettledRate, recallableRate, sameRate } from './rate';
+import { readResume, readResumeEntry, removeResumeEntry, resumeContinueFrom, resumeEntryKey, resumeJumpTarget, resumePage, type ResumeArea } from './resume';
 import type { ChannelMode, MediaCommand, MediaState } from './types';
 import { adjacentFrameTime, frameStepSeconds, stopAllPresentedFrames, stopPresentedFrames, watchPresentedFrames } from './frame';
 import { isHorizontallyMirrored, setHorizontalMirror } from './mirror';
@@ -148,6 +149,7 @@ function mediaAddress(element: HTMLMediaElement) {
 export function mediaSnapshot(element: HTMLMediaElement, id: string, document: Document, amplifier?: Amplifier): MediaState {
   const ranges = element.seekable;
   const label = element.getAttribute('aria-label')?.trim() || element.getAttribute('title')?.trim() || '';
+  const resume = readResume(element);
   return {
     id, label, file: mediaFileName(mediaAddress(element)), title: label || document.title || i18n.t('unnamedMedia'),
     host: new URL(document.URL).hostname,
@@ -161,7 +163,8 @@ export function mediaSnapshot(element: HTMLMediaElement, id: string, document: D
     channel: amplifier?.channel(element) ?? 'stereo',
     channelAvailable: routable(element, amplifier),
     mirrored: isHorizontallyMirrored(element),
-    ...progressMarkField(element)
+    ...progressMarkField(element),
+    ...(resume ? { resumeKey: resumeEntryKey(resumePage(document.URL), resume.media) } : {})
   };
 }
 
@@ -246,6 +249,7 @@ export function isMediaCommand(value: unknown): value is MediaCommand {
   if (command.type === 'mirror') return typeof command.value === 'boolean';
   if (command.type === 'frame') return command.direction === 1 || command.direction === -1;
   if (command.type === 'mark') return command.action === 'set' || command.action === 'jump' || command.action === 'clear';
+  if (command.type === 'resume') return command.action === 'jump' || command.action === 'clear';
   if (!('value' in command) || !Number.isFinite(command.value)) return false;
   if (command.type === 'volume') return command.value >= 0 && command.value <= maxGain;
   if (command.type === 'rate') return command.value >= minRate && command.value <= maxRate;
@@ -322,10 +326,10 @@ export function frameFailureKey(message: string): 'frameStepUnavailable' | '' {
   return message === i18n.t('frameStepUnavailable') ? 'frameStepUnavailable' : '';
 }
 
-const mirrorMarkFailureKeys = ['mirrorUnavailableAudio', 'markUnavailable', 'markMissing', 'cannotSeek'] as const;
+const mirrorMarkFailureKeys = ['mirrorUnavailableAudio', 'markUnavailable', 'markMissing', 'cannotSeek', 'resumeMissing'] as const;
 export type MirrorMarkFailureKey = (typeof mirrorMarkFailureKeys)[number];
 
-/** Map a rejected mirror or mark command back to the existing short explanation. */
+/** Map a rejected mirror, mark, or resume command back to the existing short explanation. */
 export function mirrorMarkFailureKey(message: string): MirrorMarkFailureKey | '' {
   for (const key of mirrorMarkFailureKeys) if (message === i18n.t(key)) return key;
   return '';
@@ -333,7 +337,16 @@ export function mirrorMarkFailureKey(message: string): MirrorMarkFailureKey | ''
 
 interface RateSlot { state: RateLockState; timer: number; listening: boolean; onEvent: () => void }
 
-export function createMediaController(document: Document, onChange?: () => void, onRateLockGiveUp?: () => void, onPlaying?: (localId: string) => void, onProgress?: (localId: string, element: HTMLMediaElement, paused: boolean) => void) {
+/** Ledger access for continuing from stored progress. `auto` and `onJumped` are read live. */
+export interface ResumeControl {
+  area: ResumeArea;
+  /** Whether a freshly opened media should continue from its stored progress. */
+  auto: () => boolean;
+  /** Reported once after an automatic jump landed, with the moment it jumped to. */
+  onJumped: (localId: string, seconds: number) => void;
+}
+
+export function createMediaController(document: Document, onChange?: () => void, onRateLockGiveUp?: () => void, onPlaying?: (localId: string) => void, onProgress?: (localId: string, element: HTMLMediaElement, paused: boolean) => void, resume?: ResumeControl) {
   let nextId = 0;
   const ids = new WeakMap<HTMLMediaElement, string>();
   let elements: HTMLMediaElement[] = [];
@@ -481,6 +494,27 @@ export function createMediaController(document: Document, onChange?: () => void,
     if (!element?.isConnected) return;
     onPlaying?.(idOf(element));
   };
+  // Keyed by media identity, not the element: a player reusing its element for another source still resumes once.
+  const resumeTried = new WeakMap<HTMLMediaElement, string>();
+  const attemptResume = (element: HTMLMediaElement) => {
+    if (!element.isConnected || !resume) return;
+    const report = readResume(element);
+    // Short, live, or not yet seekable. Becoming seekable only fires progress, so that retries too.
+    if (!report) return;
+    if (!resume.auto()) return;
+    if (resumeTried.get(element) === report.media) return;
+    resumeTried.set(element, report.media);
+    void readResumeEntry(resume.area, resumePage(document.URL), report.media).then(entry => {
+      if (!entry || !element.isConnected) return;
+      const target = resumeJumpTarget(entry, element.currentTime);
+      if (target == null) return;
+      void applyMediaCommand(element, { type: 'seek', value: target }).then(() => resume.onJumped(idOf(element), target), () => {});
+    }).catch(() => {});
+  };
+  const onElementReady = (event: Event) => {
+    const element = event.currentTarget as HTMLMediaElement | null;
+    if (element) attemptResume(element);
+  };
   // Per element, because media events do not cross a shadow root to reach the document.
   const onElementProgress = (event: Event) => {
     const element = event.currentTarget as HTMLMediaElement | null;
@@ -494,14 +528,24 @@ export function createMediaController(document: Document, onChange?: () => void,
     element.removeEventListener('play', onElementPlay);
     element.removeEventListener('timeupdate', onElementProgress);
     element.removeEventListener('pause', onElementProgress);
+    element.removeEventListener('loadedmetadata', onElementReady);
+    element.removeEventListener('durationchange', onElementReady);
+    element.removeEventListener('progress', onElementReady);
   };
   const watchPlay = (element: HTMLMediaElement) => {
-    if ((!onPlaying && !onProgress) || playWatchers.has(element)) return;
+    if ((!onPlaying && !onProgress && !resume) || playWatchers.has(element)) return;
     playWatchers.add(element);
     if (onPlaying) element.addEventListener('play', onElementPlay);
     if (onProgress) {
       element.addEventListener('timeupdate', onElementProgress);
       element.addEventListener('pause', onElementProgress);
+    }
+    if (resume) {
+      element.addEventListener('loadedmetadata', onElementReady);
+      element.addEventListener('durationchange', onElementReady);
+      element.addEventListener('progress', onElementReady);
+      // Media whose metadata arrived before discovery never fires those events again.
+      if (element.readyState >= 1) attemptResume(element);
     }
   };
   const refresh = () => {
@@ -607,6 +651,19 @@ export function createMediaController(document: Document, onChange?: () => void,
     async command(id: string, command: MediaCommand) {
       const element = elements.find(media => ids.get(media) === id && media.isConnected);
       if (!element) throw new Error(i18n.t('mediaRemoved'));
+      if (command.type === 'resume') {
+        if (!resume) throw new Error(i18n.t('resumeMissing'));
+        const report = readResume(element);
+        if (!report) throw new Error(i18n.t('markUnavailable'));
+        const page = resumePage(document.URL);
+        if (command.action === 'clear') { await removeResumeEntry(resume.area, page, report.media); return; }
+        const entry = await readResumeEntry(resume.area, page, report.media);
+        if (!entry) throw new Error(i18n.t('resumeMissing'));
+        // An explicit ask jumps even when the media already sits past the stored moment.
+        const target = resumeContinueFrom(entry);
+        await applyMediaCommand(element, { type: 'seek', value: target });
+        return target;
+      }
       if (command.type === 'rate') {
         const leaving = recallableRate(element.playbackRate);
         if (leaving != null) recall = leaving;

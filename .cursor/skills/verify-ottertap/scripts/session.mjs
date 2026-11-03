@@ -7571,7 +7571,7 @@ async function driveResumeSave(context, dir, note) {
 
     const settingsAfter = await settingsText();
     if (settingsAfter !== settingsBefore) throw new Error(`接着看改写了设置：before=${settingsBefore} after=${settingsAfter}`);
-    if (settingsAfter.includes('resume')) throw new Error('设置里出现了 resume');
+    if (settingsAfter.includes(prefix)) throw new Error('账本键混进了设置');
     const state = { ok: true, permissions, periodic: first, paused: pausedEntry, reopened: kept, long: longEntry, clipDuration, finishedRemoved: true, clearedEmpty: true, settingsSame: true };
     await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
     return state;

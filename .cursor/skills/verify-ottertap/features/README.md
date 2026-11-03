@@ -53,4 +53,9 @@
 | 音量药丸里的画中画 | [float-pip.md](float-pip.md) | 展开音量药丸，播放控制旁的 `Picture-in-picture` / `Exit picture-in-picture`。一点进入，再点退出。音频、网站禁用、浏览器不支持或尚未就绪时禁用，说明与弹出面板相同。不改贴边和位置 | `drive float-pip`；`tests/float-pip.test.ts` |
 | 页内快捷键 → 画中画 | [page-pip.md](page-pip.md) | 设置页「Keyboard shortcuts」里的 `Enter or exit picture-in-picture`。默认不占键。绑上后页内切换，和面板、药丸、扩展命令同一条路径。输入框聚焦时不触发。不可用时短句与面板相同 | `drive page-pip`；`tests/page-pip-keybinds.test.ts`、`tests/page-pip-command.test.ts` |
 | 进出画中画的页内提示 | [pip-feedback.md](pip-feedback.md) | 弹出面板、音量药丸、页内键和扩展命令在进入或退出画中画成功时，用倍速那一块短暂字样。失败用原来的短说明。没有提示总开关，默认显示 | `drive pip-feedback`；`tests/pip-feedback.test.ts` |
-| 接着看：保存进度 | [resume-save.md](resume-save.md) | 播放当前选中、可 seek、约 2 分钟以上的媒体。每约 10 秒和暂停时把进度写进 `chrome.storage.local` 的 `ottertap-resume-v1:` 键，关标签再开仍在。短片、直播、不可 seek、隐身窗口、停用站点不写；接近片尾删掉；最多 200 条。还没有界面，也不自动跳回 | `drive resume-save`；`tests/resume-save.test.ts` |
+| 接着看：保存进度 | [resume-save.md](resume-save.md) | 播放当前选中、可 seek、约 2 分钟以上的媒体。每约 10 秒和暂停时把进度写进 `chrome.storage.local` 的 `ottertap-resume-v1:` 键，关标签再开仍在。短片、直播、不可 seek、隐身窗口、停用站点不写；接近片尾删掉；最多 200 条 | `drive resume-save`；`tests/resume-save.test.ts` |
+| 接着看：自动跳回 | [resume-jump.md](resume-jump.md) | 重新打开有进度的页面时，可 seek 的媒体自动跳到上次进度减三秒；站方已放到更后面或停在附近时不跳，每条媒体只跳一次。设置「接着看」里的开关默认开，关掉仍保存只是不跳 | `tests/resume-jump.test.ts` |
+| 接着看：跳回提示 | [resume-jump-feedback.md](resume-jump-feedback.md) | 自动跳回或面板「跳到接着看」成功时，用倍速那一块短暂显示「从 xx:xx 继续」。手动拖动不触发，失败不出假成功 | `tests/resume-jump.test.ts` |
+| 接着看：按站点排除 | [resume-excluded-sites.md](resume-excluded-sites.md) | 设置「接着看」里的「不在这些站接着看」名单，按域名含子域名匹配。排除站不写新进度、不自动跳回、面板不显示入口，旧记录仍在列表里可删；与其他名单独立，随设置导出 | `tests/resume-settings.test.ts`、`tests/resume-jump.test.ts` |
+| 接着看：进度列表与清空 | [resume-ledger.md](resume-ledger.md) | 设置「接着看」底部的进度列表：名称、域名、时刻、多久前更新。删单条不要确认，清空全部要二次确认；清空只动账本键 | `tests/resume-settings.test.ts` |
+| 接着看：面板跳转与清除 | [resume-panel-jump.md](resume-panel-jump.md) | 弹出面板进度行里当前媒体有进度时出现「跳到接着看」（title 带时刻，不可 seek 禁用）和「清除接着看」；没有进度不占位。与「跳到标记」文案分开 | `tests/resume-panel.test.ts`、`tests/resume-jump.test.ts` |

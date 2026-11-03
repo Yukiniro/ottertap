@@ -5,6 +5,7 @@ import { nextRate } from './rate';
 import { actualSkipSeconds, hintSkipSeconds } from './skip';
 import { isSkipSeconds, normalizeCoarseStep, normalizeSkipSeconds, normalizeVolumeStep } from './settings';
 import { steppedVolume, volumeStepForWheel } from './volume';
+import { formatTime } from './utils';
 import type { MediaCommand, MediaState, PageState, WheelDirection } from './types';
 
 export type HotkeyAction =
@@ -205,7 +206,8 @@ export function pipSuccessHintKey(inPip: boolean): PipSuccessHintKey {
 
 export function actionHintText(key: string, seconds?: number) {
   if (key === 'skipBack' || key === 'skipForward') return i18n.t(key, { seconds: hintSkipSeconds(seconds) });
-  if (key === 'play' || key === 'paused' || key === 'mute' || key === 'unmute' || key === 'shortcutFrameBack' || key === 'shortcutFrameForward' || key === 'frameStepUnavailable' || key === 'audioSelectedHint' || key === 'mediaOnlyOne' || key === 'mirrorOnHint' || key === 'mirrorOffHint' || key === 'markSetHint' || key === 'markJumpHint' || key === 'pipOnHint' || key === 'pipOffHint' || key === 'mirrorUnavailableAudio' || key === 'markUnavailable' || key === 'markMissing' || key === 'cannotSeek' || isPipFailureKey(key)) return i18n.t(key);
+  if (key === 'resumeJumpHint') return i18n.t(key, { time: formatTime(seconds ?? 0) });
+  if (key === 'play' || key === 'paused' || key === 'mute' || key === 'unmute' || key === 'shortcutFrameBack' || key === 'shortcutFrameForward' || key === 'frameStepUnavailable' || key === 'audioSelectedHint' || key === 'mediaOnlyOne' || key === 'mirrorOnHint' || key === 'mirrorOffHint' || key === 'markSetHint' || key === 'markJumpHint' || key === 'pipOnHint' || key === 'pipOffHint' || key === 'mirrorUnavailableAudio' || key === 'markUnavailable' || key === 'markMissing' || key === 'cannotSeek' || key === 'resumeMissing' || isPipFailureKey(key)) return i18n.t(key);
   return '';
 }
 

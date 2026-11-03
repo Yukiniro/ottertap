@@ -2,7 +2,7 @@
 
 当前选中、可 seek、时长约 2 分钟及以上的媒体，播放时每约 10 秒把进度写进本机扩展存储，暂停时立刻写一次。关掉标签、隔天再打开同一页，存储里还有这条进度。看到接近片尾时删掉这一条，不再记。短片、直播和不能 seek 的媒体不写。
 
-这是「接着看」的存储核心。自动跳回、提示、按站点排除、列表与清空、面板入口都不在这一程里，此时打开同一页不会自己跳过去。它与弹出面板的进度标记分开：进度标记仍只留在页面里，不写存储。
+这是「接着看」的存储核心。自动跳回、提示、按站点排除、列表与清空、面板入口分别在 [resume-jump.md](resume-jump.md)、[resume-jump-feedback.md](resume-jump-feedback.md)、[resume-excluded-sites.md](resume-excluded-sites.md)、[resume-ledger.md](resume-ledger.md)、[resume-panel-jump.md](resume-panel-jump.md)。它与弹出面板的进度标记分开：进度标记仍只留在页面里，不写存储。
 
 ## 存储
 
@@ -21,12 +21,12 @@
 - 只记选中的那一条。同一标签已有选中媒体时，另一条在播也不写。还没有选中时，播放中的那一条照写。
 - 不记。时长不足 120 秒、`duration` 为无限（直播）、没有可 seek 范围、隐身窗口、站点被停用时都不写。
 - 看完删掉。距片尾不到 30 秒或最后 5%（取大者）时删掉这一条。
-- 与设置无关。没有开关；后续的自动跳回开关只管跳不跳，不管存不存。权限仍只有 `storage`。
+- 与跳转开关无关。「自动跳回上次进度」只管重开时跳不跳，不管存不存；排除名单例外，排除站的播放本身就不写。权限仍只有 `storage`。
 
 ## How to get to it (user POV)
 
 1. 打开一个可以拖动进度、长于约两分钟的视频，播放一会儿，或者播放后暂停。
-2. 关掉这个标签，再打开同一页。扩展存储里还有刚才的进度（这一程还没有界面，用开发者工具看 `chrome.storage.local`）。
+2. 关掉这个标签，再打开同一页。扩展存储里还有刚才的进度（这一程只看存储；界面上设置页「接着看」的列表也能看到）。
 3. 打开一个几秒钟的短片、直播或还不能拖动进度的媒体，播放后存储里没有它。
 4. 拖到片尾附近再播放或暂停，这一条从存储里消失。
 
@@ -45,7 +45,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive resume-save
 5. 同时播放 `/video`（1 秒短片）和 `/long`（data 地址、120 秒，从 12 秒起）约 11 秒后暂停。`/long` 记成 `dur:120`，`/video` 没有。截 `long-saved.png`。
 6. `/unseekable` 尝试播放再暂停，没有记录。
 7. 讲座拖到 285 秒播放再暂停，这一条被删掉。
-8. 清掉账本键后重新打开 `/long` 且不播放，账本仍是空的。设置原文与开始时相同，里面没有 `resume`。
+8. 清掉账本键后重新打开 `/long` 且不播放，账本仍是空的。设置原文与开始时相同，设置对象里没有账本前缀的键（`resumeJump`、`resumeExcludedSites` 这两个设置字段属正常）。
 
 成功时 `state.json` 的 `ok` 为 `true`。证据在 `/opt/cursor/artifacts/verify-ottertap/resume-save/`：`lecture-playing.png`、`popup-paused.png`、`reopened.png`、`long-saved.png`、`ledger.json`、`state.json`、`transcript.txt`。
 
@@ -57,3 +57,4 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive resume-save
 - `/unseekable` 没有地址，`play()` 的 promise 不会结束，不要 `await` 它。
 - `/long` 正好 120 秒，算「约 2 分钟」，其他会播放 `/long` 的旅程也会留下 `dur:120` 这一条；它们不比对整份存储，`progress-mark` 不播放，所以不受影响。
 - 关标签时不另写一次，播放中关掉最多少记约 10 秒。「关标签再开」看的是暂停时写下的那一条。
+- 现在重开会自动跳回那条减三秒（见 [resume-jump.md](resume-jump.md)）；跳转本身不写存储，第 4 步的 `time` 和 `savedAt` 断言不受影响，`reopened.png` 里视频停在跳回处属正常。

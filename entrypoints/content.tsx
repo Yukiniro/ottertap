@@ -9,7 +9,7 @@ import { createMediaController, isMediaCommand, mediaPresenceEvent } from '../li
 import { rateLockEvent } from '../lib/rate-lock';
 import { createResumeClock, readResume } from '../lib/resume';
 import { maxEffectiveVolume, shouldReportVolume, volumeReportIntervalMs } from '../lib/volume-badge';
-import { isSiteEnabled, normalizeHoldRate, normalizeSkipSeconds, normalizeVolumeStep } from '../lib/settings';
+import { isSiteEnabled, isResumeExcluded, normalizeHoldRate, normalizeSkipSeconds, normalizeVolumeStep } from '../lib/settings';
 import { normalizeKeybinds } from '../lib/keybinds';
 import { extensionStore } from '../lib/extension-store';
 import { createExtensionClient } from '../lib/extension-client';
@@ -69,6 +69,8 @@ export default defineContentScript({
       void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'register', volume: decision.volume }).catch(() => {});
     };
     const resumeDue = createResumeClock();
+    // The exclusion list follows the media's own document (an iframe counts its own host, like the save gate), not the tab's.
+    const pageHost = () => { try { return new URL(document.URL).hostname; } catch { return ''; } };
     const controller = createMediaController(document, reportVolume, () => {
       void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'rateLock' }).catch(() => {});
     }, id => {
@@ -78,6 +80,13 @@ export default defineContentScript({
       if (!enabled || !resumeDue(element, paused, Date.now())) return;
       const report = readResume(element);
       if (report) void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'resume', id, ...report }).catch(() => {});
+    }, {
+      area: browser.storage.local,
+      // Settings may not have arrived when a media loads first; that media stays where it is.
+      auto: () => enabled && !!watched && watched.resumeJump && !isResumeExcluded(pageHost(), watched.resumeExcludedSites),
+      onJumped: (_id, time) => {
+        void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'resumeJumped', time }).catch(() => {});
+      }
     });
     const applyWatched = () => {
       if (!pageUrl || !watched) return;
@@ -152,7 +161,9 @@ export default defineContentScript({
           controller.snapshot();
           const applied = await controller.command(message.id, message.command);
           if (message.command.type === 'volume' || message.command.type === 'mute') reportVolume();
-          return message.command.type === 'rate' ? { ok: true, rate: applied } : { ok: true };
+          if (message.command.type === 'rate') return { ok: true, rate: applied };
+          if (message.command.type === 'resume') return { ok: true, resumeTime: applied };
+          return { ok: true };
         } catch (error) { return { error: error instanceof Error ? error.message : i18n.t('mediaCommandFailed') }; }
       }
       })().then(sendResponse, () => sendResponse({ error: i18n.t('mediaMessageFailed') }));
@@ -274,6 +285,9 @@ export default defineContentScript({
     const floatingWhilePlayingLoad = floatingWhilePlayingEpoch;
     void extensionStore.load().then(settings => {
       if (floatingWhilePlayingEpoch !== floatingWhilePlayingLoad) return;
+      // Without this, watched only fills on a settings change and auto-resume never fires on a plain load.
+      watched = settings;
+      applyWatched();
       floatingWhilePlaying = settings.floatingWhilePlaying;
     }).catch(() => {});
     ctx.onInvalidated(() => {

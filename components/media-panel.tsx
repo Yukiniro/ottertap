@@ -1,7 +1,7 @@
 import { i18n } from '#i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { ChevronDown, EyeOff, Settings2, Settings as SettingsIcon, Volume2, VolumeX, AppWindow, Pause, Play, RotateCcw, RotateCw, Keyboard, CircleAlert, Info, Search, RefreshCw, PictureInPicture2, Headphones, Minus, Plus, StepBack, StepForward, Bookmark, BookmarkX, CornerDownLeft } from 'lucide-react';
+import { ChevronDown, EyeOff, Settings2, Settings as SettingsIcon, Volume2, VolumeX, AppWindow, Pause, Play, RotateCcw, RotateCw, Keyboard, CircleAlert, Info, Search, RefreshCw, PictureInPicture2, Headphones, Minus, Plus, StepBack, StepForward, Bookmark, BookmarkX, CornerDownLeft, History, X } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from './ui/dropdown-menu';
@@ -235,6 +235,8 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
   const canMark = canStep;
   const progressMark = canMark && typeof selected?.mark === 'number' && Number.isFinite(selected.mark) ? selected.mark : null;
   const progressMarkLeft = progressMark == null ? null : markLeft(progressMark, seekMin, seekMax);
+  // Filled by the background from the ledger; absent when this media has no stored progress.
+  const resumeTime = typeof selected?.resume === 'number' && Number.isFinite(selected.resume) ? selected.resume : null;
   const volume = selected ? Math.round((selected.muted ? 0 : selected.volume) * 100) : 0;
   const hint = selected ? pipHint(selected) : '';
   const inPip = selected ? showsPictureInPicture(selected) : false;
@@ -287,6 +289,10 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
           <Button type="button" variant="ghost" size="icon-xs" className="text-muted-foreground data-set:bg-accent data-set:text-primary" aria-label={i18n.t('setMark')} title={canMark ? i18n.t('setMark') : i18n.t('markUnavailable')} aria-describedby="progress-mark-status" disabled={!canMark} data-set={progressMark != null ? '' : undefined} onClick={() => void command({ type: 'mark', action: 'set' })}><Bookmark /></Button>
           <Button type="button" variant="ghost" size="icon-xs" className="text-muted-foreground" aria-label={i18n.t('jumpToMark')} title={canMark ? i18n.t('jumpToMark') : i18n.t('markUnavailable')} aria-describedby="progress-mark-status" disabled={!canMark || progressMark == null} onClick={() => void command({ type: 'mark', action: 'jump' })}><CornerDownLeft /></Button>
           <Button type="button" variant="ghost" size="icon-xs" className="text-muted-foreground" aria-label={i18n.t('clearMark')} title={canMark ? i18n.t('clearMark') : i18n.t('markUnavailable')} aria-describedby="progress-mark-status" disabled={!canMark || progressMark == null} onClick={() => void command({ type: 'mark', action: 'clear' })}><BookmarkX /></Button>
+          {resumeTime != null && <>
+            <Button type="button" variant="ghost" size="icon-xs" className="text-muted-foreground" aria-label={i18n.t('jumpToResume')} title={`${i18n.t('jumpToResume')} · ${formatTime(resumeTime)}`} aria-describedby="progress-mark-status" disabled={!canSeek} onClick={() => void command({ type: 'resume', action: 'jump' })}><History /></Button>
+            <Button type="button" variant="ghost" size="icon-xs" className="text-muted-foreground" aria-label={i18n.t('clearResume')} title={i18n.t('clearResume')} onClick={() => void command({ type: 'resume', action: 'clear' })}><X /></Button>
+          </>}
         </div>
         <p id="progress-mark-status" aria-live="polite" className={canMark ? 'sr-only' : 'mt-1 text-xs text-muted-foreground'}>{!canMark ? i18n.t('markUnavailable') : progressMark == null ? '' : i18n.t('markAt', { time: formatTime(progressMark) })}</p>
         <p id="frame-step-hint" className={canStep ? 'sr-only' : 'mt-1 text-xs text-muted-foreground'}>{canStep ? i18n.t('frameStepHint') : i18n.t('frameStepUnavailable')}</p>

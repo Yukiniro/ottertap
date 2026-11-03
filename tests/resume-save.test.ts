@@ -198,7 +198,8 @@ test('后台：只记启用站点、非隐身标签里当前选中的那一条�
 
     const stored = await fakeBrowser.storage.local.get(null);
     assert.equal(stored['ottertap-settings-v1'] !== undefined, true);
-    assert.ok(!JSON.stringify(stored['ottertap-settings-v1']).includes('resume'), '账本不进设置');
+    const savedSettings = Object.keys(stored['ottertap-settings-v1']!);
+    assert.ok(savedSettings.every(key => !key.startsWith(resumePrefix)), '账本键不进设置');
   } finally {
     sendMessage.mock.restore();
     fakeBrowser.reset();

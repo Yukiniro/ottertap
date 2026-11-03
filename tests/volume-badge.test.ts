@@ -149,7 +149,7 @@ test('service worker 重启后仍记得 iframe，快捷键找得到它', async (
   const seen: number[] = [];
   const sendMessage = mock.method(fakeBrowser.tabs, 'sendMessage', async (_tabId: number, _message: { type: string }, options?: { frameId?: number }) => {
     seen.push(options?.frameId ?? 0);
-    return { media: [{ id: '7', volume: 1, maxVolume: 1, muted: false, paused: false, rate: 1 }] };
+    return { media: [{ id: '7', host: 'example.com', volume: 1, maxVolume: 1, muted: false, paused: false, rate: 1 }] };
   });
   try {
     const background = await import('../entrypoints/background');

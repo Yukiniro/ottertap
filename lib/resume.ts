@@ -11,6 +11,10 @@ export const resumeLimit = 200;
 /** Shorter media is a clip, not something to come back to. */
 export const resumeMinDuration = 120;
 export const resumeSaveIntervalMs = 10_000;
+/** Rewind by a moment when continuing, so a few seconds around the stop are heard again. */
+export const resumeBackSeconds = 3;
+/** A site that already moved this far must have kept its own progress; do not jump. */
+export const resumeAheadSeconds = 5;
 
 export interface ResumeEntry {
   /** Address of the document that holds the media, without the fragment. */
@@ -53,6 +57,17 @@ export function resumeTailSeconds(duration: number) {
   return Math.max(30, duration * 0.05);
 }
 
+/** Where a jump lands: the stored moment, rewound a little. */
+export function resumeContinueFrom(entry: Pick<ResumeEntry, 'time'>) {
+  return Math.max(0, entry.time - resumeBackSeconds);
+}
+
+/** Where an automatic jump lands. Null when the media already sits past the stored moment. */
+export function resumeJumpTarget(entry: Pick<ResumeEntry, 'time'>, currentTime = 0) {
+  const target = resumeContinueFrom(entry);
+  return target > currentTime + resumeAheadSeconds ? target : null;
+}
+
 /** `skip` writes nothing, `drop` forgets a finished media, `save` records the position. */
 export function resumeVerdict(report: Pick<ResumeReport, 'time' | 'duration'>): 'skip' | 'drop' | 'save' {
   const { time, duration } = report;
@@ -87,7 +102,7 @@ export function createResumeClock(interval = resumeSaveIntervalMs) {
   };
 }
 
-function isResumeEntry(value: unknown): value is ResumeEntry {
+export function isResumeEntry(value: unknown): value is ResumeEntry {
   if (!value || typeof value !== 'object') return false;
   const entry = value as Partial<ResumeEntry>;
   return typeof entry.page === 'string' && typeof entry.media === 'string' && Number.isFinite(entry.time) && Number.isFinite(entry.duration) && Number.isFinite(entry.savedAt);
@@ -111,6 +126,44 @@ export interface ResumeArea {
   get(keys: null): Promise<Record<string, unknown>>;
   set(items: Record<string, unknown>): Promise<void>;
   remove(keys: string | string[]): Promise<void>;
+}
+
+/** The one stored entry for this media, or null. */
+export async function readResumeEntry(area: Pick<ResumeArea, 'get'>, page: string, media: string) {
+  if (!page || !media) return null;
+  const entry = (await area.get(null))[resumeEntryKey(page, media)];
+  return isResumeEntry(entry) && entry.page === page && entry.media === media ? entry : null;
+}
+
+/** Removes one media's stored progress. */
+export async function removeResumeEntry(area: Pick<ResumeArea, 'remove'>, page: string, media: string) {
+  if (!page || !media) return;
+  await area.remove(resumeEntryKey(page, media));
+}
+
+/** Removes every stored progress entry, malformed ones included. */
+export async function clearResumeEntries(area: Pick<ResumeArea, 'get' | 'remove'>) {
+  const keys = Object.keys(await area.get(null)).filter(key => key.startsWith(resumePrefix));
+  if (keys.length) await area.remove(keys);
+}
+
+/** Hostname of the page an entry belongs to, for the settings list. */
+export function resumeEntryHost(entry: Pick<ResumeEntry, 'page'>) {
+  try { return new URL(entry.page).hostname; }
+  catch { return ''; }
+}
+
+/** Short list name from the stored identity: the file part of an http(s) source, else nothing. */
+export function resumeEntryTitle(entry: Pick<ResumeEntry, 'media'>) {
+  if (!entry.media.startsWith('src:')) return '';
+  let segment = '';
+  try { segment = new URL(entry.media.slice(4)).pathname.split('/').filter(Boolean).pop() ?? ''; }
+  catch { return ''; }
+  try { segment = decodeURIComponent(segment); }
+  catch { /* keep the encoded segment */ }
+  const stem = segment.replace(/\.[a-z0-9]{1,8}$/i, '');
+  const text = (stem || segment).trim();
+  return text.length > 48 ? `${text.slice(0, 47)}…` : text;
 }
 
 /** Applies one report for `page`. Callers serialize writes so eviction sees every earlier save. Invalid reports write nothing. */
