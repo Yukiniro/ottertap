@@ -131,7 +131,7 @@ test('取消后倒计时消失、播放不变，并且可以再设', async () =>
     const text = view.trigger()?.textContent ?? '';
     assert.ok(text === '15:00' || text === '14:59', `再设后倒计时回来：${text}`);
     assert.equal(view.query('#sleep-timer-feedback'), null, '再设之后收起弹层，取消说明不再占着');
-    assert.match(view.query('#sleep-timer-status')?.textContent ?? '', /后暂停$/);
+    assert.match(view.query('#sleep-timer-status')?.textContent ?? '', /^睡眠还剩 (15:00|14:59)$/);
   } finally { await view.close(); }
 });
 

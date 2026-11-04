@@ -109,6 +109,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive resume-save
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer-cancel
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer-hints
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive remaining-at-rate
 ```
 
 `skip-step` 在设置页把 `Skip step` 改成 `30s` 并打开 `Single-key mode`，再看弹出面板进退按钮名和页内 `L` / `J` / `→` / `←` 让 `/long` 夹具的 `currentTime` 跟着步长变；它会改写 profile，同一会话只能跑一次。步骤见 `features/skip-step.md`。
@@ -310,6 +311,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive resume-save
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer-cancel
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer-hints
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive remaining-at-rate
 node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 ```
 
@@ -566,3 +568,13 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer-hints
 `sleep-timer-hints` 先确认设置页 `Warn about a minute before` 默认开。`/long` 上用自定义 2 分钟开定时，页面出现 `Sleep 2 min`，随后消失，媒体仍在播。取消后出现 `Sleep cancelled`，播放不变。再设 2 分钟，大约 60 秒后出现 `About 1 minute left`，再到点出现 `Sleep timer ended, paused` 并暂停。关掉开关后再设 2 分钟，开始和取消仍有提示，至少 70 秒内不再出现临近那句。成功时把开关开回去。字样与倍速提示同一块，不挡点击。权限仍只有 `storage`。整程大约 4 分钟。步骤见 `features/sleep-timer-hints.md`。
 
 写入 `sleep-timer-hints/`：`settings-on.png`、`toast-start.png`、`toast-cancel.png`、`toast-start-again.png`、`toast-soon.png`、`toast-due.png`、`fixture-paused.png`、`settings-off.png`、`toast-start-while-off.png`、`toast-cancel-while-off.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
+## 本集剩余
+
+```bash
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive remaining-at-rate
+```
+
+`remaining-at-rate` 在暂停的 `/long` 上确认进度条还在，并且 `#episode-remaining` 按 1× 写出本集剩余。点 `2× speed` 后秒数约为媒体时钟剩余的一半，再点 `1.5× speed` 数字再变。接着开 15 分钟睡眠，状态是 `Sleep left …`，本集那一句仍在，两句不混。取消后把这条视频换成无限时长的直播，这一行消失、右侧变成 `Live`。`/unseekable` 上也不出现，右侧是 `--:--`。面板高度不超过 600px。设置原文不变，权限仍只有 `storage`。它不改 profile。步骤见 `features/remaining-at-rate.md`。
+
+写入 `remaining-at-rate/`：`popup-1x.png`、`popup-2x.png`、`popup-1.5x.png`、`popup-with-sleep.png`、`popup-live.png`、`unseekable-popup.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。

@@ -20,6 +20,7 @@ import { channelModes, isChannelMode } from '../lib/amplifier';
 import { canStepFrames } from '../lib/frame';
 import { channelLabel, mediaListLabel, pipHint, showsPictureInPicture } from '../lib/media';
 import { formatRate, nextRate, sameRate } from '../lib/rate';
+import { remainingWallSeconds } from '../lib/remaining';
 import { actualSkipSeconds } from '../lib/skip';
 import type { SleepTimerClient } from '../lib/sleep-timer';
 import type { SoundingTab, SoundingTabsClient } from '../lib/tabs';
@@ -247,7 +248,8 @@ export function MediaPanel({ client, openSettings, sounding, sleep, initial }: {
   const slowerRate = selected ? nextRate(playbackRate, -1, null, rateStep) : 1;
   const fasterRate = selected ? nextRate(playbackRate, 1, null, rateStep) : 1;
   const showSiteAction = page.enabled && !outOfSync && !!siteAction?.settings;
-  return <section className="flex w-[400px] max-w-full flex-col gap-3 bg-background px-4 pt-1 pb-3" aria-label={i18n.t('mediaPanel')}>
+  const wallLeft = selected ? remainingWallSeconds({ currentTime: seekDraft ?? selected.currentTime, duration: selected.duration, rate: playbackRate, live: selected.live, seekable: selected.seekable }) : null;
+  return <section className="flex w-[400px] max-w-full flex-col gap-2 bg-background px-4 pt-1 pb-2" aria-label={i18n.t('mediaPanel')}>
     <header className="flex h-10 items-center justify-between">
       <Brand className="text-sm [&_img]:size-6" />
       <div className="flex items-center gap-1">
@@ -299,6 +301,7 @@ export function MediaPanel({ client, openSettings, sounding, sleep, initial }: {
             <Button type="button" variant="ghost" size="icon-xs" className="text-muted-foreground" aria-label={i18n.t('clearResume')} title={i18n.t('clearResume')} onClick={() => void command({ type: 'resume', action: 'clear' })}><X /></Button>
           </>}
         </div>
+        {wallLeft != null && <p id="episode-remaining" className="text-xs leading-4 text-muted-foreground tabular-nums">{i18n.t('episodeRemaining', { time: formatTime(wallLeft), rate: formatRate(playbackRate) })}</p>}
         <p id="progress-mark-status" aria-live="polite" className={canMark ? 'sr-only' : 'mt-1 text-xs text-muted-foreground'}>{!canMark ? i18n.t('markUnavailable') : progressMark == null ? '' : i18n.t('markAt', { time: formatTime(progressMark) })}</p>
         <p id="frame-step-hint" className={canStep ? 'sr-only' : 'mt-1 text-xs text-muted-foreground'}>{canStep ? i18n.t('frameStepHint') : i18n.t('frameStepUnavailable')}</p>
         {hint ? <p id="pip-hint" className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}

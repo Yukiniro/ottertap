@@ -122,7 +122,7 @@ test('选一个档位后关闭弹层并显示倒计时', async () => {
     const text = view.trigger()?.textContent ?? '';
     assert.ok(text === '30:00' || text === '29:59', `倒计时可见：${text}`);
     assert.equal(view.trigger()?.hasAttribute('data-running'), true);
-    assert.match(view.query('#sleep-timer-status')?.textContent ?? '', /^(30:00|29:59) 后暂停$/);
+    assert.match(view.query('#sleep-timer-status')?.textContent ?? '', /^睡眠还剩 (30:00|29:59)$/);
     assert.equal(view.trigger()?.getAttribute('aria-describedby'), 'sleep-timer-status');
   } finally { await view.close(); }
 });
