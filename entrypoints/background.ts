@@ -587,7 +587,10 @@ export default defineBackground(() => {
           // Only the top frame holds the timer. Whoever is controlled when it runs out is the one that stops.
           if (!sender.tab || (sender.frameId ?? 0) !== 0 || !enabled) return { ok: true };
           const target = await controlledMedia(tabId);
-          if (target && !target.paused) await deliver(tabId, target.id, 'command', { type: 'pause' });
+          // Already paused, or the media is gone: there is no successful pause to announce.
+          if (!target || target.paused) return { ok: true };
+          await deliver(tabId, target.id, 'command', { type: 'pause' });
+          showAction(tabId, 'sleepDueHint');
           return { ok: true };
         }
         // Only extension pages and this tab's content scripts can request controls.
@@ -642,12 +645,16 @@ export default defineBackground(() => {
           const sleepAt = Date.now() + minutes * 60_000;
           const armed = await browser.tabs.sendMessage(tabId, { namespace: 'ottertap', type: 'sleep', at: sleepAt }, { frameId: 0 });
           if (armed?.ok !== true) throw new Error(armed?.error || i18n.t('pageUnavailable'));
+          showAction(tabId, 'sleepStartHint', minutes);
           return { ok: true, sleepAt };
         }
         if (message.type === 'sleepCancel' || message.type === 'sleepExtend') {
           const armed = await browser.tabs.sendMessage(tabId, { namespace: 'ottertap', type: message.type }, { frameId: 0 });
           if (armed?.ok !== true) throw new Error(armed?.error || i18n.t('pageUnavailable'));
-          if (message.type === 'sleepCancel') return { ok: true };
+          if (message.type === 'sleepCancel') {
+            showAction(tabId, 'sleepCancelHint');
+            return { ok: true };
+          }
           if (typeof armed.sleepAt !== 'number' || !Number.isFinite(armed.sleepAt)) throw new Error(i18n.t('pageUnavailable'));
           return { ok: true, sleepAt: armed.sleepAt };
         }
