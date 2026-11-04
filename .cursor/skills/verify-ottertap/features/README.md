@@ -59,4 +59,4 @@
 | 接着看：按站点排除 | [resume-excluded-sites.md](resume-excluded-sites.md) | 设置「接着看」里的「不在这些站接着看」名单，按域名含子域名匹配。排除站不写新进度、不自动跳回、面板不显示入口，旧记录仍在列表里可删；与其他名单独立，随设置导出 | `tests/resume-settings.test.ts`、`tests/resume-jump.test.ts` |
 | 接着看：进度列表与清空 | [resume-ledger.md](resume-ledger.md) | 设置「接着看」底部的进度列表：名称、域名、时刻、多久前更新。删单条不要确认，清空全部要二次确认；清空只动账本键 | `tests/resume-settings.test.ts` |
 | 接着看：面板跳转与清除 | [resume-panel-jump.md](resume-panel-jump.md) | 弹出面板进度行里当前媒体有进度时出现「跳到接着看」（title 带时刻，不可 seek 禁用）和「清除接着看」；没有进度不占位。与「跳到标记」文案分开 | `tests/resume-panel.test.ts`、`tests/resume-jump.test.ts` |
-| 睡眠定时 | [sleep-timer.md](sleep-timer.md) | 弹出面板底部的 `Sleep timer`：15 / 30 / 45 / 60 分钟或 1–180 自定义分钟。倒计时挂在标签页里，关面板不取消；到点硬暂停这时的当前选中，换选中不立刻停旧的。没有媒体时禁用并说明。不写存储，不新开权限 | `drive sleep-timer`；`tests/sleep-timer.test.ts`、`tests/sleep-timer-background.test.ts`、`tests/sleep-timer-panel.test.ts` |
+| 睡眠定时 | [sleep-timer.md](sleep-timer.md) | 弹出面板标题栏的月亮按钮 `Sleep timer`：15 / 30 / 45 / 60 分钟或 1–180 自定义分钟。倒计时挂在标签页里，关面板不取消；到点硬暂停这时的当前选中，换选中不立刻停旧的。没有媒体时标为不可用，点开只给说明。不写存储，不新开权限 | `drive sleep-timer`；`tests/sleep-timer.test.ts`、`tests/sleep-timer-background.test.ts`、`tests/sleep-timer-panel.test.ts` |

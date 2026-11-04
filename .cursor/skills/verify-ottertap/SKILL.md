@@ -531,6 +531,6 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive resume-save
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer
 ```
 
-`sleep-timer` 先在没有媒体的 `/silent` 上确认面板 `Sleep timer` 禁用并写着 `No media to pause on this page.`。`/long` 上入口默认写 `Off`，点开有 `Pause in 15 minutes` 到 `Pause in 60 minutes` 四档和 `Custom minutes`；选 15 分钟后按钮显示倒计时，再用自定义 1 分钟替换。`/feed` 上对 `Feed preview` 开 1 分钟后换到 `Main player`，两条都不立刻停。关掉面板再开，倒计时还在。约 60 秒后 `/long` 暂停、进度留在原处、标签还开着；`/feed` 只停 `Main player`。设置原文不变，存储里没有定时，权限仍只有 `storage`。为了等到期，整程约 70 秒。它不改 profile。步骤见 `features/sleep-timer.md`。
+`sleep-timer` 先在没有媒体的 `/silent` 上确认面板标题栏的 `Sleep timer` 标为不可用，点开只写着 `No media to pause on this page.`。`/long` 上入口默认只有图标、面板高度不超过 600px，点开有 `Pause in 15 minutes` 到 `Pause in 60 minutes` 四档和 `Custom minutes`；选 15 分钟后按钮显示倒计时，再用自定义 1 分钟替换。`/feed` 上对 `Feed preview` 开 1 分钟后换到 `Main player`，两条都不立刻停。关掉面板再开，倒计时还在。约 60 秒后 `/long` 暂停、进度留在原处、标签还开着；`/feed` 只停 `Main player`。设置原文不变，存储里没有定时，权限仍只有 `storage`。为了等到期，整程约 70 秒。它不改 profile。步骤见 `features/sleep-timer.md`。
 
 写入 `sleep-timer/`：`popup-no-media.png`、`popup-off.png`、`popup-presets.png`、`popup-15.png`、`popup-custom.png`、`feed-switched.png`、`popup-reopened.png`、`popup-expired.png`、`fixture-paused.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
