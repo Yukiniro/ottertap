@@ -44,6 +44,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-feedback
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-active
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-away-tab
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-auto-hide
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive resume-save
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer-cancel
@@ -68,7 +69,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip', 'page-pip', 'pip-feedback', 'pip-active', 'pip-away-tab', 'resume-save', 'sleep-timer', 'sleep-timer-cancel', 'sleep-timer-hints', 'remaining-at-rate'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip', 'page-pip', 'pip-feedback', 'pip-active', 'pip-away-tab', 'pip-auto-hide', 'resume-save', 'sleep-timer', 'sleep-timer-cancel', 'sleep-timer-hints', 'remaining-at-rate'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -3240,7 +3241,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip, 'page-pip': drivePagePip, 'pip-feedback': drivePipFeedback, 'pip-active': drivePipActive, 'pip-away-tab': drivePipAwayTab, 'resume-save': driveResumeSave, 'sleep-timer': driveSleepTimer, 'sleep-timer-cancel': driveSleepTimerCancel, 'sleep-timer-hints': driveSleepTimerHints, 'remaining-at-rate': driveRemainingAtRate };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip, 'page-pip': drivePagePip, 'pip-feedback': drivePipFeedback, 'pip-active': drivePipActive, 'pip-away-tab': drivePipAwayTab, 'pip-auto-hide': drivePipAutoHide, 'resume-save': driveResumeSave, 'sleep-timer': driveSleepTimer, 'sleep-timer-cancel': driveSleepTimerCancel, 'sleep-timer-hints': driveSleepTimerHints, 'remaining-at-rate': driveRemainingAtRate };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -7396,6 +7397,276 @@ async function drivePipAwayTab(context, dir, note) {
     await away?.close().catch(() => {});
     await video?.close().catch(() => {});
     await settings?.close().catch(() => {});
+  }
+}
+
+// Playwright turns on focus emulation for every page it drives, which keeps `document.visibilityState` at `visible`
+// even behind another tab. Hiding a tab for real needs a browser reached without those overrides.
+async function launchPlainBrowser(note) {
+  const port = await freePort();
+  const profile = `${profileDir}-pip-auto-hide`;
+  await rm(profile, { recursive: true, force: true });
+  const proc = spawn(chromium.executablePath(), [
+    '--headless=new',
+    `--remote-debugging-port=${port}`,
+    `--user-data-dir=${profile}`,
+    '--no-first-run',
+    '--no-default-browser-check',
+    '--disable-component-extensions-with-background-pages',
+    '--window-size=1280,720',
+    `--disable-extensions-except=${extensionPath}`,
+    `--load-extension=${extensionPath}`,
+    '--lang=en-US',
+    '--accept-lang=en-US',
+    'about:blank',
+  ], { stdio: 'ignore' });
+  const stop = async () => {
+    if (proc.exitCode == null && proc.signalCode == null) {
+      proc.kill('SIGTERM');
+      await Promise.race([new Promise(resolve => proc.once('exit', resolve)), new Promise(resolve => setTimeout(resolve, 4_000))]);
+      if (proc.exitCode == null && proc.signalCode == null) proc.kill('SIGKILL');
+    }
+    await rm(profile, { recursive: true, force: true }).catch(() => {});
+  };
+  try {
+    const deadline = Date.now() + 20_000;
+    while (true) {
+      try { if ((await fetch(`http://127.0.0.1:${port}/json/version`)).ok) break; } catch { /* not up yet */ }
+      if (Date.now() > deadline) throw new Error('没有普通连接的 Chromium 起来');
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    const browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`, { noDefaults: true });
+    note(`plain browser pid=${proc.pid} port=${port} profile=${profile}`);
+    return { browser, context: browser.contexts()[0], stop: async () => { await browser.close().catch(() => {}); await stop(); } };
+  } catch (error) {
+    await stop();
+    throw error;
+  }
+}
+
+async function drivePipAutoHide(_sessionContext, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const plain = await launchPlainBrowser(note);
+  const { context } = plain;
+  let other;
+  try {
+    await context.route(`${origin}/**`, async route => {
+      const body = routedHtml(new URL(route.request().url()).pathname);
+      if (!body) { await route.fulfill({ status: 404, contentType: 'text/plain', body: 'not found' }); return; }
+      await route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', headers: { 'cache-control': 'no-store' }, body });
+    });
+    const ours = item => item.url().endsWith('/background.js');
+    const worker = context.serviceWorkers().find(ours) ?? await context.waitForEvent('serviceworker', { predicate: ours, timeout: 20_000 });
+    const extensionId = new URL(worker.url()).host;
+    const uiLanguage = await worker.evaluate(() => chrome.i18n.getUILanguage());
+    if (!uiLanguage.toLowerCase().startsWith('en')) throw new Error(`UI 语言是 ${uiLanguage}`);
+    const permissions = await worker.evaluate(() => chrome.runtime.getManifest().permissions ?? []);
+    if (JSON.stringify(permissions) !== JSON.stringify(['storage'])) throw new Error(`权限变了：${JSON.stringify(permissions)}`);
+    const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+    const label = 'Picture-in-picture when you switch tabs';
+
+    const fixture = context.pages()[0] ?? await context.newPage();
+    await fixture.goto(`${origin}/video`, { waitUntil: 'domcontentloaded' });
+    await fixture.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    const cdp = await context.newCDPSession(fixture);
+    const { targetInfo } = await cdp.send('Target.getTargetInfo');
+    const { targetId: otherId } = await cdp.send('Target.createTarget', { url: `${origin}/silent`, newWindow: false });
+    other = otherId;
+    await cdp.send('Target.activateTarget', { targetId: targetInfo.targetId });
+    // Playwright's own evaluate counts as a user gesture. These reads go through CDP without one,
+    // so the click on the page stays the only activation the browser sees.
+    const plainEval = async expression => {
+      const { result, exceptionDetails } = await cdp.send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
+      if (exceptionDetails) throw new Error(exceptionDetails.text);
+      return result.value;
+    };
+    const watch = () => plainEval(`(() => {
+      window.__otterVis = [];
+      if (!window.__otterVisHooked) {
+        window.__otterVisHooked = true;
+        document.addEventListener('visibilitychange', () => window.__otterVis.push(document.visibilityState));
+      }
+    })()`);
+    const read = () => plainEval(`(() => ({
+      visibility: document.visibilityState,
+      gesture: navigator.userActivation.isActive,
+      seen: [...(window.__otterVis ?? [])],
+      pip: document.pictureInPictureElement?.id ?? '',
+      kind: document.querySelector('#media')?.localName ?? '',
+      paused: document.querySelector('#media')?.paused ?? null,
+      hint: [...document.querySelectorAll('*')].map(node => node.shadowRoot?.textContent ?? '').join(' ').match(/Picture-in-picture (on|off)|blocked picture-in-picture|Couldn't switch picture-in-picture/g) ?? [],
+    }))()`);
+    const paint = () => fixture.locator('#media').evaluate(async element => {
+      if (!(element instanceof HTMLVideoElement)) { await element.play().catch(() => {}); return { ok: !element.paused, kind: element.localName }; }
+      const canvas = document.createElement('canvas');
+      canvas.width = 64;
+      canvas.height = 36;
+      const drawing = canvas.getContext('2d');
+      drawing.fillStyle = '#c45c26';
+      drawing.fillRect(0, 0, 64, 36);
+      element.srcObject = canvas.captureStream(5);
+      element.muted = true;
+      await element.play().catch(() => {});
+      const deadline = performance.now() + 2_000;
+      while (element.videoWidth === 0 && performance.now() < deadline) await new Promise(resolve => setTimeout(resolve, 50));
+      return { ok: !element.paused && element.videoWidth > 0, kind: 'video' };
+    });
+    // A click on an empty spot of the page is the recent gesture a browser asks for before allowing picture-in-picture.
+    const touchPage = () => fixture.mouse.click(8, 8);
+    const leaveTab = async () => {
+      await watch();
+      await cdp.send('Target.activateTarget', { targetId: other });
+      await poll(read, value => value.visibility === 'hidden', '切到另一个标签后，夹具页应变成 hidden');
+      await new Promise(resolve => setTimeout(resolve, 1_200));
+      return read();
+    };
+    const comeBack = async () => {
+      await cdp.send('Target.activateTarget', { targetId: targetInfo.targetId });
+      await fixture.bringToFront();
+      await poll(read, value => value.visibility === 'visible', '回到夹具页后应为 visible');
+    };
+    const pill = () => fixture.getByRole('dialog', { name: 'Volume pill' });
+    const openPill = async () => {
+      if (await pill().isVisible().catch(() => false)) return;
+      await fixture.getByRole('button', { name: /volume pill/i }).click();
+      await pill().waitFor({ state: 'visible', timeout: 5_000 });
+    };
+    const pillButton = async name => {
+      await openPill();
+      const button = pill().getByRole('button', { name, exact: true });
+      await button.waitFor({ state: 'visible', timeout: 5_000 });
+      return button;
+    };
+
+    const settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#playback`, { waitUntil: 'domcontentloaded' });
+    const toggle = settings.locator('#playback').getByRole('switch', { name: label });
+    await toggle.waitFor({ state: 'visible', timeout: 15_000 });
+    if (await toggle.getAttribute('aria-checked') !== 'false') throw new Error('开关默认应为关');
+    if ((await stored()).autoPipOnHide === true) throw new Error('存储里默认不应打开');
+    await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-off.png'), animations: 'disabled' });
+    note(`settings ${label} defaults off`);
+
+    await comeBack();
+    const painted = await paint();
+    if (!painted.ok) throw new Error(`夹具视频没有画面或没在播：${JSON.stringify(painted)}`);
+    await new Promise(resolve => setTimeout(resolve, 800));
+    await touchPage();
+    const off = await leaveTab();
+    if (!off.seen.includes('hidden') || off.pip) throw new Error(`开关关闭时切走标签不应进入画中画：${JSON.stringify(off)}`);
+    await comeBack();
+    await fixture.screenshot({ path: path.join(dir, 'fixture-off.png'), animations: 'disabled' });
+    note(`off: tab hidden, no picture-in-picture ${JSON.stringify(off)}`);
+
+    await settings.bringToFront();
+    await toggle.click();
+    await poll(() => toggle.getAttribute('aria-checked'), value => value === 'true', '点击后开关应为开');
+    await poll(stored, value => value.autoPipOnHide === true, '存储里应写入 autoPipOnHide: true');
+    await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-on.png'), animations: 'disabled' });
+    note('settings switched on, storage autoPipOnHide=true');
+
+    await comeBack();
+    if ((await read()).paused !== false) throw new Error('打开开关后夹具视频应仍在播放');
+    await touchPage();
+    const entered = await leaveTab();
+    if (entered.pip !== 'media') throw new Error(`打开后，播放中视频切走标签应进入画中画：${JSON.stringify(entered)}`);
+    await comeBack();
+    const exitButton = await pillButton('Exit picture-in-picture');
+    await pill().screenshot({ path: path.join(dir, 'pill-entered.png'), animations: 'disabled' });
+    note(`on: playing video entered picture-in-picture on hide ${JSON.stringify(entered)}`);
+
+    await exitButton.click();
+    await poll(read, value => value.pip === '', '从药丸退出后应离开画中画');
+    const exitedAt = Date.now();
+    await touchPage();
+    const cooling = await leaveTab();
+    if (cooling.pip) throw new Error(`刚手动退出后的冷却期内不应再进：${JSON.stringify(cooling)}`);
+    await comeBack();
+    note(`cooldown: left the tab ${Date.now() - exitedAt}ms after exit, stayed out ${JSON.stringify(cooling)}`);
+
+    await new Promise(resolve => setTimeout(resolve, Math.max(0, exitedAt + 10_500 - Date.now())));
+    await touchPage();
+    const again = await leaveTab();
+    if (again.pip !== 'media') throw new Error(`冷却期过后应能再次自动进入：${JSON.stringify(again)}`);
+    await comeBack();
+    note(`after cooldown: entered again ${JSON.stringify(again)}`);
+    await (await pillButton('Exit picture-in-picture')).click();
+    await poll(read, value => value.pip === '', '再次退出画中画');
+    const secondExit = Date.now();
+
+    await (await pillButton('Pause')).click();
+    await poll(read, value => value.paused === true, '药丸暂停后视频应暂停');
+    await new Promise(resolve => setTimeout(resolve, Math.max(0, secondExit + 10_500 - Date.now())));
+    await touchPage();
+    const paused = await leaveTab();
+    if (paused.pip) throw new Error(`暂停中不应进入：${JSON.stringify(paused)}`);
+    await comeBack();
+    await fixture.screenshot({ path: path.join(dir, 'fixture-paused.png'), animations: 'disabled' });
+    note(`paused: stayed out ${JSON.stringify(paused)}`);
+
+    await (await pillButton('Play')).click();
+    await poll(read, value => value.paused === false, '药丸播放后视频应在播');
+    // Let the click's activation run out, so the browser refuses a request made on hide.
+    await poll(read, value => value.gesture === false, '点击带来的激活应过期', 10_000);
+    const refused = await leaveTab();
+    if (refused.pip) throw new Error(`没有近期手势时浏览器应拒绝：${JSON.stringify(refused)}`);
+    await comeBack();
+    const quiet = await read();
+    if (quiet.hint.length) throw new Error(`拒绝后不应出现提示：${JSON.stringify(quiet.hint)}`);
+    if (await fixture.locator('[role="alert"]').count()) throw new Error('拒绝后页面不应出现警告');
+    await fixture.screenshot({ path: path.join(dir, 'fixture-refused.png'), animations: 'disabled' });
+    note(`refused without a recent gesture: silent ${JSON.stringify(refused)}`);
+    await (await pillButton('Pause')).click();
+
+    await fixture.goto(`${origin}/audio`, { waitUntil: 'domcontentloaded' });
+    await fixture.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    // The shared audio clip is one second long; looping keeps it playing while the tab is hidden.
+    await plainEval(`document.querySelector('#media').loop = true`);
+    await (await pillButton('Play')).click();
+    await poll(read, value => value.kind === 'audio' && value.paused === false, '音频应在播');
+    await new Promise(resolve => setTimeout(resolve, 800));
+    await touchPage();
+    const audio = await leaveTab();
+    if (audio.paused !== false) throw new Error(`切走时音频应仍在播：${JSON.stringify(audio)}`);
+    if (audio.pip) throw new Error(`音频不应进入画中画：${JSON.stringify(audio)}`);
+    await comeBack();
+    await fixture.screenshot({ path: path.join(dir, 'fixture-audio.png'), animations: 'disabled' });
+    note(`audio: stayed out ${JSON.stringify(audio)}`);
+
+    await worker.evaluate(async () => {
+      const key = 'ottertap-settings-v1';
+      const current = (await chrome.storage.local.get(key))[key] ?? {};
+      await chrome.storage.local.set({ [key]: { ...current, siteMode: 'exclude', sites: ['media.ottertap.test'] } });
+    });
+    await poll(stored, value => value.siteMode === 'exclude' && (value.sites ?? []).join() === 'media.ottertap.test', '应停用夹具站点');
+    await fixture.goto(`${origin}/video`, { waitUntil: 'domcontentloaded' });
+    await fixture.waitForFunction(() => document.querySelector('#media')?.readyState >= 1, null, { timeout: 8_000 });
+    if (!(await paint()).ok) throw new Error('停用站点上的夹具视频没在播');
+    await new Promise(resolve => setTimeout(resolve, 800));
+    await touchPage();
+    const excluded = await leaveTab();
+    if (excluded.pip) throw new Error(`停用的网站不应进入：${JSON.stringify(excluded)}`);
+    await comeBack();
+    await fixture.screenshot({ path: path.join(dir, 'fixture-excluded.png'), animations: 'disabled' });
+    note(`site turned off: stayed out ${JSON.stringify(excluded)}`);
+    await worker.evaluate(async () => {
+      const key = 'ottertap-settings-v1';
+      const current = (await chrome.storage.local.get(key))[key] ?? {};
+      await chrome.storage.local.set({ [key]: { ...current, siteMode: 'all', sites: [] } });
+    });
+
+    await settings.bringToFront();
+    await toggle.click();
+    await poll(stored, value => value.autoPipOnHide === false && value.siteMode === 'all', '结束时应关掉开关并恢复全部网站');
+    const final = await stored();
+    if (JSON.stringify(final.sitePrefs ?? {}) !== '{}') throw new Error(`不应写入 sitePrefs：${JSON.stringify(final.sitePrefs)}`);
+    note('restored: switch off, all sites, sitePrefs empty');
+    const state = { ok: true, off, entered, cooling, again, paused, refused, audio, excluded, sitePrefs: {}, permissions };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await plain.stop();
   }
 }
 
