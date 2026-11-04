@@ -45,6 +45,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-active
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-away-tab
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive resume-save
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -64,7 +65,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip', 'page-pip', 'pip-feedback', 'pip-active', 'pip-away-tab', 'resume-save'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip', 'page-pip', 'pip-feedback', 'pip-active', 'pip-away-tab', 'resume-save', 'sleep-timer'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -252,6 +253,7 @@ function routedHtml(pathname) {
   if (pathname === '/playlist') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Playlist page</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="alpha" title="Alpha reel" src="${wav}" preload="auto" playsinline style="display:block;width:160px;height:90px;margin:8px"></video><video id="beta" title="Beta reel" src="${wav}" preload="auto" playsinline style="display:block;width:160px;height:90px;margin:8px"></video><video id="gamma" title="Gamma reel" src="${wav}" preload="auto" playsinline style="display:block;width:160px;height:90px;margin:8px"></video><video id="delta" src="delta-reel.mp4" preload="none" style="display:block;width:160px;height:90px;margin:8px"></video><video id="echo" preload="none" style="display:block;width:160px;height:90px;margin:8px"></video></body></html>`;
   if (pathname === '/pip-off') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" aria-label="Fixture video" src="${wav}" preload="auto" playsinline disablepictureinpicture style="display:block;width:640px;height:360px;margin:48px"></video></body></html>`;
   if (pathname === '/unseekable') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Unseekable</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" aria-label="Unseekable video" preload="none" style="display:block;width:640px;height:360px;margin:48px"></video></body></html>`;
+  if (pathname === '/silent') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>No media</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><p>Plain text page.</p></body></html>`;
   if (pathname === '/tone-current') return tonePage('Current show');
   if (pathname === '/tone-music') return tonePage('Music tab');
   if (pathname === '/tone-meeting') return tonePage('Meeting tab');
@@ -379,7 +381,7 @@ async function openActionPopup(context, fixture, options = {}) {
     const result = await send('Page.captureScreenshot', { format: 'png' });
     await writeFile(file, Buffer.from(result.data, 'base64'));
   };
-  const view = await poll(() => evaluate(popupView), value => value?.region && value.button, '弹出面板应出现 Media controls 和播放按钮');
+  const view = await poll(() => evaluate(popupView), value => value?.region && (options.empty || value.button), options.empty ? '弹出面板应出现 Media controls' : '弹出面板应出现 Media controls 和播放按钮');
   return {
     evaluate,
     view: () => evaluate(popupView),
@@ -3235,7 +3237,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip, 'page-pip': drivePagePip, 'pip-feedback': drivePipFeedback, 'pip-active': drivePipActive, 'pip-away-tab': drivePipAwayTab, 'resume-save': driveResumeSave };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip, 'page-pip': drivePagePip, 'pip-feedback': drivePipFeedback, 'pip-active': drivePipActive, 'pip-away-tab': drivePipAwayTab, 'resume-save': driveResumeSave, 'sleep-timer': driveSleepTimer };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -7579,6 +7581,199 @@ async function driveResumeSave(context, dir, note) {
     await context.unroute(`${lectureOrigin}/**`, serveLecture).catch(() => {});
     await popup?.close().catch(() => {});
     for (const page of [lecture, reopened, clip, long, blocked, fresh]) await page?.close().catch(() => {});
+  }
+}
+
+const sleepTimerView = `(() => {
+  const trigger = document.querySelector('button[aria-label="Sleep timer"]');
+  const labels = [...document.querySelectorAll('button')].map(node => node.getAttribute('aria-label') || '');
+  return {
+    heading: document.querySelector('h1')?.textContent?.trim() ?? '',
+    play: labels.find(label => label === 'Play' || label === 'Pause') ?? '',
+    present: Boolean(trigger),
+    disabled: !trigger || Boolean(trigger.disabled),
+    text: trigger?.textContent?.trim() ?? '',
+    running: Boolean(trigger?.hasAttribute('data-running')),
+    describedBy: trigger?.getAttribute('aria-describedby') ?? '',
+    hint: document.querySelector('#sleep-timer-hint')?.textContent?.trim() ?? '',
+    status: document.querySelector('#sleep-timer-status')?.textContent?.trim() ?? '',
+    presets: labels.filter(label => /^Pause in \\d+ minutes$/.test(label)),
+    custom: Boolean(document.querySelector('#sleep-timer-custom')),
+    scope: document.querySelector('[data-slot="popover-content"]')?.textContent ?? '',
+    alert: document.querySelector('[role="alert"]')?.textContent?.trim() ?? '',
+  };
+})()`;
+
+async function driveSleepTimer(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const permissions = await worker.evaluate(() => chrome.runtime.getManifest().permissions ?? []);
+  if (JSON.stringify(permissions) !== JSON.stringify(['storage'])) throw new Error(`权限应仍只有 storage：${JSON.stringify(permissions)}`);
+  const settingsText = () => worker.evaluate(async () => JSON.stringify((await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? null));
+  const storageText = () => worker.evaluate(async () => {
+    const local = await chrome.storage.local.get(null);
+    let session = null;
+    try { session = await chrome.storage.session.get(null); } catch { session = null; }
+    return JSON.stringify({ local, session });
+  });
+  const clock = text => text.split(':').reduce((total, part) => total * 60 + Number(part), 0);
+  const view = popup => popup.evaluate(sleepTimerView);
+  const openTimer = async popup => {
+    if (!await popup.evaluate(`(() => { const trigger = document.querySelector('button[aria-label="Sleep timer"]'); if (!trigger || trigger.disabled) return false; trigger.click(); return true; })()`)) throw new Error('睡眠定时入口点不开');
+    const shown = await poll(() => view(popup), value => value.presets.length === 4 && value.custom, '弹层里应有四个档位和自定义分钟');
+    // The popover fades in; a screenshot taken right away shows it half transparent.
+    await poll(() => popup.evaluate(`(() => { const node = document.querySelector('[data-slot="popover-content"]'); return !!node && node.getAnimations().every(item => item.playState !== 'running'); })()`), value => value === true, '档位弹层应已展开完');
+    return shown;
+  };
+  const startCustom = async (popup, minutes) => {
+    const started = await popup.evaluate(`(() => {
+      const input = document.querySelector('#sleep-timer-custom');
+      const submit = input?.form?.querySelector('button[type="submit"]');
+      if (!input || !submit) return false;
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, ${JSON.stringify(String(minutes))});
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      return true;
+    })()`);
+    if (!started) throw new Error('没有自定义分钟输入框');
+    await poll(() => popup.evaluate(`(() => !document.querySelector('#sleep-timer-custom')?.form?.querySelector('button[type="submit"]')?.disabled)()`), value => value === true, `${minutes} 分钟应可开始`);
+    await popup.evaluate(`(() => { document.querySelector('#sleep-timer-custom').form.querySelector('button[type="submit"]').click(); })()`);
+  };
+  const choose = async (popup, name) => {
+    if (!await popup.evaluate(`(() => { const trigger = document.getElementById('popup-media'); if (!trigger) return false; trigger.click(); return true; })()`)) throw new Error('没有媒体列表');
+    const picked = await poll(() => popup.evaluate(`(() => {
+      const item = [...document.querySelectorAll('[role="menuitemradio"]')].find(node => (node.textContent || '').includes(${JSON.stringify(name)}));
+      if (!item) return false;
+      item.click();
+      return true;
+    })()`), value => value === true, `应能选中 ${name}`);
+    if (!picked) throw new Error(`没有点到 ${name}`);
+    await poll(() => view(popup), value => value.heading === name, `面板标题应换成 ${name}`);
+  };
+  const start = async (page, selector) => {
+    await page.locator(selector).evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+      try { await element.play(); }
+      catch { element.muted = true; await element.play(); element.muted = false; }
+    });
+    await poll(() => page.locator(selector).evaluate(element => element.paused), value => value === false, `${selector} 应开始播放`);
+  };
+  const playing = (page, selector) => page.locator(selector).evaluate(element => ({ paused: element.paused, currentTime: element.currentTime, connected: element.isConnected }));
+  let popup = null;
+  let silent = null;
+  let long = null;
+  let feed = null;
+  try {
+    const settingsBefore = await settingsText();
+
+    silent = await context.newPage();
+    await silent.goto(`${origin}/silent`, { waitUntil: 'domcontentloaded' });
+    popup = await openActionPopup(context, silent, { empty: true });
+    const empty = await poll(() => view(popup), value => value.present && value.disabled && value.hint === 'No media to pause on this page.' && value.describedBy === 'sleep-timer-hint' && value.text === 'Off' && !value.play, '没有媒体时入口应禁用并有短说明');
+    await popup.evaluate(`(() => document.querySelector('button[aria-label="Sleep timer"]')?.click())()`);
+    await silent.waitForTimeout(300);
+    const stillClosed = await view(popup);
+    if (stillClosed.presets.length) throw new Error('没有媒体时点入口也打开了档位');
+    await popup.screenshot(path.join(dir, 'popup-no-media.png'));
+    note(`no media: hint=${JSON.stringify(empty.hint)} text=${empty.text}`);
+    await popup.close();
+    popup = null;
+
+    long = await context.newPage();
+    await long.goto(`${origin}/long`, { waitUntil: 'domcontentloaded' });
+    await long.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await long.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+      element.pause();
+      element.currentTime = 5;
+    });
+    popup = await openActionPopup(context, long);
+    const idle = await poll(() => view(popup), value => value.heading === 'Long video' && value.present && !value.disabled && value.text === 'Off' && !value.running && !value.hint, '有媒体时入口可用，默认不开');
+    await popup.screenshot(path.join(dir, 'popup-off.png'));
+    await popup.click('Play');
+    await poll(() => playing(long, '#media'), value => !value.paused, '/long 应开始播放');
+    const menu = await openTimer(popup);
+    if (JSON.stringify(menu.presets) !== JSON.stringify(['Pause in 15 minutes', 'Pause in 30 minutes', 'Pause in 45 minutes', 'Pause in 60 minutes'])) throw new Error(`档位不对：${JSON.stringify(menu.presets)}`);
+    if (!menu.scope.includes('Pauses only the media OtterTap controls in this tab.')) throw new Error(`弹层没写清只停当前这条：${menu.scope}`);
+    await popup.screenshot(path.join(dir, 'popup-presets.png'));
+    note(`idle text=${idle.text} presets=${menu.presets.join(' / ')}`);
+
+    await popup.click('Pause in 15 minutes');
+    const fifteen = await poll(() => view(popup), value => value.running && value.presets.length === 0 && clock(value.text) > 14 * 60 && clock(value.text) <= 15 * 60 && value.status === `Pauses in ${value.text}` && !value.alert, '选 15 分钟后弹层收起并显示倒计时');
+    await popup.screenshot(path.join(dir, 'popup-15.png'));
+    note(`15 min countdown=${fifteen.text}`);
+
+    await openTimer(popup);
+    await startCustom(popup, 1);
+    const custom = await poll(() => view(popup), value => value.running && value.presets.length === 0 && clock(value.text) > 45 && clock(value.text) <= 60 && !value.alert, '自定义 1 分钟替换原来的 15 分钟');
+    const armedAt = Date.now();
+    await popup.screenshot(path.join(dir, 'popup-custom.png'));
+    note(`custom 1 min countdown=${custom.text}`);
+    await popup.close();
+    popup = null;
+
+    feed = await context.newPage();
+    await feed.goto(`${origin}/feed`, { waitUntil: 'domcontentloaded' });
+    await feed.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await start(feed, '#preview');
+    await start(feed, '#media');
+    popup = await openActionPopup(context, feed);
+    await choose(popup, 'Feed preview');
+    await openTimer(popup);
+    await startCustom(popup, 1);
+    await poll(() => view(popup), value => value.running && clock(value.text) > 45 && clock(value.text) <= 60, 'feed 上的定时开始');
+    const feedArmedAt = Date.now();
+    await choose(popup, 'Main player');
+    await feed.waitForTimeout(600);
+    const switched = { preview: await playing(feed, '#preview'), main: await playing(feed, '#media') };
+    if (switched.preview.paused || switched.main.paused) throw new Error(`换目标时不应立刻暂停：${JSON.stringify(switched)}`);
+    const feedView = await view(popup);
+    if (!feedView.running) throw new Error(`换目标后倒计时不该消失：${JSON.stringify(feedView)}`);
+    await popup.screenshot(path.join(dir, 'feed-switched.png'));
+    note(`feed armed, switched to Main player; countdown=${feedView.text}`);
+    await popup.close();
+    popup = null;
+
+    popup = await openActionPopup(context, long);
+    const reopened = await poll(() => view(popup), value => value.heading === 'Long video' && value.running && clock(value.text) < clock(custom.text) && clock(value.text) > 0, '关掉面板再打开，倒计时仍在并继续走');
+    const midway = await playing(long, '#media');
+    if (midway.paused) throw new Error('定时还没到 /long 就停了');
+    await popup.screenshot(path.join(dir, 'popup-reopened.png'));
+    note(`reopened countdown=${reopened.text} time=${midway.currentTime.toFixed(1)}`);
+    await popup.close();
+    popup = null;
+
+    const stopped = await poll(() => playing(long, '#media'), value => value.paused, '1 分钟到期后 /long 应暂停', Math.max(10_000, armedAt + 75_000 - Date.now()));
+    const elapsed = (Date.now() - armedAt) / 1000;
+    if (elapsed < 55) throw new Error(`到期太早：${elapsed.toFixed(1)} 秒`);
+    if (!(stopped.currentTime > midway.currentTime) || !stopped.connected) throw new Error(`暂停后进度应保留在原处：${JSON.stringify({ midway, stopped })}`);
+    await long.waitForTimeout(1_500);
+    const held = await playing(long, '#media');
+    if (!held.paused || Math.abs(held.currentTime - stopped.currentTime) > 0.05) throw new Error(`暂停后进度变了：${JSON.stringify({ stopped, held })}`);
+    if (long.isClosed()) throw new Error('到期关掉了标签');
+    note(`long paused after ${elapsed.toFixed(1)}s at ${stopped.currentTime.toFixed(1)}s`);
+
+    const feedStopped = await poll(async () => ({ preview: await playing(feed, '#preview'), main: await playing(feed, '#media') }), value => value.main.paused, 'feed 到期应暂停当前选中的 Main player', Math.max(10_000, feedArmedAt + 75_000 - Date.now()));
+    if (feedStopped.preview.paused) throw new Error(`feed 到期误停了原来那条 Feed preview：${JSON.stringify(feedStopped)}`);
+    note(`feed: main paused=${feedStopped.main.paused} preview paused=${feedStopped.preview.paused}`);
+
+    popup = await openActionPopup(context, long);
+    const expired = await poll(() => view(popup), value => value.heading === 'Long video' && value.play === 'Play' && value.text === 'Off' && !value.running && !value.alert, '到期后面板回到未定时，媒体是暂停');
+    await popup.screenshot(path.join(dir, 'popup-expired.png'));
+    await long.screenshot({ path: path.join(dir, 'fixture-paused.png') });
+    await popup.close();
+    popup = null;
+
+    const settingsAfter = await settingsText();
+    if (settingsAfter !== settingsBefore) throw new Error(`睡眠定时改写了设置：before=${settingsBefore} after=${settingsAfter}`);
+    const storage = await storageText();
+    if (/sleep/i.test(storage)) throw new Error(`扩展存储里出现了睡眠定时：${storage}`);
+    const state = { ok: true, permissions, noMedia: empty.hint, presets: menu.presets, fifteen: fifteen.text, custom: custom.text, reopened: reopened.text, pausedAfterSeconds: Number(elapsed.toFixed(1)), pausedAt: Number(stopped.currentTime.toFixed(2)), feedMainPaused: feedStopped.main.paused, feedPreviewPlaying: !feedStopped.preview.paused, expiredText: expired.text, settingsSame: true };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await popup?.close().catch(() => {});
+    for (const page of [silent, long, feed]) await page?.close().catch(() => {});
   }
 }
 
