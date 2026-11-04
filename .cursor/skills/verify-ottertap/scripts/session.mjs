@@ -48,6 +48,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer-cancel
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer-hints
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive remaining-at-rate
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -67,7 +68,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip', 'page-pip', 'pip-feedback', 'pip-active', 'pip-away-tab', 'resume-save', 'sleep-timer', 'sleep-timer-cancel', 'sleep-timer-hints'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip', 'page-pip', 'pip-feedback', 'pip-active', 'pip-away-tab', 'resume-save', 'sleep-timer', 'sleep-timer-cancel', 'sleep-timer-hints', 'remaining-at-rate'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -3239,7 +3240,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip, 'page-pip': drivePagePip, 'pip-feedback': drivePipFeedback, 'pip-active': drivePipActive, 'pip-away-tab': drivePipAwayTab, 'resume-save': driveResumeSave, 'sleep-timer': driveSleepTimer, 'sleep-timer-cancel': driveSleepTimerCancel, 'sleep-timer-hints': driveSleepTimerHints };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip, 'page-pip': drivePagePip, 'pip-feedback': drivePipFeedback, 'pip-active': drivePipActive, 'pip-away-tab': drivePipAwayTab, 'resume-save': driveResumeSave, 'sleep-timer': driveSleepTimer, 'sleep-timer-cancel': driveSleepTimerCancel, 'sleep-timer-hints': driveSleepTimerHints, 'remaining-at-rate': driveRemainingAtRate };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -7705,7 +7706,7 @@ async function driveSleepTimer(context, dir, note) {
     note(`idle inHeader=${idle.inHeader} panelHeight=${idle.panelHeight} presets=${menu.presets.join(' / ')}`);
 
     await popup.click('Pause in 15 minutes');
-    const fifteen = await poll(() => view(popup), value => value.running && value.presets.length === 0 && clock(value.text) > 14 * 60 && clock(value.text) <= 15 * 60 && value.status === `Pauses in ${value.text}` && !value.alert, '选 15 分钟后弹层收起并显示倒计时');
+    const fifteen = await poll(() => view(popup), value => value.running && value.presets.length === 0 && clock(value.text) > 14 * 60 && clock(value.text) <= 15 * 60 && value.status === `Sleep left ${value.text}` && !value.alert, '选 15 分钟后弹层收起并显示倒计时');
     await popup.screenshot(path.join(dir, 'popup-15.png'));
     note(`15 min countdown=${fifteen.text}`);
 
@@ -7880,7 +7881,7 @@ async function driveSleepTimerCancel(context, dir, note) {
     await popup.click('Add 15 minutes');
     const extended = await poll(() => view(popup), value => {
       const left = clock(value.text);
-      return value.running && value.feedback === 'Added 15 minutes.' && value.status.includes('Added 15 minutes.') && value.status.includes(`Pauses in ${value.text}`) && left >= before + 15 * 60 - 10 && left <= before + 15 * 60 + 2;
+      return value.running && value.feedback === 'Added 15 minutes.' && value.status.includes('Added 15 minutes.') && value.status.includes(`Sleep left ${value.text}`) && left >= before + 15 * 60 - 10 && left <= before + 15 * 60 + 2;
     }, '续时应正好加 15 分钟，并写明已加上');
     if (extended.alert) throw new Error(`续时出现了失败说明：${extended.alert}`);
     const midway = await playing(long, '#media');
@@ -8183,6 +8184,171 @@ async function driveSleepTimerHints(context, dir, note) {
     }
     await popup?.close().catch(() => {});
     for (const page of [settings, long]) await page?.close().catch(() => {});
+  }
+}
+
+const remainingView = `(() => {
+  const slider = document.querySelector('[aria-label="Playback progress"]');
+  const row = slider?.closest('.tabular-nums');
+  const spans = row ? [...row.querySelectorAll(':scope > span')] : [];
+  const remaining = document.querySelector('#episode-remaining');
+  const trigger = document.querySelector('button[aria-label="Sleep timer"]');
+  const panel = document.querySelector('[aria-label="Media controls"]');
+  return {
+    heading: document.querySelector('h1')?.textContent?.trim() ?? '',
+    remaining: remaining?.textContent?.trim() ?? '',
+    shown: Boolean(remaining),
+    slider: Boolean(slider),
+    durationLabel: spans.length ? spans[spans.length - 1].textContent?.trim() ?? '' : '',
+    sleep: document.querySelector('#sleep-timer-status')?.textContent?.trim() ?? '',
+    sleepText: trigger?.textContent?.trim() ?? '',
+    sleepRunning: Boolean(trigger?.hasAttribute('data-running')),
+    height: Math.round(panel?.getBoundingClientRect().height ?? 0),
+    alert: document.querySelector('[role="alert"]')?.textContent?.trim() ?? '',
+  };
+})()`;
+
+function parseRemaining(text) {
+  const match = /^About (\d{1,2}:\d{2}(?::\d{2})?) left in this episode \(([0-9.]+)×\)$/.exec(text);
+  if (!match) return null;
+  const clock = match[1].split(':').reduce((total, part) => total * 60 + Number(part), 0);
+  return { clock, rate: Number(match[2]) };
+}
+
+async function driveRemainingAtRate(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const permissions = await worker.evaluate(() => chrome.runtime.getManifest().permissions ?? []);
+  if (JSON.stringify(permissions) !== JSON.stringify(['storage'])) throw new Error(`权限应仍只有 storage：${JSON.stringify(permissions)}`);
+  const settingsText = () => worker.evaluate(async () => JSON.stringify((await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? null));
+  const readMedia = page => page.locator('#media').evaluate(element => ({
+    paused: element.paused,
+    currentTime: element.currentTime,
+    duration: element.duration,
+    rate: element.playbackRate,
+  }));
+  const view = popup => popup.evaluate(remainingView);
+  const shown = (popup, rate) => poll(async () => {
+    const panel = await view(popup);
+    const media = await readMedia(page);
+    const parsed = parseRemaining(panel.remaining);
+    return { panel, media, parsed };
+  }, value => {
+    if (!value.panel.slider || !value.parsed || value.panel.alert) return false;
+    if (Math.abs(value.parsed.rate - rate) > 0.001 || Math.abs(value.media.rate - rate) > 0.001) return false;
+    if (!Number.isFinite(value.media.duration) || value.media.duration <= 0) return false;
+    const expect = Math.floor(Math.max(0, value.media.duration - value.media.currentTime) / rate);
+    return Math.abs(value.parsed.clock - expect) <= 1;
+  }, `本集剩余应按 ${rate}× 折算`);
+  let popup = null;
+  let blocked = null;
+  const page = await context.newPage();
+  try {
+    const settingsBefore = await settingsText();
+    await page.goto(`${origin}/long`, { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await page.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+      element.pause();
+      element.currentTime = 0;
+    });
+    await poll(() => readMedia(page), value => value.paused === true && value.currentTime < 0.25 && value.duration > 100 && Math.abs(value.rate - 1) < 0.001, '长视频应暂停在开头、倍速 1×');
+    popup = await openActionPopup(context, page);
+    const atOne = await shown(popup, 1);
+    if (atOne.panel.height > 600) throw new Error(`单媒体面板高度 ${atOne.panel.height}px 超过弹出窗口上限 600px`);
+    const mediaLeft = atOne.media.duration - atOne.media.currentTime;
+    if (Math.abs(atOne.parsed.clock - mediaLeft) > 1) throw new Error(`1× 应接近媒体时钟剩余 ${mediaLeft}，显示 ${atOne.parsed.clock}`);
+    await popup.screenshot(path.join(dir, 'popup-1x.png'));
+    note(`1x remaining=${atOne.panel.remaining} height=${atOne.panel.height} mediaLeft=${mediaLeft.toFixed(2)}`);
+
+    await popup.click('2× speed');
+    const atTwo = await shown(popup, 2);
+    const half = (atTwo.media.duration - atTwo.media.currentTime) / 2;
+    if (Math.abs(atTwo.parsed.clock - half) > 1) throw new Error(`2× 应约为媒体时钟剩余的一半 ${half}，显示 ${atTwo.parsed.clock}`);
+    if (atTwo.parsed.clock >= atOne.parsed.clock) throw new Error(`2× 的剩余没有变短：${atOne.parsed.clock} -> ${atTwo.parsed.clock}`);
+    await popup.screenshot(path.join(dir, 'popup-2x.png'));
+    note(`2x remaining=${atTwo.panel.remaining} half=${half.toFixed(2)}`);
+
+    await popup.click('1.5× speed');
+    const atOnePointFive = await shown(popup, 1.5);
+    if (atOnePointFive.parsed.clock === atTwo.parsed.clock) throw new Error('改到 1.5× 后剩余没有更新');
+    await popup.screenshot(path.join(dir, 'popup-1.5x.png'));
+    note(`1.5x remaining=${atOnePointFive.panel.remaining}`);
+
+    await popup.click('Sleep timer');
+    await poll(() => popup.evaluate(`(() => [...document.querySelectorAll('button')].some(item => item.getAttribute('aria-label') === 'Pause in 15 minutes'))()`), value => value === true, '睡眠档位应出现');
+    await popup.click('Pause in 15 minutes');
+    const withSleep = await poll(() => view(popup), value => {
+      const parsed = parseRemaining(value.remaining);
+      return value.sleepRunning && parsed && Math.abs(parsed.rate - 1.5) < 0.001 && value.sleep === `Sleep left ${value.sleepText}` && !value.remaining.includes('Sleep') && !value.sleep.includes('episode') && !value.alert;
+    }, '睡眠还剩和本集剩余应同时在，且文案不同');
+    await popup.screenshot(path.join(dir, 'popup-with-sleep.png'));
+    note(`sleep=${withSleep.sleep} episode=${withSleep.remaining}`);
+    await popup.click('Sleep timer');
+    await poll(() => popup.evaluate(`(() => [...document.querySelectorAll('button')].some(item => item.getAttribute('aria-label') === 'Cancel sleep'))()`), value => value === true, '取消睡眠应出现');
+    await popup.click('Cancel sleep');
+    await poll(() => view(popup), value => !value.sleepRunning && parseRemaining(value.remaining) && !value.sleep.includes('episode'), '取消睡眠后本集剩余还在');
+    await popup.click('Sleep timer');
+    await poll(() => popup.evaluate(`(() => !document.querySelector('[data-slot="popover-content"]'))()`), value => value === true, '睡眠弹层应收起，免得挡住直播这一屏');
+
+    const liveKind = await page.locator('#media').evaluate(async element => {
+      if (typeof MediaSource === 'undefined') return 'no-mediasource';
+      const source = new MediaSource();
+      element.src = URL.createObjectURL(source);
+      await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('sourceopen timeout')), 4000);
+        source.addEventListener('sourceopen', () => { clearTimeout(timer); resolve(); }, { once: true });
+      });
+      try { source.duration = Infinity; }
+      catch (error) {
+        const mime = ['audio/webm; codecs=opus', 'audio/webm', 'audio/mp4'].find(type => MediaSource.isTypeSupported(type));
+        if (!mime) return `duration-failed ${error instanceof Error ? error.message : error}`;
+        source.addSourceBuffer(mime);
+        source.duration = Infinity;
+      }
+      return element.duration === Infinity ? 'live' : `duration=${element.duration}`;
+    });
+    if (liveKind !== 'live') throw new Error(`没法把夹具变成直播：${liveKind}`);
+    const live = await poll(() => view(popup), value => !value.shown && value.durationLabel === 'Live' && value.slider && !value.alert, '直播不显示本集剩余，进度右侧是 Live');
+    await popup.screenshot(path.join(dir, 'popup-live.png'));
+    note(`live durationLabel=${live.durationLabel} shown=${live.shown}`);
+    await popup.close();
+    popup = null;
+
+    blocked = await context.newPage();
+    await blocked.goto(`${origin}/unseekable`, { waitUntil: 'domcontentloaded' });
+    await blocked.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    popup = await openActionPopup(context, blocked);
+    const unknown = await poll(() => view(popup), value => value.heading === 'Unseekable video' && !value.shown && value.durationLabel === '--:--' && value.slider && !value.alert, '未知时长且不可 seek 时不显示本集剩余');
+    await popup.screenshot(path.join(dir, 'unseekable-popup.png'));
+    note(`unseekable durationLabel=${unknown.durationLabel} shown=${unknown.shown}`);
+    await popup.close();
+    popup = null;
+
+    const settingsAfter = await settingsText();
+    if (settingsAfter !== settingsBefore) throw new Error(`本集剩余改写了设置：before=${settingsBefore} after=${settingsAfter}`);
+    const state = {
+      ok: true,
+      permissions,
+      atOne: atOne.panel.remaining,
+      atTwo: atTwo.panel.remaining,
+      atOnePointFive: atOnePointFive.panel.remaining,
+      halfSeconds: atTwo.parsed.clock,
+      mediaLeftAtTwo: Number(half.toFixed(2)),
+      sleep: withSleep.sleep,
+      episodeWithSleep: withSleep.remaining,
+      height: atOne.panel.height,
+      liveHidden: true,
+      unseekableHidden: true,
+      settingsSame: true,
+    };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await popup?.close().catch(() => {});
+    await blocked?.close().catch(() => {});
+    await page.close().catch(() => {});
   }
 }
 
