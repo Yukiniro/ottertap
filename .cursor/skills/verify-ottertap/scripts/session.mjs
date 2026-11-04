@@ -69,7 +69,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip', 'page-pip', 'pip-feedback', 'pip-active', 'pip-away-tab', 'pip-auto-hide', 'resume-save', 'sleep-timer', 'sleep-timer-cancel', 'sleep-timer-hints', 'remaining-at-rate'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip', 'page-pip', 'pip-feedback', 'pip-active', 'pip-away-tab', 'pip-auto-hide', 'resume-save', 'sleep-timer', 'sleep-timer-cancel', 'sleep-timer-hints', 'sleep-hotkeys', 'remaining-at-rate'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -3241,7 +3241,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip, 'page-pip': drivePagePip, 'pip-feedback': drivePipFeedback, 'pip-active': drivePipActive, 'pip-away-tab': drivePipAwayTab, 'pip-auto-hide': drivePipAutoHide, 'resume-save': driveResumeSave, 'sleep-timer': driveSleepTimer, 'sleep-timer-cancel': driveSleepTimerCancel, 'sleep-timer-hints': driveSleepTimerHints, 'remaining-at-rate': driveRemainingAtRate };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip, 'page-pip': drivePagePip, 'pip-feedback': drivePipFeedback, 'pip-active': drivePipActive, 'pip-away-tab': drivePipAwayTab, 'pip-auto-hide': drivePipAutoHide, 'resume-save': driveResumeSave, 'sleep-timer': driveSleepTimer, 'sleep-timer-cancel': driveSleepTimerCancel, 'sleep-timer-hints': driveSleepTimerHints, 'sleep-hotkeys': driveSleepHotkeys, 'remaining-at-rate': driveRemainingAtRate };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -8045,7 +8045,7 @@ async function driveSleepTimer(context, dir, note) {
     const settingsAfter = await settingsText();
     if (settingsAfter !== settingsBefore) throw new Error(`睡眠定时改写了设置：before=${settingsBefore} after=${settingsAfter}`);
     const storage = await storageText();
-    if (/sleep/i.test(storage.replaceAll('sleepSoonHint', 'soonHint'))) throw new Error(`扩展存储里出现了睡眠定时：${storage}`);
+    if (/sleep/i.test(storage.replace(/"sleep(SoonHint|DefaultMinutes|Start|Cancel)"/g, '"setting"'))) throw new Error(`扩展存储里出现了睡眠定时：${storage}`);
     const state = { ok: true, permissions, noMedia: empty.explain, panelHeight: idle.panelHeight, presets: menu.presets, fifteen: fifteen.text, custom: custom.text, reopened: reopened.text, pausedAfterSeconds: Number(elapsed.toFixed(1)), pausedAt: Number(stopped.currentTime.toFixed(2)), feedMainPaused: feedStopped.main.paused, feedPreviewPlaying: !feedStopped.preview.paused, expiredRunning: expired.running, settingsSame: true };
     await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
     return state;
@@ -8227,7 +8227,7 @@ async function driveSleepTimerCancel(context, dir, note) {
     const settingsAfter = await settingsText();
     if (settingsAfter !== settingsBefore) throw new Error(`取消或续时改写了设置：before=${settingsBefore} after=${settingsAfter}`);
     const storage = await storageText();
-    if (/sleep/i.test(storage.replaceAll('sleepSoonHint', 'soonHint'))) throw new Error(`扩展存储里出现了睡眠定时：${storage}`);
+    if (/sleep/i.test(storage.replace(/"sleep(SoonHint|DefaultMinutes|Start|Cancel)"/g, '"setting"'))) throw new Error(`扩展存储里出现了睡眠定时：${storage}`);
     const state = {
       ok: true,
       permissions,
@@ -8455,6 +8455,236 @@ async function driveSleepTimerHints(context, dir, note) {
     }
     await popup?.close().catch(() => {});
     for (const page of [settings, long]) await page?.close().catch(() => {});
+  }
+}
+
+async function driveSleepHotkeys(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const startLabel = 'Start the sleep timer at the default length';
+  const cancelLabel = 'Cancel the sleep timer';
+  const sleepCommands = () => worker.evaluate(async () => (await chrome.commands.getAll())
+    .filter(item => item.name === 'sleep-start' || item.name === 'sleep-cancel')
+    .map(item => ({ name: item.name, shortcut: item.shortcut ?? null, description: item.description ?? '' }))
+    .sort((a, b) => b.name.localeCompare(a.name)));
+  const registered = await worker.evaluate(() => {
+    const manifest = chrome.runtime.getManifest();
+    const commands = manifest.commands ?? {};
+    return {
+      permissions: manifest.permissions ?? [],
+      suggested: Object.entries(commands).filter(([, command]) => command.suggested_key).map(([name]) => name),
+      start: commands['sleep-start'] ?? null,
+      cancel: commands['sleep-cancel'] ?? null,
+    };
+  });
+  if (JSON.stringify(registered.permissions) !== JSON.stringify(['storage'])) throw new Error(`权限应仍只有 storage：${JSON.stringify(registered.permissions)}`);
+  if (!registered.start || !registered.cancel || registered.start.suggested_key || registered.cancel.suggested_key) throw new Error(`睡眠命令应登记且不占建议键：${JSON.stringify(registered)}`);
+  if (registered.suggested.length !== 4 || !['play-pause', 'skip-back', 'skip-forward', 'mute'].every(name => registered.suggested.includes(name))) {
+    throw new Error(`建议键应仍是原来四个：${JSON.stringify(registered.suggested)}`);
+  }
+  const listed = await sleepCommands();
+  const expectedCommands = [{ name: 'sleep-start', shortcut: '', description: startLabel }, { name: 'sleep-cancel', shortcut: '', description: cancelLabel }];
+  if (JSON.stringify(listed) !== JSON.stringify(expectedCommands)) throw new Error(`扩展命令未按未绑定登记：${JSON.stringify(listed)}`);
+  note(`commands ${JSON.stringify(listed)}`);
+
+  const escape = text => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const keyButton = (page, action) => page.getByRole('button', { name: new RegExp(`^Change the key for ${escape(action)}\\. Now `) });
+  const recording = page => page.getByRole('button', { name: 'Press a key', exact: true });
+  const clock = text => text.split(':').reduce((total, part) => total * 60 + Number(part), 0);
+  const sleepView = popup => popup.evaluate(`(() => {
+    const trigger = document.querySelector('button[aria-label="Sleep timer"]');
+    return { text: trigger?.textContent?.trim() ?? '', running: Boolean(trigger?.hasAttribute('data-running')) };
+  })()`);
+  let settings = null;
+  let long = null;
+  let bound = false;
+  const playing = () => long.locator('#media').evaluate(element => ({ paused: element.paused, currentTime: element.currentTime }));
+  const focusFixture = async () => {
+    await long.bringToFront();
+    await long.mouse.click(12, 12);
+  };
+  const toast = async (text, shot) => {
+    const node = long.getByText(text, { exact: true });
+    await node.waitFor({ state: 'visible', timeout: 8_000 });
+    const pass = await node.evaluate(element => element.className.includes('pointer-events-none') && element.getAttribute('role') === 'status');
+    if (!pass) throw new Error(`${text} 不是不挡点击的状态字样`);
+    await long.screenshot({ path: path.join(dir, shot), animations: 'disabled' });
+    await node.waitFor({ state: 'hidden', timeout: 3_000 });
+  };
+  const sleepToasts = () => long.evaluate(() => {
+    const root = document.querySelector('ottertap-controller')?.shadowRoot;
+    return [...(root?.querySelectorAll('[role="status"]') ?? [])].map(node => (node.textContent || '').trim()).filter(text => /^Sleep |^No sleep timer/.test(text));
+  });
+  const quiet = async label => {
+    const deadline = Date.now() + 900;
+    while (Date.now() < deadline) {
+      const seen = await sleepToasts();
+      if (seen.length) throw new Error(`${label}：不应出现睡眠字样 ${JSON.stringify(seen)}`);
+      await long.waitForTimeout(100);
+    }
+  };
+  const timerInPopup = async (check, label, shot) => {
+    const popup = await openActionPopup(context, long);
+    try {
+      const value = await poll(() => sleepView(popup), check, label);
+      if (shot) await popup.screenshot(path.join(dir, shot));
+      return value;
+    } finally { await popup.close().catch(() => {}); }
+  };
+  const lengthGroup = () => settings.getByRole('group', { name: 'Shortcut sleep length' });
+  const pressedLength = async () => (await lengthGroup().locator('button[aria-pressed="true"]').allInnerTexts()).map(text => text.trim());
+  try {
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
+    const section = settings.locator('#shortcuts');
+    await section.getByRole('heading', { name: 'Keyboard shortcuts' }).waitFor({ state: 'visible', timeout: 15_000 });
+    const extensionList = section.getByRole('heading', { name: 'Extension shortcuts', exact: true }).locator('xpath=following-sibling::dl[1]');
+    for (const label of [startLabel, cancelLabel]) {
+      const row = extensionList.getByText(label, { exact: true }).locator('xpath=ancestor::div[contains(@class,"py-3")][1]');
+      await row.waitFor({ state: 'visible' });
+      if ((await row.locator('dt').innerText()).trim() !== 'Not set') throw new Error(`扩展命令「${label}」应显示 Not set`);
+      const button = keyButton(settings, label);
+      await button.waitFor({ state: 'visible' });
+      if ((await button.innerText()).trim() !== 'Not set') throw new Error(`页内「${label}」默认应是 Not set：${await button.innerText()}`);
+    }
+    const reset = () => settings.getByRole('button', { name: 'Restore default keys', exact: true });
+    if (!await reset().isDisabled()) throw new Error('默认键位时「Restore default keys」应禁用');
+    if (await settings.getByRole('switch', { name: 'Single-key mode' }).getAttribute('aria-checked') !== 'false') throw new Error('单键模式应保持关闭');
+    await section.screenshot({ path: path.join(dir, 'settings-unbound.png'), animations: 'disabled' });
+    note('both sleep actions are Not set, page and extension');
+
+    await keyButton(settings, startLabel).click();
+    await recording(settings).waitFor({ state: 'visible' });
+    await settings.keyboard.press('Comma');
+    const conflict = (await settings.locator('#keybind-error').innerText()).trim();
+    const conflictCopy = ', is already used for “Pause, then previous frame”. Press another key, or change that one first.';
+    if (conflict !== conflictCopy) throw new Error(`撞键提示不对：${conflict}`);
+    if ((await stored()).keybinds?.sleepStart) throw new Error('撞键时不应保存睡眠键');
+    if (!await recording(settings).isVisible()) throw new Error('撞键后应继续等待新键');
+    await settings.keyboard.press('KeyZ');
+    await poll(stored, value => value.keybinds?.sleepStart === 'z' && value.keybinds?.sleepCancel === '' && value.singleKey !== true, '应保存开始睡眠 = z，取消仍未绑，单键模式仍关');
+    if (await settings.locator('#keybind-error').isVisible()) throw new Error('Z 没人占用，不应报占用');
+    await keyButton(settings, cancelLabel).click();
+    await settings.keyboard.press('KeyZ');
+    const taken = (await settings.locator('#keybind-error').innerText()).trim();
+    const takenCopy = `Z is already used for “${startLabel}”. Press another key, or change that one first.`;
+    if (taken !== takenCopy) throw new Error(`Z 的占用提示不对：${taken}`);
+    if ((await stored()).keybinds?.sleepCancel) throw new Error('取消睡眠不应保存成已被占用的 Z');
+    await section.screenshot({ path: path.join(dir, 'settings-conflict.png'), animations: 'disabled' });
+    note(`conflict tips: ${conflict} | ${taken}`);
+    await settings.keyboard.press('KeyX');
+    await poll(stored, value => value.keybinds?.sleepCancel === 'x', '应保存取消睡眠 = x');
+    bound = true;
+    await recording(settings).waitFor({ state: 'hidden' });
+    await section.screenshot({ path: path.join(dir, 'settings-bound.png'), animations: 'disabled' });
+    if (JSON.stringify(await sleepCommands()) !== JSON.stringify(expectedCommands)) throw new Error(`页内改键不应改掉扩展命令：${JSON.stringify(await sleepCommands())}`);
+
+    await lengthGroup().scrollIntoViewIfNeeded();
+    const lengths = (await lengthGroup().getByRole('button').allInnerTexts()).map(text => text.trim());
+    if (JSON.stringify(lengths) !== JSON.stringify(['15 min', '30 min', '45 min', '60 min'])) throw new Error(`默认睡眠档的选项不对：${JSON.stringify(lengths)}`);
+    if (JSON.stringify(await pressedLength()) !== JSON.stringify(['30 min'])) throw new Error(`默认睡眠档出厂应是 30 分钟：${JSON.stringify(await pressedLength())}`);
+    if ((await stored()).sleepDefaultMinutes !== 30) throw new Error(`存储里的默认睡眠档应是 30：${(await stored()).sleepDefaultMinutes}`);
+    await settings.screenshot({ path: path.join(dir, 'settings-length-30.png'), animations: 'disabled' });
+    note('default sleep length is 30 min');
+
+    long = await context.newPage();
+    await long.goto(`${origin}/long`, { waitUntil: 'domcontentloaded' });
+    await long.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await long.locator('#media').evaluate(element => { element.loop = true; });
+    const opener = await openActionPopup(context, long);
+    try {
+      await opener.click('Play');
+      await poll(playing, value => !value.paused, '/long 应开始播放');
+    } finally { await opener.close().catch(() => {}); }
+
+    await focusFixture();
+    await long.keyboard.press('KeyZ');
+    await toast('Sleep 30 min', 'toast-start-30.png');
+    const thirty = await timerInPopup(value => value.running && clock(value.text) > 1740 && clock(value.text) <= 1800, '按 Z 后应按 30 分钟倒计时', 'popup-30.png');
+    if ((await playing()).paused) throw new Error('开始睡眠不应暂停');
+    note(`Z started ${thirty.text}`);
+
+    await settings.bringToFront();
+    await lengthGroup().getByRole('button', { name: '15 min', exact: true }).click();
+    await poll(stored, value => value.sleepDefaultMinutes === 15, '应保存默认睡眠档 15 分钟');
+    await settings.screenshot({ path: path.join(dir, 'settings-length-15.png'), animations: 'disabled' });
+    await focusFixture();
+    await long.keyboard.press('KeyZ');
+    await toast('Sleep 15 min', 'toast-start-15.png');
+    const fifteen = await timerInPopup(value => value.running && clock(value.text) > 840 && clock(value.text) <= 900, '改成 15 分钟后再按 Z，应从现在起按 15 分钟重开', 'popup-15.png');
+    note(`changed length without reload, Z restarted ${fifteen.text}`);
+
+    await focusFixture();
+    await long.keyboard.press('KeyX');
+    await toast('Sleep cancelled', 'toast-cancel.png');
+    await timerInPopup(value => !value.running && value.text === '', '按 X 后倒计时应消失', 'popup-cancelled.png');
+    const afterCancel = await playing();
+    if (afterCancel.paused) throw new Error('取消睡眠不应暂停');
+    await focusFixture();
+    await long.keyboard.press('KeyX');
+    await toast('No sleep timer is running.', 'toast-idle.png');
+    note('X cancelled, second X says nothing is running');
+
+    await long.evaluate(() => {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.setAttribute('aria-label', 'Fixture note');
+      input.style.position = 'fixed';
+      input.style.left = '16px';
+      input.style.top = '420px';
+      document.body.append(input);
+    });
+    const field = long.getByRole('textbox', { name: 'Fixture note' });
+    await field.focus();
+    await long.keyboard.type('hi');
+    await long.keyboard.press('KeyZ');
+    await quiet('输入框聚焦时按 Z');
+    await long.keyboard.press('KeyX');
+    await quiet('输入框聚焦时按 X');
+    if ((await field.inputValue()) !== 'hizx') throw new Error(`输入框应收到 Z 和 X：${await field.inputValue()}`);
+    await long.screenshot({ path: path.join(dir, 'fixture-typing.png'), animations: 'disabled' });
+    await timerInPopup(value => !value.running, '输入框聚焦时不应开始睡眠');
+    note('typing keeps Z and X');
+
+    await settings.bringToFront();
+    await reset().click();
+    await poll(stored, value => value.keybinds?.sleepStart === '' && value.keybinds?.sleepCancel === '' && value.keybinds?.toggle === 'k', '恢复默认后两个睡眠动作应回到未绑定');
+    bound = false;
+    for (const label of [startLabel, cancelLabel]) await keyButton(settings, label).filter({ hasText: 'Not set' }).waitFor({ state: 'visible' });
+    if (!await reset().isDisabled()) throw new Error('恢复默认后按钮应禁用');
+    await lengthGroup().getByRole('button', { name: '30 min', exact: true }).click();
+    await poll(stored, value => value.sleepDefaultMinutes === 30, '默认睡眠档应改回 30 分钟');
+    await section.screenshot({ path: path.join(dir, 'settings-restored.png'), animations: 'disabled' });
+    await focusFixture();
+    await long.keyboard.press('KeyZ');
+    await quiet('恢复默认后按 Z');
+    await timerInPopup(value => !value.running, '恢复默认后 Z 不应开始睡眠');
+    const prefs = JSON.stringify((await stored()).sitePrefs ?? {});
+    if (prefs !== '{}') throw new Error(`睡眠快捷键写入了 sitePrefs：${prefs}`);
+    const state = {
+      ok: true,
+      permissions: registered.permissions,
+      suggested: registered.suggested,
+      commands: await sleepCommands(),
+      conflict,
+      taken,
+      defaultLength: 30,
+      started30: thirty.text,
+      restarted15: fifteen.text,
+      cancelled: true,
+      idleHint: 'No sleep timer is running.',
+      typingValue: 'hizx',
+      restored: true,
+      sitePrefs: {},
+    };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    if (bound && settings && !settings.isClosed()) await settings.getByRole('button', { name: 'Restore default keys', exact: true }).click().catch(() => {});
+    for (const page of [long, settings]) await page?.close().catch(() => {});
   }
 }
 

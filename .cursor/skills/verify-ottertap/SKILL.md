@@ -98,7 +98,7 @@ rg -n "/[A-Za-z|]+/i?\.test\(|toMatch\(/" .cursor/skills/verify-ottertap/scripts
 
 ## Drive
 
-脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、低音量滚轮细步长（见 `features/fine-wheel.md`）、Shift 粗调步长（见 `features/coarse-step.md`）、倍速增减步长（见 `features/rate-step.md`）、扩展命令画中画（见 `features/extension-pip.md`）、按住临时加速（见 `features/hold-boost.md`）、同键短按跳长按加速（见 `features/hold-skip-combo.md`）、逐帧（见 `features/frame-step.md`）、页内快捷键改键（见 `features/hotkey-remap.md`）、浮动药丸倍速（见 `features/floating-speed.md`）、浮动药丸播放跳转（见 `features/floating-playback.md`）、浮动入口旁注（见 `features/floating-entry-note.md`）、从音量药丸打开弹出面板（见 `features/floating-open-panel.md`）、仅在播放时显示浮动入口（见 `features/floating-while-playing.md`）和滚轮方向（见 `features/wheel-direction.md`）。仅全屏时悬停滚轮见 `features/fullscreen-wheel.md`。侧栏聊天和文档大纲忽略见 `features/sidebar-ignore.md`。设置页三处名单的「当前站」见 `features/settings-current-site.md`。记住站点的「清空全部」见 `features/settings-clear-remembered.md`。镜像与标记的页内提示见 `features/mirror-mark-feedback.md`。进出画中画的页内提示见 `features/pip-feedback.md`。选中视频处于画中画时，面板与浮动标出退出态见 `features/pip-active.md`。切走标签后扩展命令仍控画中画媒体见 `features/pip-away-tab.md`。接着看的进度保存见 `features/resume-save.md`。弹出面板的睡眠定时见 `features/sleep-timer.md`。睡眠定时的页内提示见 `features/sleep-timer-hints.md`。选中变化时的短暂轮廓见 `features/selection-highlight.md`。上一条和下一条媒体见 `features/prev-next-media.md`。弹出面板媒体列表见 `features/panel-media-list.md`。音量药丸里的画中画见 `features/float-pip.md`。页内画中画快捷键见 `features/page-pip.md`。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
+脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、低音量滚轮细步长（见 `features/fine-wheel.md`）、Shift 粗调步长（见 `features/coarse-step.md`）、倍速增减步长（见 `features/rate-step.md`）、扩展命令画中画（见 `features/extension-pip.md`）、按住临时加速（见 `features/hold-boost.md`）、同键短按跳长按加速（见 `features/hold-skip-combo.md`）、逐帧（见 `features/frame-step.md`）、页内快捷键改键（见 `features/hotkey-remap.md`）、浮动药丸倍速（见 `features/floating-speed.md`）、浮动药丸播放跳转（见 `features/floating-playback.md`）、浮动入口旁注（见 `features/floating-entry-note.md`）、从音量药丸打开弹出面板（见 `features/floating-open-panel.md`）、仅在播放时显示浮动入口（见 `features/floating-while-playing.md`）和滚轮方向（见 `features/wheel-direction.md`）。仅全屏时悬停滚轮见 `features/fullscreen-wheel.md`。侧栏聊天和文档大纲忽略见 `features/sidebar-ignore.md`。设置页三处名单的「当前站」见 `features/settings-current-site.md`。记住站点的「清空全部」见 `features/settings-clear-remembered.md`。镜像与标记的页内提示见 `features/mirror-mark-feedback.md`。进出画中画的页内提示见 `features/pip-feedback.md`。选中视频处于画中画时，面板与浮动标出退出态见 `features/pip-active.md`。切走标签后扩展命令仍控画中画媒体见 `features/pip-away-tab.md`。接着看的进度保存见 `features/resume-save.md`。弹出面板的睡眠定时见 `features/sleep-timer.md`。睡眠定时的页内提示见 `features/sleep-timer-hints.md`。睡眠定时的快捷键与扩展命令见 `features/sleep-hotkeys.md`。选中变化时的短暂轮廓见 `features/selection-highlight.md`。上一条和下一条媒体见 `features/prev-next-media.md`。弹出面板媒体列表见 `features/panel-media-list.md`。音量药丸里的画中画见 `features/float-pip.md`。页内画中画快捷键见 `features/page-pip.md`。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
 
 ```bash
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
@@ -148,6 +148,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer-cancel
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer-hints
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive remaining-at-rate
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-hotkeys
 ```
 
 `skip-step` 在设置页把 `Skip step` 改成 `30s` 并打开 `Single-key mode`，再看弹出面板进退按钮名和页内 `L` / `J` / `→` / `←` 让 `/long` 夹具的 `currentTime` 跟着步长变；它会改写 profile，同一会话只能跑一次。步骤见 `features/skip-step.md`。
@@ -351,6 +352,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer-cancel
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer-hints
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive remaining-at-rate
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-hotkeys
 node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 ```
 
@@ -627,3 +629,13 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive remaining-at-rate
 `remaining-at-rate` 在暂停的 `/long` 上确认进度条还在，并且 `#episode-remaining` 按 1× 写出本集剩余。点 `2× speed` 后秒数约为媒体时钟剩余的一半，再点 `1.5× speed` 数字再变。接着开 15 分钟睡眠，状态是 `Sleep left …`，本集那一句仍在，两句不混。取消后把这条视频换成无限时长的直播，这一行消失、右侧变成 `Live`。`/unseekable` 上也不出现，右侧是 `--:--`。面板高度不超过 600px。设置原文不变，权限仍只有 `storage`。它不改 profile。步骤见 `features/remaining-at-rate.md`。
 
 写入 `remaining-at-rate/`：`popup-1x.png`、`popup-2x.png`、`popup-1.5x.png`、`popup-with-sleep.png`、`popup-live.png`、`unseekable-popup.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
+## 睡眠定时：快捷键与扩展命令
+
+```bash
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-hotkeys
+```
+
+`sleep-hotkeys` 先确认 manifest 里 `sleep-start`、`sleep-cancel` 没有建议键、原来的 4 个建议键不变、浏览器命令列表里两条为空，设置页两条扩展命令和两个页内键都是 `Not set`，`Restore default keys` 不可点。录 `,` 时提示被逐帧占用，录 Z 给开始、再给取消录 Z 时提示被开始占用，改录 X。`Shortcut sleep length` 默认 `30 min`。`/long` 上按 Z 出现 `Sleep 30 min`，倒计时约 30 分钟；改成 `15 min` 后不刷新再按 Z，从现在起约 15 分钟。按 X 出现 `Sleep cancelled`，播放不变；再按 X 出现 `No sleep timer is running.`。输入框聚焦时 Z、X 只输入字符。`Restore default keys` 后按 Z 不再开始。权限仍只有 `storage`，`sitePrefs` 仍为空。它会改 profile，退出前恢复默认键，成功时把时长改回 30 分钟。整程约 25 秒。扩展命令的按键分发由单元测试覆盖。步骤见 `features/sleep-hotkeys.md`。
+
+写入 `sleep-hotkeys/`：`settings-unbound.png`、`settings-conflict.png`、`settings-bound.png`、`settings-length-30.png`、`toast-start-30.png`、`popup-30.png`、`settings-length-15.png`、`toast-start-15.png`、`popup-15.png`、`toast-cancel.png`、`popup-cancelled.png`、`toast-idle.png`、`fixture-typing.png`、`settings-restored.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
