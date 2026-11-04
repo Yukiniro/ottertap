@@ -78,11 +78,22 @@ test('没有媒体时入口不可用并有一句短说明', async () => {
   try {
     const trigger = view.trigger();
     assert.ok(trigger, '没有媒体时入口仍在');
-    assert.equal(trigger.disabled, true);
-    assert.equal(view.query('#sleep-timer-hint')?.textContent, '这一页没有可暂停的媒体。');
-    assert.equal(trigger.getAttribute('aria-describedby'), 'sleep-timer-hint');
-    assert.equal(trigger.textContent, '关');
+    assert.equal(trigger.getAttribute('aria-disabled'), 'true');
+    assert.equal(trigger.getAttribute('aria-describedby'), 'sleep-timer-status');
+    assert.equal(view.query('#sleep-timer-status')?.textContent, '这一页没有可暂停的媒体。');
+    assert.equal(trigger.title, '睡眠定时 · 这一页没有可暂停的媒体。');
+    assert.equal(trigger.textContent, '');
+    await view.open();
+    assert.equal(view.query('[data-slot="popover-content"] [data-slot="popover-description"]')?.textContent, '这一页没有可暂停的媒体。');
+    assert.equal(view.query('button[aria-label="15 分钟后暂停"]'), null, '不给档位');
+    assert.equal(view.query('#sleep-timer-custom'), null);
   } finally { await view.close(); }
+});
+
+test('入口在面板标题栏，不占面板高度', async () => {
+  const view = await render([clip]);
+  try { assert.ok(view.trigger()?.closest('header'), '睡眠定时在标题栏里'); }
+  finally { await view.close(); }
 });
 
 test('没有传入定时客户端时不占位', async () => {
@@ -94,9 +105,10 @@ test('没有传入定时客户端时不占位', async () => {
 test('选一个档位后关闭弹层并显示倒计时', async () => {
   const view = await render([clip]);
   try {
-    assert.equal(view.trigger()?.disabled, false);
-    assert.equal(view.query('#sleep-timer-hint'), null);
-    assert.equal(view.trigger()?.textContent, '关', '默认不开');
+    assert.equal(view.trigger()?.hasAttribute('aria-disabled'), false);
+    assert.equal(view.query('#sleep-timer-status'), null);
+    assert.equal(view.trigger()?.textContent, '', '默认不开，只有图标');
+    assert.equal(view.trigger()?.hasAttribute('data-running'), false);
     await view.open();
     for (const minutes of [15, 30, 45, 60]) assert.ok(view.query(`button[aria-label="${minutes} 分钟后暂停"]`), `有 ${minutes} 分钟档`);
     assert.match(view.query('[data-slot="popover-content"]')?.textContent ?? '', /只暂停小獭在这个标签页里控制的那一条媒体/);
@@ -139,6 +151,7 @@ test('开始失败时留下说明，不显示倒计时', async () => {
     await view.open();
     await view.click('button[aria-label="15 分钟后暂停"]');
     assert.equal(view.query('[role="alert"]')?.textContent, '这一页没有可暂停的媒体。');
-    assert.equal(view.trigger()?.textContent, '关');
+    assert.equal(view.trigger()?.textContent, '');
+    assert.equal(view.trigger()?.hasAttribute('data-running'), false);
   } finally { await view.close(); }
 });

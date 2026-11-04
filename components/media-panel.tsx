@@ -250,7 +250,10 @@ export function MediaPanel({ client, openSettings, sounding, sleep, initial }: {
   return <section className="flex w-[400px] max-w-full flex-col gap-3 bg-background px-4 pt-1 pb-3" aria-label={i18n.t('mediaPanel')}>
     <header className="flex h-10 items-center justify-between">
       <Brand className="text-sm [&_img]:size-6" />
-      <Button variant="ghost" size="icon" aria-label={i18n.t('openSettings')} onClick={openSettings}><SettingsIcon className="size-5" /></Button>
+      <div className="flex items-center gap-1">
+        {sleep && <SleepTimer client={sleep} sleepAt={page.sleepAt} available={!!selected} onStarted={() => void refresh()} />}
+        <Button variant="ghost" size="icon" aria-label={i18n.t('openSettings')} onClick={openSettings}><SettingsIcon className="size-5" /></Button>
+      </div>
     </header>
     {page.media.length > 1 && <MediaChoices media={page.media} host={page.host} selectedId={selected?.id ?? ''} onSelect={id => { select(id); setSeekDraft(null); }} onOpen={() => { if (selected) showMedia(selected.id); }} />}
     {selected ? <>
@@ -349,7 +352,6 @@ export function MediaPanel({ client, openSettings, sounding, sleep, initial }: {
     </div>}
     {(error || settingsError) && <Alert variant="destructive"><CircleAlert /><AlertDescription>{error || settingsError}</AlertDescription></Alert>}
     <ItemGroup className="gap-0 divide-y">
-      {sleep && <SleepTimer client={sleep} sleepAt={page.sleepAt} available={!!selected} onStarted={() => void refresh()} />}
       {selected && page.host && <Item role="listitem" className="flex-nowrap rounded-none px-0 py-1.5">
         <ItemContent>
           <ItemTitle className="overflow-visible font-normal"><label htmlFor="remember-site">{i18n.t('rememberSite')}</label>

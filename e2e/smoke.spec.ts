@@ -1101,7 +1101,7 @@ test('单媒体弹出面板常用控制完整可见且说明可展开', async ()
       expect(layout.playSize).toBeGreaterThanOrEqual(44);
       expect(layout.presets).toBe(8);
       const description = await read(`(() => {
-        const trigger = document.querySelector('[data-slot="popover-trigger"]');
+        const trigger = document.querySelector('[role="listitem"] [data-slot="popover-trigger"]');
         trigger.click();
         return trigger.getAttribute('aria-label');
       })()`);
