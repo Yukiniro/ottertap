@@ -249,10 +249,33 @@ export default defineBackground(() => {
   };
   /** The media OtterTap controls on this tab right now, or nothing when the selected one's frame did not answer. */
   async function controlledMedia(tabId: number) {
-    const { media, failed } = await collect(tabId);
+    const { media, failed, typing } = await collect(tabId);
     const saved = lockedId(tabId, media, failed);
-    if (saved && !media.some(item => item.id === saved)) return undefined;
-    return lockedMedia(media, saved);
+    const target = saved && !media.some(item => item.id === saved) ? undefined : lockedMedia(media, saved);
+    return { target, typing };
+  }
+  async function startSleep(tabId: number, target: MediaState, minutes: number) {
+    rememberSelection(tabId, target.id);
+    const sleepAt = Date.now() + minutes * 60_000;
+    const armed = await browser.tabs.sendMessage(tabId, { namespace: 'ottertap', type: 'sleep', at: sleepAt }, { frameId: 0 });
+    if (armed?.ok !== true) throw new Error(armed?.error || i18n.t('pageUnavailable'));
+    showAction(tabId, 'sleepStartHint', minutes);
+    return sleepAt;
+  }
+  /** The sleep key and extension command. A focused text field keeps the key; cancelling with nothing running says so. */
+  async function applySleep(tabId: number, action: 'start' | 'cancel') {
+    const { target, typing } = await controlledMedia(tabId);
+    if (typing) return false;
+    if (action === 'start') {
+      if (!target) return false;
+      await startSleep(tabId, target, (await currentSettings()).sleepDefaultMinutes);
+      return true;
+    }
+    const result = await browser.tabs.sendMessage(tabId, { namespace: 'ottertap', type: 'sleepCancel' }, { frameId: 0 });
+    if (result?.ok === true) showAction(tabId, 'sleepCancelHint');
+    else if (result?.error === i18n.t('sleepTimerIdle')) showAction(tabId, 'sleepTimerIdle');
+    else throw new Error(result?.error || i18n.t('pageUnavailable'));
+    return true;
   }
   const reveal = (tabId: number, percent: number) => {
     void browser.tabs.sendMessage(tabId, { namespace: 'ottertap', type: 'reveal', percent }, { frameId: 0 }).catch(() => {});
@@ -410,6 +433,7 @@ export default defineBackground(() => {
       return { handled: true as const, percent };
     }
     if (action.type === 'media') return { handled: await applyMediaStep(tabId, host, action.direction) };
+    if (action.type === 'sleep') return { handled: await applySleep(tabId, action.action) };
     return { handled: await applyTransport(tabId, host, action) };
   }
   // Chrome passes the focused tab. Picture-in-picture keeps the element on the tab that opened it.
@@ -586,7 +610,7 @@ export default defineBackground(() => {
         if (message.type === 'sleepDue') {
           // Only the top frame holds the timer. Whoever is controlled when it runs out is the one that stops.
           if (!sender.tab || (sender.frameId ?? 0) !== 0 || !enabled) return { ok: true };
-          const target = await controlledMedia(tabId);
+          const { target } = await controlledMedia(tabId);
           // Already paused, or the media is gone: there is no successful pause to announce.
           if (!target || target.paused) return { ok: true };
           await deliver(tabId, target.id, 'command', { type: 'pause' });
@@ -639,14 +663,9 @@ export default defineBackground(() => {
         if (message.type === 'sleep') {
           const minutes = sleepMinutes(message.minutes);
           if (minutes == null) throw new Error(i18n.t('invalidCommand'));
-          const target = await controlledMedia(tabId);
+          const { target } = await controlledMedia(tabId);
           if (!target) throw new Error(i18n.t('sleepTimerNoMedia'));
-          rememberSelection(tabId, target.id);
-          const sleepAt = Date.now() + minutes * 60_000;
-          const armed = await browser.tabs.sendMessage(tabId, { namespace: 'ottertap', type: 'sleep', at: sleepAt }, { frameId: 0 });
-          if (armed?.ok !== true) throw new Error(armed?.error || i18n.t('pageUnavailable'));
-          showAction(tabId, 'sleepStartHint', minutes);
-          return { ok: true, sleepAt };
+          return { ok: true, sleepAt: await startSleep(tabId, target, minutes) };
         }
         if (message.type === 'sleepCancel' || message.type === 'sleepExtend') {
           const armed = await browser.tabs.sendMessage(tabId, { namespace: 'ottertap', type: message.type }, { frameId: 0 });

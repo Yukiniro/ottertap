@@ -1,4 +1,5 @@
 export const sleepPresets = [15, 30, 45, 60] as const;
+export type SleepPreset = (typeof sleepPresets)[number];
 export const maxSleepMinutes = 180;
 /** Fixed extension. Not a list of choices. */
 export const sleepExtendMinutes = 15;
@@ -8,6 +9,10 @@ export const sleepSoonLeadMs = 60_000;
 /** Whole minutes from 1 to `maxSleepMinutes`, else null. */
 export function sleepMinutes(value: unknown) {
   return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= maxSleepMinutes ? value : null;
+}
+
+export function isSleepPreset(value: unknown): value is SleepPreset {
+  return typeof value === 'number' && (sleepPresets as readonly number[]).includes(value);
 }
 
 export interface SleepTimerClient {
