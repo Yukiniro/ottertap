@@ -111,7 +111,17 @@ export type MediaCommand =
   | { type: 'frame'; direction: 1 | -1 }
   | { type: 'mark'; action: 'set' | 'jump' | 'clear' }
   | { type: 'resume'; action: 'jump' | 'clear' };
-export interface PageState { host: string; enabled: boolean; media: MediaState[]; selectedId: string }
+export interface PageState {
+  host: string;
+  enabled: boolean;
+  media: MediaState[];
+  selectedId: string;
+  /**
+   * Epoch milliseconds when this tab's sleep timer pauses the media OtterTap controls then.
+   * Absent when no timer is running. It lives in the tab's top frame, never in extension storage.
+   */
+  sleepAt?: number;
+}
 export interface MediaClient {
   read(): Promise<PageState>;
   command(media: MediaState, command: MediaCommand): Promise<void>;

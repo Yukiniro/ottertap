@@ -8,6 +8,7 @@ import { actionHintEvent, actionHintText, bareVolumeWheel, createHotkeyInput, is
 import { createMediaController, isMediaCommand, mediaPresenceEvent } from '../lib/media';
 import { rateLockEvent } from '../lib/rate-lock';
 import { createResumeClock, readResume } from '../lib/resume';
+import { createSleepTimer } from '../lib/sleep-timer';
 import { maxEffectiveVolume, shouldReportVolume, volumeReportIntervalMs } from '../lib/volume-badge';
 import { isSiteEnabled, isResumeExcluded, normalizeHoldRate, normalizeSkipSeconds, normalizeVolumeStep } from '../lib/settings';
 import { normalizeKeybinds } from '../lib/keybinds';
@@ -88,6 +89,10 @@ export default defineContentScript({
         void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'resumeJumped', time }).catch(() => {});
       }
     });
+    const topFrame = window.top === window;
+    const sleep = createSleepTimer(() => {
+      void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'sleepDue' }).catch(() => {});
+    });
     const applyWatched = () => {
       if (!pageUrl || !watched) return;
       const next = isSiteEnabled(pageUrl, watched);
@@ -112,8 +117,14 @@ export default defineContentScript({
         if (!lockedLocalId) controller.clearSelectionRing();
         return;
       }
-      if (!['snapshot', 'command', 'highlight', 'reveal', 'rateHint', 'actionHint', 'rateLockHint', 'hold', 'holdHint'].includes(message.type)) return;
+      if (!['snapshot', 'command', 'highlight', 'reveal', 'rateHint', 'actionHint', 'rateLockHint', 'hold', 'holdHint', 'sleep'].includes(message.type)) return;
+      if (message.type === 'sleep' && !topFrame) return;
       void (async () => {
+      if (message.type === 'sleep') {
+        if (typeof message.at !== 'number' || !Number.isFinite(message.at)) return { error: i18n.t('invalidCommand') };
+        sleep.arm(message.at);
+        return { ok: true };
+      }
       if (message.type === 'actionHint') {
         const label = actionHintText(typeof message.key === 'string' ? message.key : '', message.seconds);
         if (label) window.dispatchEvent(new window.CustomEvent(actionHintEvent, { detail: label }));
@@ -147,8 +158,10 @@ export default defineContentScript({
       }
       if (message.type === 'snapshot') {
         const typing = document.hasFocus() && isTypingFocus(document);
-        if (!enabled) return { media: [], recallRate: null, typing };
-        return { media: controller.snapshot(), recallRate: controller.recallRate(), typing };
+        const sleepAt = topFrame ? sleep.deadline() : null;
+        const timer = sleepAt == null ? {} : { sleepAt };
+        if (!enabled) return { media: [], recallRate: null, typing, ...timer };
+        return { media: controller.snapshot(), recallRate: controller.recallRate(), typing, ...timer };
       }
       if (message.type === 'highlight') {
         const kind = enabled && typeof message.id === 'string' ? controller.flash(message.id) : '';
@@ -292,6 +305,7 @@ export default defineContentScript({
     }).catch(() => {});
     ctx.onInvalidated(() => {
       releaseHold();
+      sleep.dispose();
       unwatch(); controller.destroy(); if (heartbeat) clearInterval(heartbeat); browser.runtime.onMessage.removeListener(listener); hotkeys.dispose();
       document.removeEventListener('play', onPlayback, true); document.removeEventListener('pause', onPlayback, true);
       document.removeEventListener('volumechange', reportVolume, true); window.removeEventListener('pagehide', onPageHide);

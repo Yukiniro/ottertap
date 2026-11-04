@@ -1,5 +1,6 @@
 import { i18n } from '#i18n';
 import { browser } from 'wxt/browser';
+import type { SleepTimerClient } from './sleep-timer';
 import { soundingTabChanged, type SoundingTabsClient } from './tabs';
 import type { MediaClient } from './types';
 
@@ -16,6 +17,10 @@ export function createExtensionClient(tabId?: number): MediaClient {
     async select(id, manual) { await request(tabId, manual ? { type: 'select', id, manual: true } : { type: 'select', id }); },
     async highlight(media) { await request(tabId, { type: 'highlight', id: media.id }); }
   };
+}
+
+export function createSleepTimerClient(tabId?: number): SleepTimerClient {
+  return { async start(minutes) { await request(tabId, { type: 'sleep', minutes }); } };
 }
 
 export function createSoundingTabsClient(tabId?: number): SoundingTabsClient {
