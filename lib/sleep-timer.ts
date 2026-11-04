@@ -1,5 +1,7 @@
 export const sleepPresets = [15, 30, 45, 60] as const;
 export const maxSleepMinutes = 180;
+/** Fixed extension. Not a list of choices. */
+export const sleepExtendMinutes = 15;
 
 /** Whole minutes from 1 to `maxSleepMinutes`, else null. */
 export function sleepMinutes(value: unknown) {
@@ -9,6 +11,10 @@ export function sleepMinutes(value: unknown) {
 export interface SleepTimerClient {
   /** Count down on the current tab. When it runs out, the media OtterTap controls then is paused. */
   start(minutes: number): Promise<void>;
+  /** Drop the countdown. Playback stays as it is. */
+  cancel(): Promise<void>;
+  /** Add `sleepExtendMinutes` to the deadline that is already running. */
+  extend(): Promise<void>;
 }
 
 interface SleepClock {
@@ -50,6 +56,17 @@ export function createSleepTimer(onDue: () => void, clock: SleepClock = windowCl
     arm(at: number) {
       deadline = at;
       schedule();
+    },
+    /** Add `ms` to the current deadline. Null when nothing is running. */
+    extend(ms: number) {
+      if (deadline == null || !Number.isFinite(ms) || ms <= 0) return null;
+      deadline += ms;
+      schedule();
+      return deadline;
+    },
+    cancel() {
+      deadline = null;
+      clear();
     },
     deadline: () => deadline,
     dispose() {

@@ -32,6 +32,8 @@ async function render(media: MediaState[], options: { sleep?: boolean; fail?: st
       started.push(minutes);
       sleepAt = Date.now() + minutes * 60_000;
     },
+    async cancel() { sleepAt = undefined; },
+    async extend() { if (sleepAt != null) sleepAt += 15 * 60_000; },
   };
   const store: SettingsStore = { async load() { return defaultSettings; }, async save() {}, watch() { return () => {}; } };
   const host = window.document.createElement('div');
