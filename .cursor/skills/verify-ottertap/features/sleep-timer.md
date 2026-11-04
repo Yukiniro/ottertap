@@ -4,7 +4,7 @@
 
 倒计时挂在这个标签顶层框架的内容脚本里，关掉弹出面板不取消。到点时后台按当前选中找目标，所以换了选中只改「到期要停谁」，不会立刻停掉原来那一条。只停这一条：不淡出、不关标签、不清进度、不写记住此站点，也不碰别的标签。不写扩展存储，权限仍只有 `storage`。整页刷新或关标签后倒计时随页面一起消失。
 
-临近提示、页内快捷键和浮动旁注倒计时都不在这一项里。取消和再续 +15 见 [sleep-timer-cancel.md](sleep-timer-cancel.md)。
+页内快捷键和浮动旁注倒计时都不在这一项里。取消和再续 +15 见 [sleep-timer-cancel.md](sleep-timer-cancel.md)。开始、取消、到期和临近的页内提示见 [sleep-timer-hints.md](sleep-timer-hints.md)。
 
 ## Sub-features
 
@@ -40,7 +40,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer
 5. 回到 `/long` 再开面板，倒计时比第 3 步少、媒体仍在播。截 `popup-reopened.png`。
 6. 等到期：`/long` 在开定时后约 60 秒暂停，`currentTime` 留在暂停处且之后不变，标签还开着。`/feed` 上 `Main player` 暂停，`Feed preview` 仍在播。
 7. `/long` 的面板里倒计时消失、播放按钮是 `Play`。截 `popup-expired.png` 和 `fixture-paused.png`。
-8. `ottertap-settings-v1` 与开始前一致，`chrome.storage.local` 和 `chrome.storage.session` 里都没有 `sleep`。权限仍是 `["storage"]`。
+8. `ottertap-settings-v1` 与开始前一致。`chrome.storage.local` 和 `chrome.storage.session` 里没有倒计时；设置键 `sleepSoonHint` 是临近提示开关，不算定时本身。权限仍是 `["storage"]`。
 
 成功时 `state.json` 的 `ok` 为 `true`，`pausedAfterSeconds` 约为 60，`panelHeight` 不超过 600。证据写到 `/opt/cursor/artifacts/verify-ottertap/sleep-timer/`：`popup-no-media.png`、`popup-off.png`、`popup-presets.png`、`popup-15.png`、`popup-custom.png`、`feed-switched.png`、`popup-reopened.png`、`popup-expired.png`、`fixture-paused.png`、`state.json`、`transcript.txt`。
 

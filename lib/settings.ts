@@ -87,6 +87,7 @@ export function normalizeSettings(value: unknown): Settings {
     floatingNote: isFloatingNote(source.floatingNote) ? source.floatingNote : 'volume',
     floatingWhilePlaying: source.floatingWhilePlaying === true,
     followPlaying: typeof source.followPlaying === 'boolean' ? source.followPlaying : true,
+    sleepSoonHint: typeof source.sleepSoonHint === 'boolean' ? source.sleepSoonHint : true,
     floatingHiddenSites: normalizeDomains(source.floatingHiddenSites),
     resumeJump: typeof source.resumeJump === 'boolean' ? source.resumeJump : true,
     resumeExcludedSites: normalizeDomains(source.resumeExcludedSites),

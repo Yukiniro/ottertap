@@ -2,6 +2,8 @@ export const sleepPresets = [15, 30, 45, 60] as const;
 export const maxSleepMinutes = 180;
 /** Fixed extension. Not a list of choices. */
 export const sleepExtendMinutes = 15;
+/** Page note when this much time is left. A timer that is already inside the window does not warn at the moment it starts. */
+export const sleepSoonLeadMs = 60_000;
 
 /** Whole minutes from 1 to `maxSleepMinutes`, else null. */
 export function sleepMinutes(value: unknown) {
@@ -33,13 +35,33 @@ const windowClock: SleepClock = {
  * One countdown for a tab, held by its top frame so closing the panel keeps it.
  * The deadline is wall-clock time; a timer woken early, such as after the computer slept, waits again.
  */
-export function createSleepTimer(onDue: () => void, clock: SleepClock = windowClock) {
+export function createSleepTimer(onDue: () => void, clock: SleepClock = windowClock, onSoon?: () => void) {
   let deadline: number | null = null;
   let timer = 0;
+  let soonTimer = 0;
   const clear = () => {
     if (!timer) return;
     clock.clearTimeout(timer);
     timer = 0;
+  };
+  const clearSoon = () => {
+    if (!soonTimer) return;
+    clock.clearTimeout(soonTimer);
+    soonTimer = 0;
+  };
+  const scheduleSoon = () => {
+    clearSoon();
+    if (!onSoon || deadline == null) return;
+    const soonAt = deadline - sleepSoonLeadMs;
+    // Already inside the last minute, including a 1-minute timer armed right now. The start note covers that.
+    if (soonAt <= clock.now()) return;
+    soonTimer = clock.setTimeout(() => {
+      soonTimer = 0;
+      if (deadline == null || !onSoon) return;
+      if (clock.now() >= deadline) return;
+      if (clock.now() < deadline - sleepSoonLeadMs) { scheduleSoon(); return; }
+      onSoon();
+    }, soonAt - clock.now());
   };
   const schedule = () => {
     clear();
@@ -49,6 +71,7 @@ export function createSleepTimer(onDue: () => void, clock: SleepClock = windowCl
       if (deadline == null) return;
       if (clock.now() < deadline) { schedule(); return; }
       deadline = null;
+      clearSoon();
       onDue();
     }, Math.max(0, deadline - clock.now()));
   };
@@ -56,21 +79,25 @@ export function createSleepTimer(onDue: () => void, clock: SleepClock = windowCl
     arm(at: number) {
       deadline = at;
       schedule();
+      scheduleSoon();
     },
     /** Add `ms` to the current deadline. Null when nothing is running. */
     extend(ms: number) {
       if (deadline == null || !Number.isFinite(ms) || ms <= 0) return null;
       deadline += ms;
       schedule();
+      scheduleSoon();
       return deadline;
     },
     cancel() {
       deadline = null;
       clear();
+      clearSoon();
     },
     deadline: () => deadline,
     dispose() {
       clear();
+      clearSoon();
       deadline = null;
     },
   };

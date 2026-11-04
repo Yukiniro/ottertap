@@ -2,7 +2,7 @@
 
 定时已经在走的时候，弹出面板里看得到还剩多久，并可以取消，或把剩下的截止时间加上 15 分钟。取消只清掉倒计时，不改播放。换了当前选中，只改到点要停谁，不立刻停原来那一条。
 
-续时固定是 15 分钟，加在页面里那一个截止时间上，不是从现在重新算 15 分钟，也没有一列可配置的续时档位。不做淡出。倒计时仍留在这个标签的顶层页面里，不写扩展存储，权限仍只有 `storage`。页内「已取消」那一句短暂提示不在这一项里。
+续时固定是 15 分钟，加在页面里那一个截止时间上，不是从现在重新算 15 分钟，也没有一列可配置的续时档位。不做淡出。倒计时仍留在这个标签的顶层页面里，不写扩展存储，权限仍只有 `storage`。页内「已取消」那一句短暂提示见 [sleep-timer-hints.md](sleep-timer-hints.md)。
 
 ## Sub-features
 
@@ -34,7 +34,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer-cancel
 4. 再设 1 分钟。截 `popup-rearmed.png`。立刻取消，再打开确认倒计时不在。
 5. `/feed` 两条都在播。选 `Feed preview`，开 1 分钟，再换到 `Main player`。等一会儿两条都还在播，倒计时还在。截 `feed-switched.png`。取消后两条仍在播。截 `feed-cancelled.png`。
 6. 回到 `/long`，把进度放到 5 秒附近，等到第 4 步那次开定时之后至少 65 秒。视频仍在播，进度比等待前至少往前 20 秒，标签还开着。截 `fixture-still-playing.png`。
-7. `ottertap-settings-v1` 与开始前一致。`chrome.storage.local` 和 `chrome.storage.session` 里都没有 `sleep`。权限仍是 `["storage"]`。
+7. `ottertap-settings-v1` 与开始前一致。`chrome.storage.local` 和 `chrome.storage.session` 里没有倒计时；设置键 `sleepSoonHint` 是临近提示开关，不算定时本身。权限仍是 `["storage"]`。
 
 成功时 `state.json` 的 `ok` 为 `true`，`addedSeconds` 约为 900，`stillPlaying` 为 `true`。证据写到 `/opt/cursor/artifacts/verify-ottertap/sleep-timer-cancel/`：`popup-running.png`、`popup-extended.png`、`popup-cancelled.png`、`popup-reopened.png`、`popup-rearmed.png`、`feed-switched.png`、`feed-cancelled.png`、`fixture-still-playing.png`、`state.json`、`transcript.txt`。
 

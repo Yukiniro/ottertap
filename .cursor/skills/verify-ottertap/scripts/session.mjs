@@ -47,6 +47,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive resume-save
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer-cancel
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer-hints
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -66,7 +67,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip', 'page-pip', 'pip-feedback', 'pip-active', 'pip-away-tab', 'resume-save', 'sleep-timer', 'sleep-timer-cancel'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip', 'page-pip', 'pip-feedback', 'pip-active', 'pip-away-tab', 'resume-save', 'sleep-timer', 'sleep-timer-cancel', 'sleep-timer-hints'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -3238,7 +3239,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip, 'page-pip': drivePagePip, 'pip-feedback': drivePipFeedback, 'pip-active': drivePipActive, 'pip-away-tab': drivePipAwayTab, 'resume-save': driveResumeSave, 'sleep-timer': driveSleepTimer, 'sleep-timer-cancel': driveSleepTimerCancel };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip, 'page-pip': drivePagePip, 'pip-feedback': drivePipFeedback, 'pip-active': drivePipActive, 'pip-away-tab': drivePipAwayTab, 'resume-save': driveResumeSave, 'sleep-timer': driveSleepTimer, 'sleep-timer-cancel': driveSleepTimerCancel, 'sleep-timer-hints': driveSleepTimerHints };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -7772,7 +7773,7 @@ async function driveSleepTimer(context, dir, note) {
     const settingsAfter = await settingsText();
     if (settingsAfter !== settingsBefore) throw new Error(`睡眠定时改写了设置：before=${settingsBefore} after=${settingsAfter}`);
     const storage = await storageText();
-    if (/sleep/i.test(storage)) throw new Error(`扩展存储里出现了睡眠定时：${storage}`);
+    if (/sleep/i.test(storage.replaceAll('sleepSoonHint', 'soonHint'))) throw new Error(`扩展存储里出现了睡眠定时：${storage}`);
     const state = { ok: true, permissions, noMedia: empty.explain, panelHeight: idle.panelHeight, presets: menu.presets, fifteen: fifteen.text, custom: custom.text, reopened: reopened.text, pausedAfterSeconds: Number(elapsed.toFixed(1)), pausedAt: Number(stopped.currentTime.toFixed(2)), feedMainPaused: feedStopped.main.paused, feedPreviewPlaying: !feedStopped.preview.paused, expiredRunning: expired.running, settingsSame: true };
     await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
     return state;
@@ -7954,7 +7955,7 @@ async function driveSleepTimerCancel(context, dir, note) {
     const settingsAfter = await settingsText();
     if (settingsAfter !== settingsBefore) throw new Error(`取消或续时改写了设置：before=${settingsBefore} after=${settingsAfter}`);
     const storage = await storageText();
-    if (/sleep/i.test(storage)) throw new Error(`扩展存储里出现了睡眠定时：${storage}`);
+    if (/sleep/i.test(storage.replaceAll('sleepSoonHint', 'soonHint'))) throw new Error(`扩展存储里出现了睡眠定时：${storage}`);
     const state = {
       ok: true,
       permissions,
@@ -7975,6 +7976,213 @@ async function driveSleepTimerCancel(context, dir, note) {
   } finally {
     await popup?.close().catch(() => {});
     for (const page of [long, feed]) await page?.close().catch(() => {});
+  }
+}
+
+async function driveSleepTimerHints(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const permissions = await worker.evaluate(() => chrome.runtime.getManifest().permissions ?? []);
+  if (JSON.stringify(permissions) !== JSON.stringify(['storage'])) throw new Error(`权限应仍只有 storage：${JSON.stringify(permissions)}`);
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? null);
+  const clock = text => text.split(':').reduce((total, part) => total * 60 + Number(part), 0);
+  const view = popup => popup.evaluate(`(() => {
+    const trigger = document.querySelector('button[aria-label="Sleep timer"]');
+    const labels = [...document.querySelectorAll('button')].map(node => node.getAttribute('aria-label') || '');
+    return {
+      text: trigger?.textContent?.trim() ?? '',
+      running: Boolean(trigger?.hasAttribute('data-running')),
+      presets: labels.filter(label => /^Pause in \\d+ minutes$/.test(label)),
+      custom: Boolean(document.querySelector('#sleep-timer-custom')),
+      play: labels.find(label => label === 'Play' || label === 'Pause') ?? '',
+    };
+  })()`);
+  const openTimer = async popup => {
+    if (!await popup.evaluate(`(() => { const trigger = document.querySelector('button[aria-label="Sleep timer"]'); if (!trigger || trigger.disabled) return false; trigger.click(); return true; })()`)) throw new Error('睡眠定时入口点不开');
+    await poll(() => view(popup), value => value.presets.length === 4 && value.custom, '弹层里应有四个档位和自定义分钟');
+  };
+  const startCustom = async (popup, minutes) => {
+    const started = await popup.evaluate(`(() => {
+      const input = document.querySelector('#sleep-timer-custom');
+      const submit = input?.form?.querySelector('button[type="submit"]');
+      if (!input || !submit) return false;
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, ${JSON.stringify(String(minutes))});
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      return true;
+    })()`);
+    if (!started) throw new Error('没有自定义分钟输入框');
+    await poll(() => popup.evaluate(`(() => !document.querySelector('#sleep-timer-custom')?.form?.querySelector('button[type="submit"]')?.disabled)()`), value => value === true, `${minutes} 分钟应可开始`);
+    await popup.evaluate(`(() => { document.querySelector('#sleep-timer-custom').form.querySelector('button[type="submit"]').click(); })()`);
+  };
+  const playing = () => long.locator('#media').evaluate(element => ({ paused: element.paused, currentTime: element.currentTime, connected: element.isConnected }));
+  const hint = text => long.getByText(text, { exact: true });
+  const showHint = async (text, shot, timeout = 8_000) => {
+    const node = hint(text);
+    await node.waitFor({ state: 'visible', timeout });
+    const pass = await node.evaluate(element => element.className.includes('pointer-events-none') && element.getAttribute('role') === 'status');
+    if (!pass) throw new Error(`${text} 不是不挡点击的状态字样`);
+    const toast = await node.boundingBox();
+    const media = await long.locator('#media').boundingBox();
+    if (!toast || !media) throw new Error(`${text} 没有位置`);
+    const controlsTop = media.y + Math.max(media.height - 48, media.height * 0.75);
+    const coversControls = toast.y + toast.height > controlsTop && toast.x < media.x + media.width && toast.x + toast.width > media.x;
+    if (coversControls) throw new Error(`${text} 盖住了播放控件：${JSON.stringify({ toast, media })}`);
+    await long.screenshot({ path: path.join(dir, shot), animations: 'disabled' });
+    await node.waitFor({ state: 'hidden', timeout: 3_000 });
+    return toast;
+  };
+  const settingName = 'Warn about a minute before';
+  const startCopy = 'Sleep 2 min';
+  const cancelCopy = 'Sleep cancelled';
+  const soonCopy = 'About 1 minute left';
+  const dueCopy = 'Sleep timer ended, paused';
+  let settings = null;
+  let long = null;
+  let popup = null;
+  let turnedOff = false;
+  try {
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#playback`, { waitUntil: 'domcontentloaded' });
+    const toggle = settings.getByRole('switch', { name: settingName });
+    await toggle.waitFor({ state: 'visible', timeout: 15_000 });
+    if (await toggle.getAttribute('aria-checked') !== 'true') throw new Error('临近提示默认应开启');
+    await settings.getByText('About a minute before the sleep timer pauses, a short note appears on the page. On by default.', { exact: true }).waitFor({ state: 'visible' });
+    await toggle.scrollIntoViewIfNeeded();
+    await settings.screenshot({ path: path.join(dir, 'settings-on.png'), animations: 'disabled' });
+    const initial = await stored();
+    if (initial?.sleepSoonHint === false) throw new Error('存储里的临近提示不是默认开');
+    note('setting defaults on');
+
+    long = await context.newPage();
+    await long.goto(`${origin}/long`, { waitUntil: 'domcontentloaded' });
+    await long.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await long.locator('#media').evaluate(element => { element.loop = true; });
+    popup = await openActionPopup(context, long);
+    await popup.click('Play');
+    await poll(playing, value => !value.paused, '/long 应开始播放');
+    await openTimer(popup);
+    await startCustom(popup, 2);
+    await showHint(startCopy, 'toast-start.png');
+    const armed = await poll(() => view(popup), value => value.running && clock(value.text) > 90 && clock(value.text) <= 120, '自定义 2 分钟后应显示倒计时');
+    const afterStart = await playing();
+    if (afterStart.paused) throw new Error('开始提示时不应暂停');
+    note(`start hint countdown=${armed.text}`);
+
+    await openTimer(popup);
+    await popup.click('Cancel sleep');
+    await showHint(cancelCopy, 'toast-cancel.png');
+    await poll(() => view(popup), value => !value.running && value.text === '', '取消后倒计时应消失');
+    const afterCancel = await playing();
+    if (afterCancel.paused || !(afterCancel.currentTime >= afterStart.currentTime)) throw new Error(`取消不应暂停：${JSON.stringify({ afterStart, afterCancel })}`);
+    note('cancel hint, still playing');
+
+    await startCustom(popup, 2);
+    const armedAt = Date.now();
+    await showHint(startCopy, 'toast-start-again.png');
+    const again = await poll(() => view(popup), value => value.running && clock(value.text) > 90 && clock(value.text) <= 120, '再设 2 分钟');
+    await hint(soonCopy).waitFor({ state: 'visible', timeout: 90_000 });
+    const soonAfterSeconds = (Date.now() - armedAt) / 1000;
+    if (soonAfterSeconds < 45) throw new Error(`临近提示太早：${soonAfterSeconds.toFixed(1)} 秒`);
+    if (soonAfterSeconds > 80) throw new Error(`临近提示太晚：${soonAfterSeconds.toFixed(1)} 秒`);
+    const duringSoon = await playing();
+    if (duringSoon.paused) throw new Error('临近提示时不应暂停');
+    const node = hint(soonCopy);
+    const pass = await node.evaluate(element => element.className.includes('pointer-events-none') && element.getAttribute('role') === 'status');
+    if (!pass) throw new Error('临近提示不是不挡点击的状态字样');
+    await long.screenshot({ path: path.join(dir, 'toast-soon.png'), animations: 'disabled' });
+    await node.waitFor({ state: 'hidden', timeout: 3_000 });
+    const left = await view(popup);
+    if (!left.running || clock(left.text) > 90) throw new Error(`临近提示时倒计时应还在、并接近 1 分钟：${JSON.stringify(left)}`);
+    note(`soon after ${soonAfterSeconds.toFixed(1)}s countdown=${left.text} previous=${again.text}`);
+
+    const soonAt = Date.now();
+    await hint(dueCopy).waitFor({ state: 'visible', timeout: 90_000 });
+    const dueAfterSoonSeconds = (Date.now() - soonAt) / 1000;
+    if (dueAfterSoonSeconds < 45) throw new Error(`到期太早：${dueAfterSoonSeconds.toFixed(1)} 秒`);
+    await long.screenshot({ path: path.join(dir, 'toast-due.png'), animations: 'disabled' });
+    const stopped = await poll(playing, value => value.paused && value.connected, '到期应暂停当前媒体');
+    await hint(dueCopy).waitFor({ state: 'hidden', timeout: 3_000 });
+    await long.waitForTimeout(1_200);
+    const held = await playing();
+    if (!held.paused || Math.abs(held.currentTime - stopped.currentTime) > 0.05) throw new Error(`暂停后进度变了：${JSON.stringify({ stopped, held })}`);
+    if (long.isClosed()) throw new Error('到期关掉了标签');
+    await long.screenshot({ path: path.join(dir, 'fixture-paused.png'), animations: 'disabled' });
+    const expired = await poll(() => view(popup), value => !value.running && value.text === '' && value.play === 'Play', '到期后面板回到未定时');
+    note(`due ${dueAfterSoonSeconds.toFixed(1)}s after soon, paused at ${stopped.currentTime.toFixed(1)} play=${expired.play}`);
+
+    await popup.close();
+    popup = null;
+    await settings.bringToFront();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#playback`, { waitUntil: 'domcontentloaded' });
+    const off = settings.getByRole('switch', { name: settingName });
+    await off.waitFor({ state: 'visible', timeout: 15_000 });
+    await off.click();
+    turnedOff = true;
+    await poll(stored, value => value?.sleepSoonHint === false, '应关掉临近提示');
+    await off.scrollIntoViewIfNeeded();
+    await settings.screenshot({ path: path.join(dir, 'settings-off.png'), animations: 'disabled' });
+    note('setting turned off');
+
+    await long.bringToFront();
+    popup = await openActionPopup(context, long);
+    await popup.click('Play');
+    await poll(playing, value => !value.paused, '关掉临近提示后应能继续播放');
+    await openTimer(popup);
+    await startCustom(popup, 2);
+    const offArmedAt = Date.now();
+    await showHint(startCopy, 'toast-start-while-off.png');
+    await poll(() => view(popup), value => value.running && clock(value.text) > 90, '关闭临近提示后仍能开始定时');
+    let sawSoon = false;
+    while (Date.now() - offArmedAt < 75_000) {
+      if (await hint(soonCopy).isVisible().catch(() => false)) { sawSoon = true; break; }
+      await long.waitForTimeout(400);
+    }
+    const watched = (Date.now() - offArmedAt) / 1000;
+    if (sawSoon) throw new Error(`关掉临近提示后仍出现了「${soonCopy}」`);
+    if (watched < 70) throw new Error(`还没等到临近窗口：${watched.toFixed(1)} 秒`);
+    const still = await playing();
+    if (still.paused) throw new Error('2 分钟还没到，关掉临近提示不应暂停');
+    await openTimer(popup);
+    await popup.click('Cancel sleep');
+    await showHint(cancelCopy, 'toast-cancel-while-off.png');
+    const afterOffCancel = await playing();
+    if (afterOffCancel.paused) throw new Error('关闭临近提示后取消不应暂停');
+    note(`soon suppressed for ${watched.toFixed(1)}s`);
+
+    await settings.bringToFront();
+    const back = settings.getByRole('switch', { name: settingName });
+    if (await back.getAttribute('aria-checked') !== 'false') throw new Error('开关应仍是关');
+    await back.click();
+    turnedOff = false;
+    await poll(stored, value => value?.sleepSoonHint !== false, '应把临近提示开回去');
+    const saved = await stored();
+    const exported = JSON.stringify(saved);
+    if (!exported.includes('"sleepSoonHint":true') && !exported.includes('"sleepSoonHint": true')) throw new Error(`导出用的存储里没有临近提示开关：${exported}`);
+    const state = {
+      ok: true,
+      permissions,
+      settingDefaultOn: true,
+      start: startCopy,
+      cancel: cancelCopy,
+      soon: soonCopy,
+      due: dueCopy,
+      soonAfterSeconds: Number(soonAfterSeconds.toFixed(1)),
+      dueAfterSoonSeconds: Number(dueAfterSoonSeconds.toFixed(1)),
+      pausedAt: Number(stopped.currentTime.toFixed(2)),
+      soonSuppressed: true,
+      settingRestored: saved?.sleepSoonHint === true,
+    };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    if (turnedOff && settings && !settings.isClosed()) {
+      const back = settings.getByRole('switch', { name: settingName });
+      if (await back.isVisible().catch(() => false) && await back.getAttribute('aria-checked') === 'false') await back.click().catch(() => {});
+    }
+    await popup?.close().catch(() => {});
+    for (const page of [settings, long]) await page?.close().catch(() => {});
   }
 }
 

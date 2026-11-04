@@ -92,6 +92,11 @@ export default defineContentScript({
     const topFrame = window.top === window;
     const sleep = createSleepTimer(() => {
       void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'sleepDue' }).catch(() => {});
+    }, undefined, () => {
+      // Checked when the minute arrives, so turning the setting off after arming still skips the note.
+      if (watched?.sleepSoonHint === false) return;
+      const label = actionHintText('sleepSoonHint');
+      if (label) window.dispatchEvent(new window.CustomEvent(actionHintEvent, { detail: label }));
     });
     const applyWatched = () => {
       if (!pageUrl || !watched) return;

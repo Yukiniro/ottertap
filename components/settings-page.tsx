@@ -450,12 +450,13 @@ function Row({ title, description, titleId, children }: { title: string; descrip
 }
 
 export function SettingsPage({ back }: { back?: () => void }) {
-  const { themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, followPlayingAtom, floatingHiddenSitesAtom, resumeJumpAtom, resumeExcludedSitesAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, fullscreenWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, coarseStepAtom, fineWheelAtom, wheelDirectionAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, followPlayingAtom, sleepSoonHintAtom, floatingHiddenSitesAtom, resumeJumpAtom, resumeExcludedSitesAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, fullscreenWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, coarseStepAtom, fineWheelAtom, wheelDirectionAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const theme = useAtomValue(themeAtom);
   const floating = useAtomValue(floatingAtom);
   const floatingNote = useAtomValue(floatingNoteAtom);
   const floatingWhilePlaying = useAtomValue(floatingWhilePlayingAtom);
   const followPlaying = useAtomValue(followPlayingAtom);
+  const sleepSoonHint = useAtomValue(sleepSoonHintAtom);
   const floatingHiddenSites = useAtomValue(floatingHiddenSitesAtom);
   const resumeJump = useAtomValue(resumeJumpAtom);
   const resumeExcludedSites = useAtomValue(resumeExcludedSitesAtom);
@@ -634,6 +635,9 @@ export function SettingsPage({ back }: { back?: () => void }) {
           <p className="mt-1 max-w-xl text-sm leading-5 text-muted-foreground">{i18n.t('lockRateDescription')}</p>
           <div className="mt-4">
             <SwitchRow id="settings-follow-playing" label={i18n.t('followPlaying')} description={i18n.t('followPlayingDescription')} checked={followPlaying} disabled={disabled} onChange={checked => void save({ followPlaying: checked })} />
+          </div>
+          <div className="mt-4">
+            <SwitchRow id="settings-sleep-soon" label={i18n.t('sleepSoonHintSetting')} description={i18n.t('sleepSoonHintDescription')} checked={sleepSoonHint} disabled={disabled} onChange={checked => void save({ sleepSoonHint: checked })} />
           </div>
           <Field orientation="horizontal" className="mt-4 justify-between gap-4 rounded-lg bg-secondary/60 px-3 py-3">
             <FieldLabel htmlFor="settings-lock-rate" className="text-sm font-normal">{i18n.t('lockRate')}</FieldLabel>
