@@ -41,6 +41,14 @@ ottertap-verify ready id=current pid=<pid> control=127.0.0.1:<port> extension=<i
 
 扩展源码改过之后要重新 `pnpm build`。会话开着时不要构建，否则正在加载的文件会被换掉。
 
+改了 `scripts/session.mjs`（或任何在 `serve` / 会话启动时加载的脚本）之后，必须先 `cleanup`，再 `launch`，然后才能 `drive` 或做验证。旅程跑在 `serve` 进程里，已经在跑的会话不会自动重载这些文件，热改不生效；只改磁盘文件就继续 `drive`，跑的仍是旧逻辑。即使扩展包没有重新构建，也要这样做。
+
+```bash
+node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
+node .cursor/skills/verify-ottertap/scripts/session.mjs launch
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive <journey>
+```
+
 ## Doctor
 
 任何异常先跑这一条。它只读：进程还在、命令行是本技能的 `session.mjs`、控制端口由该 pid 监听、service worker 属于启动时的扩展 id、`chrome.runtime.getManifest().version` 等于 `package.json`、UI 语言仍是英语、`background.js` 的 mtime 与 launch 时相同。
@@ -49,7 +57,7 @@ ottertap-verify ready id=current pid=<pid> control=127.0.0.1:<port> extension=<i
 node .cursor/skills/verify-ottertap/scripts/session.mjs doctor
 ```
 
-通过时打印 `ottertap-verify doctor ok ...`。mtime 变了就先 `cleanup`，再 `pnpm build` 和 `pnpm verify-build`，然后重新 `launch`。不要在 doctor 里改存储或点击页面。
+通过时打印 `ottertap-verify doctor ok ...`。mtime 变了就先 `cleanup`，再 `pnpm build` 和 `pnpm verify-build`，然后重新 `launch`。这条只针对扩展包变了；`session.mjs` 等驱动脚本自己被改，doctor 看不出来，见 Launch 里的 `cleanup` → `launch` 规则。不要在 doctor 里改存储或点击页面。
 
 ## Drive
 
