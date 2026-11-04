@@ -11,6 +11,7 @@ import { volumeBadgeColor, volumeBadgeFromReports, volumeBadgeTtlMs } from '../l
 import { shouldFollowPlaying } from '../lib/follow-playing';
 import { soundingTabs } from '../lib/tabs';
 import { isResumeEntry, resumePage, writeResume, type ResumeReport } from '../lib/resume';
+import { sleepMinutes } from '../lib/sleep-timer';
 import type { MediaCommand, MediaState, Settings, SitePref } from '../lib/types';
 
 export default defineBackground(() => {
@@ -223,9 +224,11 @@ export default defineBackground(() => {
     const frames = [...frameIds(tabId)];
     const recall = new Map<number, number | null>();
     let typing = false;
+    let sleepAt: number | undefined;
     const results = await Promise.allSettled(frames.map(async frameId => {
       const response = await browser.tabs.sendMessage(tabId, { namespace: 'ottertap', type: 'snapshot' }, { frameId });
       if (response?.typing === true) typing = true;
+      if (frameId === 0 && typeof response?.sleepAt === 'number' && Number.isFinite(response.sleepAt)) sleepAt = response.sleepAt;
       const media: MediaState[] = response?.media ?? [];
       const remembered = response?.recallRate;
       recall.set(frameId, typeof remembered === 'number' && Number.isFinite(remembered) ? remembered : null);
@@ -237,13 +240,20 @@ export default defineBackground(() => {
       failed.add(frames[index]!);
       return [];
     });
-    return { media, failed, recall, typing };
+    return { media, failed, recall, typing, sleepAt };
   }
   const lockedId = (tabId: number, media: MediaState[], failed: Set<number>) => {
     const selectedId = keptSelection(selectedIds.get(tabId) ?? '', media.map(item => item.id), failed);
     if (!selectedId) clearSelection(tabId);
     return selectedId;
   };
+  /** The media OtterTap controls on this tab right now, or nothing when the selected one's frame did not answer. */
+  async function controlledMedia(tabId: number) {
+    const { media, failed } = await collect(tabId);
+    const saved = lockedId(tabId, media, failed);
+    if (saved && !media.some(item => item.id === saved)) return undefined;
+    return lockedMedia(media, saved);
+  }
   const reveal = (tabId: number, percent: number) => {
     void browser.tabs.sendMessage(tabId, { namespace: 'ottertap', type: 'reveal', percent }, { frameId: 0 }).catch(() => {});
   };
@@ -484,7 +494,7 @@ export default defineBackground(() => {
       if (sender.tab?.id !== undefined) void browser.tabs.sendMessage(sender.tab.id, { namespace: 'ottertap', type: 'altUsed' }).catch(() => {});
       return;
     }
-    if (!['settings', 'options', 'context', 'register', 'read', 'command', 'select', 'highlight', 'hotkey', 'holdRate', 'soundingTabs', 'focusTab', 'muteTab', 'rateLock', 'openPopup', 'playing', 'resume', 'resumeJumped'].includes(message.type)) return;
+    if (!['settings', 'options', 'context', 'register', 'read', 'command', 'select', 'highlight', 'hotkey', 'holdRate', 'soundingTabs', 'focusTab', 'muteTab', 'rateLock', 'openPopup', 'playing', 'resume', 'resumeJumped', 'sleep', 'sleepDue'].includes(message.type)) return;
     const tabId = sender.tab?.id ?? message.tabId;
     async function handle() {
       if (message.type === 'settings') {
@@ -573,6 +583,13 @@ export default defineBackground(() => {
           await recordResume(page, { media: message.media, time: message.time, duration: message.duration });
           return { ok: true };
         }
+        if (message.type === 'sleepDue') {
+          // Only the top frame holds the timer. Whoever is controlled when it runs out is the one that stops.
+          if (!sender.tab || (sender.frameId ?? 0) !== 0 || !enabled) return { ok: true };
+          const target = await controlledMedia(tabId);
+          if (target && !target.paused) await deliver(tabId, target.id, 'command', { type: 'pause' });
+          return { ok: true };
+        }
         // Only extension pages and this tab's content scripts can request controls.
         if (!sender.tab && !sender.url?.startsWith(browser.runtime.getURL('/'))) return;
         const mediaId = typeof message.id === 'string' && /^\d+:\d+$/.test(message.id) ? message.id : '';
@@ -590,14 +607,14 @@ export default defineBackground(() => {
               return isResumeEntry(entry) ? { ...item, resume: entry.time } : item;
             });
           };
-          const { media, failed } = await collect(tabId);
+          const { media, failed, sleepAt } = await collect(tabId);
           const selectedId = lockedId(tabId, media, failed);
           const target = lockedMedia(media, selectedId);
           if (target && await applySitePref(tabId, host, target.id, settings.sitePrefs, settings.defaultRate)) {
             const refreshed = await collect(tabId);
-            return { host, enabled, media: await attachResume(refreshed.media), selectedId: lockedId(tabId, refreshed.media, refreshed.failed) };
+            return { host, enabled, media: await attachResume(refreshed.media), selectedId: lockedId(tabId, refreshed.media, refreshed.failed), ...(refreshed.sleepAt == null ? {} : { sleepAt: refreshed.sleepAt }) };
           }
-          return { host, enabled, media: await attachResume(media), selectedId };
+          return { host, enabled, media: await attachResume(media), selectedId, ...(sleepAt == null ? {} : { sleepAt }) };
         }
         if (message.type === 'holdRate' && message.phase === 'end') { await endHold(tabId); return { ok: true }; }
         if (!enabled) throw new Error(i18n.t('siteDisabled'));
@@ -615,6 +632,17 @@ export default defineBackground(() => {
           if ((selectedIds.get(tabId) ?? '') !== mediaId) return { ok: true };
           await cueSelection(tabId, mediaId);
           return { ok: true };
+        }
+        if (message.type === 'sleep') {
+          const minutes = sleepMinutes(message.minutes);
+          if (minutes == null) throw new Error(i18n.t('invalidCommand'));
+          const target = await controlledMedia(tabId);
+          if (!target) throw new Error(i18n.t('sleepTimerNoMedia'));
+          rememberSelection(tabId, target.id);
+          const sleepAt = Date.now() + minutes * 60_000;
+          const armed = await browser.tabs.sendMessage(tabId, { namespace: 'ottertap', type: 'sleep', at: sleepAt }, { frameId: 0 });
+          if (armed?.ok !== true) throw new Error(armed?.error || i18n.t('pageUnavailable'));
+          return { ok: true, sleepAt };
         }
         if (message.type === 'holdRate') {
           if (!settings.holdBoost) return { handled: false };
@@ -665,7 +693,7 @@ export default defineBackground(() => {
       } catch (error) { return { error: error instanceof Error ? error.message : i18n.t('pageUnavailable') }; }
     }
     // Chain before the first await so a later command cannot pass an earlier one.
-    const run = (message.type === 'command' || message.type === 'hotkey' || message.type === 'holdRate') && Number.isInteger(tabId) ? enqueueCommand(tabId, () => handle()) : handle();
+    const run = (message.type === 'command' || message.type === 'hotkey' || message.type === 'holdRate' || message.type === 'sleep' || message.type === 'sleepDue') && Number.isInteger(tabId) ? enqueueCommand(tabId, () => handle()) : handle();
     // Keep the channel open on Chromium versions without Promise listener support.
     void run.then(sendResponse, () => sendResponse({ error: i18n.t('extensionMessageFailed') }));
     return true;

@@ -14,12 +14,14 @@ import { VolumeSlider } from './volume-slider';
 import { Switch } from './ui/switch';
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 import { Brand } from './brand';
+import { SleepTimer } from './sleep-timer';
 import { useMedia } from '../hooks/use-media';
 import { channelModes, isChannelMode } from '../lib/amplifier';
 import { canStepFrames } from '../lib/frame';
 import { channelLabel, mediaListLabel, pipHint, showsPictureInPicture } from '../lib/media';
 import { formatRate, nextRate, sameRate } from '../lib/rate';
 import { actualSkipSeconds } from '../lib/skip';
+import type { SleepTimerClient } from '../lib/sleep-timer';
 import type { SoundingTab, SoundingTabsClient } from '../lib/tabs';
 import { disableSite, enableSite, forgetMatchingSites, hideFloating, isFloatingHidden, isSiteEnabled, rememberSite, showFloating, sitePrefFor } from '../lib/settings';
 import { defaultSettings, type MediaClient, type MediaState, type PageState, type SitePref } from '../lib/types';
@@ -161,7 +163,7 @@ function MediaChoices({ media, host, selectedId, onSelect, onOpen }: { media: Me
     </DropdownMenu>
   </div>;
 }
-export function MediaPanel({ client, openSettings, sounding, initial }: { client: MediaClient; openSettings: () => void; sounding?: SoundingTabsClient; initial?: PageState }) {
+export function MediaPanel({ client, openSettings, sounding, sleep, initial }: { client: MediaClient; openSettings: () => void; sounding?: SoundingTabsClient; sleep?: SleepTimerClient; initial?: PageState }) {
   const { page, selected, select, command, refresh, loading, error } = useMedia(client, { initial });
   const { floatingAtom, floatingHiddenSitesAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, skipSecondsAtom, skipWithRateAtom, rateStepAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const floating = useAtomValue(floatingAtom);
@@ -248,7 +250,10 @@ export function MediaPanel({ client, openSettings, sounding, initial }: { client
   return <section className="flex w-[400px] max-w-full flex-col gap-3 bg-background px-4 pt-1 pb-3" aria-label={i18n.t('mediaPanel')}>
     <header className="flex h-10 items-center justify-between">
       <Brand className="text-sm [&_img]:size-6" />
-      <Button variant="ghost" size="icon" aria-label={i18n.t('openSettings')} onClick={openSettings}><SettingsIcon className="size-5" /></Button>
+      <div className="flex items-center gap-1">
+        {sleep && <SleepTimer client={sleep} sleepAt={page.sleepAt} available={!!selected} onStarted={() => void refresh()} />}
+        <Button variant="ghost" size="icon" aria-label={i18n.t('openSettings')} onClick={openSettings}><SettingsIcon className="size-5" /></Button>
+      </div>
     </header>
     {page.media.length > 1 && <MediaChoices media={page.media} host={page.host} selectedId={selected?.id ?? ''} onSelect={id => { select(id); setSeekDraft(null); }} onOpen={() => { if (selected) showMedia(selected.id); }} />}
     {selected ? <>
