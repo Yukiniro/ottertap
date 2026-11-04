@@ -20,7 +20,11 @@ export function createExtensionClient(tabId?: number): MediaClient {
 }
 
 export function createSleepTimerClient(tabId?: number): SleepTimerClient {
-  return { async start(minutes) { await request(tabId, { type: 'sleep', minutes }); } };
+  return {
+    async start(minutes) { await request(tabId, { type: 'sleep', minutes }); },
+    async cancel() { await request(tabId, { type: 'sleepCancel' }); },
+    async extend() { await request(tabId, { type: 'sleepExtend' }); },
+  };
 }
 
 export function createSoundingTabsClient(tabId?: number): SoundingTabsClient {

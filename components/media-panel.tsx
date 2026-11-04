@@ -251,7 +251,7 @@ export function MediaPanel({ client, openSettings, sounding, sleep, initial }: {
     <header className="flex h-10 items-center justify-between">
       <Brand className="text-sm [&_img]:size-6" />
       <div className="flex items-center gap-1">
-        {sleep && <SleepTimer client={sleep} sleepAt={page.sleepAt} available={!!selected} onStarted={() => void refresh()} />}
+        {sleep && <SleepTimer client={sleep} sleepAt={page.sleepAt} available={!!selected} onChange={() => void refresh()} />}
         <Button variant="ghost" size="icon" aria-label={i18n.t('openSettings')} onClick={openSettings}><SettingsIcon className="size-5" /></Button>
       </div>
     </header>

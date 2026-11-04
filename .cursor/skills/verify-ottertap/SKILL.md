@@ -99,6 +99,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-active
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-away-tab
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive resume-save
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer-cancel
 ```
 
 `skip-step` 在设置页把 `Skip step` 改成 `30s` 并打开 `Single-key mode`，再看弹出面板进退按钮名和页内 `L` / `J` / `→` / `←` 让 `/long` 夹具的 `currentTime` 跟着步长变；它会改写 profile，同一会话只能跑一次。步骤见 `features/skip-step.md`。
@@ -298,6 +299,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-active
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-away-tab
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive resume-save
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer-cancel
 node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 ```
 
@@ -534,3 +536,13 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer
 `sleep-timer` 先在没有媒体的 `/silent` 上确认面板标题栏的 `Sleep timer` 标为不可用，点开只写着 `No media to pause on this page.`。`/long` 上入口默认只有图标、面板高度不超过 600px，点开有 `Pause in 15 minutes` 到 `Pause in 60 minutes` 四档和 `Custom minutes`；选 15 分钟后按钮显示倒计时，再用自定义 1 分钟替换。`/feed` 上对 `Feed preview` 开 1 分钟后换到 `Main player`，两条都不立刻停。关掉面板再开，倒计时还在。约 60 秒后 `/long` 暂停、进度留在原处、标签还开着；`/feed` 只停 `Main player`。设置原文不变，存储里没有定时，权限仍只有 `storage`。为了等到期，整程约 70 秒。它不改 profile。步骤见 `features/sleep-timer.md`。
 
 写入 `sleep-timer/`：`popup-no-media.png`、`popup-off.png`、`popup-presets.png`、`popup-15.png`、`popup-custom.png`、`feed-switched.png`、`popup-reopened.png`、`popup-expired.png`、`fixture-paused.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
+## 睡眠定时：取消与再续 15 分钟
+
+```bash
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer-cancel
+```
+
+`sleep-timer-cancel` 在正在播放的 `/long` 上用自定义 1 分钟开定时，弹层里出现 `Cancel sleep` 和 `Add 15 minutes`。点续时后剩余大约增加 15 分钟，并出现 `Added 15 minutes.`。点取消后倒计时消失，出现 `Sleep cancelled. Playback is unchanged.`，档位还在，媒体仍在播。关掉面板再打开，定时不再出现。再设 1 分钟证明误触可以设回，然后再次取消。`/feed` 上对 `Feed preview` 开 1 分钟后换到 `Main player`，两条都不立刻停，倒计时还在；取消后两条仍在播。接着等到第一次再设的那 1 分钟过去，`/long` 仍在播、进度往前走、标签还开着。设置原文不变，存储里没有定时，权限仍只有 `storage`。页内短暂提示不在这一程。它不改 profile。为了等到被取消的那 1 分钟，整程大约 70 秒。步骤见 `features/sleep-timer-cancel.md`。
+
+写入 `sleep-timer-cancel/`：`popup-running.png`、`popup-extended.png`、`popup-cancelled.png`、`popup-reopened.png`、`popup-rearmed.png`、`feed-switched.png`、`feed-cancelled.png`、`fixture-still-playing.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。

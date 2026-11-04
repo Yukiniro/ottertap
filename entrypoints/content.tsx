@@ -8,7 +8,7 @@ import { actionHintEvent, actionHintText, bareVolumeWheel, createHotkeyInput, is
 import { createMediaController, isMediaCommand, mediaPresenceEvent } from '../lib/media';
 import { rateLockEvent } from '../lib/rate-lock';
 import { createResumeClock, readResume } from '../lib/resume';
-import { createSleepTimer } from '../lib/sleep-timer';
+import { createSleepTimer, sleepExtendMinutes } from '../lib/sleep-timer';
 import { maxEffectiveVolume, shouldReportVolume, volumeReportIntervalMs } from '../lib/volume-badge';
 import { isSiteEnabled, isResumeExcluded, normalizeHoldRate, normalizeSkipSeconds, normalizeVolumeStep } from '../lib/settings';
 import { normalizeKeybinds } from '../lib/keybinds';
@@ -117,13 +117,23 @@ export default defineContentScript({
         if (!lockedLocalId) controller.clearSelectionRing();
         return;
       }
-      if (!['snapshot', 'command', 'highlight', 'reveal', 'rateHint', 'actionHint', 'rateLockHint', 'hold', 'holdHint', 'sleep'].includes(message.type)) return;
-      if (message.type === 'sleep' && !topFrame) return;
+      if (!['snapshot', 'command', 'highlight', 'reveal', 'rateHint', 'actionHint', 'rateLockHint', 'hold', 'holdHint', 'sleep', 'sleepCancel', 'sleepExtend'].includes(message.type)) return;
+      if ((message.type === 'sleep' || message.type === 'sleepCancel' || message.type === 'sleepExtend') && !topFrame) return;
       void (async () => {
       if (message.type === 'sleep') {
         if (typeof message.at !== 'number' || !Number.isFinite(message.at)) return { error: i18n.t('invalidCommand') };
         sleep.arm(message.at);
         return { ok: true };
+      }
+      if (message.type === 'sleepCancel') {
+        if (sleep.deadline() == null) return { error: i18n.t('sleepTimerIdle') };
+        sleep.cancel();
+        return { ok: true };
+      }
+      if (message.type === 'sleepExtend') {
+        const sleepAt = sleep.extend(sleepExtendMinutes * 60_000);
+        if (sleepAt == null) return { error: i18n.t('sleepTimerIdle') };
+        return { ok: true, sleepAt };
       }
       if (message.type === 'actionHint') {
         const label = actionHintText(typeof message.key === 'string' ? message.key : '', message.seconds);

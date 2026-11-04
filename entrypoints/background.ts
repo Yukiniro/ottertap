@@ -494,7 +494,7 @@ export default defineBackground(() => {
       if (sender.tab?.id !== undefined) void browser.tabs.sendMessage(sender.tab.id, { namespace: 'ottertap', type: 'altUsed' }).catch(() => {});
       return;
     }
-    if (!['settings', 'options', 'context', 'register', 'read', 'command', 'select', 'highlight', 'hotkey', 'holdRate', 'soundingTabs', 'focusTab', 'muteTab', 'rateLock', 'openPopup', 'playing', 'resume', 'resumeJumped', 'sleep', 'sleepDue'].includes(message.type)) return;
+    if (!['settings', 'options', 'context', 'register', 'read', 'command', 'select', 'highlight', 'hotkey', 'holdRate', 'soundingTabs', 'focusTab', 'muteTab', 'rateLock', 'openPopup', 'playing', 'resume', 'resumeJumped', 'sleep', 'sleepCancel', 'sleepExtend', 'sleepDue'].includes(message.type)) return;
     const tabId = sender.tab?.id ?? message.tabId;
     async function handle() {
       if (message.type === 'settings') {
@@ -644,6 +644,13 @@ export default defineBackground(() => {
           if (armed?.ok !== true) throw new Error(armed?.error || i18n.t('pageUnavailable'));
           return { ok: true, sleepAt };
         }
+        if (message.type === 'sleepCancel' || message.type === 'sleepExtend') {
+          const armed = await browser.tabs.sendMessage(tabId, { namespace: 'ottertap', type: message.type }, { frameId: 0 });
+          if (armed?.ok !== true) throw new Error(armed?.error || i18n.t('pageUnavailable'));
+          if (message.type === 'sleepCancel') return { ok: true };
+          if (typeof armed.sleepAt !== 'number' || !Number.isFinite(armed.sleepAt)) throw new Error(i18n.t('pageUnavailable'));
+          return { ok: true, sleepAt: armed.sleepAt };
+        }
         if (message.type === 'holdRate') {
           if (!settings.holdBoost) return { handled: false };
           return { handled: await startHold(tabId, settings.holdBoostRate) };
@@ -693,7 +700,7 @@ export default defineBackground(() => {
       } catch (error) { return { error: error instanceof Error ? error.message : i18n.t('pageUnavailable') }; }
     }
     // Chain before the first await so a later command cannot pass an earlier one.
-    const run = (message.type === 'command' || message.type === 'hotkey' || message.type === 'holdRate' || message.type === 'sleep' || message.type === 'sleepDue') && Number.isInteger(tabId) ? enqueueCommand(tabId, () => handle()) : handle();
+    const run = (message.type === 'command' || message.type === 'hotkey' || message.type === 'holdRate' || message.type === 'sleep' || message.type === 'sleepCancel' || message.type === 'sleepExtend' || message.type === 'sleepDue') && Number.isInteger(tabId) ? enqueueCommand(tabId, () => handle()) : handle();
     // Keep the channel open on Chromium versions without Promise listener support.
     void run.then(sendResponse, () => sendResponse({ error: i18n.t('extensionMessageFailed') }));
     return true;
