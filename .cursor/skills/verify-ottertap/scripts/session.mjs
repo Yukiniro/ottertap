@@ -7591,11 +7591,13 @@ const sleepTimerView = `(() => {
     heading: document.querySelector('h1')?.textContent?.trim() ?? '',
     play: labels.find(label => label === 'Play' || label === 'Pause') ?? '',
     present: Boolean(trigger),
-    disabled: !trigger || Boolean(trigger.disabled),
+    inHeader: Boolean(trigger?.closest('header')),
+    panelHeight: Math.round(document.querySelector('[aria-label="Media controls"]')?.getBoundingClientRect().height ?? 0),
+    disabled: !trigger || trigger.getAttribute('aria-disabled') === 'true',
     text: trigger?.textContent?.trim() ?? '',
     running: Boolean(trigger?.hasAttribute('data-running')),
     describedBy: trigger?.getAttribute('aria-describedby') ?? '',
-    hint: document.querySelector('#sleep-timer-hint')?.textContent?.trim() ?? '',
+    explain: document.querySelector('[data-slot="popover-content"] [data-slot="popover-description"]')?.textContent?.trim() ?? '',
     status: document.querySelector('#sleep-timer-status')?.textContent?.trim() ?? '',
     presets: labels.filter(label => /^Pause in \\d+ minutes$/.test(label)),
     custom: Boolean(document.querySelector('#sleep-timer-custom')),
@@ -7619,11 +7621,12 @@ async function driveSleepTimer(context, dir, note) {
   });
   const clock = text => text.split(':').reduce((total, part) => total * 60 + Number(part), 0);
   const view = popup => popup.evaluate(sleepTimerView);
+  // The popover fades in; a screenshot taken right away shows it half transparent.
+  const settled = popup => poll(() => popup.evaluate(`(() => { const node = document.querySelector('[data-slot="popover-content"]'); return !!node && node.getAnimations().every(item => item.playState !== 'running'); })()`), value => value === true, '定时弹层应已展开完');
   const openTimer = async popup => {
     if (!await popup.evaluate(`(() => { const trigger = document.querySelector('button[aria-label="Sleep timer"]'); if (!trigger || trigger.disabled) return false; trigger.click(); return true; })()`)) throw new Error('睡眠定时入口点不开');
     const shown = await poll(() => view(popup), value => value.presets.length === 4 && value.custom, '弹层里应有四个档位和自定义分钟');
-    // The popover fades in; a screenshot taken right away shows it half transparent.
-    await poll(() => popup.evaluate(`(() => { const node = document.querySelector('[data-slot="popover-content"]'); return !!node && node.getAnimations().every(item => item.playState !== 'running'); })()`), value => value === true, '档位弹层应已展开完');
+    await settled(popup);
     return shown;
   };
   const startCustom = async (popup, minutes) => {
@@ -7669,13 +7672,13 @@ async function driveSleepTimer(context, dir, note) {
     silent = await context.newPage();
     await silent.goto(`${origin}/silent`, { waitUntil: 'domcontentloaded' });
     popup = await openActionPopup(context, silent, { empty: true });
-    const empty = await poll(() => view(popup), value => value.present && value.disabled && value.hint === 'No media to pause on this page.' && value.describedBy === 'sleep-timer-hint' && value.text === 'Off' && !value.play, '没有媒体时入口应禁用并有短说明');
+    await poll(() => view(popup), value => value.present && value.inHeader && value.disabled && value.status === 'No media to pause on this page.' && value.describedBy === 'sleep-timer-status' && value.text === '' && !value.play, '没有媒体时入口应标为不可用并带短说明');
     await popup.evaluate(`(() => document.querySelector('button[aria-label="Sleep timer"]')?.click())()`);
-    await silent.waitForTimeout(300);
-    const stillClosed = await view(popup);
-    if (stillClosed.presets.length) throw new Error('没有媒体时点入口也打开了档位');
+    const empty = await poll(() => view(popup), value => value.explain === 'No media to pause on this page.', '没有媒体时点入口应说明原因');
+    if (empty.presets.length || empty.custom) throw new Error('没有媒体时不该给档位');
+    await settled(popup);
     await popup.screenshot(path.join(dir, 'popup-no-media.png'));
-    note(`no media: hint=${JSON.stringify(empty.hint)} text=${empty.text}`);
+    note(`no media: explain=${JSON.stringify(empty.explain)}`);
     await popup.close();
     popup = null;
 
@@ -7688,7 +7691,8 @@ async function driveSleepTimer(context, dir, note) {
       element.currentTime = 5;
     });
     popup = await openActionPopup(context, long);
-    const idle = await poll(() => view(popup), value => value.heading === 'Long video' && value.present && !value.disabled && value.text === 'Off' && !value.running && !value.hint, '有媒体时入口可用，默认不开');
+    const idle = await poll(() => view(popup), value => value.heading === 'Long video' && value.present && value.inHeader && !value.disabled && value.text === '' && !value.running && !value.status, '有媒体时入口可用，默认不开');
+    if (idle.panelHeight > 600) throw new Error(`单媒体面板高度 ${idle.panelHeight}px 超过弹出窗口上限 600px`);
     await popup.screenshot(path.join(dir, 'popup-off.png'));
     await popup.click('Play');
     await poll(() => playing(long, '#media'), value => !value.paused, '/long 应开始播放');
@@ -7696,7 +7700,7 @@ async function driveSleepTimer(context, dir, note) {
     if (JSON.stringify(menu.presets) !== JSON.stringify(['Pause in 15 minutes', 'Pause in 30 minutes', 'Pause in 45 minutes', 'Pause in 60 minutes'])) throw new Error(`档位不对：${JSON.stringify(menu.presets)}`);
     if (!menu.scope.includes('Pauses only the media OtterTap controls in this tab.')) throw new Error(`弹层没写清只停当前这条：${menu.scope}`);
     await popup.screenshot(path.join(dir, 'popup-presets.png'));
-    note(`idle text=${idle.text} presets=${menu.presets.join(' / ')}`);
+    note(`idle inHeader=${idle.inHeader} panelHeight=${idle.panelHeight} presets=${menu.presets.join(' / ')}`);
 
     await popup.click('Pause in 15 minutes');
     const fifteen = await poll(() => view(popup), value => value.running && value.presets.length === 0 && clock(value.text) > 14 * 60 && clock(value.text) <= 15 * 60 && value.status === `Pauses in ${value.text}` && !value.alert, '选 15 分钟后弹层收起并显示倒计时');
@@ -7758,7 +7762,7 @@ async function driveSleepTimer(context, dir, note) {
     note(`feed: main paused=${feedStopped.main.paused} preview paused=${feedStopped.preview.paused}`);
 
     popup = await openActionPopup(context, long);
-    const expired = await poll(() => view(popup), value => value.heading === 'Long video' && value.play === 'Play' && value.text === 'Off' && !value.running && !value.alert, '到期后面板回到未定时，媒体是暂停');
+    const expired = await poll(() => view(popup), value => value.heading === 'Long video' && value.play === 'Play' && value.text === '' && !value.running && !value.status && !value.alert, '到期后面板回到未定时，媒体是暂停');
     await popup.screenshot(path.join(dir, 'popup-expired.png'));
     await long.screenshot({ path: path.join(dir, 'fixture-paused.png') });
     await popup.close();
@@ -7768,7 +7772,7 @@ async function driveSleepTimer(context, dir, note) {
     if (settingsAfter !== settingsBefore) throw new Error(`睡眠定时改写了设置：before=${settingsBefore} after=${settingsAfter}`);
     const storage = await storageText();
     if (/sleep/i.test(storage)) throw new Error(`扩展存储里出现了睡眠定时：${storage}`);
-    const state = { ok: true, permissions, noMedia: empty.hint, presets: menu.presets, fifteen: fifteen.text, custom: custom.text, reopened: reopened.text, pausedAfterSeconds: Number(elapsed.toFixed(1)), pausedAt: Number(stopped.currentTime.toFixed(2)), feedMainPaused: feedStopped.main.paused, feedPreviewPlaying: !feedStopped.preview.paused, expiredText: expired.text, settingsSame: true };
+    const state = { ok: true, permissions, noMedia: empty.explain, panelHeight: idle.panelHeight, presets: menu.presets, fifteen: fifteen.text, custom: custom.text, reopened: reopened.text, pausedAfterSeconds: Number(elapsed.toFixed(1)), pausedAt: Number(stopped.currentTime.toFixed(2)), feedMainPaused: feedStopped.main.paused, feedPreviewPlaying: !feedStopped.preview.paused, expiredRunning: expired.running, settingsSame: true };
     await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
     return state;
   } finally {
