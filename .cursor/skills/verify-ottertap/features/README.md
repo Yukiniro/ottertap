@@ -50,6 +50,7 @@
 | 音量药丸里的上一条 / 下一条 | [float-prev-next.md](float-prev-next.md) | 展开音量药丸，播放控制旁的 `Previous media` / `Next media`。本页至少两条时才出现。切换后药丸、弹出面板和页内快捷键对准新目标，并出现和选中变化相同的短暂轮廓。不改贴边和位置 | `drive float-prev-next`；`tests/float-prev-next.test.ts` |
 | 面板与浮动标出画中画中 | [pip-active.md](pip-active.md) | 当前视频处于画中画时，弹出面板和展开的音量药丸改成退出并显示短状态；媒体列表可为那一条标短标记 | `drive pip-active`；`tests/pip-active.test.ts` |
 | 切走标签后扩展命令仍控画中画 | [pip-away-tab.md](pip-away-tab.md) | 某一标签的选中媒体正在画中画时，扩展命令仍作用在那一条上。页内快捷键仍只在媒体页聚焦且未在输入时生效。设置说明写明切走后用扩展快捷键 | `drive pip-away-tab`；`tests/pip-away-tab.test.ts` |
+| 切走标签时自动进入画中画 | [pip-auto-hide.md](pip-auto-hide.md) | 设置页「Playback」的 `Picture-in-picture when you switch tabs`，默认关。打开后，标签隐藏时选中的播放中视频进入画中画；音频、暂停、停用的网站、网站禁用画中画或浏览器拒绝时不进也不提示。任何退出后 10 秒内不再自动进。导出导入带上这个开关 | `drive pip-auto-hide`；`tests/auto-pip.test.ts` |
 | 音量药丸里的画中画 | [float-pip.md](float-pip.md) | 展开音量药丸，播放控制旁的 `Picture-in-picture` / `Exit picture-in-picture`。一点进入，再点退出。音频、网站禁用、浏览器不支持或尚未就绪时禁用，说明与弹出面板相同。不改贴边和位置 | `drive float-pip`；`tests/float-pip.test.ts` |
 | 页内快捷键 → 画中画 | [page-pip.md](page-pip.md) | 设置页「Keyboard shortcuts」里的 `Enter or exit picture-in-picture`。默认不占键。绑上后页内切换，和面板、药丸、扩展命令同一条路径。输入框聚焦时不触发。不可用时短句与面板相同 | `drive page-pip`；`tests/page-pip-keybinds.test.ts`、`tests/page-pip-command.test.ts` |
 | 进出画中画的页内提示 | [pip-feedback.md](pip-feedback.md) | 弹出面板、音量药丸、页内键和扩展命令在进入或退出画中画成功时，用倍速那一块短暂字样。失败用原来的短说明。没有提示总开关，默认显示 | `drive pip-feedback`；`tests/pip-feedback.test.ts` |

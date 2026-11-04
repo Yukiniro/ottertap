@@ -105,6 +105,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive page-pip
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-feedback
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-active
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-away-tab
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-auto-hide
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive resume-save
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer-cancel
@@ -307,6 +308,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive page-pip
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-feedback
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-active
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-away-tab
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-auto-hide
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive resume-save
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer-cancel
@@ -528,6 +530,16 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-away-tab
 `pip-away-tab` 打开设置页，快捷键说明里有一句：离开标签后，画中画里的媒体用扩展快捷键。`/video` 补一帧后从音量药丸进入画中画，再打开 `/audio`。`Alt+M` 静音的是音频，画中画里的视频仍静音、仍在播放、仍在画中画。回到视频页，`Alt+M` 能取消这条视频的静音。焦点在文本框里时再按，视频保持有声。不写 `sitePrefs`，权限仍只有 `storage`。扩展命令改投到画中画标签由 `tests/pip-away-tab.test.ts` 覆盖，无头 Chromium 按键不会派发扩展命令。它不改 profile。步骤见 `features/pip-away-tab.md`。
 
 写入 `pip-away-tab/`：`settings-note.png`、`away-tab.png`、`typing.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
+## 切走标签时自动进入画中画
+
+```bash
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-auto-hide
+```
+
+`pip-auto-hide` 先确认设置页「Playback」的 `Picture-in-picture when you switch tabs` 默认关，关着时播放中的 `/video` 切走标签不进画中画。打开后，点一下页面再切走，`#media` 进入画中画，回来后药丸是退出态。从药丸退出后马上再切走不进，过了 10 秒冷却又会进。暂停中、`/audio` 循环播放中、网站规则排除本站时都不进。页面激活过期后不点页面直接切走，浏览器拒绝，页面不出字样也不出警告。结束时关掉开关、恢复全部网站，`sitePrefs` 为空，权限仍只有 `storage`。会话的 Playwright 让页面永远 `visible`，所以这一程另起一个不带 Playwright 默认覆盖的同版本 Chromium（profile 在 `/tmp/ottertap-verify/<id>/profile-pip-auto-hide`），结束时只停掉自己 spawn 的进程。整程约 45 秒。它不改会话的 profile。步骤见 `features/pip-auto-hide.md`。
+
+写入 `pip-auto-hide/`：`settings-off.png`、`fixture-off.png`、`settings-on.png`、`pill-entered.png`、`fixture-paused.png`、`fixture-refused.png`、`fixture-audio.png`、`fixture-excluded.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
 
 ## 接着看：保存进度
 
