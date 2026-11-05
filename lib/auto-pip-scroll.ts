@@ -25,8 +25,9 @@ const activations = ['pointerup', 'keydown'] as const;
  * It arms only after the video has been seen at main-stage size, so feed cards and a player that starts off-screen never enter.
  * One scroll-out enters at most once; any exit while it is still out waits until it scrolls back in.
  * Fullscreen holds it back; leaving fullscreen checks again. A refusal stays silent and the next press, play, or scroll tries again.
+ * `onEntered` hears only entries made here, never manual ones.
  */
-export function createScrollPip(document: Document, options: { enabled: () => boolean; target: () => HTMLMediaElement | undefined; now?: () => number }) {
+export function createScrollPip(document: Document, options: { enabled: () => boolean; target: () => HTMLMediaElement | undefined; now?: () => number; onEntered?: (element: HTMLVideoElement) => void }) {
   const view = document.defaultView;
   const now = options.now ?? Date.now;
   let observer: IntersectionObserver | null = null;
@@ -42,7 +43,10 @@ export function createScrollPip(document: Document, options: { enabled: () => bo
     if (!shouldAutoPip({ enabled: options.enabled(), element, lastExitAt, now: now() })) return;
     if (hoverFullscreenActive(view)) return;
     entering = true;
-    void element.requestPictureInPicture().then(() => { if (watched === element) armed = false; }, () => {}).finally(() => { entering = false; });
+    void element.requestPictureInPicture().then(() => {
+      if (watched === element) armed = false;
+      options.onEntered?.(element);
+    }, () => {}).finally(() => { entering = false; });
   };
   const onEntries = (entries: IntersectionObserverEntry[]) => {
     const entry = entries.at(-1);
