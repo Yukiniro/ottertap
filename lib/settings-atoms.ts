@@ -16,13 +16,14 @@ const sameSitePrefs = (a: Record<string, SitePref>, b: Record<string, SitePref>)
   const keys = Object.keys(a);
   return keys.length === Object.keys(b).length && keys.every(key => !!b[key] && sameSitePref(a[key]!, b[key]!));
 };
-const sameSettings = (a: Settings, b: Settings) => a.theme === b.theme && a.floating === b.floating && a.floatingNote === b.floatingNote && a.floatingWhilePlaying === b.floatingWhilePlaying && a.followPlaying === b.followPlaying && a.autoPipOnHide === b.autoPipOnHide && a.autoPipOnScroll === b.autoPipOnScroll && a.autoPipExitOnReturn === b.autoPipExitOnReturn && a.sleepSoonHint === b.sleepSoonHint && a.sleepDefaultMinutes === b.sleepDefaultMinutes && sameSites(a.floatingHiddenSites, b.floatingHiddenSites) && a.resumeJump === b.resumeJump && sameSites(a.resumeExcludedSites, b.resumeExcludedSites) && a.defaultRate === b.defaultRate && a.lockRate === b.lockRate && a.holdBoost === b.holdBoost && a.holdBoostRate === b.holdBoostRate && a.holdSkip === b.holdSkip && a.hoverWheel === b.hoverWheel && a.fullscreenWheel === b.fullscreenWheel && a.singleKey === b.singleKey && a.skipSeconds === b.skipSeconds && a.skipWithRate === b.skipWithRate && a.volumeStep === b.volumeStep && a.coarseStep === b.coarseStep && a.fineWheel === b.fineWheel && a.wheelDirection === b.wheelDirection && a.rateStep === b.rateStep && a.siteMode === b.siteMode && samePosition(a.floatingPosition, b.floatingPosition) && sameSites(a.sites, b.sites) && sameSitePrefs(a.sitePrefs, b.sitePrefs) && samePresets(a.ratePresets, b.ratePresets) && sameKeybinds(a.keybinds, b.keybinds);
+const sameSettings = (a: Settings, b: Settings) => a.theme === b.theme && a.floating === b.floating && a.floatingNote === b.floatingNote && a.floatingWhilePlaying === b.floatingWhilePlaying && a.followPlaying === b.followPlaying && a.autoPipOnHide === b.autoPipOnHide && a.autoPipOnScroll === b.autoPipOnScroll && a.autoPipExitOnReturn === b.autoPipExitOnReturn && sameSites(a.autoPipExcludedSites, b.autoPipExcludedSites) && a.sleepSoonHint === b.sleepSoonHint && a.sleepDefaultMinutes === b.sleepDefaultMinutes && sameSites(a.floatingHiddenSites, b.floatingHiddenSites) && a.resumeJump === b.resumeJump && sameSites(a.resumeExcludedSites, b.resumeExcludedSites) && a.defaultRate === b.defaultRate && a.lockRate === b.lockRate && a.holdBoost === b.holdBoost && a.holdBoostRate === b.holdBoostRate && a.holdSkip === b.holdSkip && a.hoverWheel === b.hoverWheel && a.fullscreenWheel === b.fullscreenWheel && a.singleKey === b.singleKey && a.skipSeconds === b.skipSeconds && a.skipWithRate === b.skipWithRate && a.volumeStep === b.volumeStep && a.coarseStep === b.coarseStep && a.fineWheel === b.fineWheel && a.wheelDirection === b.wheelDirection && a.rateStep === b.rateStep && a.siteMode === b.siteMode && samePosition(a.floatingPosition, b.floatingPosition) && sameSites(a.sites, b.sites) && sameSitePrefs(a.sitePrefs, b.sitePrefs) && samePresets(a.ratePresets, b.ratePresets) && sameKeybinds(a.keybinds, b.keybinds);
 
 function mergeSettings(current: Settings, update: Partial<Settings>): Settings {
   const next = normalizeSettings({ ...current, ...update });
   return {
     ...next,
     floatingPosition: samePosition(current.floatingPosition, next.floatingPosition) ? current.floatingPosition : next.floatingPosition,
+    autoPipExcludedSites: sameSites(current.autoPipExcludedSites, next.autoPipExcludedSites) ? current.autoPipExcludedSites : next.autoPipExcludedSites,
     floatingHiddenSites: sameSites(current.floatingHiddenSites, next.floatingHiddenSites) ? current.floatingHiddenSites : next.floatingHiddenSites,
     resumeExcludedSites: sameSites(current.resumeExcludedSites, next.resumeExcludedSites) ? current.resumeExcludedSites : next.resumeExcludedSites,
     sites: sameSites(current.sites, next.sites) ? current.sites : next.sites,
@@ -43,6 +44,7 @@ export interface SettingsAtoms {
   autoPipOnHideAtom: Atom<boolean>;
   autoPipOnScrollAtom: Atom<boolean>;
   autoPipExitOnReturnAtom: Atom<boolean>;
+  autoPipExcludedSitesAtom: Atom<string[]>;
   sleepSoonHintAtom: Atom<boolean>;
   sleepDefaultMinutesAtom: Atom<SleepPreset>;
   floatingHiddenSitesAtom: Atom<string[]>;
@@ -90,6 +92,7 @@ export function createSettingsAtoms(source: SettingsStore, options?: { initialLo
   const autoPipOnHideAtom = selectAtom(settingsAtom, settings => settings.autoPipOnHide);
   const autoPipOnScrollAtom = selectAtom(settingsAtom, settings => settings.autoPipOnScroll);
   const autoPipExitOnReturnAtom = selectAtom(settingsAtom, settings => settings.autoPipExitOnReturn);
+  const autoPipExcludedSitesAtom = selectAtom(settingsAtom, settings => settings.autoPipExcludedSites);
   const sleepSoonHintAtom = selectAtom(settingsAtom, settings => settings.sleepSoonHint);
   const sleepDefaultMinutesAtom = selectAtom(settingsAtom, settings => settings.sleepDefaultMinutes);
   const floatingHiddenSitesAtom = selectAtom(settingsAtom, settings => settings.floatingHiddenSites);
@@ -204,7 +207,7 @@ export function createSettingsAtoms(source: SettingsStore, options?: { initialLo
   }
 
   return {
-    store, settingsAtom, themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, followPlayingAtom, autoPipOnHideAtom, autoPipOnScrollAtom, autoPipExitOnReturnAtom, sleepSoonHintAtom, sleepDefaultMinutesAtom, floatingHiddenSitesAtom, resumeJumpAtom, resumeExcludedSitesAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, fullscreenWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, coarseStepAtom, fineWheelAtom, wheelDirectionAtom, rateStepAtom, floatingPositionAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom, mount, ready,
+    store, settingsAtom, themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, followPlayingAtom, autoPipOnHideAtom, autoPipOnScrollAtom, autoPipExitOnReturnAtom, autoPipExcludedSitesAtom, sleepSoonHintAtom, sleepDefaultMinutesAtom, floatingHiddenSitesAtom, resumeJumpAtom, resumeExcludedSitesAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, fullscreenWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, coarseStepAtom, fineWheelAtom, wheelDirectionAtom, rateStepAtom, floatingPositionAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom, mount, ready,
     settled: () => idle
   };
 }

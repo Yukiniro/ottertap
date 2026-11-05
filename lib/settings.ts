@@ -77,7 +77,7 @@ function normalizeDomains(value: unknown): string[] {
 }
 
 export function normalizeSettings(value: unknown): Settings {
-  if (!value || typeof value !== 'object') return { ...defaultSettings, floatingHiddenSites: [], sites: [], sitePrefs: {}, ratePresets: [...defaultSettings.ratePresets], keybinds: { ...defaultSettings.keybinds } };
+  if (!value || typeof value !== 'object') return { ...defaultSettings, autoPipExcludedSites: [], floatingHiddenSites: [], sites: [], sitePrefs: {}, ratePresets: [...defaultSettings.ratePresets], keybinds: { ...defaultSettings.keybinds } };
   const source = value as Partial<Settings>;
   const position = source.floatingPosition;
   const validPosition = !!position && typeof position === 'object' && ['left', 'right'].includes(position.side) && Number.isFinite(position.y) && position.y >= 0 && position.y <= 1;
@@ -91,6 +91,7 @@ export function normalizeSettings(value: unknown): Settings {
     autoPipOnHide: source.autoPipOnHide === true,
     autoPipOnScroll: source.autoPipOnScroll === true,
     autoPipExitOnReturn: source.autoPipExitOnReturn === true,
+    autoPipExcludedSites: normalizeDomains(source.autoPipExcludedSites),
     sleepSoonHint: typeof source.sleepSoonHint === 'boolean' ? source.sleepSoonHint : true,
     sleepDefaultMinutes: isSleepPreset(source.sleepDefaultMinutes) ? source.sleepDefaultMinutes : defaultSettings.sleepDefaultMinutes,
     floatingHiddenSites: normalizeDomains(source.floatingHiddenSites),
@@ -137,7 +138,7 @@ export function mergeSettingsChange(current: Settings, previous: Settings, next:
     return result;
   };
   const merged = { ...merge(current, previous, next) as Settings };
-  for (const key of ['sites', 'floatingHiddenSites', 'resumeExcludedSites'] as const) {
+  for (const key of ['sites', 'floatingHiddenSites', 'resumeExcludedSites', 'autoPipExcludedSites'] as const) {
     merged[key] = JSON.stringify(current[key]) === JSON.stringify(previous[key]) ? next[key]
       : [...new Set([...current[key].filter(site => !previous[key].includes(site) || next[key].includes(site)), ...next[key].filter(site => !previous[key].includes(site))])];
   }
@@ -218,7 +219,7 @@ export function filterRememberedSites(prefs: Record<string, SitePref>, query: st
   return Object.entries(prefs).filter(([site]) => needle === '' || site.toLowerCase().includes(needle)).sort(([a], [b]) => a.localeCompare(b));
 }
 
-/** Hostname substring for the site-rules list. An empty query returns every entry in stored order. Does not mutate `sites` or use parent-domain matching. */
+/** Hostname substring for the site-rules and auto picture-in-picture lists. An empty query returns every entry in stored order. Does not mutate `sites` or use parent-domain matching. */
 export function filterSiteList(sites: readonly string[], query: string): string[] {
   const needle = query.trim().toLowerCase();
   if (!needle) return [...sites];
@@ -232,29 +233,62 @@ export function filterFloatingHiddenSites(sites: readonly string[], query: strin
   return sites.filter(site => site.toLowerCase().includes(needle));
 }
 
-export function isFloatingHidden(host: string, sites: readonly string[]) {
+function coversHost(host: string, sites: readonly string[]) {
   const name = hostKey(host);
   return !!name && sites.some(site => matchesSite(name, site));
 }
 
-/** Whether resume progress is turned off for this host, subdomains included. */
-export function isResumeExcluded(host: string, sites: readonly string[]) {
-  const name = hostKey(host);
-  return !!name && sites.some(site => matchesSite(name, site));
-}
-
-export function hideFloating(sites: string[], host: string): string[] {
-  if (isFloatingHidden(host, sites)) return sites;
+function addHost(sites: string[], host: string): string[] {
+  if (coversHost(host, sites)) return sites;
   let key: string;
   try { key = normalizeDomain(hostKey(host)); } catch { return sites; }
   return [...sites, key];
 }
 
-/** Removes every entry covering `host`, including a parent domain, so the entry really comes back. */
-export function showFloating(sites: string[], host: string): string[] {
+function removeCoveringHosts(sites: string[], host: string): string[] {
   const name = hostKey(host);
   const next = sites.filter(site => !matchesSite(name, site));
   return next.length === sites.length ? sites : next;
+}
+
+export function isFloatingHidden(host: string, sites: readonly string[]) {
+  return coversHost(host, sites);
+}
+
+/** Whether resume progress is turned off for this host, subdomains included. */
+export function isResumeExcluded(host: string, sites: readonly string[]) {
+  return coversHost(host, sites);
+}
+
+/** Whether automatic picture-in-picture entry and exit are off for this host, subdomains included. */
+export function isAutoPipExcluded(host: string, sites: readonly string[]) {
+  return coversHost(host, sites);
+}
+
+/** `url` is the tab's address, the same host the panel adds, so an embedded player follows the page it sits on. */
+export function allowsAutoPip(url: string, settings: Pick<Settings, 'autoPipExcludedSites'>) {
+  let host: string;
+  try { host = new URL(url).hostname; } catch { return false; }
+  return !isAutoPipExcluded(host, settings.autoPipExcludedSites);
+}
+
+export function hideFloating(sites: string[], host: string): string[] {
+  return addHost(sites, host);
+}
+
+/** Removes every entry covering `host`, including a parent domain, so the entry really comes back. */
+export function showFloating(sites: string[], host: string): string[] {
+  return removeCoveringHosts(sites, host);
+}
+
+/** Adds only `host` itself, unless an entry already covers it. */
+export function excludeAutoPip(sites: string[], host: string): string[] {
+  return addHost(sites, host);
+}
+
+/** Removes every entry covering `host`, including a parent domain, so automatic picture-in-picture really comes back. */
+export function includeAutoPip(sites: string[], host: string): string[] {
+  return removeCoveringHosts(sites, host);
 }
 
 export function withRememberedCommand(prefs: Record<string, SitePref>, host: string, command: MediaCommand): Record<string, SitePref> | null {

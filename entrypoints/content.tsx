@@ -13,7 +13,7 @@ import { rateLockEvent } from '../lib/rate-lock';
 import { createResumeClock, readResume } from '../lib/resume';
 import { createSleepTimer, sleepExtendMinutes } from '../lib/sleep-timer';
 import { maxEffectiveVolume, shouldReportVolume, volumeReportIntervalMs } from '../lib/volume-badge';
-import { isSiteEnabled, isResumeExcluded, normalizeHoldRate, normalizeSkipSeconds, normalizeVolumeStep } from '../lib/settings';
+import { allowsAutoPip, isSiteEnabled, isResumeExcluded, normalizeHoldRate, normalizeSkipSeconds, normalizeVolumeStep } from '../lib/settings';
 import { normalizeKeybinds } from '../lib/keybinds';
 import { extensionStore } from '../lib/extension-store';
 import { createExtensionClient } from '../lib/extension-client';
@@ -94,19 +94,20 @@ export default defineContentScript({
     });
     const topFrame = window.top === window;
     const selectedElement = () => lockedLocalId ? controller.element(lockedLocalId) : undefined;
+    // Unlike resume, this list follows the tab's address, not this frame's.
+    const autoPipAllowed = () => enabled && !!watched && allowsAutoPip(pageUrl, watched);
     const autoPipExit = createAutoPipExit(document, {
-      enabled: () => enabled && watched?.autoPipExitOnReturn === true,
+      enabled: () => autoPipAllowed() && watched?.autoPipExitOnReturn === true,
     });
-    // TODO(#187): also skip hosts on the auto picture-in-picture exclusion list once that list exists.
     const autoPip = createAutoPip(document, {
-      enabled: () => enabled && watched?.autoPipOnHide === true,
+      enabled: () => autoPipAllowed() && watched?.autoPipOnHide === true,
       target: selectedElement,
       // Browsers only offer automatic entry to media in the top frame.
       mediaSession: topFrame,
       onEntered: autoPipExit.mark,
     });
     const scrollPip = createScrollPip(document, {
-      enabled: () => enabled && watched?.autoPipOnScroll === true,
+      enabled: () => autoPipAllowed() && watched?.autoPipOnScroll === true,
       target: selectedElement,
       onEntered: autoPipExit.mark,
     });

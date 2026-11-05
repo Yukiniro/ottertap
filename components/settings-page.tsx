@@ -2,7 +2,7 @@ import { i18n } from '#i18n';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { commandBindings, extensionShortcutApis, shortcutsSettingsUrl } from '../lib/commands';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { Sun, AppWindow, Keyboard, Gauge, Globe, Bookmark, Archive, X, CircleCheck, ArrowLeft, CircleAlert, ChevronUp, ChevronDown, EyeOff, History } from 'lucide-react';
+import { Sun, AppWindow, Keyboard, Gauge, Globe, Bookmark, Archive, X, CircleCheck, ArrowLeft, CircleAlert, ChevronUp, ChevronDown, EyeOff, History, PictureInPicture2 } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -227,20 +227,21 @@ function SiteRulesList({ sites, disabled, onRemove, host, readHost }: { sites: r
   </>;
 }
 
-function FloatingHiddenSitesList({ sites, disabled, onRestore, host, readHost }: { sites: readonly string[]; disabled: boolean; onRestore: (site: string) => void; host: string | null; readHost: ReadCurrentHost }) {
+/** A host list that is only filled from the panel: filter, locate the current site, and remove one entry. */
+function PanelSitesList({ id, list, sites, filter, filterLabel, listLabel, noMatch, icon: Icon, removeLabel, disabled, onRemove, host, readHost }: { id: string; list: string; sites: readonly string[]; filter: (sites: readonly string[], query: string) => string[]; filterLabel: string; listLabel: string; noMatch: string; icon: typeof EyeOff; removeLabel: (site: string) => string; disabled: boolean; onRemove: (site: string) => void; host: string | null; readHost: ReadCurrentHost }) {
   const [query, setQuery] = useState('');
-  const visible = filterFloatingHiddenSites(sites, query);
+  const visible = filter(sites, query);
   const { anchorRef, locate } = useLocateCurrentSite(readHost, setQuery);
   return <>
-    <HostnameQuery id="floating-hidden-filter" className="mt-3" label={i18n.t('floatingHiddenFilter')} query={query} setQuery={setQuery} describedBy={visible.length === 0 ? 'floating-hidden-no-match' : undefined} disabled={disabled} host={host} onLocate={locate} />
-    <div ref={anchorRef} data-current-site-list="floating">
+    <HostnameQuery id={`${id}-filter`} className="mt-3" label={filterLabel} query={query} setQuery={setQuery} describedBy={visible.length === 0 ? `${id}-no-match` : undefined} disabled={disabled} host={host} onLocate={locate} />
+    <div ref={anchorRef} data-current-site-list={list}>
       {visible.length
-        ? <ItemGroup aria-label={i18n.t('floatingHiddenSites')} className="mt-3 gap-0 overflow-hidden rounded-lg bg-background/80">{visible.map(site => <Item key={site} role="listitem" className="rounded-none border-b-border px-3 not-last:border-b">
-          <ItemMedia variant="icon" className="text-muted-foreground"><EyeOff className="size-4" /></ItemMedia>
+        ? <ItemGroup aria-label={listLabel} className="mt-3 gap-0 overflow-hidden rounded-lg bg-background/80">{visible.map(site => <Item key={site} role="listitem" className="rounded-none border-b-border px-3 not-last:border-b">
+          <ItemMedia variant="icon" className="text-muted-foreground"><Icon className="size-4" /></ItemMedia>
           <ItemContent><ItemTitle className="line-clamp-none font-normal break-all">{site}</ItemTitle></ItemContent>
-          <ItemActions><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={i18n.t('restoreFloating', { site })} disabled={disabled} onClick={() => onRestore(site)}><X /></Button></ItemActions>
+          <ItemActions><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={removeLabel(site)} disabled={disabled} onClick={() => onRemove(site)}><X /></Button></ItemActions>
         </Item>)}</ItemGroup>
-        : <p id="floating-hidden-no-match" className="mt-3 rounded-lg bg-background/80 px-3 py-3 text-sm text-muted-foreground">{i18n.t('floatingHiddenNoMatch')}</p>}
+        : <p id={`${id}-no-match`} className="mt-3 rounded-lg bg-background/80 px-3 py-3 text-sm text-muted-foreground">{noMatch}</p>}
     </div>
   </>;
 }
@@ -451,7 +452,7 @@ function Row({ title, description, titleId, children }: { title: string; descrip
 }
 
 export function SettingsPage({ back }: { back?: () => void }) {
-  const { themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, followPlayingAtom, autoPipOnHideAtom, autoPipOnScrollAtom, autoPipExitOnReturnAtom, sleepSoonHintAtom, sleepDefaultMinutesAtom, floatingHiddenSitesAtom, resumeJumpAtom, resumeExcludedSitesAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, fullscreenWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, coarseStepAtom, fineWheelAtom, wheelDirectionAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, followPlayingAtom, autoPipOnHideAtom, autoPipOnScrollAtom, autoPipExitOnReturnAtom, autoPipExcludedSitesAtom, sleepSoonHintAtom, sleepDefaultMinutesAtom, floatingHiddenSitesAtom, resumeJumpAtom, resumeExcludedSitesAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, fullscreenWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, coarseStepAtom, fineWheelAtom, wheelDirectionAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const theme = useAtomValue(themeAtom);
   const floating = useAtomValue(floatingAtom);
   const floatingNote = useAtomValue(floatingNoteAtom);
@@ -460,6 +461,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
   const autoPipOnHide = useAtomValue(autoPipOnHideAtom);
   const autoPipOnScroll = useAtomValue(autoPipOnScrollAtom);
   const autoPipExitOnReturn = useAtomValue(autoPipExitOnReturnAtom);
+  const autoPipExcludedSites = useAtomValue(autoPipExcludedSitesAtom);
   const sleepSoonHint = useAtomValue(sleepSoonHintAtom);
   const sleepDefaultMinutes = useAtomValue(sleepDefaultMinutesAtom);
   const floatingHiddenSites = useAtomValue(floatingHiddenSitesAtom);
@@ -630,7 +632,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
               <h3 className="text-sm font-medium">{i18n.t('floatingHiddenSites')}</h3>
               <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('floatingHiddenSitesDescription')}</p>
               {floatingHiddenSites.length
-                ? <FloatingHiddenSitesList sites={floatingHiddenSites} disabled={disabled} onRestore={site => void save({ floatingHiddenSites: floatingHiddenSites.filter(value => value !== site) })} host={currentHost} readHost={readCurrentHost} />
+                ? <PanelSitesList id="floating-hidden" list="floating" sites={floatingHiddenSites} filter={filterFloatingHiddenSites} filterLabel={i18n.t('floatingHiddenFilter')} listLabel={i18n.t('floatingHiddenSites')} noMatch={i18n.t('floatingHiddenNoMatch')} icon={EyeOff} removeLabel={site => i18n.t('restoreFloating', { site })} disabled={disabled} onRemove={site => void save({ floatingHiddenSites: floatingHiddenSites.filter(value => value !== site) })} host={currentHost} readHost={readCurrentHost} />
                 : <p className="mt-3 rounded-lg bg-background/80 px-3 py-3 text-sm text-muted-foreground">{i18n.t('floatingHiddenEmpty')}</p>}
             </div>
           </div>
@@ -648,6 +650,13 @@ export function SettingsPage({ back }: { back?: () => void }) {
           </div>
           <div className="mt-4">
             <SwitchRow id="settings-auto-pip-exit" label={i18n.t('autoPipExitOnReturn')} description={i18n.t('autoPipExitOnReturnDescription')} checked={autoPipExitOnReturn} disabled={disabled} onChange={checked => void save({ autoPipExitOnReturn: checked })} />
+          </div>
+          <div className="mt-4 rounded-lg bg-secondary/60 px-3 py-3">
+            <h3 className="text-sm font-medium">{i18n.t('autoPipExcludedSites')}</h3>
+            <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('autoPipExcludedSitesDescription')}</p>
+            {autoPipExcludedSites.length
+              ? <PanelSitesList id="auto-pip-excluded" list="auto-pip" sites={autoPipExcludedSites} filter={filterSiteList} filterLabel={i18n.t('autoPipExcludedFilter')} listLabel={i18n.t('autoPipExcludedSites')} noMatch={i18n.t('autoPipExcludedNoMatch')} icon={PictureInPicture2} removeLabel={site => i18n.t('restoreAutoPip', { site })} disabled={disabled} onRemove={site => void save({ autoPipExcludedSites: autoPipExcludedSites.filter(value => value !== site) })} host={currentHost} readHost={readCurrentHost} />
+              : <p className="mt-3 rounded-lg bg-background/80 px-3 py-3 text-sm text-muted-foreground">{i18n.t('autoPipExcludedEmpty')}</p>}
           </div>
           <div className="mt-4">
             <SwitchRow id="settings-follow-playing" label={i18n.t('followPlaying')} description={i18n.t('followPlayingDescription')} checked={followPlaying} disabled={disabled} onChange={checked => void save({ followPlaying: checked })} />
