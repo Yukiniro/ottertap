@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { browser } from 'wxt/browser';
 import { createShadowRootUi } from 'wxt/utils/content-script-ui/shadow-root';
 import { createAutoPip } from '../lib/auto-pip';
+import { createScrollPip } from '../lib/auto-pip-scroll';
 import { createHoldGesture } from '../lib/hold-gesture';
 import { holdRateEvent } from '../lib/hold-rate';
 import { actionHintEvent, actionHintText, bareVolumeWheel, createHotkeyInput, isFloatingEvent, isTypingEvent, isTypingFocus, keepShiftWheel, rateHintEvent, volumeGestureEvent } from '../lib/hotkey';
@@ -91,12 +92,17 @@ export default defineContentScript({
       }
     });
     const topFrame = window.top === window;
+    const selectedElement = () => lockedLocalId ? controller.element(lockedLocalId) : undefined;
     // TODO(#187): also skip hosts on the auto picture-in-picture exclusion list once that list exists.
     const autoPip = createAutoPip(document, {
       enabled: () => enabled && watched?.autoPipOnHide === true,
-      target: () => lockedLocalId ? controller.element(lockedLocalId) : undefined,
+      target: selectedElement,
       // Browsers only offer automatic entry to media in the top frame.
       mediaSession: topFrame,
+    });
+    const scrollPip = createScrollPip(document, {
+      enabled: () => enabled && watched?.autoPipOnScroll === true,
+      target: selectedElement,
     });
     const sleep = createSleepTimer(() => {
       void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'sleepDue' }).catch(() => {});
@@ -113,6 +119,7 @@ export default defineContentScript({
       enabled = next;
       controller.setLockRate(enabled && watched.lockRate);
       autoPip.sync();
+      scrollPip.sync();
       if (changed) reportVolume();
     };
     const listener: Parameters<typeof browser.runtime.onMessage.addListener>[0] = (message, sender, sendResponse) => {
@@ -129,6 +136,7 @@ export default defineContentScript({
         selectionEpoch += 1;
         lockedLocalId = typeof message.id === 'string' && /^\d+$/.test(message.id) ? message.id : '';
         if (!lockedLocalId) controller.clearSelectionRing();
+        scrollPip.sync();
         return;
       }
       if (!['snapshot', 'command', 'highlight', 'reveal', 'rateHint', 'actionHint', 'rateLockHint', 'hold', 'holdHint', 'sleep', 'sleepCancel', 'sleepExtend'].includes(message.type)) return;
@@ -331,6 +339,7 @@ export default defineContentScript({
       releaseHold();
       sleep.dispose();
       autoPip.dispose();
+      scrollPip.dispose();
       unwatch(); controller.destroy(); if (heartbeat) clearInterval(heartbeat); browser.runtime.onMessage.removeListener(listener); hotkeys.dispose();
       document.removeEventListener('play', onPlayback, true); document.removeEventListener('pause', onPlayback, true);
       document.removeEventListener('volumechange', reportVolume, true); window.removeEventListener('pagehide', onPageHide);
@@ -355,6 +364,7 @@ export default defineContentScript({
     if (watched && pageUrl) enabled = isSiteEnabled(pageUrl, watched);
     controller.setLockRate(enabled && (watched ? watched.lockRate : contextLock));
     autoPip.sync();
+    scrollPip.sync();
     reportVolume();
     if (window.top !== window) return;
     const client = createExtensionClient();

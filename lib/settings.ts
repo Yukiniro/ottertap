@@ -89,6 +89,7 @@ export function normalizeSettings(value: unknown): Settings {
     floatingWhilePlaying: source.floatingWhilePlaying === true,
     followPlaying: typeof source.followPlaying === 'boolean' ? source.followPlaying : true,
     autoPipOnHide: source.autoPipOnHide === true,
+    autoPipOnScroll: source.autoPipOnScroll === true,
     sleepSoonHint: typeof source.sleepSoonHint === 'boolean' ? source.sleepSoonHint : true,
     sleepDefaultMinutes: isSleepPreset(source.sleepDefaultMinutes) ? source.sleepDefaultMinutes : defaultSettings.sleepDefaultMinutes,
     floatingHiddenSites: normalizeDomains(source.floatingHiddenSites),

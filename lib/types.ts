@@ -48,6 +48,10 @@ export type WheelDirection = (typeof wheelDirections)[number];
  * Missing values stay off. A recent picture-in-picture exit holds it back for a short cooldown.
  */
 /**
+ * `autoPipOnScroll` lets the selected, playing main video enter picture-in-picture when it scrolls almost out of view.
+ * Missing values stay off. It is separate from `autoPipOnHide`; fullscreen and feed cards never enter.
+ */
+/**
  * `resumeJump` makes a freshly opened long media continue from its stored progress.
  * Missing values stay on. Turning it off still saves progress; the panel can still jump by hand.
  */
@@ -55,8 +59,8 @@ export type WheelDirection = (typeof wheelDirections)[number];
  * `resumeExcludedSites` turns saving and jumping off for those domains and their subdomains,
  * for sites that resume playback on their own. The stored ledger keeps its old entries.
  */
-export interface Settings { theme: Theme; floating: boolean; floatingPosition: FloatingPosition; floatingNote: FloatingNote; floatingWhilePlaying: boolean; followPlaying: boolean; autoPipOnHide: boolean; sleepSoonHint: boolean; sleepDefaultMinutes: SleepPreset; floatingHiddenSites: string[]; resumeJump: boolean; resumeExcludedSites: string[]; siteMode: SiteMode; sites: string[]; sitePrefs: Record<string, SitePref>; ratePresets: number[]; defaultRate: number | null; lockRate: boolean; holdBoost: boolean; holdBoostRate: number; holdSkip: boolean; hoverWheel: boolean; fullscreenWheel: boolean; singleKey: boolean; skipSeconds: SkipSeconds; skipWithRate: boolean; volumeStep: VolumeStep; coarseStep: VolumeStep; fineWheel: boolean; wheelDirection: WheelDirection; rateStep: RateStep; keybinds: Keybinds }
-export const defaultSettings: Settings = { theme: 'system', floating: true, floatingPosition: { side: 'right', y: .8 }, floatingNote: 'volume', floatingWhilePlaying: false, followPlaying: true, autoPipOnHide: false, sleepSoonHint: true, sleepDefaultMinutes: 30, floatingHiddenSites: [], resumeJump: true, resumeExcludedSites: [], siteMode: 'all', sites: [], sitePrefs: {}, ratePresets: [...defaultRatePresets], defaultRate: null, lockRate: false, holdBoost: false, holdBoostRate: 2, holdSkip: false, hoverWheel: true, fullscreenWheel: false, singleKey: false, skipSeconds: 10, skipWithRate: false, volumeStep: 10, coarseStep: 20, fineWheel: true, wheelDirection: 'up', rateStep: defaultRateStep, keybinds: { ...defaultKeybinds } };
+export interface Settings { theme: Theme; floating: boolean; floatingPosition: FloatingPosition; floatingNote: FloatingNote; floatingWhilePlaying: boolean; followPlaying: boolean; autoPipOnHide: boolean; autoPipOnScroll: boolean; sleepSoonHint: boolean; sleepDefaultMinutes: SleepPreset; floatingHiddenSites: string[]; resumeJump: boolean; resumeExcludedSites: string[]; siteMode: SiteMode; sites: string[]; sitePrefs: Record<string, SitePref>; ratePresets: number[]; defaultRate: number | null; lockRate: boolean; holdBoost: boolean; holdBoostRate: number; holdSkip: boolean; hoverWheel: boolean; fullscreenWheel: boolean; singleKey: boolean; skipSeconds: SkipSeconds; skipWithRate: boolean; volumeStep: VolumeStep; coarseStep: VolumeStep; fineWheel: boolean; wheelDirection: WheelDirection; rateStep: RateStep; keybinds: Keybinds }
+export const defaultSettings: Settings = { theme: 'system', floating: true, floatingPosition: { side: 'right', y: .8 }, floatingNote: 'volume', floatingWhilePlaying: false, followPlaying: true, autoPipOnHide: false, autoPipOnScroll: false, sleepSoonHint: true, sleepDefaultMinutes: 30, floatingHiddenSites: [], resumeJump: true, resumeExcludedSites: [], siteMode: 'all', sites: [], sitePrefs: {}, ratePresets: [...defaultRatePresets], defaultRate: null, lockRate: false, holdBoost: false, holdBoostRate: 2, holdSkip: false, hoverWheel: true, fullscreenWheel: false, singleKey: false, skipSeconds: 10, skipWithRate: false, volumeStep: 10, coarseStep: 20, fineWheel: true, wheelDirection: 'up', rateStep: defaultRateStep, keybinds: { ...defaultKeybinds } };
 export interface SettingsStore {
   load(): Promise<Settings>;
   /** Merge against the baseline, or replace the full value when importing a backup. */
