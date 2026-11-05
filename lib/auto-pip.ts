@@ -22,8 +22,9 @@ type ActionSession = { setActionHandler(action: string, handler: (() => void) | 
  * Two paths share one gate: the hidden page itself, which the browser allows after a recent gesture,
  * and the Media Session `enterpictureinpicture` action, which the browser fires when it allows automatic entry.
  * A refusal stays silent. `sync()` adds or drops the Media Session hook to match `enabled()`.
+ * `onEntered` hears only entries made here, never manual ones.
  */
-export function createAutoPip(document: Document, options: { enabled: () => boolean; target: () => HTMLMediaElement | undefined; mediaSession?: boolean; now?: () => number }) {
+export function createAutoPip(document: Document, options: { enabled: () => boolean; target: () => HTMLMediaElement | undefined; mediaSession?: boolean; now?: () => number; onEntered?: (element: HTMLVideoElement) => void }) {
   const now = options.now ?? Date.now;
   let lastExitAt: number | null = null;
   let entering = false;
@@ -33,7 +34,8 @@ export function createAutoPip(document: Document, options: { enabled: () => bool
     const element = options.target();
     if (!shouldAutoPip({ enabled: options.enabled(), element, lastExitAt, now: now() })) return;
     entering = true;
-    void (element as HTMLVideoElement).requestPictureInPicture().catch(() => {}).finally(() => { entering = false; });
+    const video = element as HTMLVideoElement;
+    void video.requestPictureInPicture().then(() => options.onEntered?.(video), () => {}).finally(() => { entering = false; });
   };
   const onVisibility = () => { if (document.visibilityState === 'hidden') enter(); };
   const onLeave = () => { lastExitAt = now(); };

@@ -90,6 +90,7 @@ export function normalizeSettings(value: unknown): Settings {
     followPlaying: typeof source.followPlaying === 'boolean' ? source.followPlaying : true,
     autoPipOnHide: source.autoPipOnHide === true,
     autoPipOnScroll: source.autoPipOnScroll === true,
+    autoPipExitOnReturn: source.autoPipExitOnReturn === true,
     sleepSoonHint: typeof source.sleepSoonHint === 'boolean' ? source.sleepSoonHint : true,
     sleepDefaultMinutes: isSleepPreset(source.sleepDefaultMinutes) ? source.sleepDefaultMinutes : defaultSettings.sleepDefaultMinutes,
     floatingHiddenSites: normalizeDomains(source.floatingHiddenSites),

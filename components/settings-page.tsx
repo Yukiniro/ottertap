@@ -451,7 +451,7 @@ function Row({ title, description, titleId, children }: { title: string; descrip
 }
 
 export function SettingsPage({ back }: { back?: () => void }) {
-  const { themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, followPlayingAtom, autoPipOnHideAtom, autoPipOnScrollAtom, sleepSoonHintAtom, sleepDefaultMinutesAtom, floatingHiddenSitesAtom, resumeJumpAtom, resumeExcludedSitesAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, fullscreenWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, coarseStepAtom, fineWheelAtom, wheelDirectionAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, followPlayingAtom, autoPipOnHideAtom, autoPipOnScrollAtom, autoPipExitOnReturnAtom, sleepSoonHintAtom, sleepDefaultMinutesAtom, floatingHiddenSitesAtom, resumeJumpAtom, resumeExcludedSitesAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, fullscreenWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, coarseStepAtom, fineWheelAtom, wheelDirectionAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const theme = useAtomValue(themeAtom);
   const floating = useAtomValue(floatingAtom);
   const floatingNote = useAtomValue(floatingNoteAtom);
@@ -459,6 +459,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
   const followPlaying = useAtomValue(followPlayingAtom);
   const autoPipOnHide = useAtomValue(autoPipOnHideAtom);
   const autoPipOnScroll = useAtomValue(autoPipOnScrollAtom);
+  const autoPipExitOnReturn = useAtomValue(autoPipExitOnReturnAtom);
   const sleepSoonHint = useAtomValue(sleepSoonHintAtom);
   const sleepDefaultMinutes = useAtomValue(sleepDefaultMinutesAtom);
   const floatingHiddenSites = useAtomValue(floatingHiddenSitesAtom);
@@ -644,6 +645,9 @@ export function SettingsPage({ back }: { back?: () => void }) {
           </div>
           <div className="mt-4">
             <SwitchRow id="settings-auto-pip-scroll" label={i18n.t('autoPipOnScroll')} description={i18n.t('autoPipOnScrollDescription')} checked={autoPipOnScroll} disabled={disabled} onChange={checked => void save({ autoPipOnScroll: checked })} />
+          </div>
+          <div className="mt-4">
+            <SwitchRow id="settings-auto-pip-exit" label={i18n.t('autoPipExitOnReturn')} description={i18n.t('autoPipExitOnReturnDescription')} checked={autoPipExitOnReturn} disabled={disabled} onChange={checked => void save({ autoPipExitOnReturn: checked })} />
           </div>
           <div className="mt-4">
             <SwitchRow id="settings-follow-playing" label={i18n.t('followPlaying')} description={i18n.t('followPlayingDescription')} checked={followPlaying} disabled={disabled} onChange={checked => void save({ followPlaying: checked })} />

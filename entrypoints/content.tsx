@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { browser } from 'wxt/browser';
 import { createShadowRootUi } from 'wxt/utils/content-script-ui/shadow-root';
 import { createAutoPip } from '../lib/auto-pip';
+import { createAutoPipExit } from '../lib/auto-pip-exit';
 import { createScrollPip } from '../lib/auto-pip-scroll';
 import { createHoldGesture } from '../lib/hold-gesture';
 import { holdRateEvent } from '../lib/hold-rate';
@@ -93,16 +94,21 @@ export default defineContentScript({
     });
     const topFrame = window.top === window;
     const selectedElement = () => lockedLocalId ? controller.element(lockedLocalId) : undefined;
+    const autoPipExit = createAutoPipExit(document, {
+      enabled: () => enabled && watched?.autoPipExitOnReturn === true,
+    });
     // TODO(#187): also skip hosts on the auto picture-in-picture exclusion list once that list exists.
     const autoPip = createAutoPip(document, {
       enabled: () => enabled && watched?.autoPipOnHide === true,
       target: selectedElement,
       // Browsers only offer automatic entry to media in the top frame.
       mediaSession: topFrame,
+      onEntered: autoPipExit.mark,
     });
     const scrollPip = createScrollPip(document, {
       enabled: () => enabled && watched?.autoPipOnScroll === true,
       target: selectedElement,
+      onEntered: autoPipExit.mark,
     });
     const sleep = createSleepTimer(() => {
       void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'sleepDue' }).catch(() => {});
@@ -120,6 +126,7 @@ export default defineContentScript({
       controller.setLockRate(enabled && watched.lockRate);
       autoPip.sync();
       scrollPip.sync();
+      autoPipExit.sync();
       if (changed) reportVolume();
     };
     const listener: Parameters<typeof browser.runtime.onMessage.addListener>[0] = (message, sender, sendResponse) => {
@@ -340,6 +347,7 @@ export default defineContentScript({
       sleep.dispose();
       autoPip.dispose();
       scrollPip.dispose();
+      autoPipExit.dispose();
       unwatch(); controller.destroy(); if (heartbeat) clearInterval(heartbeat); browser.runtime.onMessage.removeListener(listener); hotkeys.dispose();
       document.removeEventListener('play', onPlayback, true); document.removeEventListener('pause', onPlayback, true);
       document.removeEventListener('volumechange', reportVolume, true); window.removeEventListener('pagehide', onPageHide);
@@ -365,6 +373,7 @@ export default defineContentScript({
     controller.setLockRate(enabled && (watched ? watched.lockRate : contextLock));
     autoPip.sync();
     scrollPip.sync();
+    autoPipExit.sync();
     reportVolume();
     if (window.top !== window) return;
     const client = createExtensionClient();
