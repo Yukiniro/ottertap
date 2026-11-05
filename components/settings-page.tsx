@@ -451,13 +451,14 @@ function Row({ title, description, titleId, children }: { title: string; descrip
 }
 
 export function SettingsPage({ back }: { back?: () => void }) {
-  const { themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, followPlayingAtom, autoPipOnHideAtom, sleepSoonHintAtom, sleepDefaultMinutesAtom, floatingHiddenSitesAtom, resumeJumpAtom, resumeExcludedSitesAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, fullscreenWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, coarseStepAtom, fineWheelAtom, wheelDirectionAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, followPlayingAtom, autoPipOnHideAtom, autoPipOnScrollAtom, sleepSoonHintAtom, sleepDefaultMinutesAtom, floatingHiddenSitesAtom, resumeJumpAtom, resumeExcludedSitesAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, fullscreenWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, coarseStepAtom, fineWheelAtom, wheelDirectionAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const theme = useAtomValue(themeAtom);
   const floating = useAtomValue(floatingAtom);
   const floatingNote = useAtomValue(floatingNoteAtom);
   const floatingWhilePlaying = useAtomValue(floatingWhilePlayingAtom);
   const followPlaying = useAtomValue(followPlayingAtom);
   const autoPipOnHide = useAtomValue(autoPipOnHideAtom);
+  const autoPipOnScroll = useAtomValue(autoPipOnScrollAtom);
   const sleepSoonHint = useAtomValue(sleepSoonHintAtom);
   const sleepDefaultMinutes = useAtomValue(sleepDefaultMinutesAtom);
   const floatingHiddenSites = useAtomValue(floatingHiddenSitesAtom);
@@ -640,6 +641,9 @@ export function SettingsPage({ back }: { back?: () => void }) {
           <p className="mt-1 max-w-xl text-sm leading-5 text-muted-foreground">{i18n.t('lockRateDescription')}</p>
           <div className="mt-4">
             <SwitchRow id="settings-auto-pip-hide" label={i18n.t('autoPipOnHide')} description={i18n.t('autoPipOnHideDescription')} checked={autoPipOnHide} disabled={disabled} onChange={checked => void save({ autoPipOnHide: checked })} />
+          </div>
+          <div className="mt-4">
+            <SwitchRow id="settings-auto-pip-scroll" label={i18n.t('autoPipOnScroll')} description={i18n.t('autoPipOnScrollDescription')} checked={autoPipOnScroll} disabled={disabled} onChange={checked => void save({ autoPipOnScroll: checked })} />
           </div>
           <div className="mt-4">
             <SwitchRow id="settings-follow-playing" label={i18n.t('followPlaying')} description={i18n.t('followPlayingDescription')} checked={followPlaying} disabled={disabled} onChange={checked => void save({ followPlaying: checked })} />
