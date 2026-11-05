@@ -86,6 +86,7 @@ export function normalizeSettings(value: unknown): Settings {
     floating: typeof source.floating === 'boolean' ? source.floating : true,
     floatingPosition: validPosition ? { side: position.side, y: position.y } : { ...defaultSettings.floatingPosition },
     floatingNote: isFloatingNote(source.floatingNote) ? source.floatingNote : 'volume',
+    floatingSleepNote: source.floatingSleepNote === true,
     floatingWhilePlaying: source.floatingWhilePlaying === true,
     followPlaying: typeof source.followPlaying === 'boolean' ? source.followPlaying : true,
     autoPipOnHide: source.autoPipOnHide === true,

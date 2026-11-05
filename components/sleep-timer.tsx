@@ -4,7 +4,7 @@ import { Moon } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Popover, PopoverContent, PopoverDescription, PopoverHeader, PopoverTitle, PopoverTrigger } from './ui/popover';
-import { maxSleepMinutes, sleepMinutes, sleepPresets, type SleepTimerClient } from '../lib/sleep-timer';
+import { maxSleepMinutes, sleepMinutes, sleepPresets, sleepRemainingSeconds, type SleepTimerClient } from '../lib/sleep-timer';
 import { formatTime } from '../lib/utils';
 
 function useNow(ticking: boolean) {
@@ -75,7 +75,7 @@ export function SleepTimer({ client, sleepAt, available, onChange }: { client: S
   const [error, setError] = useState('');
   const [notice, setNotice] = useState<'' | 'cancelled' | 'extended'>('');
   const now = useNow(typeof sleepAt === 'number');
-  const remaining = typeof sleepAt === 'number' ? Math.ceil((sleepAt - now) / 1000) : 0;
+  const remaining = sleepRemainingSeconds(sleepAt, now);
   const running = remaining > 0;
   const customMinutes = custom.trim() ? sleepMinutes(Number(custom)) : null;
   const run = async (kind: 'cancel' | 'extend' | number) => {
