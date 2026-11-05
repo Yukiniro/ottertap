@@ -1,5 +1,71 @@
 # ottertap-extension
 
+## 1.9.0
+
+### Minor Changes
+
+- [#189](https://github.com/Yukiniro/ottertap/pull/189) [`f318eee`](https://github.com/Yukiniro/ottertap/commit/f318eeeb3edefdecb71e02c5969db7fbf9e6785e) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 弹出面板在可以跳转且知道时长时，显示按当前倍速折算的本集剩余。倍速变化时数字跟着变。直播、未知时长或不能跳转时不显示。睡眠倒计时改为「睡眠还剩」，以免和本集剩余混在一起。
+
+- [#161](https://github.com/Yukiniro/ottertap/pull/161) [`6f7a65d`](https://github.com/Yukiniro/ottertap/commit/6f7a65d8d11e8baa1f89c5dc61705a006acec2dd) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 展开音量药丸后，可以在播放控制旁进入或退出画中画。音频、网站禁用、浏览器不支持或视频尚未就绪时，按钮禁用并沿用面板里的短说明。
+
+- [#155](https://github.com/Yukiniro/ottertap/pull/155) [`c73cdfb`](https://github.com/Yukiniro/ottertap/commit/c73cdfb66200c69dc1ee95665d76b89396a553f6) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 展开音量药丸后，本页有多条媒体时可以切到上一条或下一条。只有一条时不显示。切换后仍用这一枚药丸，并短暂标出新目标。
+
+- [#197](https://github.com/Yukiniro/ottertap/pull/197) [`07909c6`](https://github.com/Yukiniro/ottertap/commit/07909c6ee3e974fe81a8d67e3043531baf18576d) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 浮动入口可以在睡眠定时进行时改显示剩余时间，例如「睡 12:04」。这个选项默认关闭，没有定时时仍按原来的音量或倍速旁注。导出和导入会带上它。贴边、半隐藏、位置记忆和工具栏超过 100% 的角标都不改。
+
+- [#151](https://github.com/Yukiniro/ottertap/pull/151) [`13f757d`](https://github.com/Yukiniro/ottertap/commit/13f757d7930535e0257c798cde3f48bb7726940e) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 另一条媒体开始播放时，面板、浮动控制和页内快捷键会跟着切过去。设置里可以关掉，默认开着。刚在面板里点选的媒体会再保持几秒。
+
+- [#141](https://github.com/Yukiniro/ottertap/pull/141) [`1e57ec5`](https://github.com/Yukiniro/ottertap/commit/1e57ec5f528fb56d56377fd6fc3879dfc96c6151) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 弹出面板可以水平镜像当前选中的视频画面。只翻转这一条视频，不改声音，也不写入记住此站点。换到另一条媒体时，那一条默认不镜像。
+
+- [#149](https://github.com/Yukiniro/ottertap/pull/149) [`630dc69`](https://github.com/Yukiniro/ottertap/commit/630dc69f442b1f22eb8190f7ce7f081f0bdd7f25) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 页内快捷键和扩展命令可以绑定水平镜像、设标记和跳到标记。默认不占键，输入框聚焦时不触发。
+
+- [#150](https://github.com/Yukiniro/ottertap/pull/150) [`394ad7e`](https://github.com/Yukiniro/ottertap/commit/394ad7ee42f95da1d9e7c17d58bfd266acde29ca) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 切换镜像、设下进度标记或跳回标记时，页面上短暂显示与倍速提示相同的字样。不能跳转、没有画面或没有标记时，沿用原来的短说明。没有单独的提示开关，和倍速提示一样默认出现。
+
+- [#148](https://github.com/Yukiniro/ottertap/pull/148) [`15e738e`](https://github.com/Yukiniro/ottertap/commit/15e738e38d437951f3c8580f24a5af7e3264a5cd) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 弹出面板可以一键静音其他正在发声的标签页。当前标签页的音量保持不变。
+
+- [#162](https://github.com/Yukiniro/ottertap/pull/162) [`a17aca9`](https://github.com/Yukiniro/ottertap/commit/a17aca90e73511bc2404af0b0e3289164cd603bf) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 页内快捷键可以绑定进入或退出画中画。默认不占键，输入框聚焦时不触发。扩展命令仍保留。
+
+- [#154](https://github.com/Yukiniro/ottertap/pull/154) [`79bc9f6`](https://github.com/Yukiniro/ottertap/commit/79bc9f6cf049eca26cf993127a1e661458680d46) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 弹出面板在一页有多条媒体时，用短名称、播放或暂停，以及当前选中标出每一条。满五条时可以按名称过滤，只影响列表里能看见的行。
+
+- [#164](https://github.com/Yukiniro/ottertap/pull/164) [`c8abeff`](https://github.com/Yukiniro/ottertap/commit/c8abeff69837f5db18b68a0e2074106f2110148e) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 当前视频在画中画里时，弹出面板和展开的音量药丸改成退出，并显示短状态。媒体列表里那一条带短标记。换到另一条或退出后，状态跟着新目标。音频不会显示这条状态。
+
+- [#195](https://github.com/Yukiniro/ottertap/pull/195) [`6fb830b`](https://github.com/Yukiniro/ottertap/commit/6fb830b34609efebc107f9e87c5544378d6c370e) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 设置「Playback」新增「不自动画中画的站点」名单，默认空。名单里的站点不会因为切走、滚出或回来而自动进入或退出画中画，你自己打开、关掉画中画照常可用。打开任一自动进入开关后，工具栏面板的站点行会出现「本站不自动画中画」按钮，一键把当前主机名加入或移出；设置页可按主机名筛选、逐个删除。名单与「网站规则」「隐藏浮动入口的站点」分开，域名包含其子域名，导出导入带上。
+
+- [#194](https://github.com/Yukiniro/ottertap/pull/194) [`6055b43`](https://github.com/Yukiniro/ottertap/commit/6055b43beaa3fc548040c87f2a3fdbf9c33b58f3) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 设置「Playback」新增「回到原标签或视频回到视口时自动退出画中画」，默认关，与两个自动进入开关互不绑定。开启后，只有切走或滚出时自动打开的画中画，会在你回到标签、并且视频至少一半回到视口时自己关掉；自己手动打开的画中画不受影响。快速路过标签或在播放器附近小幅滚动不会让它关掉，关掉后约 10 秒内也不会马上又自动进入。导出导入带上这个开关。
+
+- [#196](https://github.com/Yukiniro/ottertap/pull/196) [`fe5845c`](https://github.com/Yukiniro/ottertap/commit/fe5845cde55844b3c352325630f805a3e6cdf8e4) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 自动进入或自动退出画中画成功时，页面上短暂显示和手动相同的「画中画开」或「画中画关」。浏览器拒绝、音频或网站关掉画中画时，显示原来的短说明，大约 10 秒内不再试，边界抖动也不会让提示和进出连闪。设置「Playback」用一段说明写清这三项默认都关、只动正在播放的选中视频，并且和手动进出并存。
+
+- [#190](https://github.com/Yukiniro/ottertap/pull/190) [`29e5c86`](https://github.com/Yukiniro/ottertap/commit/29e5c86fee7a1a57ab6eb391a2871a40024e4e69) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 设置里新增「切到其他标签时自动进入画中画」，默认关闭。开启后，离开标签页时正在播放的选中视频会进入画中画；音频、已暂停、已停用的网站、网站关闭画中画或浏览器拒绝时不进，也不弹提示。刚关掉画中画后的 10 秒内再切走不会马上重新进入。手动进出画中画和扩展命令不变。
+
+- [#193](https://github.com/Yukiniro/ottertap/pull/193) [`4eef67a`](https://github.com/Yukiniro/ottertap/commit/4eef67ac1017b91970504280b8a4619fe98a1188) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 设置里新增「主视频滚出视口时自动进入画中画」，默认关闭，与「切到其他标签时自动进入画中画」互不影响。开启后，选中的主视频正在播放、并被滚到几乎看不见时进入画中画；在播放器下方稍微滚动不会触发，一次滚出最多进一次。信息流小卡片、未选中的媒体、音频、开局就在视口外的视频和全屏（含能可靠识别的网页全屏）时不进，退出全屏后再按规则判断。浏览器拒绝时不弹提示，下一次在页面上点击或按键时再试。视频还在视口外时关掉画中画，要等滚回视频后才会再进；刚关掉画中画后的 10 秒内也不会马上重新进入。
+
+- [#165](https://github.com/Yukiniro/ottertap/pull/165) [`2843f1d`](https://github.com/Yukiniro/ottertap/commit/2843f1d96d62740d26eb770dff4d91a52e5a6cb2) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 某一标签的选中媒体正在画中画时，扩展命令仍控制那一条，即使焦点在别的标签。页内快捷键仍只在媒体页生效。
+
+- [#163](https://github.com/Yukiniro/ottertap/pull/163) [`92fd30b`](https://github.com/Yukiniro/ottertap/commit/92fd30be4e12e3ca6924de9a40921beb60e64e21) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 进入或退出画中画成功时，页面上短暂显示和倍速提示同一块字样。失败仍用原来的短说明。
+
+- [#153](https://github.com/Yukiniro/ottertap/pull/153) [`9325609`](https://github.com/Yukiniro/ottertap/commit/932560956fffe1d1593c08001358011b94798170) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 页内快捷键和扩展命令可以绑定上一条和下一条媒体。默认不占键。只有一条媒体时不切换，并给出短说明。
+
+- [#142](https://github.com/Yukiniro/ottertap/pull/142) [`70e723a`](https://github.com/Yukiniro/ottertap/commit/70e723abce643faa2f86dd95d9c3b5ae33cda307) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 弹出面板可以为当前媒体设一个进度标记，再跳回去或清掉。标记只留在这一页的这条媒体上，不写入扩展存储。直播和不能跳转时入口禁用。
+
+- [#179](https://github.com/Yukiniro/ottertap/pull/179) [`81da8eb`](https://github.com/Yukiniro/ottertap/commit/81da8eb93a5f20fe194f6ddfdff4b4454e3ab36c) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 接着看补上使用入口：重新打开有进度的页面时自动跳回上次位置减三秒（设置里可关），跳回和面板手动跳转成功时页内短暂提示「从 xx:xx 继续」；设置新增「接着看」页，可开关自动跳回、按域名排除站点（不记也不跳）、查看进度列表并删单条或二次确认清空；弹出面板在有进度时出现「跳到接着看」和「清除接着看」。
+
+- [#172](https://github.com/Yukiniro/ottertap/pull/172) [`150575a`](https://github.com/Yukiniro/ottertap/commit/150575a7ef6c5b579e5420c9970c11e8340a0a19) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 可以跳转、约两分钟以上的视频和音频，播放时会定期把进度记在本机扩展存储里，暂停时也记一次，关掉标签再打开仍在。短片、直播、不能跳转的媒体和隐身窗口不记，看到片尾附近就删掉，最多保留 200 条。不上传，不新增权限。
+
+- [#152](https://github.com/Yukiniro/ottertap/pull/152) [`0fbdc1c`](https://github.com/Yukiniro/ottertap/commit/0fbdc1cc2247efd3350f628f53c1fd78bffd3ba4) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 当前选中换到另一条视频时，画面外沿短暂出现一圈轻轮廓，大约一秒后淡出。音频没有画面时，用和倍速提示相同的页内短提示写明已选中音频。
+
+- [#181](https://github.com/Yukiniro/ottertap/pull/181) [`a4348e3`](https://github.com/Yukiniro/ottertap/commit/a4348e3b175097b0be220633d361563094943349) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 睡眠定时进行中可以取消，也可以再续 15 分钟。取消后到点不再暂停，播放保持原样；续时加在剩下的截止时间上。倒计时仍跟着当前选中的媒体，换一条只改到点要停谁。
+
+- [#182](https://github.com/Yukiniro/ottertap/pull/182) [`90b37c8`](https://github.com/Yukiniro/ottertap/commit/90b37c86c6a78c87aabe66db5825d7fba2b7d792) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 睡眠定时在开始、取消，以及到期暂停成功时，用和倍速相同的短暂页内提示。到期前大约 1 分钟会再提示一次；这个临近提示可以在设置里关闭，默认开启，并会随设置导出和导入。媒体已经卸掉或暂停失败时，不显示成功提示。
+
+- [#191](https://github.com/Yukiniro/ottertap/pull/191) [`e684a3c`](https://github.com/Yukiniro/ottertap/commit/e684a3c7968fed7b6b174e1b05cabfc5ec5d3ba5) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 睡眠定时可以用页内快捷键和扩展命令开始或取消。开始按设置里的默认时长（出厂 30 分钟，可选 15、30、45、60 分钟），进行中再按一次从现在起重新计时；没有定时时取消会提示现在没有。两个动作默认不占键，可在设置页和浏览器的扩展快捷键页自行绑定，输入框聚焦时不触发。
+
+- [#180](https://github.com/Yukiniro/ottertap/pull/180) [`a5ff766`](https://github.com/Yukiniro/ottertap/commit/a5ff7663e2b8c4d911d299ecd55d37de5825fd58) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 弹出面板新增睡眠定时：可选 15 / 30 / 45 / 60 分钟或自定义 1–180 分钟，到点暂停这个标签里小獭正在控制的那一条媒体，进度保留、不关标签、不改站点记忆。关掉面板不会取消定时；没有媒体时入口不可用并有一句说明。
+
+### Patch Changes
+
+- [#135](https://github.com/Yukiniro/ottertap/pull/135) [`82a39fe`](https://github.com/Yukiniro/ottertap/commit/82a39fe62b0b8450edbfdbf0b6bef20b0ea72a26) Thanks [@Yukiniro](https://github.com/Yukiniro)! - 修复多页面并发保存设置时互相覆盖、Shadow DOM 视频画中画状态错误，以及临时加速被记为上一档倍速的问题。清空站点记忆直接清空表，官网演示在媒体加载前禁用控制并显示加载失败说明，移除空的备份迁移框架。
+  
+  备份确认导入仍整份替换设置，并正确恢复仅声道不同的站点偏好。
+
 ## 1.8.0
 
 ### Minor Changes
