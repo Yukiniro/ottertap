@@ -80,6 +80,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs doctor
 - 现成写法：`features/pip-auto-hide.md`（对应 `drive pip-auto-hide`）。该旅程随 #190 合入；合入前以那个分支为准，不要在别处另造一套。
 - 滚出视口自动进画中画同样按这一条走：`features/pip-auto-scroll.md`（对应 `drive pip-auto-scroll`）与上面共用 `launchPlainBrowser`，滚动也用不带手势的 CDP，免得 Playwright 的手势盖住浏览器的拒绝。
 - 回来自动退出画中画同样按这一条走：`features/pip-auto-exit.md`（对应 `drive pip-auto-exit`）。切回标签、快速路过标签都靠独立浏览器里真实的 `visibilitychange`。
+- 不自动画中画的站点同样按这一条走：`features/pip-auto-excluded-sites.md`（对应 `drive pip-auto-excluded-sites`）。名单里的站点「没有自动进入」必须在没有 Playwright 手势的浏览器里看，否则分不清是名单挡住还是浏览器拒绝。
 
 ### 2. 新增相邻设置键或改名存储键
 
@@ -100,7 +101,7 @@ rg -n "/[A-Za-z|]+/i?\.test\(|toMatch\(/" .cursor/skills/verify-ottertap/scripts
 
 ## Drive
 
-脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、低音量滚轮细步长（见 `features/fine-wheel.md`）、Shift 粗调步长（见 `features/coarse-step.md`）、倍速增减步长（见 `features/rate-step.md`）、扩展命令画中画（见 `features/extension-pip.md`）、按住临时加速（见 `features/hold-boost.md`）、同键短按跳长按加速（见 `features/hold-skip-combo.md`）、逐帧（见 `features/frame-step.md`）、页内快捷键改键（见 `features/hotkey-remap.md`）、浮动药丸倍速（见 `features/floating-speed.md`）、浮动药丸播放跳转（见 `features/floating-playback.md`）、浮动入口旁注（见 `features/floating-entry-note.md`）、从音量药丸打开弹出面板（见 `features/floating-open-panel.md`）、仅在播放时显示浮动入口（见 `features/floating-while-playing.md`）和滚轮方向（见 `features/wheel-direction.md`）。仅全屏时悬停滚轮见 `features/fullscreen-wheel.md`。侧栏聊天和文档大纲忽略见 `features/sidebar-ignore.md`。设置页三处名单的「当前站」见 `features/settings-current-site.md`。记住站点的「清空全部」见 `features/settings-clear-remembered.md`。镜像与标记的页内提示见 `features/mirror-mark-feedback.md`。进出画中画的页内提示见 `features/pip-feedback.md`。选中视频处于画中画时，面板与浮动标出退出态见 `features/pip-active.md`。切走标签后扩展命令仍控画中画媒体见 `features/pip-away-tab.md`。自动进入的画中画在回到标签或视频回到视口时自动退出见 `features/pip-auto-exit.md`。接着看的进度保存见 `features/resume-save.md`。弹出面板的睡眠定时见 `features/sleep-timer.md`。睡眠定时的页内提示见 `features/sleep-timer-hints.md`。睡眠定时的快捷键与扩展命令见 `features/sleep-hotkeys.md`。选中变化时的短暂轮廓见 `features/selection-highlight.md`。上一条和下一条媒体见 `features/prev-next-media.md`。弹出面板媒体列表见 `features/panel-media-list.md`。音量药丸里的画中画见 `features/float-pip.md`。页内画中画快捷键见 `features/page-pip.md`。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
+脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、低音量滚轮细步长（见 `features/fine-wheel.md`）、Shift 粗调步长（见 `features/coarse-step.md`）、倍速增减步长（见 `features/rate-step.md`）、扩展命令画中画（见 `features/extension-pip.md`）、按住临时加速（见 `features/hold-boost.md`）、同键短按跳长按加速（见 `features/hold-skip-combo.md`）、逐帧（见 `features/frame-step.md`）、页内快捷键改键（见 `features/hotkey-remap.md`）、浮动药丸倍速（见 `features/floating-speed.md`）、浮动药丸播放跳转（见 `features/floating-playback.md`）、浮动入口旁注（见 `features/floating-entry-note.md`）、从音量药丸打开弹出面板（见 `features/floating-open-panel.md`）、仅在播放时显示浮动入口（见 `features/floating-while-playing.md`）和滚轮方向（见 `features/wheel-direction.md`）。仅全屏时悬停滚轮见 `features/fullscreen-wheel.md`。侧栏聊天和文档大纲忽略见 `features/sidebar-ignore.md`。设置页三处名单的「当前站」见 `features/settings-current-site.md`。记住站点的「清空全部」见 `features/settings-clear-remembered.md`。镜像与标记的页内提示见 `features/mirror-mark-feedback.md`。进出画中画的页内提示见 `features/pip-feedback.md`。选中视频处于画中画时，面板与浮动标出退出态见 `features/pip-active.md`。切走标签后扩展命令仍控画中画媒体见 `features/pip-away-tab.md`。自动进入的画中画在回到标签或视频回到视口时自动退出见 `features/pip-auto-exit.md`。按站点关掉自动画中画见 `features/pip-auto-excluded-sites.md`。接着看的进度保存见 `features/resume-save.md`。弹出面板的睡眠定时见 `features/sleep-timer.md`。睡眠定时的页内提示见 `features/sleep-timer-hints.md`。睡眠定时的快捷键与扩展命令见 `features/sleep-hotkeys.md`。选中变化时的短暂轮廓见 `features/selection-highlight.md`。上一条和下一条媒体见 `features/prev-next-media.md`。弹出面板媒体列表见 `features/panel-media-list.md`。音量药丸里的画中画见 `features/float-pip.md`。页内画中画快捷键见 `features/page-pip.md`。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
 
 ```bash
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive popup-playback
@@ -147,6 +148,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-away-tab
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-auto-hide
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-auto-scroll
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-auto-exit
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-auto-excluded-sites
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive resume-save
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer-cancel
@@ -353,6 +355,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-away-tab
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-auto-hide
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-auto-scroll
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-auto-exit
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-auto-excluded-sites
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive resume-save
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer-cancel
@@ -605,6 +608,16 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-auto-exit
 `pip-auto-exit` 先确认设置页「Playback」的 `Leave picture-in-picture when you return to the tab or the video` 和两个自动进入开关默认都关。只开切走开关时，`/video` 切走自动进入、回来仍留着。打开自动退出后，两个进入开关不被改动；切走自动进入，回到标签约半秒后自己退出，视频继续播放；紧接着再切走不会马上又进。从药丸手动进入的画中画，切走再回来不被关。自动进入后只在标签上停约 150ms 就又切走，不退出；停下来后才退。换成只开滚出开关，`/feed` 上滚走自动进入，只滚回一点（露出约三成）不退，滚回播放器后退出，马上再滚走不又进。滚走自动进入后切走再回来、视频仍在视口外时不退，滚回才退。关掉自动退出后，滚回来画中画留着。全程不出字样和警告，结束时三个开关都关、`sitePrefs` 为空，权限仍只有 `storage`。和另外两条自动画中画旅程一样另起不带 Playwright 默认覆盖的 Chromium（profile 在 `/tmp/ottertap-verify/<id>/profile-pip-auto-exit`），结束时只停自己 spawn 的进程。整程约 90 秒。它不改会话的 profile。步骤见 `features/pip-auto-exit.md`。
 
 写入 `pip-auto-exit/`：`settings-off.png`、`fixture-off.png`、`settings-on.png`、`fixture-returned.png`、`pill-manual.png`、`fixture-partial.png`、`fixture-scrolled-back.png`、`fixture-away-tab.png`、`fixture-switch-off.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
+## 不自动画中画的站点
+
+```bash
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-auto-excluded-sites
+```
+
+`pip-auto-excluded-sites` 先确认设置页「Playback」三个自动开关下面的 `Sites without automatic picture-in-picture` 默认为空，说明写着与 Site rules、Sites without the floating button 分开。三个开关都关时，弹出面板站点行没有 `No auto picture-in-picture on this site`。三个开关都开后，`/video` 切走自动进入、回来自动退出，作为对照。弹出面板点一下该按钮，按钮变为按下，存储 `ottertap-settings-v1.autoPipExcludedSites` 只多出 `media.ottertap.test`，`floatingHiddenSites`、`siteMode`、`sites` 不动。之后同站切走不进、`/feed` 滚走主播放器也不进；从药丸手动进出画中画照常。撤销后滚走自动进入，画中画开着时再加入名单，滚回来不再自动退出。`elsewhere.test` 仍会自动进入和退出。设置页名单按主机名筛选、无匹配提示、逐个删除，导出文件带名单，导入后名单回来；弹出面板撤销后本站恢复自动进出。结束时三个开关都关、名单为空、`sitePrefs` 为空，`unknownStorageKeys` 为空，权限仍只有 `storage`。和另外三条自动画中画旅程一样另起不带 Playwright 默认覆盖的 Chromium（profile 在 `/tmp/ottertap-verify/<id>/profile-pip-auto-excluded-sites`）；这种浏览器不给 Playwright 下载事件，导出改由 CDP `Browser.setDownloadBehavior` 存进临时目录再读。整程约 60 秒。它不改会话的 profile。步骤见 `features/pip-auto-excluded-sites.md`。
+
+写入 `pip-auto-excluded-sites/`：`settings-empty.png`、`popup-switches-off.png`、`popup-excluded.png`、`fixture-hide-skipped.png`、`fixture-scroll-skipped.png`、`pill-manual.png`、`popup-included.png`、`popup-excluded-while-open.png`、`fixture-exit-skipped.png`、`fixture-elsewhere.png`、`settings-listed.png`、`export.json`、`popup-restored.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
 
 ## 接着看：保存进度
 
