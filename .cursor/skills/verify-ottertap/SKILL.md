@@ -78,6 +78,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs doctor
 - 独立浏览器用同一份构建和同一个 Chromium 可执行文件，profile 放在 `/tmp/ottertap-verify/<id>/` 下单独的目录；结束时只结束自己 spawn 的进程（命令行带这个 profile 路径）并删掉目录，不按进程名杀 Chrome。
 - 读页面状态用不带用户手势的 CDP `Runtime.evaluate`。Playwright 的 `evaluate` 自带手势，会改变「浏览器是否放行」的结果。
 - 现成写法：`features/pip-auto-hide.md`（对应 `drive pip-auto-hide`）。该旅程随 #190 合入；合入前以那个分支为准，不要在别处另造一套。
+- 滚出视口自动进画中画同样按这一条走：`features/pip-auto-scroll.md`（对应 `drive pip-auto-scroll`）与上面共用 `launchPlainBrowser`，滚动也用不带手势的 CDP，免得 Playwright 的手势盖住浏览器的拒绝。
 
 ### 2. 新增相邻设置键或改名存储键
 
@@ -143,6 +144,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-feedback
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-active
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-away-tab
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-auto-hide
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-auto-scroll
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive resume-save
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer-cancel
@@ -347,6 +349,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-feedback
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-active
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-away-tab
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-auto-hide
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-auto-scroll
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive resume-save
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer-cancel
@@ -579,6 +582,16 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-auto-hide
 `pip-auto-hide` 先确认设置页「Playback」的 `Picture-in-picture when you switch tabs` 默认关，关着时播放中的 `/video` 切走标签不进画中画。打开后，点一下页面再切走，`#media` 进入画中画，回来后药丸是退出态。从药丸退出后马上再切走不进，过了 10 秒冷却又会进。暂停中、`/audio` 循环播放中、网站规则排除本站时都不进。页面激活过期后不点页面直接切走，浏览器拒绝，页面不出字样也不出警告。结束时关掉开关、恢复全部网站，`sitePrefs` 为空，权限仍只有 `storage`。会话的 Playwright 让页面永远 `visible`，所以这一程另起一个不带 Playwright 默认覆盖的同版本 Chromium（profile 在 `/tmp/ottertap-verify/<id>/profile-pip-auto-hide`），结束时只停掉自己 spawn 的进程。整程约 45 秒。它不改会话的 profile。步骤见 `features/pip-auto-hide.md`。
 
 写入 `pip-auto-hide/`：`settings-off.png`、`fixture-off.png`、`settings-on.png`、`pill-entered.png`、`fixture-paused.png`、`fixture-refused.png`、`fixture-audio.png`、`fixture-excluded.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
+## 主视频滚出视口时自动进入画中画
+
+```bash
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-auto-scroll
+```
+
+`pip-auto-scroll` 先确认设置页「Playback」的 `Picture-in-picture when the video scrolls out of view` 默认关，关着时 `/feed` 上播放中的 `Main player` 被滚走不进画中画。打开后 `autoPipOnHide` 不跟着变。只往下滚到露出约三成不进；点一下页面再滚走，`#media` 进入画中画，滚动抖动不重复进。在视口外关掉画中画后点页面不再进，滚回来再滚走又进。点击激活过期后单纯滚走被浏览器拒绝，不出字样也不出警告，下一次点页面就进。暂停中不进，在视口外开始播放就进。选中 `Feed preview` 时小卡片和未选中的主视频都不进。网页全屏标记在时不进，去掉后点一下就进；Fullscreen API 全屏里开始播放不进，退出后按规则进。结束时关掉开关，`sitePrefs` 为空，权限仍只有 `storage`。这一程和 `pip-auto-hide` 一样另起不带 Playwright 默认覆盖的 Chromium（profile 在 `/tmp/ottertap-verify/<id>/profile-pip-auto-scroll`）。整程约 90 秒。它不改会话的 profile。步骤见 `features/pip-auto-scroll.md`。
+
+写入 `pip-auto-scroll/`：`settings-off.png`、`fixture-off.png`、`settings-on.png`、`fixture-partial.png`、`fixture-entered.png`、`fixture-refused.png`、`fixture-retry.png`、`fixture-paused.png`、`fixture-card.png`、`fixture-fullscreen.png`、`fixture-after-fullscreen.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
 
 ## 接着看：保存进度
 
