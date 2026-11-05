@@ -46,6 +46,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-away-tab
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-auto-hide
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-auto-scroll
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-auto-exit
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive resume-save
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer-cancel
@@ -70,7 +71,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip', 'page-pip', 'pip-feedback', 'pip-active', 'pip-away-tab', 'pip-auto-hide', 'pip-auto-scroll', 'resume-save', 'sleep-timer', 'sleep-timer-cancel', 'sleep-timer-hints', 'sleep-hotkeys', 'remaining-at-rate'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip', 'page-pip', 'pip-feedback', 'pip-active', 'pip-away-tab', 'pip-auto-hide', 'pip-auto-scroll', 'pip-auto-exit', 'resume-save', 'sleep-timer', 'sleep-timer-cancel', 'sleep-timer-hints', 'sleep-hotkeys', 'remaining-at-rate'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -3257,7 +3258,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip, 'page-pip': drivePagePip, 'pip-feedback': drivePipFeedback, 'pip-active': drivePipActive, 'pip-away-tab': drivePipAwayTab, 'pip-auto-hide': drivePipAutoHide, 'pip-auto-scroll': drivePipAutoScroll, 'resume-save': driveResumeSave, 'sleep-timer': driveSleepTimer, 'sleep-timer-cancel': driveSleepTimerCancel, 'sleep-timer-hints': driveSleepTimerHints, 'sleep-hotkeys': driveSleepHotkeys, 'remaining-at-rate': driveRemainingAtRate };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip, 'page-pip': drivePagePip, 'pip-feedback': drivePipFeedback, 'pip-active': drivePipActive, 'pip-away-tab': drivePipAwayTab, 'pip-auto-hide': drivePipAutoHide, 'pip-auto-scroll': drivePipAutoScroll, 'pip-auto-exit': drivePipAutoExit, 'resume-save': driveResumeSave, 'sleep-timer': driveSleepTimer, 'sleep-timer-cancel': driveSleepTimerCancel, 'sleep-timer-hints': driveSleepTimerHints, 'sleep-hotkeys': driveSleepHotkeys, 'remaining-at-rate': driveRemainingAtRate };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -7947,6 +7948,317 @@ async function drivePipAutoScroll(_sessionContext, dir, note) {
     if (JSON.stringify(final.sitePrefs ?? {}) !== '{}') throw new Error(`不应写入 sitePrefs：${JSON.stringify(final.sitePrefs)}`);
     note('restored: switch off, autoPipOnHide off, sitePrefs empty');
     const state = { ok: true, off, partial, entered, jitter, closed, again, refused: quiet, retried, paused, played, picked, card, web, afterWeb, fullscreen, afterFullscreen, resumed, sitePrefs: {}, permissions };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await plain.stop();
+  }
+}
+
+// Coming back to a tab needs real visibility changes, so this runs in the plain browser like the two entry journeys.
+async function drivePipAutoExit(_sessionContext, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const plain = await launchPlainBrowser(note, 'pip-auto-exit');
+  const { context } = plain;
+  try {
+    await context.route(`${origin}/**`, async route => {
+      const body = routedHtml(new URL(route.request().url()).pathname);
+      if (!body) { await route.fulfill({ status: 404, contentType: 'text/plain', body: 'not found' }); return; }
+      await route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', headers: { 'cache-control': 'no-store' }, body });
+    });
+    const ours = item => item.url().endsWith('/background.js');
+    const worker = context.serviceWorkers().find(ours) ?? await context.waitForEvent('serviceworker', { predicate: ours, timeout: 20_000 });
+    const extensionId = new URL(worker.url()).host;
+    const uiLanguage = await worker.evaluate(() => chrome.i18n.getUILanguage());
+    if (!uiLanguage.toLowerCase().startsWith('en')) throw new Error(`UI 语言是 ${uiLanguage}`);
+    const permissions = await worker.evaluate(() => chrome.runtime.getManifest().permissions ?? []);
+    if (JSON.stringify(permissions) !== JSON.stringify(['storage'])) throw new Error(`权限变了：${JSON.stringify(permissions)}`);
+    const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+    const exitLabel = 'Leave picture-in-picture when you return to the tab or the video';
+    const hideLabel = 'Picture-in-picture when you switch tabs';
+    const scrollLabel = 'Picture-in-picture when the video scrolls out of view';
+
+    const fixture = context.pages()[0] ?? await context.newPage();
+    const cdp = await context.newCDPSession(fixture);
+    const { targetInfo } = await cdp.send('Target.getTargetInfo');
+    const { targetId: other } = await cdp.send('Target.createTarget', { url: `${origin}/silent`, newWindow: false });
+    // Playwright's own evaluate counts as a user gesture; reads go through CDP without one.
+    const evaluate = async (expression, userGesture = false) => {
+      const { result, exceptionDetails } = await cdp.send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true, userGesture });
+      if (exceptionDetails) throw new Error(exceptionDetails.exception?.description ?? exceptionDetails.text);
+      return result.value;
+    };
+    const open = async pathname => {
+      await cdp.send('Target.activateTarget', { targetId: targetInfo.targetId });
+      await fixture.bringToFront();
+      await fixture.goto(`${origin}${pathname}`, { waitUntil: 'domcontentloaded' });
+      await fixture.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+      await evaluate(`(() => {
+        window.__otterVis = [];
+        window.__otterEntered = 0;
+        window.__otterLeft = 0;
+        document.addEventListener('visibilitychange', () => window.__otterVis.push(document.visibilityState));
+        document.addEventListener('enterpictureinpicture', () => { window.__otterEntered += 1; }, true);
+        document.addEventListener('leavepictureinpicture', () => { window.__otterLeft += 1; }, true);
+      })()`);
+    };
+    const read = () => evaluate(`(() => {
+      const main = document.querySelector('#media');
+      const rect = main.getBoundingClientRect();
+      const seen = Math.max(0, Math.min(rect.bottom, innerHeight) - Math.max(rect.top, 0)) * Math.max(0, Math.min(rect.right, innerWidth) - Math.max(rect.left, 0));
+      return {
+        visibility: document.visibilityState,
+        seen: [...window.__otterVis],
+        scrollY: Math.round(scrollY),
+        top: Math.round(rect.top + scrollY),
+        share: Math.round(seen / (rect.width * rect.height) * 100) / 100,
+        pip: document.pictureInPictureElement?.id ?? '',
+        entered: window.__otterEntered,
+        left: window.__otterLeft,
+        paused: main.paused,
+        hint: [...document.querySelectorAll('*')].map(node => node.shadowRoot?.textContent ?? '').join(' ').match(/Picture-in-picture (on|off)|blocked picture-in-picture|Couldn't switch picture-in-picture/g) ?? [],
+      };
+    })()`);
+    const paint = () => evaluate(`(async () => {
+      const element = document.querySelector('#media');
+      const canvas = document.createElement('canvas');
+      canvas.width = 64;
+      canvas.height = 36;
+      const drawing = canvas.getContext('2d');
+      drawing.fillStyle = '#c45c26';
+      drawing.fillRect(0, 0, 64, 36);
+      element.srcObject = canvas.captureStream(5);
+      element.muted = true;
+      await element.play().catch(() => {});
+      const deadline = performance.now() + 2000;
+      while (element.videoWidth === 0 && performance.now() < deadline) await new Promise(resolve => setTimeout(resolve, 50));
+      return !element.paused && element.videoWidth > 0;
+    })()`);
+    const settle = (ms = 600) => new Promise(resolve => setTimeout(resolve, ms));
+    const waitUntil = at => settle(Math.max(0, at - Date.now()));
+    const touchPage = () => fixture.mouse.click(8, 8);
+    const scrollTo = async y => {
+      await evaluate(`window.scrollTo(0, ${y})`);
+      await settle();
+      return read();
+    };
+    const leaveTab = async () => {
+      await cdp.send('Target.activateTarget', { targetId: other });
+      await poll(read, value => value.visibility === 'hidden', '切到另一个标签后，夹具页应变成 hidden');
+      await settle(1_200);
+      return read();
+    };
+    const comeBack = async () => {
+      await cdp.send('Target.activateTarget', { targetId: targetInfo.targetId });
+      await fixture.bringToFront();
+      await poll(read, value => value.visibility === 'visible', '回到夹具页后应为 visible');
+    };
+    const exitPip = async () => {
+      await evaluate('document.exitPictureInPicture()');
+      await poll(read, value => value.pip === '', '应离开画中画');
+      return Date.now();
+    };
+    const shot = name => fixture.screenshot({ path: path.join(dir, name), animations: 'disabled' });
+    const pill = () => fixture.getByRole('dialog', { name: 'Volume pill' });
+    const pillButton = async name => {
+      if (!await pill().isVisible().catch(() => false)) {
+        await fixture.getByRole('button', { name: /volume pill/i }).click();
+        await pill().waitFor({ state: 'visible', timeout: 5_000 });
+      }
+      const button = pill().getByRole('button', { name, exact: true });
+      await button.waitFor({ state: 'visible', timeout: 5_000 });
+      return button;
+    };
+
+    const settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#playback`, { waitUntil: 'domcontentloaded' });
+    const playback = settings.locator('#playback');
+    const exitToggle = playback.getByRole('switch', { name: exitLabel });
+    const hideToggle = playback.getByRole('switch', { name: hideLabel });
+    const scrollToggle = playback.getByRole('switch', { name: scrollLabel });
+    await exitToggle.waitFor({ state: 'visible', timeout: 15_000 });
+    // Leaving the fixture for the settings tab hides it; pausing first keeps the hide switch from entering on the way.
+    const flip = async (toggle, want) => {
+      await evaluate(`document.querySelector('#media')?.pause()`).catch(() => {});
+      await settings.bringToFront();
+      if (await toggle.getAttribute('aria-checked') !== String(want)) await toggle.click();
+      await poll(() => toggle.getAttribute('aria-checked'), value => value === String(want), `开关应为 ${want}`);
+    };
+    const resume = async () => {
+      await comeBack();
+      await evaluate(`document.querySelector('#media').play()`);
+      await poll(read, value => value.paused === false, '夹具视频应恢复播放');
+    };
+
+    for (const toggle of [exitToggle, hideToggle, scrollToggle]) {
+      if (await toggle.getAttribute('aria-checked') !== 'false') throw new Error('三个开关默认都应为关');
+    }
+    const initial = await stored();
+    if (initial.autoPipExitOnReturn === true) throw new Error('存储里默认不应打开自动退出');
+    await exitToggle.scrollIntoViewIfNeeded();
+    await playback.screenshot({ path: path.join(dir, 'settings-off.png'), animations: 'disabled' });
+    note(`settings ${exitLabel} defaults off`);
+
+    // 1. Exit switch off: an automatic entry stays open after coming back.
+    await flip(hideToggle, true);
+    await poll(stored, value => value.autoPipOnHide === true && value.autoPipExitOnReturn !== true, '只打开切走开关');
+    await open('/video');
+    if (!await paint()) throw new Error('夹具视频没有画面或没在播');
+    await settle(800);
+    await touchPage();
+    const offEntered = await leaveTab();
+    if (offEntered.pip !== 'media') throw new Error(`切走应自动进入：${JSON.stringify(offEntered)}`);
+    await comeBack();
+    await settle(1_500);
+    const offBack = await read();
+    if (offBack.pip !== 'media') throw new Error(`自动退出开关关闭时，回来不应退出：${JSON.stringify(offBack)}`);
+    await shot('fixture-off.png');
+    note(`exit switch off: came back, picture-in-picture stays ${JSON.stringify(offBack)}`);
+    let lastExit = await exitPip();
+
+    // 2. Turning the exit switch on leaves the two entry switches as they were.
+    await flip(exitToggle, true);
+    await poll(stored, value => value.autoPipExitOnReturn === true, '存储里应写入 autoPipExitOnReturn: true');
+    const afterOn = await stored();
+    if (afterOn.autoPipOnHide !== true || afterOn.autoPipOnScroll === true || await scrollToggle.getAttribute('aria-checked') !== 'false') {
+      throw new Error(`打开自动退出不应改动两个进入开关：${JSON.stringify({ hide: afterOn.autoPipOnHide, scroll: afterOn.autoPipOnScroll })}`);
+    }
+    await exitToggle.scrollIntoViewIfNeeded();
+    await playback.screenshot({ path: path.join(dir, 'settings-on.png'), animations: 'disabled' });
+    note('settings switched on, storage autoPipExitOnReturn=true, autoPipOnHide stays true, autoPipOnScroll stays off');
+
+    // 3. Hide entry, then come back: it closes on its own.
+    await resume();
+    await waitUntil(lastExit + 10_500);
+    await touchPage();
+    const hideEntered = await leaveTab();
+    if (hideEntered.pip !== 'media') throw new Error(`切走应自动进入：${JSON.stringify(hideEntered)}`);
+    await comeBack();
+    const backAt = Date.now();
+    const hideReturned = await poll(read, value => value.pip === '', '回到标签后，自动进入的画中画应自动退出', 5_000);
+    const closedAfterMs = Date.now() - backAt;
+    if (hideReturned.paused !== false) throw new Error(`自动退出后视频应继续播放：${JSON.stringify(hideReturned)}`);
+    await shot('fixture-returned.png');
+    note(`hide entry: came back, closed after ${closedAfterMs}ms ${JSON.stringify(hideReturned)}`);
+    lastExit = Date.now();
+
+    // 4. No flicker: leaving again right after the automatic exit does not reopen.
+    await touchPage();
+    const cooling = await leaveTab();
+    if (cooling.pip) throw new Error(`自动退出后马上再切走不应又进：${JSON.stringify(cooling)}`);
+    await comeBack();
+    note(`left again ${Date.now() - lastExit}ms after the automatic exit: stayed out ${JSON.stringify(cooling)}`);
+
+    // 5. Manual picture-in-picture is never closed by coming back.
+    await (await pillButton('Picture-in-picture')).click();
+    await poll(read, value => value.pip === 'media', '从药丸手动进入画中画');
+    await touchPage();
+    await leaveTab();
+    await comeBack();
+    await settle(1_500);
+    const manual = await read();
+    if (manual.pip !== 'media') throw new Error(`手动进入的画中画回来后不应被退出：${JSON.stringify(manual)}`);
+    await (await pillButton('Exit picture-in-picture')).waitFor({ state: 'visible' });
+    await pill().screenshot({ path: path.join(dir, 'pill-manual.png'), animations: 'disabled' });
+    note(`manual entry: came back, still open ${JSON.stringify(manual)}`);
+    await (await pillButton('Exit picture-in-picture')).click();
+    await poll(read, value => value.pip === '', '从药丸退出画中画');
+    lastExit = Date.now();
+
+    // 6. A quick pass through the tab does not close an automatic one.
+    await waitUntil(lastExit + 10_500);
+    await touchPage();
+    const passEntered = await leaveTab();
+    if (passEntered.pip !== 'media') throw new Error(`切走应自动进入：${JSON.stringify(passEntered)}`);
+    await evaluate('window.__otterVis = []');
+    await cdp.send('Target.activateTarget', { targetId: targetInfo.targetId });
+    await settle(150);
+    await cdp.send('Target.activateTarget', { targetId: other });
+    await poll(read, value => value.visibility === 'hidden', '路过后应回到 hidden');
+    await settle(1_200);
+    const passed = await read();
+    if (!passed.seen.includes('visible')) throw new Error(`路过标签时应先变成 visible：${JSON.stringify(passed)}`);
+    if (passed.pip !== 'media' || passed.left !== passEntered.left) throw new Error(`快速路过标签不应退出：${JSON.stringify(passed)}`);
+    note(`quick pass through the tab kept it open ${JSON.stringify(passed)}`);
+    await comeBack();
+    await poll(read, value => value.pip === '', '停在标签上后应自动退出', 5_000);
+    lastExit = Date.now();
+    note('stayed on the tab after the pass: closed');
+
+    // 7. Scroll entry on the feed: a partial scroll back keeps it, scrolling back to the player closes it.
+    await flip(hideToggle, false);
+    await flip(scrollToggle, true);
+    await poll(stored, value => value.autoPipOnScroll === true && value.autoPipOnHide === false && value.autoPipExitOnReturn === true, '改成只开滚出与自动退出');
+    await open('/feed');
+    if (!await paint()) throw new Error('主播放器没有画面或没在播');
+    await settle(800);
+    await waitUntil(lastExit + 10_500);
+    const away = 1200;
+    const top = await scrollTo(0);
+    await touchPage();
+    await scrollTo(away);
+    const scrollEntered = await poll(read, value => value.pip === 'media', '滚走播放中的主视频应进入画中画');
+    const partial = await scrollTo(top.top + 252);
+    await touchPage();
+    await settle(1_200);
+    const partialKept = await read();
+    if (partialKept.share > 0.45 || partialKept.pip !== 'media') throw new Error(`只露出一点时不应退出：${JSON.stringify(partialKept)}`);
+    await shot('fixture-partial.png');
+    note(`scroll entry ${JSON.stringify(scrollEntered)}; partial scroll back keeps it ${JSON.stringify({ partial, partialKept })}`);
+    await scrollTo(0);
+    const scrollReturned = await poll(read, value => value.pip === '', '滚回主视频后应自动退出', 5_000);
+    await shot('fixture-scrolled-back.png');
+    note(`scrolled back to the player: closed ${JSON.stringify(scrollReturned)}`);
+    lastExit = Date.now();
+    await touchPage();
+    const scrollCooling = await scrollTo(away);
+    await settle(400);
+    const scrollCooled = await read();
+    if (scrollCooled.pip) throw new Error(`自动退出后马上再滚走不应又进：${JSON.stringify(scrollCooled)}`);
+    note(`scrolled away right after the automatic exit: stayed out ${JSON.stringify({ scrollCooling, scrollCooled })}`);
+
+    // 8. Back on a visible tab but still scrolled away: stays until the video is back in view.
+    await waitUntil(lastExit + 10_500);
+    await scrollTo(0);
+    await touchPage();
+    await scrollTo(away);
+    await poll(read, value => value.pip === 'media', '冷却后滚走应再进');
+    await leaveTab();
+    await comeBack();
+    await settle(1_500);
+    const awayBack = await read();
+    if (awayBack.pip !== 'media' || awayBack.share > 0.1) throw new Error(`回到标签但视频仍在视口外时不应退出：${JSON.stringify(awayBack)}`);
+    await shot('fixture-away-tab.png');
+    note(`came back to the tab with the video still scrolled away: stays ${JSON.stringify(awayBack)}`);
+    await scrollTo(0);
+    await poll(read, value => value.pip === '', '滚回视频后应自动退出', 5_000);
+    lastExit = Date.now();
+
+    // 9. Exit switch off again: scrolling back keeps the automatic one open.
+    await flip(exitToggle, false);
+    await poll(stored, value => value.autoPipExitOnReturn === false, '存储里应写回 autoPipExitOnReturn: false');
+    await resume();
+    await waitUntil(lastExit + 10_500);
+    await scrollTo(0);
+    await touchPage();
+    await scrollTo(away);
+    await poll(read, value => value.pip === 'media', '关掉自动退出后滚走仍会进入');
+    await scrollTo(0);
+    await settle(1_500);
+    const switchedOff = await read();
+    if (switchedOff.pip !== 'media') throw new Error(`关掉自动退出后滚回来不应退出：${JSON.stringify(switchedOff)}`);
+    if (switchedOff.hint.length || await fixture.locator('[role="alert"]').count()) throw new Error(`自动进出不应出现字样或警告：${JSON.stringify(switchedOff.hint)}`);
+    await shot('fixture-switch-off.png');
+    note(`exit switch off: scrolled back, stays open ${JSON.stringify(switchedOff)}`);
+    await exitPip();
+
+    await flip(scrollToggle, false);
+    await poll(stored, value => value.autoPipOnScroll === false && value.autoPipOnHide === false && value.autoPipExitOnReturn === false, '结束时三个开关都应关掉');
+    const final = await stored();
+    if (JSON.stringify(final.sitePrefs ?? {}) !== '{}') throw new Error(`不应写入 sitePrefs：${JSON.stringify(final.sitePrefs)}`);
+    note('restored: all three switches off, sitePrefs empty');
+    const state = { ok: true, offBack, hideEntered, hideReturned, closedAfterMs, cooling, manual, passed, scrollEntered, partialKept, scrollReturned, scrollCooled, awayBack, switchedOff, sitePrefs: {}, permissions };
     await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
     return state;
   } finally {
