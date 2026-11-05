@@ -86,7 +86,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs doctor
 - 先在相关旅程（`scripts/session.mjs`）和 `e2e/` 里 **扫一遍宽泛的存储正则断言**，例如 `/sleep/i.test(storage)`、`toMatch(/pip/i)`。
 - 把它们收窄成 **精确键名**（`Object.keys(settings)` 里逐个比较），或维护一份 **允许名单**（allowlist）。
 - **禁止** 只加新键、不更新这些断言。新键的名字一旦被宽泛正则命中，旧旅程会误报「存储里出现了某功能」（#177 的睡眠快捷键就撞上了旧的睡眠定时旅程）。
-- 不要用 `replaceAll` 先抹掉已知键名再去匹配的写法。现有的 `sleep-timer` 和 `sleep-timer-cancel` 旅程里有两处 `/sleep/i.test(storage.replaceAll('sleepSoonHint', 'soonHint'))`，就是这种遗留；碰到它们时改成断言「没有倒计时相关键」的精确名单，而不是再给它加一个 `replaceAll`。
+- 不要用 `replaceAll` 先抹掉已知键名再去匹配的写法。`sleep-timer` 和 `sleep-timer-cancel` 旅程原来的这种遗留已改成允许名单：`scripts/session.mjs` 的 `knownStorageKeys` 列出扩展会写的全部存储键，`unknownStorageKeys(worker)` 返回名单外的键。要断言「存储里没写某东西」时复用它；新增或改名存储键时同步改这份名单。
 
 自查办法：
 

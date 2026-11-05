@@ -287,6 +287,21 @@ async function serviceWorker(context) {
   return context.serviceWorkers()[0] ?? await context.waitForEvent('serviceworker', { timeout: 20_000 });
 }
 
+/** Every key OtterTap writes to extension storage. A key outside this list means a feature persisted something it should not. */
+const knownStorageKeys = { local: ['ottertap-settings-v1'], localPrefix: 'ottertap-resume-v1:', session: ['ottertap-frames-v1', 'ottertap-holds-v1'] };
+
+async function unknownStorageKeys(worker) {
+  const { local, session } = await worker.evaluate(async () => {
+    let session = [];
+    try { session = Object.keys(await chrome.storage.session.get(null)); } catch { session = []; }
+    return { local: Object.keys(await chrome.storage.local.get(null)), session };
+  });
+  return [
+    ...local.filter(key => !knownStorageKeys.local.includes(key) && !key.startsWith(knownStorageKeys.localPrefix)).map(key => `local:${key}`),
+    ...session.filter(key => !knownStorageKeys.session.includes(key)).map(key => `session:${key}`)
+  ];
+}
+
 async function openFixture(context) {
   const page = await context.newPage();
   const response = await page.goto(`${origin}${fixturePath}`, { waitUntil: 'domcontentloaded', timeout: 20_000 });
@@ -7887,12 +7902,6 @@ async function driveSleepTimer(context, dir, note) {
   const permissions = await worker.evaluate(() => chrome.runtime.getManifest().permissions ?? []);
   if (JSON.stringify(permissions) !== JSON.stringify(['storage'])) throw new Error(`权限应仍只有 storage：${JSON.stringify(permissions)}`);
   const settingsText = () => worker.evaluate(async () => JSON.stringify((await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? null));
-  const storageText = () => worker.evaluate(async () => {
-    const local = await chrome.storage.local.get(null);
-    let session = null;
-    try { session = await chrome.storage.session.get(null); } catch { session = null; }
-    return JSON.stringify({ local, session });
-  });
   const clock = text => text.split(':').reduce((total, part) => total * 60 + Number(part), 0);
   const view = popup => popup.evaluate(sleepTimerView);
   // The popover fades in; a screenshot taken right away shows it half transparent.
@@ -8044,8 +8053,8 @@ async function driveSleepTimer(context, dir, note) {
 
     const settingsAfter = await settingsText();
     if (settingsAfter !== settingsBefore) throw new Error(`睡眠定时改写了设置：before=${settingsBefore} after=${settingsAfter}`);
-    const storage = await storageText();
-    if (/sleep/i.test(storage.replace(/"sleep(SoonHint|DefaultMinutes|Start|Cancel)"/g, '"setting"'))) throw new Error(`扩展存储里出现了睡眠定时：${storage}`);
+    const unknownKeys = await unknownStorageKeys(worker);
+    if (unknownKeys.length) throw new Error(`扩展存储里出现了名单外的键（睡眠倒计时不应写入存储）：${unknownKeys.join(', ')}`);
     const state = { ok: true, permissions, noMedia: empty.explain, panelHeight: idle.panelHeight, presets: menu.presets, fifteen: fifteen.text, custom: custom.text, reopened: reopened.text, pausedAfterSeconds: Number(elapsed.toFixed(1)), pausedAt: Number(stopped.currentTime.toFixed(2)), feedMainPaused: feedStopped.main.paused, feedPreviewPlaying: !feedStopped.preview.paused, expiredRunning: expired.running, settingsSame: true };
     await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
     return state;
@@ -8080,12 +8089,6 @@ async function driveSleepTimerCancel(context, dir, note) {
   const permissions = await worker.evaluate(() => chrome.runtime.getManifest().permissions ?? []);
   if (JSON.stringify(permissions) !== JSON.stringify(['storage'])) throw new Error(`权限应仍只有 storage：${JSON.stringify(permissions)}`);
   const settingsText = () => worker.evaluate(async () => JSON.stringify((await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? null));
-  const storageText = () => worker.evaluate(async () => {
-    const local = await chrome.storage.local.get(null);
-    let session = null;
-    try { session = await chrome.storage.session.get(null); } catch { session = null; }
-    return JSON.stringify({ local, session });
-  });
   const clock = text => text.split(':').reduce((total, part) => total * 60 + Number(part), 0);
   const view = popup => popup.evaluate(sleepCancelView);
   const settled = popup => poll(() => popup.evaluate(`(() => { const node = document.querySelector('[data-slot="popover-content"]'); return !!node && node.getAnimations().every(item => item.playState !== 'running'); })()`), value => value === true, '定时弹层应已展开完');
@@ -8226,8 +8229,8 @@ async function driveSleepTimerCancel(context, dir, note) {
 
     const settingsAfter = await settingsText();
     if (settingsAfter !== settingsBefore) throw new Error(`取消或续时改写了设置：before=${settingsBefore} after=${settingsAfter}`);
-    const storage = await storageText();
-    if (/sleep/i.test(storage.replace(/"sleep(SoonHint|DefaultMinutes|Start|Cancel)"/g, '"setting"'))) throw new Error(`扩展存储里出现了睡眠定时：${storage}`);
+    const unknownKeys = await unknownStorageKeys(worker);
+    if (unknownKeys.length) throw new Error(`扩展存储里出现了名单外的键（睡眠倒计时不应写入存储）：${unknownKeys.join(', ')}`);
     const state = {
       ok: true,
       permissions,

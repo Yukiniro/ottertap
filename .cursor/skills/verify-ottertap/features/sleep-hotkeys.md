@@ -52,7 +52,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-hotkeys
 
 - 空字符串就是未绑定，永远不算撞键。不要给这两条预设默认键，也不要在 manifest 里加 `suggested_key`，Chrome 最多 4 个建议键。
 - 默认时长只能是面板那四档。自定义分钟只在面板里，不进这个设置。
-- 存储里有 `sleepDefaultMinutes`、`sleepStart`、`sleepCancel`。旧的睡眠旅程用整段存储文本排除 `sleep`，要先把这些键名换掉再检查。
+- 存储里有 `sleepDefaultMinutes`、`sleepStart`、`sleepCancel`，都在设置键 `ottertap-settings-v1` 里。旧的睡眠旅程用 `knownStorageKeys` 允许名单查倒计时没写进存储，不用宽泛的 `/sleep/i`。
 - 页内键在内容脚本里已经按输入框过滤。扩展命令不经过页面键盘，后台另按 `collect` 的 `typing` 判断。
 - 弹出面板打开时页面没有焦点。按页内键之前先关掉面板，点一下夹具页。
 - 这一程改了键和时长。成功或失败退出前都会把键恢复成未绑定。
