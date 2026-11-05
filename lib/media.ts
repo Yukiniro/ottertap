@@ -574,6 +574,10 @@ export function createMediaController(document: Document, onChange?: () => void,
       });
     },
     recallRate() { return recall; },
+    element(id: string) {
+      refresh();
+      return elements.find(media => ids.get(media) === id && media.isConnected);
+    },
     /** Id of the media under the point, else of the focused media when `focus` is set. */
     pointed(point: { x: number; y: number } | null, focus: boolean) {
       refresh();
