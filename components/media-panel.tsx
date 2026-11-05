@@ -1,7 +1,7 @@
 import { i18n } from '#i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { ChevronDown, EyeOff, Settings2, Settings as SettingsIcon, Volume2, VolumeX, AppWindow, Pause, Play, RotateCcw, RotateCw, Keyboard, CircleAlert, Info, Search, RefreshCw, PictureInPicture2, Headphones, Minus, Plus, StepBack, StepForward, Bookmark, BookmarkX, CornerDownLeft, History, X } from 'lucide-react';
+import { ChevronDown, EyeOff, Settings2, Settings as SettingsIcon, Volume2, VolumeX, AppWindow, Pause, Play, RotateCcw, RotateCw, Keyboard, CircleAlert, Info, Search, RefreshCw, PictureInPicture2, Headphones, Minus, Plus, StepBack, StepForward, Bookmark, BookmarkX, CornerDownLeft, History, Slash, X } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Button } from './ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from './ui/dropdown-menu';
@@ -24,7 +24,7 @@ import { remainingWallSeconds } from '../lib/remaining';
 import { actualSkipSeconds } from '../lib/skip';
 import type { SleepTimerClient } from '../lib/sleep-timer';
 import type { SoundingTab, SoundingTabsClient } from '../lib/tabs';
-import { disableSite, enableSite, forgetMatchingSites, hideFloating, isFloatingHidden, isSiteEnabled, rememberSite, showFloating, sitePrefFor } from '../lib/settings';
+import { disableSite, enableSite, excludeAutoPip, forgetMatchingSites, hideFloating, includeAutoPip, isAutoPipExcluded, isFloatingHidden, isSiteEnabled, rememberSite, showFloating, sitePrefFor } from '../lib/settings';
 import { defaultSettings, type MediaClient, type MediaState, type PageState, type SitePref } from '../lib/types';
 import { formatTime } from '../lib/utils';
 import { useSettingsAtoms } from './theme';
@@ -166,9 +166,12 @@ function MediaChoices({ media, host, selectedId, onSelect, onOpen }: { media: Me
 }
 export function MediaPanel({ client, openSettings, sounding, sleep, initial }: { client: MediaClient; openSettings: () => void; sounding?: SoundingTabsClient; sleep?: SleepTimerClient; initial?: PageState }) {
   const { page, selected, select, command, refresh, loading, error } = useMedia(client, { initial });
-  const { floatingAtom, floatingHiddenSitesAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, skipSecondsAtom, skipWithRateAtom, rateStepAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { autoPipOnHideAtom, autoPipOnScrollAtom, autoPipExcludedSitesAtom, floatingAtom, floatingHiddenSitesAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, skipSecondsAtom, skipWithRateAtom, rateStepAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const floating = useAtomValue(floatingAtom);
   const floatingHiddenSites = useAtomValue(floatingHiddenSitesAtom);
+  const autoPipOnHide = useAtomValue(autoPipOnHideAtom);
+  const autoPipOnScroll = useAtomValue(autoPipOnScrollAtom);
+  const autoPipExcludedSites = useAtomValue(autoPipExcludedSitesAtom);
   const siteMode = useAtomValue(siteModeAtom);
   const sites = useAtomValue(sitesAtom);
   const sitePrefs = useAtomValue(sitePrefsAtom);
@@ -195,6 +198,9 @@ export function MediaPanel({ client, openSettings, sounding, sleep, initial }: {
   const rateQueue = useRef(Promise.resolve());
   const remembered = page.host ? sitePrefFor(page.host, sitePrefs) : null;
   const hiddenHere = isFloatingHidden(page.host, floatingHiddenSites);
+  const autoPipOffHere = isAutoPipExcluded(page.host, autoPipExcludedSites);
+  // Only offered while an automatic entry switch is on, or to undo an entry for this site.
+  const showAutoPipToggle = page.enabled && !!page.host && (autoPipOnHide || autoPipOnScroll || autoPipOffHere);
   const playbackRate = selected ? aimedRate ?? selected.rate : 1;
   const jump = actualSkipSeconds(skipSeconds, playbackRate, skipWithRate);
   const storePreference = () => {
@@ -261,7 +267,10 @@ export function MediaPanel({ client, openSettings, sounding, sleep, initial }: {
     {selected ? <>
       <div className="rounded-xl bg-secondary/60 p-3">
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">
-          <p className="min-w-0 break-all">{page.host || selected.host}</p>
+          <div className="flex min-w-0 items-center gap-1">
+            <p className="min-w-0 break-all">{page.host || selected.host}</p>
+            {showAutoPipToggle && <Button type="button" variant="ghost" size="icon-xs" className="-my-1 shrink-0 text-muted-foreground aria-pressed:bg-accent aria-pressed:text-primary" aria-pressed={autoPipOffHere} aria-label={i18n.t('autoPipExcludeHere')} title={i18n.t('autoPipExcludeHere')} disabled={settingsLoading} onClick={() => { if (page.host) void write({ autoPipExcludedSites: autoPipOffHere ? includeAutoPip(autoPipExcludedSites, page.host) : excludeAutoPip(autoPipExcludedSites, page.host) }); }}><span aria-hidden="true" className="relative inline-flex size-3.5"><PictureInPicture2 className="size-3.5" /><Slash className="absolute inset-0 size-3.5" /></span></Button>}
+          </div>
           <div className="flex flex-wrap items-center justify-end gap-x-2">
             <p>{selected.kind === 'video' ? i18n.t('video') : i18n.t('audio')} · {selected.paused ? i18n.t('paused') : i18n.t('playing')}</p>
             {inPip ? <p id="pip-status" role="status" className="font-medium text-primary">{i18n.t('pipActive')}</p> : null}
