@@ -45,7 +45,8 @@ export type WheelDirection = (typeof wheelDirections)[number];
 /** `sleepDefaultMinutes` is the length the sleep key and extension command start. Missing or unusable values stay 30. */
 /**
  * `autoPipOnHide` lets the selected, playing video enter picture-in-picture when its tab is hidden.
- * Missing values stay off. A recent picture-in-picture exit holds it back for a short cooldown.
+ * Missing values stay off. A recent exit or a failed automatic attempt holds it back for a short cooldown.
+ * Success and failure use the same short on-page notes as a manual toggle.
  */
 /**
  * `autoPipOnScroll` lets the selected, playing main video enter picture-in-picture when it scrolls almost out of view.

@@ -1,4 +1,4 @@
-import { shouldAutoPip } from './auto-pip';
+import { autoPipDecision, createAutoPipQuiet, settleAutoPip, type AutoPipHint, type AutoPipQuiet } from './auto-pip';
 import { hoverFullscreenActive } from './fullscreen-wheel';
 import { isMainStageSize, stageViewport } from './media';
 
@@ -24,29 +24,36 @@ const activations = ['pointerup', 'keydown'] as const;
  * Enters picture-in-picture when `target()` scrolls out of view while it is playing.
  * It arms only after the video has been seen at main-stage size, so feed cards and a player that starts off-screen never enter.
  * One scroll-out enters at most once; any exit while it is still out waits until it scrolls back in.
- * Fullscreen holds it back; leaving fullscreen checks again. A refusal stays silent and the next press, play, or scroll tries again.
- * `onEntered` hears only entries made here, never manual ones.
+ * Fullscreen holds it back; leaving fullscreen checks again. A refusal shows the usual short note and stays quiet for the same cooldown as an exit.
+ * The next press, play, or scroll after that window tries again. `onEntered` hears only entries made here, never manual ones.
  */
-export function createScrollPip(document: Document, options: { enabled: () => boolean; target: () => HTMLMediaElement | undefined; now?: () => number; onEntered?: (element: HTMLVideoElement) => void }) {
+export function createScrollPip(document: Document, options: { enabled: () => boolean; target: () => HTMLMediaElement | undefined; now?: () => number; onEntered?: (element: HTMLVideoElement) => void; onHint?: AutoPipHint; quiet?: AutoPipQuiet }) {
   const view = document.defaultView;
   const now = options.now ?? Date.now;
+  const quiet = options.quiet ?? createAutoPipQuiet(now);
   let observer: IntersectionObserver | null = null;
   let watched: HTMLVideoElement | undefined;
   let armed = false;
   let out = false;
   let entering = false;
-  let lastExitAt: number | null = null;
 
   const enter = () => {
     const element = watched;
-    if (entering || !armed || !out || !element || !view) return;
-    if (!shouldAutoPip({ enabled: options.enabled(), element, lastExitAt, now: now() })) return;
+    if (entering || !armed || !out || !element || !view || !options.enabled()) return;
     if (hoverFullscreenActive(view)) return;
+    const decision = autoPipDecision(element, { lastExitAt: quiet.at(), now: now() });
+    if (decision !== 'enter') {
+      if (decision !== 'quiet' && decision !== 'skip') {
+        quiet.hold();
+        options.onHint?.(decision);
+      }
+      return;
+    }
     entering = true;
-    void element.requestPictureInPicture().then(() => {
-      if (watched === element) armed = false;
-      options.onEntered?.(element);
-    }, () => {}).finally(() => { entering = false; });
+    void settleAutoPip(element, quiet, options.onHint, video => {
+      if (watched === video) armed = false;
+      options.onEntered?.(video);
+    }).finally(() => { entering = false; });
   };
   const onEntries = (entries: IntersectionObserverEntry[]) => {
     const entry = entries.at(-1);
@@ -59,7 +66,7 @@ export function createScrollPip(document: Document, options: { enabled: () => bo
     enter();
   };
   const onLeave = () => {
-    lastExitAt = now();
+    quiet.hold();
     if (out) armed = false;
   };
   const onPlay = (event: Event) => { if (event.target === watched) enter(); };

@@ -2,7 +2,7 @@ import { i18n } from '#i18n';
 import { createRoot } from 'react-dom/client';
 import { browser } from 'wxt/browser';
 import { createShadowRootUi } from 'wxt/utils/content-script-ui/shadow-root';
-import { createAutoPip } from '../lib/auto-pip';
+import { createAutoPip, createAutoPipQuiet } from '../lib/auto-pip';
 import { createAutoPipExit } from '../lib/auto-pip-exit';
 import { createScrollPip } from '../lib/auto-pip-scroll';
 import { createHoldGesture } from '../lib/hold-gesture';
@@ -96,19 +96,31 @@ export default defineContentScript({
     const selectedElement = () => lockedLocalId ? controller.element(lockedLocalId) : undefined;
     // Unlike resume, this list follows the tab's address, not this frame's.
     const autoPipAllowed = () => enabled && !!watched && allowsAutoPip(pageUrl, watched);
+    const autoPipQuiet = createAutoPipQuiet();
+    const showAutoPipHint = (key: string) => {
+      const label = actionHintText(key);
+      if (!label) return;
+      window.dispatchEvent(new window.CustomEvent(actionHintEvent, { detail: label }));
+    };
     const autoPipExit = createAutoPipExit(document, {
       enabled: () => autoPipAllowed() && watched?.autoPipExitOnReturn === true,
+      quiet: autoPipQuiet,
+      onHint: showAutoPipHint,
     });
     const autoPip = createAutoPip(document, {
       enabled: () => autoPipAllowed() && watched?.autoPipOnHide === true,
       target: selectedElement,
       // Browsers only offer automatic entry to media in the top frame.
       mediaSession: topFrame,
+      quiet: autoPipQuiet,
+      onHint: showAutoPipHint,
       onEntered: autoPipExit.mark,
     });
     const scrollPip = createScrollPip(document, {
       enabled: () => autoPipAllowed() && watched?.autoPipOnScroll === true,
       target: selectedElement,
+      quiet: autoPipQuiet,
+      onHint: showAutoPipHint,
       onEntered: autoPipExit.mark,
     });
     const sleep = createSleepTimer(() => {

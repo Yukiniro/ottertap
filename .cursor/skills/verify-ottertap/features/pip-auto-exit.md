@@ -4,7 +4,7 @@
 
 手动进入的画中画（弹出面板、音量药丸、页内键、扩展命令、网页自带按钮）从不因这项被关。自动进入后被手动关掉，或被另一条画中画顶掉，这一轮就结束，之后再手动进入也不算自动。关掉开关后不再自动退；同一轮里再打开，会按规则退。
 
-按站点排除见 `pip-auto-excluded-sites.md`。不做自动进出的页内提示与防拉锯（#188，`lib/auto-pip-exit.ts` 里留了 `TODO(#188)`）、Document PiP。
+按站点排除见 `pip-auto-excluded-sites.md`。自动进出的页内提示和失败冷却见 `pip-auto-feedback.md`。不做 Document PiP。
 
 ## Sub-features
 
@@ -13,7 +13,7 @@
 - 回来的条件。页面可见，且被标记的视频可见比例至少 0.5（与滚出路径重新上膛的阈值相同，`visibleShare` 同一套算法）。切走进入的那一轮，回到标签时视频通常就在视口里；滚出进入的那一轮，回到标签但视频仍在视口外时不退，滚回才退。
 - 防抖。回来的状态要连续保持约 500ms 才退；中途又切走或又滚出就取消。只露出三成不算回来，和滚出时 0.1 的阈值之间有滞回。自动退出触发 `leavepictureinpicture`，两条进入路径照旧进入 10 秒冷却，所以退出后不会马上又进。
 - 清标记。任何 `leavepictureinpicture` 之后，只要被标记的视频不再处于画中画（按它所在的树根判断，兼顾 shadow DOM），这一轮就结束。退出前也再核对一次。
-- 开关关着、或没有自动会话时不建 `IntersectionObserver`。不改权限，不写 `sitePrefs`，不出提示。
+- 开关关着、或没有自动会话时不建 `IntersectionObserver`。不改权限，不写 `sitePrefs`。成功退出时的短提示见 `pip-auto-feedback.md`。
 
 ## How to get to it (user POV)
 
@@ -42,7 +42,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-auto-exit
 7. 过了冷却，切走自动进入，然后在夹具标签上只停约 150ms 又切走：页面记到过 `visible`，画中画还在，`leavepictureinpicture` 次数不变。再回来停住：退出。
 8. 关掉切走开关、打开滚出开关。`/feed` 的 `Main player` 补一帧播放，点页面后滚走：进入。滚回到只露出约三成并点页面，1.2 秒后仍在画中画。截 `fixture-partial.png`。滚回页顶：退出。截 `fixture-scrolled-back.png`。马上点页面再滚走：冷却期内不又进。
 9. 过了冷却，滚回再滚走：进入。切走再回来，视频仍在视口外，1.5 秒后仍在画中画。截 `fixture-away-tab.png`。滚回页顶：退出。
-10. 关掉自动退出，存储写回 `false`。过了冷却，滚走进入，滚回页顶 1.5 秒后仍在画中画；没有字样和警告。截 `fixture-switch-off.png`。手动退出。
+10. 关掉自动退出，存储写回 `false`。过了冷却，滚走进入，滚回页顶 1.5 秒后仍在画中画。进入时的「画中画开」已经淡出，没有「画中画关」，也没有警告。截 `fixture-switch-off.png`。手动退出。
 11. 关掉滚出开关。三个开关都是 `false`，`sitePrefs` 为空，权限只有 `storage`。
 
 成功时 `state.json` 的 `ok` 为 `true`，各步的 `visibility`、`seen`（`visibilitychange` 顺序）、`scrollY`、`share`、`pip`、`entered`、`left`、`paused` 都记在里面。证据在 `/opt/cursor/artifacts/verify-ottertap/pip-auto-exit/`：`settings-off.png`、`fixture-off.png`、`settings-on.png`、`fixture-returned.png`、`pill-manual.png`、`fixture-partial.png`、`fixture-scrolled-back.png`、`fixture-away-tab.png`、`fixture-switch-off.png`、`state.json`、`transcript.txt`。
