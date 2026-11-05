@@ -59,6 +59,43 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs doctor
 
 通过时打印 `ottertap-verify doctor ok ...`。mtime 变了就先 `cleanup`，再 `pnpm build` 和 `pnpm verify-build`，然后重新 `launch`。这条只针对扩展包变了；`session.mjs` 等驱动脚本自己被改，doctor 看不出来，见 Launch 里的 `cleanup` → `launch` 规则。不要在 doctor 里改存储或点击页面。
 
+## 写旅程前的两条硬规则
+
+新增或修改旅程、功能文件之前先过一遍这两条。它们不是建议，违反就不算验证过。
+
+### 1. 页面可见性、切走标签、切走自动进画中画
+
+只要旅程要断言 **页面可见性**（`document.visibilityState`、`visibilitychange`）、**切走标签 / 标签隐藏** 的行为，或 **切走时自动进画中画** 之类依赖「页面变 hidden」的功能：
+
+- 必须为这一项检查 **另起一个独立的 Chromium**，不要复用会话里的那个。
+- 用 `chromium.connectOverCDP(url, { noDefaults: true })`（或等价的、关掉 Playwright 默认焦点模拟的连法）去连它。
+- **禁止** 用会话里默认的 Playwright 上下文（`launchPersistentContext`）断言可见性或切走标签的行为。
+
+原因：Playwright 默认给每个页面开焦点模拟，页面永远是 `visible`，切到别的标签也不会变 `hidden`。在这种上下文里「切走后没触发」或「切走后触发了」都不能说明真实浏览器的行为，断言要么永远测不到，要么测到的是假象。
+
+做法要点：
+
+- 独立浏览器用同一份构建和同一个 Chromium 可执行文件，profile 放在 `/tmp/ottertap-verify/<id>/` 下单独的目录；结束时只结束自己 spawn 的进程（命令行带这个 profile 路径）并删掉目录，不按进程名杀 Chrome。
+- 读页面状态用不带用户手势的 CDP `Runtime.evaluate`。Playwright 的 `evaluate` 自带手势，会改变「浏览器是否放行」的结果。
+- 现成写法：`features/pip-auto-hide.md`（对应 `drive pip-auto-hide`）。该旅程随 #190 合入；合入前以那个分支为准，不要在别处另造一套。
+
+### 2. 新增相邻设置键或改名存储键
+
+只要改动新增了 **与现有键相邻的设置键**（例如已有 `sleepSoonHint` 又加睡眠快捷键相关键），或 **重命名** 了扩展存储键：
+
+- 先在相关旅程（`scripts/session.mjs`）和 `e2e/` 里 **扫一遍宽泛的存储正则断言**，例如 `/sleep/i.test(storage)`、`toMatch(/pip/i)`。
+- 把它们收窄成 **精确键名**（`Object.keys(settings)` 里逐个比较），或维护一份 **允许名单**（allowlist）。
+- **禁止** 只加新键、不更新这些断言。新键的名字一旦被宽泛正则命中，旧旅程会误报「存储里出现了某功能」（#177 的睡眠快捷键就撞上了旧的睡眠定时旅程）。
+- 不要用 `replaceAll` 先抹掉已知键名再去匹配的写法。现有的 `sleep-timer` 和 `sleep-timer-cancel` 旅程里有两处 `/sleep/i.test(storage.replaceAll('sleepSoonHint', 'soonHint'))`，就是这种遗留；碰到它们时改成断言「没有倒计时相关键」的精确名单，而不是再给它加一个 `replaceAll`。
+
+自查办法：
+
+```bash
+rg -n "/[A-Za-z|]+/i?\.test\(|toMatch\(/" .cursor/skills/verify-ottertap/scripts/session.mjs e2e
+```
+
+命中里凡是对存储文本、设置 JSON 做匹配的，都要对照这次新增或改名的键名想一遍会不会误伤。
+
 ## Drive
 
 脚本化旅程有弹出面板播放、滚轮音量（见 `features/wheel-volume.md`）、快进快退步长（见 `features/skip-step.md`）、快进快退随倍速放大（见 `features/skip-with-rate.md`）、音量调节步长（见 `features/volume-step.md`）、低音量滚轮细步长（见 `features/fine-wheel.md`）、Shift 粗调步长（见 `features/coarse-step.md`）、倍速增减步长（见 `features/rate-step.md`）、扩展命令画中画（见 `features/extension-pip.md`）、按住临时加速（见 `features/hold-boost.md`）、同键短按跳长按加速（见 `features/hold-skip-combo.md`）、逐帧（见 `features/frame-step.md`）、页内快捷键改键（见 `features/hotkey-remap.md`）、浮动药丸倍速（见 `features/floating-speed.md`）、浮动药丸播放跳转（见 `features/floating-playback.md`）、浮动入口旁注（见 `features/floating-entry-note.md`）、从音量药丸打开弹出面板（见 `features/floating-open-panel.md`）、仅在播放时显示浮动入口（见 `features/floating-while-playing.md`）和滚轮方向（见 `features/wheel-direction.md`）。仅全屏时悬停滚轮见 `features/fullscreen-wheel.md`。侧栏聊天和文档大纲忽略见 `features/sidebar-ignore.md`。设置页三处名单的「当前站」见 `features/settings-current-site.md`。记住站点的「清空全部」见 `features/settings-clear-remembered.md`。镜像与标记的页内提示见 `features/mirror-mark-feedback.md`。进出画中画的页内提示见 `features/pip-feedback.md`。选中视频处于画中画时，面板与浮动标出退出态见 `features/pip-active.md`。切走标签后扩展命令仍控画中画媒体见 `features/pip-away-tab.md`。接着看的进度保存见 `features/resume-save.md`。弹出面板的睡眠定时见 `features/sleep-timer.md`。睡眠定时的页内提示见 `features/sleep-timer-hints.md`。选中变化时的短暂轮廓见 `features/selection-highlight.md`。上一条和下一条媒体见 `features/prev-next-media.md`。弹出面板媒体列表见 `features/panel-media-list.md`。音量药丸里的画中画见 `features/float-pip.md`。页内画中画快捷键见 `features/page-pip.md`。其余功能按 `features/` 里的选择器操作；断言失败就记下来，不要放宽期望。
