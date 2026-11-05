@@ -1,6 +1,7 @@
 import { i18n } from '#i18n';
 import { isChannelMode, maxGain } from './amplifier';
 import { normalizeKeybinds } from './keybinds';
+import { isSleepPreset } from './sleep-timer';
 import { clampRate, formatRate, maxRate, minRate, normalizeRatePresets, normalizeRateStep, rateGrid } from './rate';
 export { isRateStep } from './rate';
 import { defaultSettings, floatingNotes, skipSteps, volumeSteps, wheelDirections, type FloatingNote, type MediaCommand, type Settings, type SitePref, type SkipSeconds, type VolumeStep, type WheelDirection } from './types';
@@ -89,6 +90,7 @@ export function normalizeSettings(value: unknown): Settings {
     followPlaying: typeof source.followPlaying === 'boolean' ? source.followPlaying : true,
     autoPipOnHide: source.autoPipOnHide === true,
     sleepSoonHint: typeof source.sleepSoonHint === 'boolean' ? source.sleepSoonHint : true,
+    sleepDefaultMinutes: isSleepPreset(source.sleepDefaultMinutes) ? source.sleepDefaultMinutes : defaultSettings.sleepDefaultMinutes,
     floatingHiddenSites: normalizeDomains(source.floatingHiddenSites),
     resumeJump: typeof source.resumeJump === 'boolean' ? source.resumeJump : true,
     resumeExcludedSites: normalizeDomains(source.resumeExcludedSites),

@@ -24,6 +24,7 @@ import { clearRememberedSites, filterFloatingHiddenSites, filterRememberedSites,
 import { resumeEntryHost, resumeEntryTitle, type ResumeEntry } from '../lib/resume';
 import { clearResumeLedger, forgetResumeEntry, readResumeLedger, watchResumeLedger } from '../lib/resume-store';
 import { formatTime } from '../lib/utils';
+import { isSleepPreset, sleepPresets } from '../lib/sleep-timer';
 import { rateSteps, skipSteps, volumeSteps, type Settings, type SitePref } from '../lib/types';
 import { useSettingsAtoms } from './theme';
 
@@ -450,7 +451,7 @@ function Row({ title, description, titleId, children }: { title: string; descrip
 }
 
 export function SettingsPage({ back }: { back?: () => void }) {
-  const { themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, followPlayingAtom, autoPipOnHideAtom, sleepSoonHintAtom, floatingHiddenSitesAtom, resumeJumpAtom, resumeExcludedSitesAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, fullscreenWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, coarseStepAtom, fineWheelAtom, wheelDirectionAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, followPlayingAtom, autoPipOnHideAtom, sleepSoonHintAtom, sleepDefaultMinutesAtom, floatingHiddenSitesAtom, resumeJumpAtom, resumeExcludedSitesAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, fullscreenWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, coarseStepAtom, fineWheelAtom, wheelDirectionAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const theme = useAtomValue(themeAtom);
   const floating = useAtomValue(floatingAtom);
   const floatingNote = useAtomValue(floatingNoteAtom);
@@ -458,6 +459,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
   const followPlaying = useAtomValue(followPlayingAtom);
   const autoPipOnHide = useAtomValue(autoPipOnHideAtom);
   const sleepSoonHint = useAtomValue(sleepSoonHintAtom);
+  const sleepDefaultMinutes = useAtomValue(sleepDefaultMinutesAtom);
   const floatingHiddenSites = useAtomValue(floatingHiddenSitesAtom);
   const resumeJump = useAtomValue(resumeJumpAtom);
   const resumeExcludedSites = useAtomValue(resumeExcludedSitesAtom);
@@ -542,6 +544,8 @@ export function SettingsPage({ back }: { back?: () => void }) {
     mediaPrev: i18n.t('mediaPrev'),
     mediaNext: i18n.t('mediaNext'),
     pip: i18n.t('cmdPictureInPicture'),
+    sleepStart: i18n.t('cmdSleepStart'),
+    sleepCancel: i18n.t('cmdSleepCancel'),
     volumeUp: i18n.t('shortcutVolumeUp', { percent: volumeStep }),
     volumeDown: i18n.t('shortcutVolumeDown', { percent: volumeStep })
   };
@@ -642,6 +646,15 @@ export function SettingsPage({ back }: { back?: () => void }) {
           </div>
           <div className="mt-4">
             <SwitchRow id="settings-sleep-soon" label={i18n.t('sleepSoonHintSetting')} description={i18n.t('sleepSoonHintDescription')} checked={sleepSoonHint} disabled={disabled} onChange={checked => void save({ sleepSoonHint: checked })} />
+          </div>
+          <div className="mt-4">
+            <div className="flex flex-col gap-3 rounded-lg bg-secondary/60 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <h3 id="sleep-default-label" className="text-sm font-medium">{i18n.t('sleepDefaultMinutes')}</h3>
+              <ToggleGroup aria-labelledby="sleep-default-label" spacing={1} className="grid h-auto w-full grid-cols-4 rounded-lg bg-background/80 p-1 sm:w-auto" value={[String(sleepDefaultMinutes)]} disabled={disabled} onValueChange={value => { const next = Number(value[0]); if (isSleepPreset(next)) void save({ sleepDefaultMinutes: next }); }}>
+                {sleepPresets.map(minutes => <ToggleGroupItem key={minutes} value={String(minutes)} className="h-8 rounded-md border-0 px-2.5 text-xs text-muted-foreground shadow-none aria-pressed:bg-card aria-pressed:font-semibold aria-pressed:text-foreground aria-pressed:shadow-sm">{i18n.t('sleepTimerPresetShort', { minutes })}</ToggleGroupItem>)}
+              </ToggleGroup>
+            </div>
+            <p className="mt-2 text-sm leading-5 text-muted-foreground">{i18n.t('sleepDefaultMinutesDescription')}</p>
           </div>
           <Field orientation="horizontal" className="mt-4 justify-between gap-4 rounded-lg bg-secondary/60 px-3 py-3">
             <FieldLabel htmlFor="settings-lock-rate" className="text-sm font-normal">{i18n.t('lockRate')}</FieldLabel>
@@ -754,12 +767,14 @@ export function SettingsPage({ back }: { back?: () => void }) {
             { id: 'media-prev', key: keyButton('mediaPrev'), description: ownerLabels.mediaPrev },
             { id: 'media-next', key: keyButton('mediaNext'), description: ownerLabels.mediaNext },
             { id: 'pip', key: keyButton('pip'), description: ownerLabels.pip },
+            { id: 'sleep-start', key: keyButton('sleepStart'), description: ownerLabels.sleepStart },
+            { id: 'sleep-cancel', key: keyButton('sleepCancel'), description: ownerLabels.sleepCancel },
             { id: 'speed-up', key: 'Alt + .', description: i18n.t('shortcutSpeedUp', { step: formatRate(rateStep) }) },
             { id: 'speed-down', key: 'Alt + ,', description: i18n.t('shortcutSpeedDown', { step: formatRate(rateStep) }) },
             { id: 'speed-reset', key: 'Alt + 0', description: i18n.t('shortcutSpeedReset') },
             { id: 'mute', key: 'Alt + M', description: i18n.t('cmdMute') }
           ]} />
-          {keyErrorFor(['frameBack', 'frameForward', 'mirror', 'markSet', 'markJump', 'mediaPrev', 'mediaNext', 'pip'])}
+          {keyErrorFor(['frameBack', 'frameForward', 'mirror', 'markSet', 'markJump', 'mediaPrev', 'mediaNext', 'pip', 'sleepStart', 'sleepCancel'])}
           <p className="mt-3 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsMac')}</p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsRateKeys')}</p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsFrameKeys', { back: keyText(keybinds.frameBack), forward: keyText(keybinds.frameForward) })}</p>
