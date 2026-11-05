@@ -6,6 +6,12 @@ export const sleepExtendMinutes = 15;
 /** Page note when this much time is left. A timer that is already inside the window does not warn at the moment it starts. */
 export const sleepSoonLeadMs = 60_000;
 
+/** Whole seconds until `sleepAt`, rounded up so the panel and the entry note stay on the same clock. Zero when there is no deadline or it has passed. */
+export function sleepRemainingSeconds(sleepAt: number | undefined, now: number) {
+  if (typeof sleepAt !== 'number' || !Number.isFinite(sleepAt) || !Number.isFinite(now)) return 0;
+  return Math.max(0, Math.ceil((sleepAt - now) / 1000));
+}
+
 /** Whole minutes from 1 to `maxSleepMinutes`, else null. */
 export function sleepMinutes(value: unknown) {
   return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= maxSleepMinutes ? value : null;

@@ -11,12 +11,13 @@ import { VolumeSlider } from './volume-slider';
 import { useMedia } from '../hooks/use-media';
 import { dockedPoint, dockSize, dropPosition, nudgePosition, type Viewport } from '../lib/dock';
 import { actionHintEvent, commandForHotkey, createHotkeySession, rateHintEvent, volumeGestureEvent } from '../lib/hotkey';
-import { floatingEntryNote } from '../lib/floating-note';
+import { floatingEntryNote, type FloatingEntryNote } from '../lib/floating-note';
 import { cycleMediaId, pipHint, showsPictureInPicture } from '../lib/media';
 import { createFloatingWhilePlayingGate, floatingWhilePlayingHideMs, stepFloatingWhilePlaying } from '../lib/floating-play';
 import { formatRate, nextRate, sameRate } from '../lib/rate';
 import { hideFloating, isFloatingHidden } from '../lib/settings';
 import { actualSkipSeconds } from '../lib/skip';
+import { sleepRemainingSeconds } from '../lib/sleep-timer';
 import type { FloatingPosition, MediaClient, MediaState } from '../lib/types';
 import { useSettingsAtoms } from './theme';
 
@@ -24,12 +25,30 @@ const readViewport = (): Viewport => ({ width: document.documentElement.clientWi
 const thumbHeight = 10;
 const boostColor = (volume: number, max: number) => `color-mix(in oklch, var(--destructive) ${Math.max(0, Math.min(1, (volume - 100) / (max - 100))) * 100}%, #b57835)`;
 
+function useNow(ticking: boolean) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    setNow(Date.now());
+    if (!ticking) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [ticking]);
+  return now;
+}
+
+function entryNoteLabel(note: FloatingEntryNote, volume: number, rate: number) {
+  if (note.kind === 'sleep') return i18n.t('sleepTimerRemaining', { time: note.time });
+  if (note.kind === 'volume') return i18n.t('floatingEntryVolume', { percent: volume });
+  return i18n.t('floatingEntrySpeed', { rate: formatRate(rate) });
+}
+
 /** `hideOnSite` offers 「本站隐藏浮动」. Leave it off where the settings are not the user's real ones, such as demos. */
 export function FloatingController({ client, openPanel, hideOnSite }: { client: MediaClient; openPanel?: (mediaId: string) => Promise<boolean>; hideOnSite?: boolean }) {
-  const { coarseStepAtom, floatingAtom, floatingHiddenSitesAtom, floatingNoteAtom, floatingPositionAtom, floatingWhilePlayingAtom, fineWheelAtom, loadingAtom, ratePresetsAtom, rateStepAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, wheelDirectionAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { coarseStepAtom, floatingAtom, floatingHiddenSitesAtom, floatingNoteAtom, floatingSleepNoteAtom, floatingPositionAtom, floatingWhilePlayingAtom, fineWheelAtom, loadingAtom, ratePresetsAtom, rateStepAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, wheelDirectionAtom, writeSettingsAtom } = useSettingsAtoms();
   const floating = useAtomValue(floatingAtom);
   const floatingHiddenSites = useAtomValue(floatingHiddenSitesAtom);
   const floatingNote = useAtomValue(floatingNoteAtom);
+  const floatingSleepNote = useAtomValue(floatingSleepNoteAtom);
   const floatingWhilePlaying = useAtomValue(floatingWhilePlayingAtom);
   const floatingPosition = useAtomValue(floatingPositionAtom);
   const loading = useAtomValue(loadingAtom);
@@ -43,6 +62,7 @@ export function FloatingController({ client, openPanel, hideOnSite }: { client: 
   const wheelDirection = useAtomValue(wheelDirectionAtom);
   const write = useSetAtom(writeSettingsAtom);
   const { page, selected, select, command, error } = useMedia(client, { pauseWhenEmpty: true });
+  const now = useNow(floatingSleepNote && typeof page.sleepAt === 'number');
   const [expanded, setExpanded] = useState(false);
   const [panelHint, setPanelHint] = useState(false);
   const [openingPanel, setOpeningPanel] = useState(false);
@@ -172,7 +192,7 @@ export function FloatingController({ client, openPanel, hideOnSite }: { client: 
   };
   const boostLimit = max > 100 ? undefined : i18n.t('cannotBoostCrossOrigin');
   const playbackRate = rateDraft ?? selected.rate;
-  const entryNote = floatingEntryNote(floatingNote, volume, playbackRate);
+  const entryNote = floatingEntryNote(floatingNote, volume, playbackRate, { show: floatingSleepNote, remainingSeconds: sleepRemainingSeconds(page.sleepAt, now) });
   const jump = actualSkipSeconds(skipSeconds, playbackRate, skipWithRate);
   const ranges = selected.seekable;
   const seekMin = ranges[0]?.start ?? 0;
@@ -297,7 +317,7 @@ export function FloatingController({ client, openPanel, hideOnSite }: { client: 
         </div>
       </PopoverContent>
     </Popover>
-    {entryNote && !expanded && <span role="status" aria-live="off" data-slot="entry-note" data-kind={entryNote.kind} data-boost={entryNote.boost} aria-label={entryNote.kind === 'volume' ? i18n.t('floatingEntryVolume', { percent: volume }) : i18n.t('floatingEntrySpeed', { rate: formatRate(playbackRate) })} className={`pointer-events-none absolute top-1/2 z-10 -translate-y-1/2 rounded-full border border-border/70 bg-background/90 px-1.5 py-0.5 text-[11px] leading-none font-medium whitespace-nowrap text-muted-foreground tabular-nums shadow-[0_1px_2px_rgb(0_0_0/.12)] data-[boost=true]:font-semibold data-[boost=true]:text-(--volume-boost) ${position.side === 'right' ? 'right-[calc(100%+6px)]' : 'left-[calc(100%+6px)]'}`} style={entryNote.boost ? { '--volume-boost': boostColor(volume, max) } as CSSProperties : undefined}>{entryNote.text}</span>}
+    {entryNote && !expanded && <span role="status" aria-live="off" data-slot="entry-note" data-kind={entryNote.kind} data-boost={entryNote.boost} aria-label={entryNoteLabel(entryNote, volume, playbackRate)} className={`pointer-events-none absolute top-1/2 z-10 -translate-y-1/2 rounded-full border border-border/70 bg-background/90 px-1.5 py-0.5 text-[11px] leading-none font-medium whitespace-nowrap text-muted-foreground tabular-nums shadow-[0_1px_2px_rgb(0_0_0/.12)] data-[boost=true]:font-semibold data-[boost=true]:text-(--volume-boost) ${position.side === 'right' ? 'right-[calc(100%+6px)]' : 'left-[calc(100%+6px)]'}`} style={entryNote.boost ? { '--volume-boost': boostColor(volume, max) } as CSSProperties : undefined}>{entryNote.text}</span>}
     {error && <Alert variant="destructive" className="fixed bottom-2 left-2 w-auto max-w-[min(320px,calc(100vw-16px))] shadow-md"><CircleAlert /><AlertDescription>{error}</AlertDescription></Alert>}
   </aside>;
 }

@@ -91,7 +91,15 @@ test('取消和续 +15 只改页面里的截止时间，不暂停，也不写存
 
     const stored = JSON.stringify(await fakeBrowser.storage.local.get(null));
     assert.equal(stored, settingsBefore, '不写站点记忆和设置');
-    assert.equal(/sleep/i.test(stored), false);
+    const parsed = JSON.parse(stored) as Record<string, unknown>;
+    const sleepSettingFields = new Set(['sleepSoonHint', 'sleepDefaultMinutes', 'floatingSleepNote']);
+    for (const [key, value] of Object.entries(parsed)) {
+      assert.equal(/sleep/i.test(key), false, `睡眠倒计时不应写成存储键 ${key}`);
+      if (key !== 'ottertap-settings-v1' || !value || typeof value !== 'object') continue;
+      for (const field of Object.keys(value)) {
+        if (/sleep/i.test(field)) assert.equal(sleepSettingFields.has(field), true, `设置里出现了名单外的睡眠字段 ${field}`);
+      }
+    }
   } finally {
     sendMessage.mock.restore();
     getMessage.mock.restore();

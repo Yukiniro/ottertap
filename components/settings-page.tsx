@@ -452,10 +452,11 @@ function Row({ title, description, titleId, children }: { title: string; descrip
 }
 
 export function SettingsPage({ back }: { back?: () => void }) {
-  const { themeAtom, floatingAtom, floatingNoteAtom, floatingWhilePlayingAtom, followPlayingAtom, autoPipOnHideAtom, autoPipOnScrollAtom, autoPipExitOnReturnAtom, autoPipExcludedSitesAtom, sleepSoonHintAtom, sleepDefaultMinutesAtom, floatingHiddenSitesAtom, resumeJumpAtom, resumeExcludedSitesAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, fullscreenWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, coarseStepAtom, fineWheelAtom, wheelDirectionAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const { themeAtom, floatingAtom, floatingNoteAtom, floatingSleepNoteAtom, floatingWhilePlayingAtom, followPlayingAtom, autoPipOnHideAtom, autoPipOnScrollAtom, autoPipExitOnReturnAtom, autoPipExcludedSitesAtom, sleepSoonHintAtom, sleepDefaultMinutesAtom, floatingHiddenSitesAtom, resumeJumpAtom, resumeExcludedSitesAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, fullscreenWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, coarseStepAtom, fineWheelAtom, wheelDirectionAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
   const theme = useAtomValue(themeAtom);
   const floating = useAtomValue(floatingAtom);
   const floatingNote = useAtomValue(floatingNoteAtom);
+  const floatingSleepNote = useAtomValue(floatingSleepNoteAtom);
   const floatingWhilePlaying = useAtomValue(floatingWhilePlayingAtom);
   const followPlaying = useAtomValue(followPlayingAtom);
   const autoPipOnHide = useAtomValue(autoPipOnHideAtom);
@@ -628,6 +629,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
               </ToggleGroup>
               <p className="mt-2 text-sm leading-5 text-muted-foreground">{i18n.t('floatingNoteDescription')}</p>
             </div>
+            <SwitchRow id="settings-floating-sleep-note" label={i18n.t('floatingSleepNote')} description={i18n.t('floatingSleepNoteDescription')} checked={floatingSleepNote} disabled={disabled} onChange={checked => void save({ floatingSleepNote: checked })} />
             <div className="rounded-lg bg-secondary/60 px-3 py-3">
               <h3 className="text-sm font-medium">{i18n.t('floatingHiddenSites')}</h3>
               <p className="mt-1 text-sm leading-5 text-muted-foreground">{i18n.t('floatingHiddenSitesDescription')}</p>

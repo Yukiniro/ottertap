@@ -54,6 +54,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer-cancel
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive sleep-timer-hints
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive remaining-at-rate
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-sleep-note
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs cleanup
 
 import { spawn } from 'node:child_process';
@@ -73,7 +74,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip', 'page-pip', 'pip-feedback', 'pip-active', 'pip-away-tab', 'pip-auto-hide', 'pip-auto-scroll', 'pip-auto-exit', 'pip-auto-excluded-sites', 'pip-auto-feedback', 'resume-save', 'sleep-timer', 'sleep-timer-cancel', 'sleep-timer-hints', 'sleep-hotkeys', 'remaining-at-rate'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip', 'page-pip', 'pip-feedback', 'pip-active', 'pip-away-tab', 'pip-auto-hide', 'pip-auto-scroll', 'pip-auto-exit', 'pip-auto-excluded-sites', 'pip-auto-feedback', 'resume-save', 'sleep-timer', 'sleep-timer-cancel', 'sleep-timer-hints', 'sleep-hotkeys', 'remaining-at-rate', 'floating-sleep-note'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -3260,7 +3261,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip, 'page-pip': drivePagePip, 'pip-feedback': drivePipFeedback, 'pip-active': drivePipActive, 'pip-away-tab': drivePipAwayTab, 'pip-auto-hide': drivePipAutoHide, 'pip-auto-scroll': drivePipAutoScroll, 'pip-auto-exit': drivePipAutoExit, 'pip-auto-excluded-sites': drivePipAutoExcludedSites, 'pip-auto-feedback': drivePipAutoFeedback, 'resume-save': driveResumeSave, 'sleep-timer': driveSleepTimer, 'sleep-timer-cancel': driveSleepTimerCancel, 'sleep-timer-hints': driveSleepTimerHints, 'sleep-hotkeys': driveSleepHotkeys, 'remaining-at-rate': driveRemainingAtRate };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip, 'page-pip': drivePagePip, 'pip-feedback': drivePipFeedback, 'pip-active': drivePipActive, 'pip-away-tab': drivePipAwayTab, 'pip-auto-hide': drivePipAutoHide, 'pip-auto-scroll': drivePipAutoScroll, 'pip-auto-exit': drivePipAutoExit, 'pip-auto-excluded-sites': drivePipAutoExcludedSites, 'pip-auto-feedback': drivePipAutoFeedback, 'resume-save': driveResumeSave, 'sleep-timer': driveSleepTimer, 'sleep-timer-cancel': driveSleepTimerCancel, 'sleep-timer-hints': driveSleepTimerHints, 'sleep-hotkeys': driveSleepHotkeys, 'remaining-at-rate': driveRemainingAtRate, 'floating-sleep-note': driveFloatingSleepNote };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -10076,6 +10077,183 @@ async function drivePipAutoFeedback(_sessionContext, dir, note) {
     return state;
   } finally {
     await plain.stop();
+  }
+}
+
+async function driveFloatingSleepNote(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const permissions = await worker.evaluate(() => chrome.runtime.getManifest().permissions ?? []);
+  if (JSON.stringify(permissions) !== JSON.stringify(['storage'])) throw new Error(`权限应仍只有 storage：${JSON.stringify(permissions)}`);
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const page = await context.newPage();
+  let settings;
+  let popup = null;
+  const floater = () => page.getByRole('complementary', { name: 'Floating controller' });
+  const entry = () => page.locator('[data-slot="entry-note"]');
+  const readNote = async () => {
+    if (await entry().count() === 0) return null;
+    return entry().evaluate(node => ({
+      text: (node.textContent || '').trim(),
+      label: node.getAttribute('aria-label') || '',
+      kind: node.getAttribute('data-kind') || '',
+      boost: node.getAttribute('data-boost') || '',
+    }));
+  };
+  const clockOf = text => {
+    const match = /^Sleep (\d{1,2}:\d{2}(?::\d{2})?)$/.exec(text);
+    if (!match) return null;
+    return match[1].split(':').reduce((total, part) => total * 60 + Number(part), 0);
+  };
+  const inside = async label => {
+    const box = await entry().boundingBox();
+    const viewport = page.viewportSize();
+    if (!box || !viewport) throw new Error(`${label}：旁注没有位置`);
+    if (box.x < -1 || box.y < -1 || box.x + box.width > viewport.width + 1 || box.y + box.height > viewport.height + 1) {
+      throw new Error(`${label}：旁注超出视口 ${JSON.stringify({ box, viewport })}`);
+    }
+    return box;
+  };
+  const badge = async () => {
+    const url = page.url();
+    return worker.evaluate(async pageUrl => {
+      const tabId = (await chrome.tabs.query({ url: pageUrl })).find(tab => tab.url === pageUrl)?.id;
+      if (tabId == null) return null;
+      const [text, title] = await Promise.all([chrome.action.getBadgeText({ tabId }), chrome.action.getTitle({ tabId })]);
+      return { text, title };
+    }, url);
+  };
+  const reopen = async () => {
+    if (popup) await popup.close().catch(() => {});
+    popup = await openActionPopup(context, page);
+  };
+  const arm = async () => {
+    await reopen();
+    await popup.click('Sleep timer');
+    await poll(() => popup.evaluate(`(() => [...document.querySelectorAll('button')].some(item => item.getAttribute('aria-label') === 'Pause in 15 minutes'))()`), value => value === true, '睡眠档位应出现');
+    await popup.click('Pause in 15 minutes');
+    await poll(() => popup.evaluate(`(() => {
+      const trigger = document.querySelector('button[aria-label="Sleep timer"]');
+      return Boolean(trigger?.hasAttribute('data-running')) && /\\d/.test(trigger?.textContent || '');
+    })()`), value => value === true, '15 分钟睡眠应开始');
+  };
+  const cancel = async () => {
+    await reopen();
+    await popup.click('Sleep timer');
+    await poll(() => popup.evaluate(`(() => [...document.querySelectorAll('button')].some(item => item.getAttribute('aria-label') === 'Cancel sleep'))()`), value => value === true, '取消睡眠应出现');
+    await popup.click('Cancel sleep');
+    await poll(() => popup.evaluate(`(() => {
+      const trigger = document.querySelector('button[aria-label="Sleep timer"]');
+      return Boolean(trigger) && !trigger.hasAttribute('data-running');
+    })()`), value => value === true, '睡眠应已取消');
+  };
+  try {
+    await page.goto(`${origin}/keys`, { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await page.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true }));
+      element.pause();
+    });
+    const idle = await poll(readNote, value => value?.label === 'On-page volume 100%' && value.text === '100%' && value.kind === 'volume', '默认旁注应是页内音量 100%');
+    if ((await floater().getAttribute('data-revealed')) !== 'false') throw new Error('默认应半隐藏');
+    if ((await floater().getAttribute('data-side')) !== 'right') throw new Error('默认应贴在右侧');
+    note(`idle ${idle.label}`);
+
+    await arm();
+    await page.bringToFront();
+    const whileOff = await poll(readNote, value => value?.label === 'On-page volume 100%' && value.kind === 'volume' && value.text === '100%', '开关关闭时，定时进行中旁注仍是音量');
+    const toolbar = await badge();
+    if (toolbar?.text) throw new Error(`100% 时工具栏角标应为空：${JSON.stringify(toolbar)}`);
+    if ((toolbar?.title || '').includes('Sleep')) throw new Error(`工具栏标题不应写成睡眠倒计时：${toolbar?.title}`);
+    await page.screenshot({ path: path.join(dir, 'note-off.png'), animations: 'disabled' });
+    note(`while off ${whileOff.text}; badge=${JSON.stringify(toolbar)}`);
+
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#floating`, { waitUntil: 'domcontentloaded' });
+    const toggle = settings.getByRole('switch', { name: 'Countdown while sleeping', exact: true });
+    await toggle.waitFor({ state: 'visible', timeout: 15_000 });
+    if ((await toggle.getAttribute('aria-checked')) !== 'false') throw new Error('倒计时开关默认应关闭');
+    const description = settings.locator('#settings-floating-sleep-note-description');
+    await description.waitFor({ state: 'visible' });
+    const descriptionText = await description.innerText();
+    if (!descriptionText.includes('Off by default')) throw new Error(`说明应写明默认关闭：${descriptionText}`);
+    if (!descriptionText.includes('toolbar badge above 100%')) throw new Error(`说明应和工具栏角标分开：${descriptionText}`);
+    await settings.locator('#floating').screenshot({ path: path.join(dir, 'settings-off.png'), animations: 'disabled' });
+    await toggle.click();
+    const enabled = await poll(stored, value => value.floatingSleepNote === true && value.floatingNote === 'volume' && value.floatingPosition?.side === 'right' && value.floatingPosition?.y === 0.8 && Object.keys(value.sitePrefs ?? {}).length === 0, '应只打开睡眠旁注，贴边和旁注偏好不变');
+    await settings.locator('#floating').screenshot({ path: path.join(dir, 'settings-on.png'), animations: 'disabled' });
+    note(`enabled floatingSleepNote=${enabled.floatingSleepNote} position=${JSON.stringify(enabled.floatingPosition)}`);
+
+    await page.bringToFront();
+    const countdown = await poll(readNote, value => {
+      const seconds = clockOf(value?.text ?? '');
+      return value?.kind === 'sleep' && value.boost === 'false' && value.label === `Sleep left ${value.text.replace(/^Sleep /, '')}` && seconds != null && seconds > 14 * 60 && seconds <= 15 * 60;
+    }, '打开后旁注应是 15 分钟内的睡眠倒计时');
+    const box = await inside('倒计时');
+    if ((await floater().getAttribute('data-revealed')) !== 'false') throw new Error('显示倒计时时仍应半隐藏');
+    if ((await floater().getAttribute('data-side')) !== 'right') throw new Error('显示倒计时时仍应贴在右侧');
+    const firstClock = clockOf(countdown.text);
+    const later = await poll(readNote, value => {
+      const seconds = clockOf(value?.text ?? '');
+      return seconds != null && firstClock != null && seconds < firstClock && seconds > 14 * 60;
+    }, '倒计时应继续往下走', 4_000);
+    await page.screenshot({ path: path.join(dir, 'note-countdown.png'), animations: 'disabled' });
+    note(`countdown ${countdown.text} -> ${later.text} box=${JSON.stringify(box)}`);
+
+    await cancel();
+    await page.bringToFront();
+    const restored = await poll(readNote, value => value?.label === 'On-page volume 100%' && value.kind === 'volume' && value.text === '100%', '取消后应回到页内音量');
+    await page.screenshot({ path: path.join(dir, 'note-restored.png'), animations: 'disabled' });
+    note(`restored ${restored.label}`);
+
+    await settings.bringToFront();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#backup`, { waitUntil: 'domcontentloaded' });
+    const [download] = await Promise.all([settings.waitForEvent('download'), settings.getByRole('button', { name: 'Export settings', exact: true }).click()]);
+    const exportPath = path.join(dir, 'export.json');
+    await download.saveAs(exportPath);
+    const exported = JSON.parse(await readFile(exportPath, 'utf8'));
+    if (exported.settings?.floatingSleepNote !== true) throw new Error(`导出应带上打开的睡眠旁注：${JSON.stringify(exported.settings?.floatingSleepNote)}`);
+    if (exported.settings?.floatingNote !== 'volume') throw new Error('导出不应改旁注偏好');
+    note('export floatingSleepNote=true');
+
+    await settings.goto(`chrome-extension://${extensionId}/options.html#floating`, { waitUntil: 'domcontentloaded' });
+    await settings.getByRole('switch', { name: 'Countdown while sleeping', exact: true }).click();
+    await poll(stored, value => value.floatingSleepNote === false, '导入前应先关掉开关');
+    await settings.goto(`chrome-extension://${extensionId}/options.html#backup`, { waitUntil: 'domcontentloaded' });
+    await settings.locator('#backup input[type="file"]').setInputFiles(exportPath);
+    await settings.getByRole('button', { name: 'Replace settings', exact: true }).click();
+    await poll(stored, value => value.floatingSleepNote === true && value.floatingNote === 'volume', '导入后应恢复打开的睡眠旁注');
+
+    await page.bringToFront();
+    await arm();
+    const imported = await poll(readNote, value => {
+      const seconds = clockOf(value?.text ?? '');
+      return value?.kind === 'sleep' && seconds != null && seconds > 14 * 60 && seconds <= 15 * 60;
+    }, '导入后再开定时，旁注应再次显示倒计时');
+    await inside('导入后');
+    await page.screenshot({ path: path.join(dir, 'note-imported.png'), animations: 'disabled' });
+    note(`imported countdown ${imported.text}`);
+
+    await cancel();
+    await settings.bringToFront();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#floating`, { waitUntil: 'domcontentloaded' });
+    const finish = settings.getByRole('switch', { name: 'Countdown while sleeping', exact: true });
+    if ((await finish.getAttribute('aria-checked')) !== 'true') throw new Error('导入后开关应为打开');
+    await finish.click();
+    const done = await poll(stored, value => value.floatingSleepNote === false && value.floatingNote === 'volume' && value.floatingPosition?.side === 'right' && value.floatingPosition?.y === 0.8 && Object.keys(value.sitePrefs ?? {}).length === 0, '结束时应关掉开关，且不留下站点记忆');
+    await page.bringToFront();
+    await poll(readNote, value => value?.kind === 'volume' && value.text === '100%', '关掉开关且没有定时时旁注回到音量');
+    const unknown = await unknownStorageKeys(worker);
+    if (unknown.length) throw new Error(`出现了名单外的存储键：${unknown.join(', ')}`);
+    const state = { ok: true, whileOff: whileOff.text, countdown: countdown.text, later: later.text, restored: restored.text, imported: imported.text, badge: toolbar, floatingPosition: done.floatingPosition, unknownStorageKeys: unknown, permissions };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await popup?.close().catch(() => {});
+    await settings?.close().catch(() => {});
+    await page.close().catch(() => {});
   }
 }
 
