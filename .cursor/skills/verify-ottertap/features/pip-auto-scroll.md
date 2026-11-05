@@ -2,7 +2,7 @@
 
 设置页「Playback」里的 `Picture-in-picture when the video scrolls out of view`，默认关，和 `Picture-in-picture when you switch tabs` 互不绑定。打开后，当前选中、正在播放、并且在视口里以主画面大小（两边都至少占视口三分之一）出现过的视频，被滚到可见比例不超过 10% 时进入画中画。往下滚一点、还露出三成左右时不进。一次滚出最多进一次；要等它重新露出至少一半，下一次滚出才再算。
 
-信息流小卡片、未选中的媒体、音频、开局就在视口外的视频、本站被网站规则停用、网站关掉画中画、本页已有画中画、全屏（Fullscreen API、浏览器全屏和能可靠识别的网页全屏）时都不进。退出全屏后再按规则判断。浏览器拒绝时不出提示；下一次在页面上点击、按键或开始播放时再试。滚出时关掉画中画，要等滚回视频后才会再进；任何一次退出画中画之后 10 秒内也不进（与切走自动画中画同一个冷却）。
+信息流小卡片、未选中的媒体、音频、开局就在视口外的视频、本站被网站规则停用、网站关掉画中画、本页已有画中画、全屏（Fullscreen API、浏览器全屏和能可靠识别的网页全屏）时都不进。退出全屏后再按规则判断。浏览器拒绝时显示原来的短说明，大约 10 秒后下一次点击、按键或开始播放才再试。成功时显示和手动相同的「画中画开」。滚出时关掉画中画，要等滚回视频后才会再进；任何一次退出画中画或失败之后 10 秒内也不进（与切走自动画中画同一个冷却）。
 
 自动退出是另一个开关（见 `pip-auto-exit.md`）。按站点排除见 `pip-auto-excluded-sites.md`。不做 Document PiP。
 
@@ -12,7 +12,7 @@
 - 保守阈值。可见比例按视口能显示的部分算（`visibleShare`），比视口还高的播放器也能算满。不超过 `scrollOutShare`（0.1）算滚出，至少 `scrollInShare`（0.5）才重新上膛。
 - 只看选中的主画面。观察对象是本帧选中的那一条视频；上膛时用 `isMainStageSize` 判断大小，小卡片永远不上膛。
 - 同一道门槛。进之前走 `shouldAutoPip`（在播、视频、可进画中画、本页没有画中画、冷却），再看 `hoverFullscreenActive`。
-- 浏览器的手势要求。滚轮滚动本身不算用户激活；刚点过或按过键时才放行。拒绝后不弹提示，`pointerup`、`keydown`、`play` 和 `fullscreenchange` 时再试同一道门槛。
+- 浏览器的手势要求。滚轮滚动本身不算用户激活；刚点过或按过键时才放行。拒绝后显示原来的短句，并进入与退出相同的约 10 秒冷却；冷却过后，`pointerup`、`keydown`、`play` 和 `fullscreenchange` 再试同一道门槛。冷却期内这些事件不再请求，也不把短句再刷一次。
 - 开关关着时不建 `IntersectionObserver`，也不挂这些监听。不改权限，不写 `sitePrefs`。
 
 ## How to get to it (user POV)
@@ -39,7 +39,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-auto-scroll
 4. 滚回页顶，点页面，再滚到只露出约三成：不进。截 `fixture-partial.png`。
 5. 点页面后滚走：`#media` 进入画中画。截 `fixture-entered.png`。再在 1140–1240 之间抖动并点页面，`enterpictureinpicture` 仍只有 1 次。
 6. 在视口外退出画中画，再点页面：不进。等过 10 秒冷却，滚回页顶再滚走（带点击）：又进。
-7. 等点击激活过期（`navigator.userActivation.isActive` 为假），滚回页顶再滚走：浏览器拒绝，没有画中画、没有字样、没有警告。截 `fixture-refused.png`。点一下页面：进。截 `fixture-retry.png`。
+7. 等点击激活过期（`navigator.userActivation.isActive` 为假），滚回页顶再滚走：浏览器拒绝，没有画中画，出现原来的手势短句，不出现 `Picture-in-picture on`，也没有警告。截 `fixture-refused.png`。马上点一下页面：冷却期内不进。过了约 10 秒再点：进。截 `fixture-retry.png`。
 8. 暂停主视频，滚走（带点击）：不进。截 `fixture-paused.png`。在视口外带手势开始播放：进。
 9. 播放 `Feed preview`，浮动入口 `title` 改成 `Feed preview`。点页面后滚走：小卡片不进，仍在播放但未选中的 `Main player` 也不进。截 `fixture-card.png`。重新播放主视频，入口回到 `Main player`。
 10. 给页面加上网页全屏标记 `bpx-state-web-fullscreen`，滚走（带点击）：不进。去掉标记后点一下：进。

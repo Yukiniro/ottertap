@@ -1,6 +1,6 @@
 # 切走标签时自动进入画中画
 
-设置页「Playback」里的 `Picture-in-picture when you switch tabs`，默认关。打开后，当前标签变成不可见时，如果这个标签当前选中的是一条正在播放的视频，就让它进入画中画。音频、已暂停、已结束、本站被网站规则停用、网站关掉画中画、视频还没加载好、本页已有画中画、浏览器拒绝，都不进，也不出提示。任何一次退出画中画（药丸、面板、扩展命令或画中画窗口自己的按钮）之后 10 秒内再切走，不会马上又进。
+设置页「Playback」里的 `Picture-in-picture when you switch tabs`，默认关。打开后，当前标签变成不可见时，如果这个标签当前选中的是一条正在播放的视频，就让它进入画中画。音频、网站关掉画中画、视频还没加载好或浏览器拒绝时不进，并显示和手动失败相同的短说明，大约 10 秒内不再试。已暂停、已结束、本站被网站规则停用、本页已有画中画时不进，也不出这句。成功时显示和手动相同的「画中画开」。任何一次退出画中画（药丸、面板、扩展命令或画中画窗口自己的按钮）或一次失败之后 10 秒内再切走，不会马上又进。
 
 开关关闭时行为和以前完全一样。手动进出画中画、页内快捷键和扩展命令的路由都不变。「滚出视口自动进」见 `pip-auto-scroll.md`，「回来自动退」是另一个开关，见 `pip-auto-exit.md`，按站点排除见 `pip-auto-excluded-sites.md`。
 
@@ -11,7 +11,7 @@
 - 两条入口一道门槛。标签隐藏时自己试一次（浏览器在用户刚操作过页面时放行）；同时在顶层页面注册 Media Session 的 `enterpictureinpicture` 回调，浏览器判断可以自动进时会调用它。两条都走 `shouldAutoPip`。
 - 不进的情况。音频、暂停、已结束、`disablePictureInPicture`、`readyState < 1`、本页已有画中画元素、本站被网站规则停用。
 - 冷却。本帧里任何 `leavepictureinpicture` 之后 10 秒（`autoPipCooldownMs`）内不自动进。
-- 安静失败。浏览器拒绝时吞掉错误，不弹药丸警告、不出页内字样；下次切走还会再试一次，不会连发。
+- 失败有原来的短说明。浏览器拒绝、音频或网站关掉画中画时，用和手动路径相同的 `pip*` 句子，不显示「画中画开」。这次失败后约 10 秒（与退出冷却同一段）内不再请求，也不会把这句再刷一次。
 - 不改权限，不写 `sitePrefs`。
 
 ## How to get to it (user POV)
@@ -37,7 +37,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-auto-hide
 4. 回到视频，点页面后切走。`document.pictureInPictureElement` 是 `#media`。回来后药丸是 `Exit picture-in-picture` 和 `In picture-in-picture`。截 `pill-entered.png`。
 5. 点药丸退出，马上点页面再切走：不进（冷却）。等到退出后 10.5 秒，再点页面切走：又进。
 6. 再从药丸退出，点 `Pause`，等过冷却，点页面切走：不进。截 `fixture-paused.png`。
-7. 从药丸播放，等页面的激活过期（`navigator.userActivation.isActive` 为假），不点页面直接切走：浏览器拒绝，不进，页面没有画中画字样也没有警告。截 `fixture-refused.png`。
+7. 从药丸播放，等页面的激活过期（`navigator.userActivation.isActive` 为假），不点页面直接切走：浏览器拒绝，不进，页面出现原来的手势短句，不出现 `Picture-in-picture on`，也没有警告。截 `fixture-refused.png`。马上再切走：冷却期内仍不进。
 8. 打开 `/audio`，让它循环播放，点页面切走：不进。截 `fixture-audio.png`。
 9. 把网站规则改成排除 `media.ottertap.test`（直接写存储，作准备），回到 `/video` 播放，点页面切走：不进。截 `fixture-excluded.png`。恢复全部网站，在设置页关掉开关；`sitePrefs` 为空，权限只有 `storage`。
 

@@ -642,6 +642,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
         <div className="px-5 py-5 sm:px-6">
           <h2 id="playback-heading" className="text-base font-semibold">{i18n.t('playback')}</h2>
           <p className="mt-1 max-w-xl text-sm leading-5 text-muted-foreground">{i18n.t('lockRateDescription')}</p>
+          <p className="mt-4 max-w-xl text-sm leading-5 text-muted-foreground">{i18n.t('autoPipIntro')}</p>
           <div className="mt-4">
             <SwitchRow id="settings-auto-pip-hide" label={i18n.t('autoPipOnHide')} description={i18n.t('autoPipOnHideDescription')} checked={autoPipOnHide} disabled={disabled} onChange={checked => void save({ autoPipOnHide: checked })} />
           </div>

@@ -117,17 +117,22 @@ test('打开后，选中的播放中视频在标签隐藏时进入画中画；�
   } finally { await window.happyDOM.close(); }
 });
 
-test('浏览器拒绝时不抛错，下次切走还会再试', async () => {
+test('浏览器拒绝时不抛错，冷却期内再切走不再试', async () => {
   const { window, document, hide, video, settle } = page();
   try {
+    let clock = 1_000;
     const refused = video({ refuse: true });
-    const auto = createAutoPip(document, { enabled: () => true, target: () => refused.element });
+    const auto = createAutoPip(document, { enabled: () => true, target: () => refused.element, now: () => clock });
     hide();
     await settle();
+    hide();
+    await settle();
+    assert.equal(refused.requests.length, 1);
+    assert.equal(document.pictureInPictureElement, null);
+    clock += autoPipCooldownMs;
     hide();
     await settle();
     assert.equal(refused.requests.length, 2);
-    assert.equal(document.pictureInPictureElement, null);
     auto.dispose();
   } finally { await window.happyDOM.close(); }
 });

@@ -213,15 +213,21 @@ export function pipFailureKey(message: string): PipFailureKey | '' {
   return '';
 }
 
+/** The same short note manual picture-in-picture already shows for this refusal. */
+export function pipRequestFailureKey(error: unknown, readyState: number): PipFailureKey {
+  const name = error instanceof DOMException ? error.name : '';
+  if (name === 'NotAllowedError') return 'pipNeedsGesture';
+  if (name === 'NotSupportedError') return 'pipUnsupported';
+  if (name === 'SecurityError') return 'pipDisabledBySite';
+  if (name === 'InvalidStateError') return readyState < 1 ? 'pipNotReady' : 'pipFailed';
+  return 'pipFailed';
+}
+
 const channelMessages = { stereo: 'channelStereo', mono: 'channelMono', left: 'channelLeft', right: 'channelRight' } as const;
 export const channelLabel = (mode: ChannelMode) => i18n.t(channelMessages[mode]);
 
 function pictureInPictureError(error: DOMException, readyState: number) {
-  if (error.name === 'NotAllowedError') return i18n.t('pipNeedsGesture');
-  if (error.name === 'NotSupportedError') return i18n.t('pipUnsupported');
-  if (error.name === 'SecurityError') return i18n.t('pipDisabledBySite');
-  if (error.name === 'InvalidStateError') return readyState < 1 ? i18n.t('pipNotReady') : i18n.t('pipFailed');
-  return i18n.t('pipFailed');
+  return i18n.t(pipRequestFailureKey(error, readyState));
 }
 
 export async function togglePictureInPicture(element: HTMLMediaElement) {

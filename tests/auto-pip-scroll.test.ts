@@ -170,12 +170,13 @@ test('暂停时滚出不进，滚出后开始播放再进', async () => {
   } finally { await window.happyDOM.close(); }
 });
 
-test('浏览器拒绝时不抛错，下一次点击或按键再试', async () => {
+test('浏览器拒绝后进入失败冷却，冷却期内点击不再试', async () => {
   const { window, document, scroll, video, press, settle } = page();
   try {
+    let clock = 1_000;
     let refuse = true;
     const main = video({ refuse: () => refuse });
-    const auto = createScrollPip(document, { enabled: () => true, target: () => main.element });
+    const auto = createScrollPip(document, { enabled: () => true, target: () => main.element, now: () => clock });
     auto.sync();
     scroll(main.element, 1);
     scroll(main.element, 0);
@@ -185,11 +186,12 @@ test('浏览器拒绝时不抛错，下一次点击或按键再试', async () =>
     refuse = false;
     press();
     await settle();
-    assert.equal(main.requests.length, 2);
-    assert.equal(document.pictureInPictureElement, main.element);
+    assert.equal(main.requests.length, 1, '失败冷却期内点击不再请求');
+    clock += autoPipCooldownMs;
     press();
     await settle();
-    assert.equal(main.requests.length, 2, '进入后点击不再请求');
+    assert.equal(main.requests.length, 2);
+    assert.equal(document.pictureInPictureElement, main.element);
     auto.dispose();
   } finally { await window.happyDOM.close(); }
 });
