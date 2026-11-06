@@ -10,7 +10,7 @@
 - 清空。过滤框空了以后，整张隐藏名单重新出现。
 - 恢复一条。过滤状态下点某一行的 `Show the floating button on {site} again`，只从原来的 `floatingHiddenSites` 去掉这一条。仍匹配的站点从结果里消失，没显示出来的站点还在。
 - 导出导入。过滤状态下导出的 JSON 仍带完整 `settings.floatingHiddenSites`。导入写回完整名单，当前过滤词留着，结果只显示仍匹配的站点。
-- 无匹配。一句 `No hidden sites match.`，不留空的列表壳。名单本来就是空的时候，仍是原来的 `No sites yet.`，不出现过滤框。
+- 无匹配。一句 `No hidden sites match.`，不留空的列表壳。名单本来就是空的时候，仍是原来的 `No sites yet.`，不出现过滤框。这两句都在 `#floating` 里找，不要用页面级 `getByText('No sites yet.')`。
 - 与另外两处分开。这边输入不会改网站规则或记住站点的展示；那边输入、以及切换启用范围，也不会改这边的过滤词。
 
 ## How to get to it (user POV)

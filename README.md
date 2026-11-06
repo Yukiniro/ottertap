@@ -65,7 +65,7 @@ pnpm site:build
 pnpm e2e
 ```
 
-`pnpm e2e` 会先安装 Chromium（已经安装时不会重新下载），再运行 `e2e/` 里的扩展冒烟和官网演示媒体加载回归。官网测试使用 `site:build` 的静态产物。
+`pnpm e2e` 会先安装 Chromium（已经安装时不会重新下载），再运行 `e2e/` 里的扩展冒烟和官网演示媒体加载回归。官网测试使用 `site:build` 的静态产物 `site/out/`。跑 `pnpm e2e` 之前总是先执行上面的 `pnpm site:build`，与 CI 相同，不要假设 `site/out` 已经在。
 
 交互预览：
 

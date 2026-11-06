@@ -9,7 +9,7 @@ description: 启动小獭 OtterTap（WXT + React MV3 扩展）的隔离 Chromium
 
 旁边还有两个表面，本技能不驱动它们：`pnpm preview` 在 `http://127.0.0.1:4186/` 用本地演示媒体渲染同一套组件；`pnpm site:dev` 在 `http://localhost:4187/` 跑官网。预览页控制的不是网页里的真实媒体。
 
-回归套件是 `pnpm e2e`（`e2e/smoke.spec.ts`）。它和本技能使用同一份构建产物、同一个夹具主机 `https://media.ottertap.test`，以及同一套英语无障碍名。它不往证据目录写截图。功能地图里的选择器以那份测试和当前 UI 为准。
+回归套件是 `pnpm e2e`（`e2e/smoke.spec.ts` 和 `e2e/site-demo.spec.ts`）。扩展冒烟和本技能使用同一份构建产物、同一个夹具主机 `https://media.ottertap.test`，以及同一套英语无障碍名。它不往证据目录写截图。功能地图里的选择器以那份测试和当前 UI 为准。官网演示读 `site/out/`。跑 `pnpm e2e` 之前总是先 `pnpm site:build`，与 CI 相同，不要假设 `site/out` 已在。见「跑 e2e」。
 
 一次只驱动一个验证会话。默认会话 id 是 `current`。要并排再开一个，换 `OTTERTAP_VERIFY_ID`（小写字母、数字、连字符）；不要去连用户自己的 Chrome。
 
@@ -49,6 +49,21 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs launch
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive <journey>
 ```
 
+## 跑 e2e
+
+`pnpm e2e` 会先安装 Chromium（已经安装时不会重新下载），再跑 `e2e/` 里的扩展冒烟和官网演示。官网测试在本地 HTTP 上读 `site/out/` 的静态文件；目录不在时页面是 404，断言对不上。CI（`.github/workflows/ci.yml`）在 e2e 之前固定执行 `pnpm build`、`pnpm verify-build`、`pnpm site:build`。本地按同一顺序，不要跳过 `pnpm site:build`，也不要假设 `site/out` 已经留在工作区里：
+
+```bash
+pnpm build
+pnpm verify-build
+pnpm site:build
+pnpm e2e
+```
+
+若 Chromium 因缺少系统库起不来，再跑与 CI 相同的 `pnpm exec playwright install-deps chromium`。已经能打开浏览器时不要跑它。
+
+扩展验证会话（`session.mjs launch`）不读 `site/out`，只要上面的 `pnpm build` 和 `pnpm verify-build`。只要接着跑 `pnpm e2e`，或只跑 `e2e/site-demo.spec.ts`，就要先 `pnpm site:build`。
+
 ## Doctor
 
 任何异常先跑这一条。它只读：进程还在、命令行是本技能的 `session.mjs`、控制端口由该 pid 监听、service worker 属于启动时的扩展 id、`chrome.runtime.getManifest().version` 等于 `package.json`、UI 语言仍是英语、`background.js` 的 mtime 与 launch 时相同。
@@ -59,9 +74,9 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs doctor
 
 通过时打印 `ottertap-verify doctor ok ...`。mtime 变了就先 `cleanup`，再 `pnpm build` 和 `pnpm verify-build`，然后重新 `launch`。这条只针对扩展包变了；`session.mjs` 等驱动脚本自己被改，doctor 看不出来，见 Launch 里的 `cleanup` → `launch` 规则。不要在 doctor 里改存储或点击页面。
 
-## 写旅程前的两条硬规则
+## 写旅程前的四条硬规则
 
-新增或修改旅程、功能文件之前先过一遍这两条。它们不是建议，违反就不算验证过。
+新增或修改旅程、功能文件、happy-dom 测试之前先过一遍这四条。它们不是建议，违反就不算验证过。
 
 ### 1. 页面可见性、切走标签、切走自动进画中画
 
@@ -99,6 +114,24 @@ rg -n "/[A-Za-z|]+/i?\.test\(|toMatch\(/" .cursor/skills/verify-ottertap/scripts
 ```
 
 命中里凡是对存储文本、设置 JSON 做匹配的，都要对照这次新增或改名的键名想一遍会不会误伤。
+
+### 3. happy-dom 测 DOM 只用标量
+
+单元测试在 happy-dom 里看 DOM 时，用 `assert.ok(node === other)`，或对字符串、数字、布尔用 `assert.strictEqual`。
+
+**禁止**对节点使用 `assert.equal`，也禁止 `assert.deepEqual` / `deepStrictEqual`（包括把节点放进数组再 deep equal）。失败时断言会把整棵节点序列化进错误信息，happy-dom 的节点图会把进程内存打满。
+
+节点在不在，写成 `assert.ok(node == null)` 或 `assert.strictEqual(node == null, true)`。要比对的是文本、属性、数量，先取出标量再比较。
+
+### 4. 名单空态要挂在容器上
+
+设置页有多份名单，空态都用 `No sites yet.` 开头：浮动隐藏在 `#floating`，不自动画中画在 `#playback`。断言必须 scope 到容器：
+
+```js
+await settings.locator('#floating').getByText('No sites yet.', { exact: false }).waitFor({ state: 'visible' });
+```
+
+**禁止**裸 `getByText('No sites yet.')`（在页面或整份 `options.html` 上直接找）。它会命中另一份名单：strict mode 下直接失败，不严格时还会把别的空表当成这一份。无匹配句（`No sites match.`、`No hidden sites match.`、`No remembered sites match.`、`No sites remembered yet.`）同样挂在对应的 `#sites`、`#floating`、`#memory` 上。`session.mjs` 里现有旅程已经挂在这些容器上，新旅程照抄，不要改回页面级查找。
 
 ## Drive
 

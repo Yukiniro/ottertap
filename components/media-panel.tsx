@@ -166,7 +166,23 @@ function MediaChoices({ media, host, selectedId, onSelect, onOpen }: { media: Me
 }
 export function MediaPanel({ client, openSettings, sounding, sleep, initial }: { client: MediaClient; openSettings: () => void; sounding?: SoundingTabsClient; sleep?: SleepTimerClient; initial?: PageState }) {
   const { page, selected, select, command, refresh, loading, error } = useMedia(client, { initial });
-  const { autoPipOnHideAtom, autoPipOnScrollAtom, autoPipExcludedSitesAtom, floatingAtom, floatingHiddenSitesAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, skipSecondsAtom, skipWithRateAtom, rateStepAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const {
+    autoPipOnHideAtom,
+    autoPipOnScrollAtom,
+    autoPipExcludedSitesAtom,
+    floatingAtom,
+    floatingHiddenSitesAtom,
+    siteModeAtom,
+    sitesAtom,
+    sitePrefsAtom,
+    ratePresetsAtom,
+    skipSecondsAtom,
+    skipWithRateAtom,
+    rateStepAtom,
+    loadingAtom,
+    errorAtom,
+    writeSettingsAtom
+  } = useSettingsAtoms();
   const floating = useAtomValue(floatingAtom);
   const floatingHiddenSites = useAtomValue(floatingHiddenSitesAtom);
   const autoPipOnHide = useAtomValue(autoPipOnHideAtom);

@@ -31,7 +31,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-auto-scroll
 
 会话已经 `launch` 且 `doctor` 通过之后跑。整程约 90 秒，结束时把开关关回去，不留 profile 改动。
 
-按「写旅程前的两条硬规则」第 1 条，这条旅程不在会话的 Playwright 上下文里断言：它和 `pip-auto-hide` 共用 `launchPlainBrowser`，另起一个 `connectOverCDP({ noDefaults: true })` 的 Chromium，profile 在 `/tmp/ottertap-verify/<id>/profile-pip-auto-scroll`，结束时只结束自己 spawn 的进程并删掉目录。页面状态和滚动都用不带手势的 CDP `Runtime.evaluate`（滚动等同滚轮，不给激活）；只有点页面左侧空白处、以及明确带 `userGesture` 的播放和全屏调用算手势。夹具是 `/feed`：上面是 240×135 的 `Feed preview`，下面是 640×360 的 `Main player`，再下面有 1600px 空白。
+按「写旅程前的四条硬规则」第 1 条，这条旅程不在会话的 Playwright 上下文里断言：它和 `pip-auto-hide` 共用 `launchPlainBrowser`，另起一个 `connectOverCDP({ noDefaults: true })` 的 Chromium，profile 在 `/tmp/ottertap-verify/<id>/profile-pip-auto-scroll`，结束时只结束自己 spawn 的进程并删掉目录。页面状态和滚动都用不带手势的 CDP `Runtime.evaluate`（滚动等同滚轮，不给激活）；只有点页面左侧空白处、以及明确带 `userGesture` 的播放和全屏调用算手势。夹具是 `/feed`：上面是 240×135 的 `Feed preview`，下面是 640×360 的 `Main player`，再下面有 1600px 空白。
 
 1. 设置页开关为关，存储里没有打开。截 `settings-off.png`。
 2. `/feed` 给 `Main player` 补一帧并播放（自动跟随选中它）。点页面后滚到 1200：不进。截 `fixture-off.png`。

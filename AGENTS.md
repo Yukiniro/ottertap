@@ -27,6 +27,9 @@ Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/age
 - 凡是改了行为的 PR，必须运行 `.cursor/skills/verify-ottertap/` 中对应 feature 的检查（索引见 `features/README.md`），并在 PR 描述里附上证据：命令输出、截图或日志。
 - 新增功能必须同步在该技能的 `features/` 下新增对应的 feature 文件，并登记到 `features/README.md` 的功能地图。
 - 提 PR 前先对照根目录的 `REVIEW.md` 自查。review 中遇到重复出现的意见，按该文件文首的约定追加进去。面板高度与选择器见 `REVIEW.md`。
+- 跑 `pnpm e2e` 前先 `pnpm build`、`pnpm verify-build`、`pnpm site:build`，与 `.github/workflows/ci.yml` 相同。不要假设 `site/out` 已在。只开验证会话时不必构建官网。
+- happy-dom 测 DOM 用 `assert.ok` 或对标量 `assert.strictEqual`，禁止对节点 `assert.equal` / deep equal。失败时序列化整棵节点会把进程内存打满。
+- 设置页等多份名单的空态要 scope 到容器（如 `#floating`），禁止裸 `getByText('No sites yet.')`。
 
 ## 工程设计原则
 
@@ -37,6 +40,7 @@ Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/age
 - 当成熟且维护良好的库能够降低整体复杂度或提高可靠性时，应优先使用它们。没有明确理由时，不要重新实现常见功能。
 - 在自行实现或新增软件包之前，优先利用项目中已有的依赖。没有检查库的文档和类型定义之前，不要假设它不具备某项能力。
 - 从长期角度做架构决策。不要接受只解决眼前问题、以后还计划替换的临时方案。
+- settings 键声明勿挤单行。`Settings`、默认值、相等比较和 atom 解构按键换行，避免并行加键时整行冲突。
 
 ### `git commit` 提交规范
 

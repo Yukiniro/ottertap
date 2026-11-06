@@ -13,5 +13,5 @@ pnpm exec playwright test e2e/site-demo.spec.ts
 
 ## Gotchas
 
-- `site/out` 必须来自本次代码的构建；CI 在 e2e 前构建官网。
+- 跑 `pnpm e2e`（含本文件和扩展冒烟）之前总是先 `pnpm site:build`。CI 的顺序是 `pnpm build`、`pnpm verify-build`、`pnpm site:build`，然后才 e2e。不要假设 `site/out` 已经在工作区里；`site/out` 必须来自这次代码的构建。
 - 浮动入口的按钮名以 `Open the volume pill` 开头。控制器使用 `getByRole('complementary', { name: 'Floating controller' })`，避免匹配同名设置开关。

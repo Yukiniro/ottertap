@@ -44,7 +44,24 @@ function entryNoteLabel(note: FloatingEntryNote, volume: number, rate: number) {
 
 /** `hideOnSite` offers 「本站隐藏浮动」. Leave it off where the settings are not the user's real ones, such as demos. */
 export function FloatingController({ client, openPanel, hideOnSite }: { client: MediaClient; openPanel?: (mediaId: string) => Promise<boolean>; hideOnSite?: boolean }) {
-  const { coarseStepAtom, floatingAtom, floatingHiddenSitesAtom, floatingNoteAtom, floatingSleepNoteAtom, floatingPositionAtom, floatingWhilePlayingAtom, fineWheelAtom, loadingAtom, ratePresetsAtom, rateStepAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, wheelDirectionAtom, writeSettingsAtom } = useSettingsAtoms();
+  const {
+    coarseStepAtom,
+    floatingAtom,
+    floatingHiddenSitesAtom,
+    floatingNoteAtom,
+    floatingSleepNoteAtom,
+    floatingPositionAtom,
+    floatingWhilePlayingAtom,
+    fineWheelAtom,
+    loadingAtom,
+    ratePresetsAtom,
+    rateStepAtom,
+    skipSecondsAtom,
+    skipWithRateAtom,
+    volumeStepAtom,
+    wheelDirectionAtom,
+    writeSettingsAtom
+  } = useSettingsAtoms();
   const floating = useAtomValue(floatingAtom);
   const floatingHiddenSites = useAtomValue(floatingHiddenSitesAtom);
   const floatingNote = useAtomValue(floatingNoteAtom);
