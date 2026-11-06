@@ -452,7 +452,46 @@ function Row({ title, description, titleId, children }: { title: string; descrip
 }
 
 export function SettingsPage({ back }: { back?: () => void }) {
-  const { themeAtom, floatingAtom, floatingNoteAtom, floatingSleepNoteAtom, floatingWhilePlayingAtom, followPlayingAtom, autoPipOnHideAtom, autoPipOnScrollAtom, autoPipExitOnReturnAtom, autoPipExcludedSitesAtom, sleepSoonHintAtom, sleepDefaultMinutesAtom, floatingHiddenSitesAtom, resumeJumpAtom, resumeExcludedSitesAtom, defaultRateAtom, lockRateAtom, holdBoostAtom, holdBoostRateAtom, holdSkipAtom, hoverWheelAtom, fullscreenWheelAtom, singleKeyAtom, skipSecondsAtom, skipWithRateAtom, volumeStepAtom, coarseStepAtom, fineWheelAtom, wheelDirectionAtom, rateStepAtom, siteModeAtom, sitesAtom, sitePrefsAtom, ratePresetsAtom, keybindsAtom, loadingAtom, errorAtom, writeSettingsAtom } = useSettingsAtoms();
+  const {
+    themeAtom,
+    floatingAtom,
+    floatingNoteAtom,
+    floatingSleepNoteAtom,
+    floatingWhilePlayingAtom,
+    followPlayingAtom,
+    autoPipOnHideAtom,
+    autoPipOnScrollAtom,
+    autoPipExitOnReturnAtom,
+    autoPipExcludedSitesAtom,
+    sleepSoonHintAtom,
+    sleepDefaultMinutesAtom,
+    floatingHiddenSitesAtom,
+    resumeJumpAtom,
+    resumeExcludedSitesAtom,
+    defaultRateAtom,
+    lockRateAtom,
+    holdBoostAtom,
+    holdBoostRateAtom,
+    holdSkipAtom,
+    hoverWheelAtom,
+    fullscreenWheelAtom,
+    singleKeyAtom,
+    skipSecondsAtom,
+    skipWithRateAtom,
+    volumeStepAtom,
+    coarseStepAtom,
+    fineWheelAtom,
+    wheelDirectionAtom,
+    rateStepAtom,
+    siteModeAtom,
+    sitesAtom,
+    sitePrefsAtom,
+    ratePresetsAtom,
+    keybindsAtom,
+    loadingAtom,
+    errorAtom,
+    writeSettingsAtom
+  } = useSettingsAtoms();
   const theme = useAtomValue(themeAtom);
   const floating = useAtomValue(floatingAtom);
   const floatingNote = useAtomValue(floatingNoteAtom);

@@ -108,7 +108,7 @@ test('主视频在播放中滚到几乎看不见时进入一次，微小抖动�
     scroll(main.element, 0.05);
     await settle();
     assert.equal(main.requests.length, 1);
-    assert.equal(document.pictureInPictureElement, main.element);
+    assert.ok(document.pictureInPictureElement === main.element);
     scroll(main.element, 0.15);
     scroll(main.element, 0.05);
     scroll(main.element, 0.4);
@@ -135,7 +135,8 @@ test('信息流小卡片、开局就在视口外的视频、音频和未选中�
 
     target = main.element;
     auto.sync();
-    assert.deepEqual([...live()!.observed], [main.element]);
+    assert.strictEqual(live()!.observed.size, 1);
+    assert.ok(live()!.observed.has(main.element));
     scroll(main.element, 0);
     await settle();
     assert.equal(main.requests.length, 0, '没在视口里见过的视频不算滚出');
@@ -182,7 +183,7 @@ test('浏览器拒绝后进入失败冷却，冷却期内点击不再试', async
     scroll(main.element, 0);
     await settle();
     assert.equal(main.requests.length, 1);
-    assert.equal(document.pictureInPictureElement, null);
+    assert.ok(document.pictureInPictureElement == null);
     refuse = false;
     press();
     await settle();
@@ -191,7 +192,7 @@ test('浏览器拒绝后进入失败冷却，冷却期内点击不再试', async
     press();
     await settle();
     assert.equal(main.requests.length, 2);
-    assert.equal(document.pictureInPictureElement, main.element);
+    assert.ok(document.pictureInPictureElement === main.element);
     auto.dispose();
   } finally { await window.happyDOM.close(); }
 });

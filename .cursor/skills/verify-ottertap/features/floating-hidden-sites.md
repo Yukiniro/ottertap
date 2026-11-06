@@ -10,7 +10,7 @@
 - 面板按钮。工具栏弹出面板 `Floating controller` 那一行、全局开关左边的眼睛按钮 `Hide floating on this site`（`aria-pressed`）。全局浮动开着、本站启用了小獭时才出现。按下即隐藏，再点即撤销；撤销会连父域名条目一起去掉，入口才会真正回来。它和全局开关挤在同一行，弹出面板不会因此超过 600px。
 - 面板与快捷键不受影响。隐藏后同一页和刷新后，`Alt+.` 仍把倍速调到 1.25×；弹出面板仍能播放、暂停。
 - 其他站点。另一个域名上的入口照常出现。
-- 设置页名单。`#floating` 里的 `Sites without the floating button`，逐条列出，每条有 `Show the floating button on {site} again`。空时写 `No sites yet.`。撤销后已打开的页面不刷新也能看到入口回来。
+- 设置页名单。`#floating` 里的 `Sites without the floating button`，逐条列出，每条有 `Show the floating button on {site} again`。空时写 `No sites yet.`。断言挂在 `#floating` 上，例如 `settings.locator('#floating').getByText('No sites yet.')`，禁止裸 `getByText('No sites yet.')`。撤销后已打开的页面不刷新也能看到入口回来。
 - 备份。导出的 JSON 里有 `settings.floatingHiddenSites`；导入后名单回来，已打开的页面入口随之隐藏。旧备份没有这一项时导入为空名单。
 
 ## How to get to it (user POV)

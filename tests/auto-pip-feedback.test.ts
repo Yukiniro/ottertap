@@ -178,7 +178,7 @@ test('浏览器拒绝显示原来的手势说明，切走和滚出共用冷却�
     scroll(element, 0.05);
     await settle();
     assert.equal(requests.length, 2);
-    assert.equal(current, element);
+    assert.ok(current === element);
     assert.deepEqual(hints, ['pipNeedsGesture', 'pipOnHint']);
     auto.dispose();
     scrolled.dispose();
@@ -235,7 +235,7 @@ test('自动退出成功显示画中画关，阈值附近抖动不连闪，失�
     visibility = 'hidden';
     document.dispatchEvent(new window.Event('visibilitychange') as unknown as Event);
     await wait(0);
-    assert.equal(current, element);
+    assert.ok(current === element);
     assert.deepEqual(hints, ['pipOnHint']);
     scroll(element, 1);
     for (const share of [0.55, 0.45, 0.6, 0.4]) { scroll(element, share); await wait(15); }
@@ -246,12 +246,12 @@ test('自动退出成功显示画中画关，阈值附近抖动不连闪，失�
     scroll(element, 0.8);
     await wait(80);
     assert.equal(exits.length, 1);
-    assert.equal(current, null);
+    assert.ok(current == null);
     assert.deepEqual(hints, ['pipOnHint', 'pipOffHint']);
     visibility = 'hidden';
     document.dispatchEvent(new window.Event('visibilitychange') as unknown as Event);
     await wait(0);
-    assert.equal(current, null, '退出后冷却期内不又进');
+    assert.ok(current == null, '退出后冷却期内不又进');
     assert.deepEqual(hints, ['pipOnHint', 'pipOffHint']);
     hide.dispose();
     exit.dispose();
@@ -269,7 +269,7 @@ test('自动退出成功显示画中画关，阈值附近抖动不连闪，失�
     scroll(element, 1);
     await wait(80);
     assert.equal(exits.length, 2);
-    assert.equal(current, element, '失败后退不出');
+    assert.ok(current === element, '失败后退不出');
     assert.deepEqual(failedHints, ['pipOnHint', 'pipFailed']);
     scroll(element, 0.4);
     scroll(element, 0.9);

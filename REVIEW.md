@@ -27,6 +27,10 @@
 - 验证页面可见性、切走标签或切走自动进画中画时，必须另起 Chromium 并用 `connectOverCDP({ noDefaults: true })`，会话默认的 Playwright 有焦点模拟，页面永远是 `visible`，断言不成立（转录体检 2026-11-05，规则见 `verify-ottertap` 的 SKILL.md）。
 - 新增相邻设置键或重命名存储键前，先扫旅程和 e2e 里宽泛的存储正则（如 `/sleep/i`），收窄成精确键名或允许名单，不能只加新键（#177，转录体检 2026-11-05）。
 - 改了 `session.mjs` 或其他会话启动时加载的脚本后，必须先 `cleanup` 再 `launch` 才能 `drive`，已在跑的会话不会热重载（转录体检 2026-11-04）。
+- 跑 `pnpm e2e` 前先 `pnpm site:build`，不要假设 `site/out` 已在；顺序与 CI 相同（转录体检 2026-11-06）。
+- settings 键声明勿挤单行（转录体检 2026-11-06）。
+- happy-dom 测 DOM 用 `assert.ok` 或对标量 `strictEqual`，禁止对节点 `assert.equal` / deep equal，失败时会 OOM（转录体检 2026-11-06）。
+- 设置页等多名单空态必须 scope 到容器（如 `#floating`），禁止裸 `getByText('No sites yet.')`（转录体检 2026-11-06）。
 
 ## 弹出面板与选择器
 

@@ -31,7 +31,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive pip-auto-exit
 
 会话已经 `launch` 且 `doctor` 通过之后跑。整程约 90 秒，结束时三个开关都关回去，不留 profile 改动。
 
-按「写旅程前的两条硬规则」第 1 条，这条旅程不在会话的 Playwright 上下文里断言：它和 `pip-auto-hide`、`pip-auto-scroll` 共用 `launchPlainBrowser`，另起一个 `connectOverCDP({ noDefaults: true })` 的 Chromium，profile 在 `/tmp/ottertap-verify/<id>/profile-pip-auto-exit`，结束时只结束自己 spawn 的进程并删掉目录。读页面状态和滚动用不带手势的 CDP `Runtime.evaluate`；切标签用 `Target.activateTarget`。每次去设置页拨开关前先暂停夹具视频，免得切走开关在路上自动进入；回来后再播放。
+按「写旅程前的四条硬规则」第 1 条，这条旅程不在会话的 Playwright 上下文里断言：它和 `pip-auto-hide`、`pip-auto-scroll` 共用 `launchPlainBrowser`，另起一个 `connectOverCDP({ noDefaults: true })` 的 Chromium，profile 在 `/tmp/ottertap-verify/<id>/profile-pip-auto-exit`，结束时只结束自己 spawn 的进程并删掉目录。读页面状态和滚动用不带手势的 CDP `Runtime.evaluate`；切标签用 `Target.activateTarget`。每次去设置页拨开关前先暂停夹具视频，免得切走开关在路上自动进入；回来后再播放。
 
 1. 三个开关默认关，存储里 `autoPipExitOnReturn` 不是 `true`。截 `settings-off.png`。
 2. 只打开切走开关。`/video` 补一帧播放，点页面后切走：进入画中画。回来 1.5 秒后仍在画中画。截 `fixture-off.png`。手动退出。

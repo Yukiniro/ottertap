@@ -102,7 +102,7 @@ test('打开后，选中的播放中视频在标签隐藏时进入画中画；�
     hide();
     await settle();
     assert.equal(playing.requests.length, 1);
-    assert.equal(document.pictureInPictureElement, playing.element);
+    assert.ok(document.pictureInPictureElement === playing.element);
     const paused = video({ playing: false });
     target = paused.element;
     playing.leave();
@@ -128,7 +128,7 @@ test('浏览器拒绝时不抛错，冷却期内再切走不再试', async () =>
     hide();
     await settle();
     assert.equal(refused.requests.length, 1);
-    assert.equal(document.pictureInPictureElement, null);
+    assert.ok(document.pictureInPictureElement == null);
     clock += autoPipCooldownMs;
     hide();
     await settle();
@@ -217,11 +217,11 @@ test('控制器按本帧 id 取回选中的媒体元素', async () => {
     document.body.append(first, second);
     const controller = createMediaController(document);
     const [a, b] = controller.snapshot();
-    assert.equal(controller.element(a!.id), first);
-    assert.equal(controller.element(b!.id), second);
+    assert.ok(controller.element(a!.id) === first);
+    assert.ok(controller.element(b!.id) === second);
     second.remove();
-    assert.equal(controller.element(b!.id), undefined);
-    assert.equal(controller.element('999'), undefined);
+    assert.ok(controller.element(b!.id) === undefined);
+    assert.ok(controller.element('999') === undefined);
     controller.destroy();
   } finally { await window.happyDOM.close(); }
 });

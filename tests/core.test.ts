@@ -27,7 +27,44 @@ test('设置加载防止无效数据覆盖默认值，域名输入支持网址�
   assert.equal(normalizeDomain('例子.中国'), 'xn--fsqu00a.xn--fiqs8s');
   for (const value of ['', 'a b.com', 'javascript:alert(1)', 'ftp://example.com', 'https://user:pass@example.com']) assert.throws(() => normalizeDomain(value));
   const settings = normalizeSettings({ theme: 'oops', floating: 'yes', sites: ['x.com', 'x.com', 12, ''], siteMode: 'oops' });
-  assert.deepEqual(settings, { theme: 'system', floating: true, floatingPosition: { side: 'right', y: .8 }, floatingNote: 'volume', floatingSleepNote: false, floatingWhilePlaying: false, followPlaying: true, autoPipOnHide: false, autoPipOnScroll: false, autoPipExitOnReturn: false, autoPipExcludedSites: [], sleepSoonHint: true, sleepDefaultMinutes: 30, floatingHiddenSites: [], resumeJump: true, resumeExcludedSites: [], siteMode: 'all', sites: ['x.com'], sitePrefs: {}, ratePresets: [...defaultRatePresets], defaultRate: null, lockRate: false, holdBoost: false, holdBoostRate: 2, holdSkip: false, hoverWheel: true, fullscreenWheel: false, singleKey: false, skipSeconds: 10, skipWithRate: false, volumeStep: 10, coarseStep: 20, fineWheel: true, wheelDirection: 'up', rateStep: 0.25, keybinds: defaultSettings.keybinds });
+  assert.deepEqual(settings, {
+    theme: 'system',
+    floating: true,
+    floatingPosition: { side: 'right', y: .8 },
+    floatingNote: 'volume',
+    floatingSleepNote: false,
+    floatingWhilePlaying: false,
+    followPlaying: true,
+    autoPipOnHide: false,
+    autoPipOnScroll: false,
+    autoPipExitOnReturn: false,
+    autoPipExcludedSites: [],
+    sleepSoonHint: true,
+    sleepDefaultMinutes: 30,
+    floatingHiddenSites: [],
+    resumeJump: true,
+    resumeExcludedSites: [],
+    siteMode: 'all',
+    sites: ['x.com'],
+    sitePrefs: {},
+    ratePresets: [...defaultRatePresets],
+    defaultRate: null,
+    lockRate: false,
+    holdBoost: false,
+    holdBoostRate: 2,
+    holdSkip: false,
+    hoverWheel: true,
+    fullscreenWheel: false,
+    singleKey: false,
+    skipSeconds: 10,
+    skipWithRate: false,
+    volumeStep: 10,
+    coarseStep: 20,
+    fineWheel: true,
+    wheelDirection: 'up',
+    rateStep: 0.25,
+    keybinds: defaultSettings.keybinds
+  });
   assert.deepEqual(normalizeSettings({ ratePresets: [3, 3, 8, 0.1] }).ratePresets, [3, 4, 0.25]);
   assert.deepEqual(normalizeSettings({ ratePresets: [] }).ratePresets, [...defaultRatePresets]);
   assert.equal(normalizeSettings({ lockRate: true }).lockRate, true);
@@ -109,7 +146,7 @@ test('可放大媒体能调到增益上限，跨域媒体仍停在 100%', async 
   const amplifier: Amplifier = {
     gain: () => gain,
     channel: () => 'stereo',
-    async set(element, value) { assert.equal(element, media); gain = value; },
+    async set(element, value) { assert.ok(element === media); gain = value; },
     async setChannel() { throw new Error('should not route'); },
     dispose() {}
   };
@@ -130,7 +167,7 @@ test('声道指令沿用放大的跨域判断，跨域媒体置灰且不接入 W
   const { media, document } = fixture();
   Object.defineProperty(media, 'currentSrc', { value: 'https://example.com/a.mp4', configurable: true });
   let channel: ChannelMode = 'stereo';
-  const routed: Amplifier = { gain: () => 1, channel: () => channel, async set() {}, async setChannel(element, mode) { assert.equal(element, media); channel = mode; }, dispose() {} };
+  const routed: Amplifier = { gain: () => 1, channel: () => channel, async set() {}, async setChannel(element, mode) { assert.ok(element === media); channel = mode; }, dispose() {} };
   assert.deepEqual([mediaSnapshot(media, '1', document, routed).channel, mediaSnapshot(media, '1', document, routed).channelAvailable], ['stereo', true]);
   await applyMediaCommand(media, { type: 'channel', value: 'mono' }, routed);
   assert.equal(mediaSnapshot(media, '1', document, routed).channel, 'mono');

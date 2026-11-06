@@ -11,7 +11,7 @@
 - 自动退出也不再发生。自动进入后再把本站加入名单，滚回来或回到标签时画中画留着，要自己关。
 - 手动照常。名单里的站点从音量药丸手动进出画中画仍然成功。
 - 其他站点。另一个域名上的自动进出照常。
-- 设置页名单。`#playback` 三个自动开关下面的 `Sites without automatic picture-in-picture`，有 `Filter sites without auto picture-in-picture` 筛选框（含 `Current site`）、`No sites match.`，每条有 `Allow automatic picture-in-picture on {site} again`。空时写 `No sites yet. While an automatic switch is on, …`。
+- 设置页名单。`#playback` 三个自动开关下面的 `Sites without automatic picture-in-picture`，有 `Filter sites without auto picture-in-picture` 筛选框（含 `Current site`）、`No sites match.`，每条有 `Allow automatic picture-in-picture on {site} again`。空时写 `No sites yet. While an automatic switch is on, …`。断言挂在 `#playback` 上，禁止裸 `getByText('No sites yet.')`（`#floating` 的空名单也是这句开头）。
 - 备份。导出的 JSON 里有 `settings.autoPipExcludedSites`；导入后名单回来。旧备份没有这一项时导入为空名单。并发保存时与另外两张名单一样按差异合并。
 
 ## How to get to it (user POV)
