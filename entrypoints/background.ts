@@ -9,6 +9,7 @@ import { nextRate } from '../lib/rate';
 import { steppedVolume, volumeStepForWheel } from '../lib/volume';
 import { volumeBadgeColor, volumeBadgeFromReports, volumeBadgeTtlMs } from '../lib/volume-badge';
 import { shouldFollowPlaying } from '../lib/follow-playing';
+import { canRestore, muteBatchKey, parseMuteBatch, recordableWrite, tabMuteFact, withoutEntry, type MuteBatch, type MuteBatchEntry, type TabMuteFact } from '../lib/mute-batch';
 import { soundingTabs } from '../lib/tabs';
 import { isResumeEntry, resumePage, writeResume, type ResumeReport } from '../lib/resume';
 import { sleepMinutes } from '../lib/sleep-timer';
@@ -150,6 +151,37 @@ export default defineBackground(() => {
     }
   }).catch(() => undefined) : Promise.resolve();
   const sessionReady = Promise.all([framesReady, holdsReady]);
+  let muteBatch: MuteBatch | null = null;
+  let muteQueue: Promise<unknown> = Promise.resolve();
+  const enqueueMute = <T>(task: () => Promise<T>) => {
+    const run = muteQueue.then(task, task);
+    muteQueue = run.then(() => {}, () => {});
+    return run;
+  };
+  const persistMuteBatch = async () => {
+    const area = browser.storage.session;
+    if (!area) return;
+    try {
+      if (muteBatch) await area.set({ [muteBatchKey]: muteBatch });
+      else await area.remove(muteBatchKey);
+    } catch { /* The open popup can still undo from memory until this worker stops. */ }
+  };
+  const muteBatchReady: Promise<void> = browser.storage.session ? browser.storage.session.get(muteBatchKey).then(data => {
+    if (muteBatch) return;
+    muteBatch = parseMuteBatch(data[muteBatchKey]);
+  }).catch(() => undefined) : Promise.resolve();
+  const ownExtensionId = () => browser.runtime.id ?? '';
+  const dropUnproven = async (tabId: number) => {
+    await muteBatchReady;
+    const entry = muteBatch?.entries.find(item => item.tabId === tabId);
+    if (!entry) return;
+    let fact: TabMuteFact | null = null;
+    try { fact = tabMuteFact(await browser.tabs.get(tabId)); }
+    catch { fact = null; }
+    if (fact && canRestore(entry, fact, ownExtensionId())) return;
+    muteBatch = withoutEntry(muteBatch, tabId);
+    await persistMuteBatch();
+  };
   const forget = (tabId: number) => {
     frames.delete(tabId); mediaKnown.delete(tabId); selectedIds.delete(tabId); manualPicks.delete(tabId); gestures.delete(tabId); sitePrefSessions.delete(tabId);
     const held = holdTargets.delete(tabId);
@@ -178,7 +210,11 @@ export default defineBackground(() => {
     return applied;
   }
   browser.tabs.onRemoved.addListener(tabId => sessionReady.then(() => { const pending = forget(tabId); commandTails.delete(tabId); return pending; }));
-  browser.tabs.onUpdated.addListener((tabId, change) => change.status === 'loading' ? sessionReady.then(() => forget(tabId)) : undefined);
+  browser.tabs.onUpdated.addListener((tabId, change) => {
+    if (change.status === 'loading') void sessionReady.then(() => forget(tabId));
+    if (change.mutedInfo === undefined || typeof tabId !== 'number') return;
+    setTimeout(() => { void enqueueMute(() => dropUnproven(tabId)); }, 0);
+  });
   const frameIds = (tabId: number) => new Set([0, ...(frames.get(tabId) ?? [])]);
   const publishSelection = (tabId: number) => {
     const send = browser.tabs.sendMessage;
@@ -475,8 +511,63 @@ export default defineBackground(() => {
   }
   const extensionPage = (url?: string) => typeof url === 'string' && url.startsWith(browser.runtime.getURL('/'));
   async function listSounding(currentTabId?: number) {
+    await muteBatchReady;
     const [audible, muted] = await Promise.all([browser.tabs.query({ audible: true }), browser.tabs.query({ muted: true })]);
-    return { tabs: soundingTabs([...audible, ...muted], currentTabId) };
+    return { tabs: soundingTabs([...audible, ...muted], currentTabId), undo: Boolean(muteBatch?.entries.length) };
+  }
+  async function muteSoundingOthers(currentTabId?: number) {
+    await muteBatchReady;
+    const { tabs } = await listSounding(currentTabId);
+    const id = ownExtensionId();
+    const missed = new Set<number>();
+    const entries: MuteBatchEntry[] = [];
+    for (const listed of tabs) {
+      if (listed.id === currentTabId) continue;
+      let before: TabMuteFact | null = null;
+      try { before = tabMuteFact(await browser.tabs.get(listed.id)); }
+      catch { missed.add(listed.id); continue; }
+      if (!before) { missed.add(listed.id); continue; }
+      try {
+        const updated = await browser.tabs.update(before.id, { muted: true });
+        const after = tabMuteFact(updated);
+        if (!after || after.muted !== true) missed.add(before.id);
+        else {
+          const entry = recordableWrite(before, true, after, id);
+          if (entry) entries.push(entry);
+        }
+      } catch { missed.add(before.id); }
+    }
+    if (entries.length) {
+      muteBatch = { entries };
+      await persistMuteBatch();
+    }
+    return { failed: missed.size > 0, undo: Boolean(muteBatch?.entries.length) };
+  }
+  async function undoMuteBatch(currentTabId?: number) {
+    await muteBatchReady;
+    const batch = muteBatch;
+    if (!batch?.entries.length) return { status: 'unavailable' as const };
+    muteBatch = null;
+    await persistMuteBatch();
+    const id = ownExtensionId();
+    let restored = 0;
+    let failed = 0;
+    for (const entry of batch.entries) {
+      if (entry.tabId === currentTabId) continue;
+      let fact: TabMuteFact | null = null;
+      try { fact = tabMuteFact(await browser.tabs.get(entry.tabId)); }
+      catch { continue; }
+      if (!fact || !canRestore(entry, fact, id)) continue;
+      try {
+        const updated = await browser.tabs.update(entry.tabId, { muted: entry.previousMuted });
+        const after = tabMuteFact(updated);
+        if (after?.muted === entry.previousMuted) restored += 1;
+        else failed += 1;
+      } catch { failed += 1; }
+    }
+    if (failed > 0) return { status: 'failed' as const };
+    if (restored === 0) return { status: 'unavailable' as const };
+    return { status: 'restored' as const };
   }
   async function focusTab(tabId: number) {
     const updated = await browser.tabs.update(tabId, { active: true });
@@ -518,7 +609,7 @@ export default defineBackground(() => {
       if (sender.tab?.id !== undefined) void browser.tabs.sendMessage(sender.tab.id, { namespace: 'ottertap', type: 'altUsed' }).catch(() => {});
       return;
     }
-    if (!['settings', 'options', 'context', 'register', 'read', 'command', 'select', 'highlight', 'hotkey', 'holdRate', 'soundingTabs', 'focusTab', 'muteTab', 'rateLock', 'openPopup', 'playing', 'resume', 'resumeJumped', 'sleep', 'sleepCancel', 'sleepExtend', 'sleepDue'].includes(message.type)) return;
+    if (!['settings', 'options', 'context', 'register', 'read', 'command', 'select', 'highlight', 'hotkey', 'holdRate', 'soundingTabs', 'focusTab', 'muteTab', 'muteOthers', 'undoMuteOthers', 'rateLock', 'openPopup', 'playing', 'resume', 'resumeJumped', 'sleep', 'sleepCancel', 'sleepExtend', 'sleepDue'].includes(message.type)) return;
     const tabId = sender.tab?.id ?? message.tabId;
     async function handle() {
       if (message.type === 'settings') {
@@ -544,11 +635,14 @@ export default defineBackground(() => {
         if (typeof jumped === 'number' && typeof message.time === 'number' && Number.isFinite(message.time)) showAction(jumped, 'resumeJumpHint', message.time);
         return { ok: true };
       }
-      if (message.type === 'soundingTabs' || message.type === 'focusTab' || message.type === 'muteTab') {
+      if (message.type === 'soundingTabs' || message.type === 'focusTab' || message.type === 'muteTab' || message.type === 'muteOthers' || message.type === 'undoMuteOthers') {
         if (!extensionPage(sender.url)) return { error: i18n.t('extensionMessageFailed') };
         try {
           const targetId = message.tabId;
-          if (message.type === 'soundingTabs') return await listSounding(Number.isInteger(targetId) ? targetId : undefined);
+          const currentId = Number.isInteger(targetId) ? targetId : undefined;
+          if (message.type === 'soundingTabs') return await listSounding(currentId);
+          if (message.type === 'muteOthers') return await enqueueMute(() => muteSoundingOthers(currentId));
+          if (message.type === 'undoMuteOthers') return await enqueueMute(() => undoMuteBatch(currentId));
           if (!Number.isInteger(targetId) || targetId < 0) return { error: i18n.t('invalidCommand') };
           if (message.type === 'focusTab') return await focusTab(targetId);
           if (typeof message.muted !== 'boolean') return { error: i18n.t('invalidCommand') };

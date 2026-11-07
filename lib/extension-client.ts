@@ -31,10 +31,19 @@ export function createSoundingTabsClient(tabId?: number): SoundingTabsClient {
   return {
     async list() {
       const result = await request(tabId, { type: 'soundingTabs' });
-      return Array.isArray(result.tabs) ? result.tabs : [];
+      return { tabs: Array.isArray(result.tabs) ? result.tabs : [], undo: result.undo === true };
     },
     async focus(id) { await request(tabId, { type: 'focusTab', tabId: id }); },
     async mute(id, muted) { await request(tabId, { type: 'muteTab', tabId: id, muted }); },
+    async muteOthers() {
+      const result = await request(tabId, { type: 'muteOthers' });
+      return { failed: result.failed === true, undo: result.undo === true };
+    },
+    async undoMuteOthers() {
+      const result = await request(tabId, { type: 'undoMuteOthers' });
+      if (result.status === 'failed' || result.status === 'unavailable') return result.status;
+      return 'restored';
+    },
     watch(onChange) {
       const updated: Parameters<typeof browser.tabs.onUpdated.addListener>[0] = (_id, change) => { if (soundingTabChanged(change)) onChange(); };
       const removed = () => onChange();

@@ -167,6 +167,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-clear-rem
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive horizontal-mirror
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive progress-mark
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-other-tabs
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-others-undo
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-commands
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-feedback
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-follow-playing
@@ -376,6 +377,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive settings-clear-rem
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive horizontal-mirror
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive progress-mark
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-other-tabs
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-others-undo
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-commands
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-feedback
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-follow-playing
@@ -496,6 +498,16 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-other-tabs
 `mute-other-tabs` 先只开着正在出声的 `/tone-current`。弹出面板没有 `Mute others`。再打开 `/tone-music` 和 `/tone-meeting`，等浏览器把它们标成 audible 后，点 `Mute others`。这两个标签的喇叭变成静音，当前页音量仍约 40%，另外两页自己的音量数字不变，`sitePrefs` 也不变。接着用音乐那一行单独取消静音，只恢复那一条。关掉这两个标签后按钮消失。它不改 profile。步骤见 `features/mute-other-tabs.md`。
 
 写入 `mute-other-tabs/`：`popup-empty.png`、`popup-ready.png`、`popup-muted.png`、`popup-empty-again.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
+## 撤销静音其他
+
+```bash
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-others-undo
+```
+
+`mute-others-undo` 先把 `Held tab` 静音，再点 `Mute others`。只有这次从有声改成静音的标签进入撤销。再点一次不覆盖记录。关掉弹出面板再打开，撤销还在。音乐那一行取消静音再静音后，撤销不再打开它。关掉会议标签后点撤销，只恢复 `Restored tab`。再静音一条新标签、关掉它、点撤销，出现不能安全恢复的说明，其他静音标签不动。设置原文不变，权限仍只有 `storage`。同值再静音一次的 `mutedInfo` 记在 `state.json` 的 `probe`。它不改 profile。步骤见 `features/mute-others-undo.md`。
+
+写入 `mute-others-undo/`：`popup-ready.png`、`popup-muted.png`、`popup-reopened.png`、`popup-later.png`、`popup-undone.png`、`popup-unavailable.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
 
 ## 镜像与标记的快捷键
 

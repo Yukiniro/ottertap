@@ -40,7 +40,7 @@ async function render(initial: SoundingTab[], behavior: { reject?: number[]; ign
     async list() {
       lists += 1;
       if (behavior.listFails && lists > 1) throw new Error('list down');
-      return tabs.map(tab => ({ ...tab }));
+      return { tabs: tabs.map(tab => ({ ...tab })), undo: false };
     },
     async focus(id) { focused.push(id); },
     async mute(id, muted) {
@@ -51,6 +51,18 @@ async function render(initial: SoundingTab[], behavior: { reject?: number[]; ign
       if (!tab) throw new Error(`missing ${id}`);
       tab.muted = muted;
     },
+    async muteOthers() {
+      let failed = false;
+      let changed = false;
+      for (const tab of tabs) {
+        calls.push({ id: tab.id, muted: true });
+        if (behavior.reject?.includes(tab.id) || behavior.ignore?.includes(tab.id)) { failed = true; continue; }
+        if (!tab.muted) changed = true;
+        tab.muted = true;
+      }
+      return { failed, undo: changed };
+    },
+    async undoMuteOthers() { return 'restored'; },
     watch() { return () => {}; },
   };
   const client: MediaClient = {
