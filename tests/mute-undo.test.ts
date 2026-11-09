@@ -80,13 +80,14 @@ async function render(initial: SoundingTab[], behavior: { undo?: UndoMuteOthersS
   let undo = false;
   let release: (() => void) | undefined;
   const sounding: SoundingTabsClient = {
-    async list() { return { tabs: tabs.map(tab => ({ ...tab })), undo }; },
+    async list() { return { tabs: tabs.map(tab => ({ ...tab })), undo, currentMuted: false }; },
     async focus() {},
     async mute(id, muted) {
       muteCalls.push({ id, muted });
       const tab = tabs.find(item => item.id === id);
       if (tab) tab.muted = muted;
     },
+    async listenCurrent() { return { failed: false, undo: false, unavailable: true }; },
     async muteOthers() {
       muteOthersCalls += 1;
       if (behavior.hang) await new Promise<void>(resolve => { release = resolve; });
@@ -221,9 +222,10 @@ test('空列表里已有批次时撤销按钮还在', async () => {
   const { MediaPanel } = await import('../components/media-panel');
   let undoCalls = 0;
   const sounding: SoundingTabsClient = {
-    async list() { return { tabs: [], undo: undoCalls === 0 }; },
+    async list() { return { tabs: [], undo: undoCalls === 0, currentMuted: false }; },
     async focus() {},
     async mute() {},
+    async listenCurrent() { return { failed: false, undo: false, unavailable: true }; },
     async muteOthers() { return { failed: false, undo: true }; },
     async undoMuteOthers() { undoCalls += 1; return 'unavailable'; },
     watch() { return () => {}; },

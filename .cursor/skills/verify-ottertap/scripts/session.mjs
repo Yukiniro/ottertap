@@ -33,6 +33,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive progress-mark
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-other-tabs
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-others-undo
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive listen-current
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-commands
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-feedback
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-follow-playing
@@ -75,7 +76,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mute-others-undo', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip', 'page-pip', 'pip-feedback', 'pip-active', 'pip-away-tab', 'pip-auto-hide', 'pip-auto-scroll', 'pip-auto-exit', 'pip-auto-excluded-sites', 'pip-auto-feedback', 'resume-save', 'sleep-timer', 'sleep-timer-cancel', 'sleep-timer-hints', 'sleep-hotkeys', 'remaining-at-rate', 'floating-sleep-note'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mute-others-undo', 'listen-current', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip', 'page-pip', 'pip-feedback', 'pip-active', 'pip-away-tab', 'pip-auto-hide', 'pip-auto-scroll', 'pip-auto-exit', 'pip-auto-excluded-sites', 'pip-auto-feedback', 'resume-save', 'sleep-timer', 'sleep-timer-cancel', 'sleep-timer-hints', 'sleep-hotkeys', 'remaining-at-rate', 'floating-sleep-note'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -3265,7 +3266,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mute-others-undo': driveMuteOthersUndo, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip, 'page-pip': drivePagePip, 'pip-feedback': drivePipFeedback, 'pip-active': drivePipActive, 'pip-away-tab': drivePipAwayTab, 'pip-auto-hide': drivePipAutoHide, 'pip-auto-scroll': drivePipAutoScroll, 'pip-auto-exit': drivePipAutoExit, 'pip-auto-excluded-sites': drivePipAutoExcludedSites, 'pip-auto-feedback': drivePipAutoFeedback, 'resume-save': driveResumeSave, 'sleep-timer': driveSleepTimer, 'sleep-timer-cancel': driveSleepTimerCancel, 'sleep-timer-hints': driveSleepTimerHints, 'sleep-hotkeys': driveSleepHotkeys, 'remaining-at-rate': driveRemainingAtRate, 'floating-sleep-note': driveFloatingSleepNote };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mute-others-undo': driveMuteOthersUndo, 'listen-current': driveListenCurrent, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip, 'page-pip': drivePagePip, 'pip-feedback': drivePipFeedback, 'pip-active': drivePipActive, 'pip-away-tab': drivePipAwayTab, 'pip-auto-hide': drivePipAutoHide, 'pip-auto-scroll': drivePipAutoScroll, 'pip-auto-exit': drivePipAutoExit, 'pip-auto-excluded-sites': drivePipAutoExcludedSites, 'pip-auto-feedback': drivePipAutoFeedback, 'resume-save': driveResumeSave, 'sleep-timer': driveSleepTimer, 'sleep-timer-cancel': driveSleepTimerCancel, 'sleep-timer-hints': driveSleepTimerHints, 'sleep-hotkeys': driveSleepHotkeys, 'remaining-at-rate': driveRemainingAtRate, 'floating-sleep-note': driveFloatingSleepNote };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -5269,6 +5270,245 @@ async function driveMuteOthersUndo(context, dir, note) {
     await gone?.close().catch(() => {});
     await meeting?.close().catch(() => {});
     await restored?.close().catch(() => {});
+    await music?.close().catch(() => {});
+    await held?.close().catch(() => {});
+    await page.close().catch(() => {});
+  }
+}
+
+const listenCurrentView = `(() => {
+  const listen = document.querySelector('button[aria-label="Hear only this tab"]');
+  const button = document.querySelector('button[aria-label="Mute others"]');
+  const undo = document.querySelector('button[aria-label="Undo mute others"]');
+  const empty = [...document.querySelectorAll('p')].some(node => (node.textContent || '').trim() === 'No other tabs are playing audio.');
+  const alerts = [...document.querySelectorAll('[role="alert"]')].map(node => (node.textContent || '').trim()).filter(Boolean);
+  const notes = [...document.querySelectorAll('[role="status"]')].map(node => (node.textContent || '').trim()).filter(text => text === 'No other tab is playing, and this tab is already audible.' || text === "Those tabs can't be safely unmuted.");
+  const rows = [...document.querySelectorAll('[role="listitem"]')].flatMap(node => {
+    const opener = [...node.querySelectorAll('button')].find(item => (item.getAttribute('aria-label') || '').startsWith('Switch to '));
+    if (!opener) return [];
+    const mute = node.querySelector('button[aria-pressed]');
+    return [{
+      title: (node.querySelector('span')?.textContent || '').trim(),
+      pressed: mute?.getAttribute('aria-pressed') || '',
+      muteLabel: mute?.getAttribute('aria-label') || '',
+    }];
+  });
+  const root = document.documentElement;
+  const panel = document.querySelector('[aria-label="Media controls"]');
+  return {
+    heading: document.querySelector('h1')?.textContent?.trim() || '',
+    empty,
+    listen: Boolean(listen),
+    listenDisabled: Boolean(listen?.disabled),
+    listenText: (listen?.textContent || '').trim(),
+    button: Boolean(button),
+    undo: Boolean(undo),
+    alerts,
+    notes,
+    rows,
+    height: panel?.getBoundingClientRect().height || 0,
+    overflow: (root?.scrollWidth || 0) > (root?.clientWidth || 0) + 1,
+  };
+})()`;
+
+async function driveListenCurrent(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const unavailable = 'No other tab is playing, and this tab is already audible.';
+  const level = page => page.locator('#media').evaluate(element => ({ volume: element.volume, muted: element.muted, paused: element.paused, rate: element.playbackRate }));
+  const tabs = () => worker.evaluate(async () => (await chrome.tabs.query({})).flatMap(tab => {
+    if (typeof tab.url !== 'string' || !tab.url.startsWith('https://media.ottertap.test/tone-')) return [];
+    const info = tab.mutedInfo ?? {};
+    return [{ id: tab.id, url: tab.url, title: tab.title ?? '', audible: tab.audible === true, muted: info.muted === true, reason: info.reason ?? '', extensionId: info.extensionId ?? '' }];
+  }));
+  const byPath = (listed, path) => listed.find(tab => tab.url.endsWith(path));
+  const settingsText = () => worker.evaluate(async () => JSON.stringify((await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {}));
+  const batch = () => worker.evaluate(async () => {
+    const stored = await chrome.storage.session.get('ottertap-mute-batch-v1');
+    const value = stored['ottertap-mute-batch-v1'];
+    const entries = value && Array.isArray(value.entries) ? value.entries : [];
+    return entries.map(entry => ({ tabId: entry.tabId, previousMuted: entry.previousMuted === true, writtenMuted: entry.writtenMuted === true }));
+  });
+  const play = async (page, volume) => {
+    await page.bringToFront();
+    await page.locator('body').click({ position: { x: 8, y: 8 } });
+    await page.locator('#media').evaluate(async (element, level) => {
+      element.volume = level;
+      element.muted = true;
+      await element.play();
+      element.muted = false;
+      element.volume = level;
+      if (element.paused) await element.play();
+    }, volume);
+    await poll(() => level(page), value => value.paused === false && value.muted === false && Math.abs(value.volume - volume) < 0.02, `应开始播放且音量约为 ${volume}`);
+  };
+  const showList = async popup => {
+    await popup.evaluate(`(() => {
+      const button = document.querySelector('button[aria-label="Hear only this tab"]') || document.querySelector('button[aria-label="Mute others"]');
+      const empty = [...document.querySelectorAll('p')].find(node => (node.textContent || '').includes('No other tabs are playing audio.'));
+      (button || empty)?.scrollIntoView({ block: 'center' });
+      return true;
+    })()`);
+  };
+  const titlesOf = value => value.rows.map(row => row.title).sort();
+  const sameMedia = (earlier, later, label) => {
+    if (Math.abs(later.volume - earlier.volume) > 0.02 || later.muted !== earlier.muted || later.paused || Math.abs(later.rate - earlier.rate) > 0.001) {
+      throw new Error(`${label} 的媒体音量变了：${JSON.stringify({ earlier, later })}`);
+    }
+  };
+  let popup = null;
+  let held = null;
+  let music = null;
+  let meeting = null;
+  const page = await context.newPage();
+  try {
+    const permissions = await worker.evaluate(() => chrome.runtime.getManifest().permissions ?? []);
+    if (JSON.stringify(permissions) !== JSON.stringify(['storage'])) throw new Error(`权限应仍只有 storage：${JSON.stringify(permissions)}`);
+    await page.goto(`${origin}/tone-current`, { waitUntil: 'domcontentloaded' });
+    await play(page, 0.4);
+    popup = await openActionPopup(context, page);
+    const idle = await poll(() => popup.evaluate(listenCurrentView), value => value.heading === 'Current show' && value.empty && !value.listen && !value.button && !value.undo && !value.alerts.length && !value.notes.includes(unavailable) && value.rows.length === 0 && !value.overflow, '没有其他发声标签且当前可听时，不应出现只听当前');
+    await showList(popup);
+    await popup.screenshot(path.join(dir, 'popup-idle.png'));
+    note(`idle height=${idle.height}`);
+    const currentId = (await tabs()).find(tab => tab.url.endsWith('/tone-current'))?.id;
+    await worker.evaluate(async id => { await chrome.tabs.update(id, { muted: true }); }, currentId);
+    const emptyMuted = await poll(() => popup.evaluate(listenCurrentView), value => value.empty && value.listen && !value.listenDisabled && value.listenText === 'Only this tab' && !value.button && !value.notes.includes(unavailable) && !value.overflow && value.height <= idle.height + 16, '列表为空但当前被静音时，只听当前应和空说明同一行');
+    await showList(popup);
+    await popup.screenshot(path.join(dir, 'popup-empty-muted.png'));
+    note(`empty muted height=${emptyMuted.height}`);
+    let storage = await settingsText();
+    const beforeEmpty = await level(page);
+    await popup.click('Hear only this tab');
+    await poll(tabs, listed => byPath(listed, '/tone-current')?.muted === false, '空列表时应取消当前标签的浏览器静音');
+    const heardEmpty = await poll(() => popup.evaluate(listenCurrentView), value => value.undo && !value.alerts.length && !value.listen, '取消当前静音后应出现撤销，只听当前回到不出现');
+    const afterEmpty = await level(page);
+    sameMedia(beforeEmpty, afterEmpty, '当前页');
+    const onlyCurrent = await batch();
+    if (JSON.stringify(onlyCurrent) !== JSON.stringify([{ tabId: currentId, previousMuted: true, writtenMuted: false }])) throw new Error(`空列表批次应只记下当前标签的静音前态：${JSON.stringify(onlyCurrent)}`);
+    await showList(popup);
+    await popup.screenshot(path.join(dir, 'popup-empty-heard.png'));
+    note(`empty heard undo=${heardEmpty.undo}`);
+    await popup.close();
+    popup = null;
+    await page.bringToFront();
+    popup = await openActionPopup(context, page);
+    await poll(() => popup.evaluate(listenCurrentView), value => value.undo && !value.alerts.length, '重开弹出面板后仍可撤销当前标签的静音前态');
+    await popup.click('Undo mute others');
+    await poll(tabs, listed => byPath(listed, '/tone-current')?.muted === true, '撤销应把当前标签设回浏览器静音');
+    const undoneEmpty = await poll(() => popup.evaluate(listenCurrentView), value => !value.undo && !value.alerts.length && value.listen && !value.listenDisabled, '撤销当前静音后，空列表里的按钮应再次可点');
+    if ((await batch()).length) throw new Error('撤销后批次还应被消费');
+    sameMedia(beforeEmpty, await level(page), '当前页');
+    await showList(popup);
+    await popup.screenshot(path.join(dir, 'popup-empty-undone.png'));
+    note(`empty undone listenDisabled=${undoneEmpty.listenDisabled}`);
+    await popup.close();
+    popup = null;
+
+    await worker.evaluate(async id => { await chrome.tabs.update(id, { muted: false }); }, currentId);
+    await poll(tabs, listed => byPath(listed, '/tone-current')?.muted === false, '准备可听路径前先取消当前标签的浏览器静音');
+    held = await context.newPage();
+    await held.goto(`${origin}/tone-held`, { waitUntil: 'domcontentloaded' });
+    await play(held, 0.2);
+    music = await context.newPage();
+    await music.goto(`${origin}/tone-music`, { waitUntil: 'domcontentloaded' });
+    await play(music, 0.7);
+    meeting = await context.newPage();
+    await meeting.goto(`${origin}/tone-meeting`, { waitUntil: 'domcontentloaded' });
+    await play(meeting, 0.55);
+    const heard = await poll(tabs, listed => ['/tone-held', '/tone-music', '/tone-meeting'].every(path => {
+      const tab = byPath(listed, path);
+      return Boolean(tab?.audible && !tab.muted);
+    }), '三个其他标签应在出声且未静音', 15_000);
+    const heldTab = byPath(heard, '/tone-held');
+    await worker.evaluate(async id => { await chrome.tabs.update(id, { muted: true }); }, heldTab.id);
+    await poll(tabs, listed => byPath(listed, '/tone-held')?.muted === true && byPath(listed, '/tone-current')?.muted !== true, '原先已静音的标签应只有 Held');
+    await page.bringToFront();
+    popup = await openActionPopup(context, page);
+    const ready = await poll(() => popup.evaluate(listenCurrentView), value => {
+      return value.heading === 'Current show' && value.listen && !value.listenDisabled && value.button && !value.undo && !value.alerts.length && !value.notes.includes(unavailable) && titlesOf(value).join(',') === 'Held tab,Meeting tab,Music tab' && value.rows.find(row => row.title === 'Held tab')?.pressed === 'true' && value.rows.filter(row => row.title !== 'Held tab').every(row => row.pressed === 'false') && !value.overflow;
+    }, '当前可听且另有发声标签时，只听当前和静音其他都应可点');
+    await showList(popup);
+    await popup.screenshot(path.join(dir, 'popup-ready.png'));
+    note(`ready height=${ready.height}`);
+    const before = { current: await level(page), held: await level(held), music: await level(music), meeting: await level(meeting) };
+    const listedIds = await tabs();
+    const idOf = path => byPath(listedIds, path)?.id;
+    await popup.click('Hear only this tab');
+    await poll(tabs, listed => byPath(listed, '/tone-music')?.muted === true && byPath(listed, '/tone-meeting')?.muted === true && byPath(listed, '/tone-held')?.muted === true && byPath(listed, '/tone-current')?.muted !== true, '只听当前应静音仍在发声的标签，当前标签保持有声');
+    const heardView = await poll(() => popup.evaluate(listenCurrentView), value => value.undo && !value.alerts.length && value.button && value.rows.every(row => row.pressed === 'true') && !value.overflow && value.height <= ready.height + 40, '静音后应出现撤销，静音其他仍在，且不把标题行撑开');
+    const after = { current: await level(page), held: await level(held), music: await level(music), meeting: await level(meeting) };
+    for (const name of Object.keys(before)) sameMedia(before[name], after[name], name);
+    const othersOnly = await batch();
+    const expectedOthers = [idOf('/tone-music'), idOf('/tone-meeting')].sort((a, b) => a - b);
+    if (JSON.stringify(othersOnly.map(entry => entry.tabId).sort((a, b) => a - b)) !== JSON.stringify(expectedOthers)) throw new Error(`当前可听时批次不应包含当前页或原先已静音的标签：${JSON.stringify(othersOnly)}`);
+    if (othersOnly.some(entry => entry.previousMuted !== false || entry.writtenMuted !== true)) throw new Error(`其他标签的前态应是未静音：${JSON.stringify(othersOnly)}`);
+    if (await settingsText() !== storage) throw new Error('只听当前写了设置');
+    const unknown = await unknownStorageKeys(worker);
+    if (unknown.length) throw new Error(`出现了未登记的存储键：${unknown.join(',')}`);
+    await showList(popup);
+    await popup.screenshot(path.join(dir, 'popup-heard.png'));
+    note(`heard ${heardView.rows.map(row => row.title).join(',')}`);
+    await popup.click('Undo mute others');
+    await poll(tabs, listed => byPath(listed, '/tone-music')?.muted === false && byPath(listed, '/tone-meeting')?.muted === false && byPath(listed, '/tone-held')?.muted === true && byPath(listed, '/tone-current')?.muted !== true, '撤销当前可听的那次应只恢复被静音的其他标签');
+    if ((await batch()).length) throw new Error('第一次撤销后批次还应被消费');
+    for (const name of Object.keys(before)) sameMedia(before[name], await level(name === 'current' ? page : name === 'held' ? held : name === 'music' ? music : meeting), name);
+
+    await worker.evaluate(async id => { await chrome.tabs.update(id, { muted: true }); }, currentId);
+    await poll(() => popup.evaluate(listenCurrentView), value => value.listen && !value.listenDisabled && value.button, '当前被静音且仍有发声标签时，只听当前应可点');
+    await popup.click('Hear only this tab');
+    await poll(tabs, listed => byPath(listed, '/tone-current')?.muted === false && byPath(listed, '/tone-music')?.muted === true && byPath(listed, '/tone-meeting')?.muted === true && byPath(listed, '/tone-held')?.muted === true, '当前被静音时应同时打开当前标签并静音其他发声标签');
+    const withCurrent = await batch();
+    const currentEntry = withCurrent.find(entry => entry.tabId === currentId);
+    if (!currentEntry || currentEntry.previousMuted !== true || currentEntry.writtenMuted !== false) throw new Error(`批次应记下当前标签的静音前态：${JSON.stringify(withCurrent)}`);
+    if (withCurrent.some(entry => entry.tabId === idOf('/tone-held'))) throw new Error('原先已静音的标签不应进入只听当前的批次');
+    for (const name of Object.keys(before)) sameMedia(before[name], await level(name === 'current' ? page : name === 'held' ? held : name === 'music' ? music : meeting), name);
+    await poll(() => popup.evaluate(`(() => {
+      const row = [...document.querySelectorAll('[role="listitem"]')].find(node => (node.textContent || '').includes('Music tab'));
+      const opener = row?.querySelector('button[aria-label="Unmute"]');
+      return Boolean(opener && !opener.disabled);
+    })()`), value => value === true, '音乐那一行的取消静音应可点');
+    const openedMusic = await popup.evaluate(`(() => {
+      const row = [...document.querySelectorAll('[role="listitem"]')].find(node => (node.textContent || '').includes('Music tab'));
+      const opener = row?.querySelector('button[aria-label="Unmute"]');
+      if (!opener || opener.disabled) return false;
+      opener.click();
+      return true;
+    })()`);
+    if (!openedMusic) throw new Error('音乐那一行没有可点的取消静音');
+    await poll(tabs, listed => byPath(listed, '/tone-music')?.muted === false, '音乐标签应被单独取消静音');
+    await poll(() => batch(), value => !value.some(entry => entry.tabId === idOf('/tone-music')), '后来取消静音的音乐标签应失去恢复资格');
+    await worker.evaluate(async id => { await chrome.tabs.update(id, { muted: true }); }, currentId);
+    await poll(() => batch(), value => !value.some(entry => entry.tabId === currentId), '后来又静音的当前标签应失去恢复资格');
+    await poll(() => popup.evaluate(listenCurrentView), value => value.undo && !value.alerts.length, '还有一条仍能恢复时，撤销按钮应留着');
+    await popup.click('Undo mute others');
+    const laterTabs = await poll(tabs, listed => byPath(listed, '/tone-meeting')?.muted === false && byPath(listed, '/tone-music')?.muted === false && byPath(listed, '/tone-current')?.muted === true && byPath(listed, '/tone-held')?.muted === true, '撤销应只恢复仍能归属的会议标签，跳过后来改过的当前页和音乐');
+    const laterView = await poll(() => popup.evaluate(listenCurrentView), value => !value.undo && !value.alerts.length && value.rows.find(row => row.title === 'Meeting tab')?.pressed === 'false' && value.rows.find(row => row.title === 'Music tab')?.pressed === 'false' && value.rows.find(row => row.title === 'Held tab')?.pressed === 'true', '撤销后后来改过的标签保持原样');
+    if ((await batch()).length) throw new Error('后来变更的撤销没有消费批次');
+    for (const name of Object.keys(before)) sameMedia(before[name], await level(name === 'current' ? page : name === 'held' ? held : name === 'music' ? music : meeting), name);
+    if (await settingsText() !== storage) throw new Error('撤销写了设置');
+    const unknownAfter = await unknownStorageKeys(worker);
+    if (unknownAfter.length) throw new Error(`结束时出现了未登记的存储键：${unknownAfter.join(',')}`);
+    await showList(popup);
+    await popup.screenshot(path.join(dir, 'popup-later.png'));
+    note(`later ${laterView.rows.map(row => `${row.title}:${row.pressed}`).join(',')}`);
+    const state = {
+      ok: true,
+      emptyUnmutedCurrent: true,
+      emptyUndoRestoredMute: true,
+      audibleSkippedCurrent: true,
+      laterSkippedCurrent: laterTabs.some(tab => tab.url.endsWith('/tone-current') && tab.muted),
+      heldStayedMuted: true,
+      settingsSame: true,
+      permissions: ['storage'],
+      height: ready.height,
+    };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await popup?.close().catch(() => {});
+    await meeting?.close().catch(() => {});
     await music?.close().catch(() => {});
     await held?.close().catch(() => {});
     await page.close().catch(() => {});

@@ -513,7 +513,8 @@ export default defineBackground(() => {
   async function listSounding(currentTabId?: number) {
     await muteBatchReady;
     const [audible, muted] = await Promise.all([browser.tabs.query({ audible: true }), browser.tabs.query({ muted: true })]);
-    return { tabs: soundingTabs([...audible, ...muted], currentTabId), undo: Boolean(muteBatch?.entries.length) };
+    const currentMuted = typeof currentTabId === 'number' && muted.some(tab => tab.id === currentTabId && tab.mutedInfo?.muted === true);
+    return { tabs: soundingTabs([...audible, ...muted], currentTabId), undo: Boolean(muteBatch?.entries.length), currentMuted };
   }
   async function muteSoundingOthers(currentTabId?: number) {
     await muteBatchReady;
@@ -543,6 +544,43 @@ export default defineBackground(() => {
     }
     return { failed: missed.size > 0, undo: Boolean(muteBatch?.entries.length) };
   }
+  async function listenCurrent(currentTabId?: number) {
+    await muteBatchReady;
+    const { tabs } = await listSounding(currentTabId);
+    const id = ownExtensionId();
+    const missed = new Set<number>();
+    const entries: MuteBatchEntry[] = [];
+    let sought = false;
+    const write = async (tabId: number, muted: boolean) => {
+      let before: TabMuteFact | null = null;
+      try { before = tabMuteFact(await browser.tabs.get(tabId)); }
+      catch { missed.add(tabId); return; }
+      if (!before) { missed.add(tabId); return; }
+      if (before.muted === muted) return;
+      sought = true;
+      try {
+        const updated = await browser.tabs.update(before.id, { muted });
+        const after = tabMuteFact(updated);
+        if (!after || after.muted !== muted) { missed.add(before.id); return; }
+        const entry = recordableWrite(before, muted, after, id);
+        if (entry) entries.push(entry);
+      } catch { missed.add(before.id); }
+    };
+    if (typeof currentTabId === 'number') await write(currentTabId, false);
+    for (const listed of tabs) {
+      if (listed.id === currentTabId || listed.muted) continue;
+      await write(listed.id, true);
+    }
+    if (entries.length) {
+      muteBatch = { entries };
+      await persistMuteBatch();
+    }
+    return {
+      failed: missed.size > 0,
+      undo: Boolean(muteBatch?.entries.length),
+      unavailable: !sought && missed.size === 0,
+    };
+  }
   async function undoMuteBatch(currentTabId?: number) {
     await muteBatchReady;
     const batch = muteBatch;
@@ -553,7 +591,8 @@ export default defineBackground(() => {
     let restored = 0;
     let failed = 0;
     for (const entry of batch.entries) {
-      if (entry.tabId === currentTabId) continue;
+      // A recorded mute of the popup's own tab is left alone. Listen-current only records an unmute of it.
+      if (entry.tabId === currentTabId && entry.writtenMuted) continue;
       let fact: TabMuteFact | null = null;
       try { fact = tabMuteFact(await browser.tabs.get(entry.tabId)); }
       catch { continue; }
@@ -609,7 +648,7 @@ export default defineBackground(() => {
       if (sender.tab?.id !== undefined) void browser.tabs.sendMessage(sender.tab.id, { namespace: 'ottertap', type: 'altUsed' }).catch(() => {});
       return;
     }
-    if (!['settings', 'options', 'context', 'register', 'read', 'command', 'select', 'highlight', 'hotkey', 'holdRate', 'soundingTabs', 'focusTab', 'muteTab', 'muteOthers', 'undoMuteOthers', 'rateLock', 'openPopup', 'playing', 'resume', 'resumeJumped', 'sleep', 'sleepCancel', 'sleepExtend', 'sleepDue'].includes(message.type)) return;
+    if (!['settings', 'options', 'context', 'register', 'read', 'command', 'select', 'highlight', 'hotkey', 'holdRate', 'soundingTabs', 'focusTab', 'muteTab', 'muteOthers', 'listenCurrent', 'undoMuteOthers', 'rateLock', 'openPopup', 'playing', 'resume', 'resumeJumped', 'sleep', 'sleepCancel', 'sleepExtend', 'sleepDue'].includes(message.type)) return;
     const tabId = sender.tab?.id ?? message.tabId;
     async function handle() {
       if (message.type === 'settings') {
@@ -635,13 +674,14 @@ export default defineBackground(() => {
         if (typeof jumped === 'number' && typeof message.time === 'number' && Number.isFinite(message.time)) showAction(jumped, 'resumeJumpHint', message.time);
         return { ok: true };
       }
-      if (message.type === 'soundingTabs' || message.type === 'focusTab' || message.type === 'muteTab' || message.type === 'muteOthers' || message.type === 'undoMuteOthers') {
+      if (message.type === 'soundingTabs' || message.type === 'focusTab' || message.type === 'muteTab' || message.type === 'muteOthers' || message.type === 'listenCurrent' || message.type === 'undoMuteOthers') {
         if (!extensionPage(sender.url)) return { error: i18n.t('extensionMessageFailed') };
         try {
           const targetId = message.tabId;
           const currentId = Number.isInteger(targetId) ? targetId : undefined;
           if (message.type === 'soundingTabs') return await listSounding(currentId);
           if (message.type === 'muteOthers') return await enqueueMute(() => muteSoundingOthers(currentId));
+          if (message.type === 'listenCurrent') return await enqueueMute(() => listenCurrent(currentId));
           if (message.type === 'undoMuteOthers') return await enqueueMute(() => undoMuteBatch(currentId));
           if (!Number.isInteger(targetId) || targetId < 0) return { error: i18n.t('invalidCommand') };
           if (message.type === 'focusTab') return await focusTab(targetId);

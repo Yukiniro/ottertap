@@ -46,8 +46,10 @@ function useSoundingTabs(client?: SoundingTabsClient) {
   const [undo, setUndo] = useState(false);
   const [ready, setReady] = useState(false);
   const [pending, setPending] = useState(false);
+  const [currentMuted, setCurrentMuted] = useState(false);
   const [failed, setFailed] = useState(false);
   const [undoState, setUndoState] = useState<'idle' | 'failed' | 'unavailable'>('idle');
+  const [listenState, setListenState] = useState<'idle' | 'failed' | 'unavailable'>('idle');
   const aliveRef = useRef(true);
   const pendingRef = useRef(false);
   const loadRef = useRef<() => Promise<{ tabs: SoundingTab[]; undo: boolean } | null | undefined>>(async () => undefined);
@@ -63,6 +65,7 @@ function useSoundingTabs(client?: SoundingTabsClient) {
         if (!alive || current !== ticket) return undefined;
         setTabs(next.tabs);
         setUndo(next.undo);
+        setCurrentMuted(next.currentMuted === true);
         setReady(true);
         return next;
       } catch { return null; }
@@ -85,6 +88,7 @@ function useSoundingTabs(client?: SoundingTabsClient) {
     setPending(true);
     setFailed(false);
     setUndoState('idle');
+    setListenState('idle');
     void (async () => {
       try {
         const result = await client.muteOthers();
@@ -107,6 +111,7 @@ function useSoundingTabs(client?: SoundingTabsClient) {
     setPending(true);
     setFailed(false);
     setUndoState('idle');
+    setListenState('idle');
     void (async () => {
       try {
         const status = await client.undoMuteOthers();
@@ -123,33 +128,66 @@ function useSoundingTabs(client?: SoundingTabsClient) {
       }
     })();
   };
-  return { tabs: client && ready ? tabs : [], undo: client && ready && undo, ready: !!client && ready, focus, mute, muteOthers, undoMuteOthers, pending, failed, undoState };
+  const canListen = tabs.some(tab => !tab.muted) || currentMuted;
+  const listenToCurrent = () => {
+    if (!client || pendingRef.current || !canListen) return;
+    pendingRef.current = true;
+    setPending(true);
+    setFailed(false);
+    setUndoState('idle');
+    setListenState('idle');
+    void (async () => {
+      try {
+        const result = await client.listenCurrent();
+        if (!aliveRef.current) return;
+        const next = await loadRef.current();
+        if (!aliveRef.current || next === undefined) return;
+        if (next === null) { setListenState('failed'); return; }
+        setListenState(result.failed ? 'failed' : result.unavailable ? 'unavailable' : 'idle');
+      } catch {
+        if (aliveRef.current) setListenState('failed');
+      } finally {
+        pendingRef.current = false;
+        if (aliveRef.current) setPending(false);
+      }
+    })();
+  };
+  return { tabs: client && ready ? tabs : [], undo: client && ready && undo, currentMuted: client && ready && currentMuted, ready: !!client && ready, focus, mute, muteOthers, listenToCurrent, undoMuteOthers, pending, failed, undoState, listenState };
 }
 function OtherPlaying({ client }: { client?: SoundingTabsClient }) {
-  const { tabs, undo, ready, focus, mute, muteOthers, undoMuteOthers, pending, failed, undoState } = useSoundingTabs(client);
+  const { tabs, undo, currentMuted, ready, focus, mute, muteOthers, listenToCurrent, undoMuteOthers, pending, failed, undoState, listenState } = useSoundingTabs(client);
   if (!ready) return null;
+  const canListen = tabs.some(tab => !tab.muted) || currentMuted;
   const undoButton = undo ? <Button type="button" variant="ghost" size="xs" className="shrink-0" disabled={pending} aria-label={i18n.t('undoMuteOthers')} onClick={undoMuteOthers}>{i18n.t('undoMuteOthers')}</Button> : null;
+  const listenButton = <Button type="button" variant="ghost" size="xs" className="shrink-0" disabled={pending || !canListen} aria-label={i18n.t('listenCurrentName')} title={!canListen ? i18n.t('listenCurrentUnavailable') : undefined} onClick={listenToCurrent}>{i18n.t('listenCurrent')}</Button>;
   const muteFailed = failed ? <p role="alert" className="px-1 pb-1 text-xs text-destructive">{i18n.t('muteOthersFailed')}</p> : null;
+  const listenNote = listenState === 'failed'
+    ? <p role="alert" className="px-1 pb-1 text-xs text-destructive">{i18n.t('listenCurrentFailed')}</p>
+    : undoState === 'idle' && (listenState === 'unavailable' || !canListen)
+      ? <p role="status" className="px-1 pb-1 text-xs text-muted-foreground">{i18n.t('listenCurrentUnavailable')}</p>
+      : null;
   const undoNote = undoState === 'failed'
     ? <p role="alert" className="px-1 pb-1 text-xs text-destructive">{i18n.t('undoMuteOthersFailed')}</p>
     : undoState === 'unavailable'
       ? <p role="status" className="px-1 pb-1 text-xs text-muted-foreground">{i18n.t('undoMuteOthersUnavailable')}</p>
       : null;
   if (!tabs.length) return <div>
-    {undoButton ? <div className="flex justify-end px-1 pb-1">{undoButton}</div> : null}
+    {undoButton ? <div className="flex flex-wrap justify-end gap-1 px-1 pb-1">{undoButton}</div> : null}
     {muteFailed}
     {undoNote}
-    <p className="pb-1 text-center text-xs text-muted-foreground">{i18n.t('otherPlayingEmpty')}</p>
+    {currentMuted ? <div className="flex items-center justify-between gap-2 px-1 pb-1">{listenButton}<p className="min-w-0 text-xs text-muted-foreground">{i18n.t('otherPlayingEmpty')}</p></div> : <p className="pb-1 text-center text-xs text-muted-foreground">{i18n.t('otherPlayingEmpty')}</p>}
   </div>;
   return <section aria-labelledby="other-playing-tabs" className="shrink-0">
-    <div className="flex items-center justify-between gap-2 px-1 pb-1">
+    <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 px-1 pb-1">
       <h2 id="other-playing-tabs" className="min-w-0 text-xs font-medium text-muted-foreground">{i18n.t('otherPlayingTabs')}</h2>
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="flex max-w-full flex-wrap items-center justify-end gap-1">
         {undoButton}
+        {listenButton}
         <Button type="button" variant="ghost" size="xs" className="shrink-0" disabled={pending} aria-label={i18n.t('muteOthers')} onClick={muteOthers}>{i18n.t('muteOthers')}</Button>
       </div>
     </div>
     {muteFailed}
+    {listenNote}
     {undoNote}
     <div role="list" className="max-h-28 overflow-y-auto overscroll-contain rounded-lg border">
       {tabs.map(tab => <div role="listitem" key={tab.id} className="flex items-center gap-1 border-b border-border/70 px-1.5 py-1 last:border-b-0">

@@ -40,7 +40,7 @@ async function render(initial: SoundingTab[], behavior: { reject?: number[]; ign
     async list() {
       lists += 1;
       if (behavior.listFails && lists > 1) throw new Error('list down');
-      return { tabs: tabs.map(tab => ({ ...tab })), undo: false };
+      return { tabs: tabs.map(tab => ({ ...tab })), undo: false, currentMuted: false };
     },
     async focus(id) { focused.push(id); },
     async mute(id, muted) {
@@ -51,6 +51,7 @@ async function render(initial: SoundingTab[], behavior: { reject?: number[]; ign
       if (!tab) throw new Error(`missing ${id}`);
       tab.muted = muted;
     },
+    async listenCurrent() { return { failed: false, undo: false, unavailable: true }; },
     async muteOthers() {
       let failed = false;
       let changed = false;

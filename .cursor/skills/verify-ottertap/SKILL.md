@@ -168,6 +168,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive horizontal-mirror
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive progress-mark
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-other-tabs
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-others-undo
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive listen-current
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-commands
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-feedback
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-follow-playing
@@ -378,6 +379,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive horizontal-mirror
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive progress-mark
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-other-tabs
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-others-undo
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive listen-current
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-commands
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-feedback
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-follow-playing
@@ -748,3 +750,15 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive floating-sleep-not
 `floating-sleep-note` 在 `/keys` 上确认开关默认关闭时，开着 15 分钟睡眠，旁注仍是 `On-page volume 100%`。打开 `Countdown while sleeping` 后，旁注变成 `Sleep 14:59` 这种，并继续往下走；半隐藏时整段在视口内。取消后回到音量。导出文件带上 `floatingSleepNote: true`，关掉再导入后再次开定时，旁注又是倒计时。结束时关掉开关并取消定时。贴边仍在右侧，`sitePrefs` 为空，工具栏角标在 100% 时仍是空的。权限仍只有 `storage`。它会改 profile，成功时恢复关闭。步骤见 `features/floating-sleep-note.md`。
 
 写入 `floating-sleep-note/`：`note-off.png`、`settings-off.png`、`settings-on.png`、`note-countdown.png`、`note-restored.png`、`export.json`、`note-imported.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
+## 只听当前
+
+```bash
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive listen-current
+```
+
+`listen-current` 先只开着正在出声的 `/tone-current`。没有 `Only this tab`，也没有 `Mute others`。把当前标签交给浏览器静音后，按钮和空列表说明在同一行；点下去只取消当前标签的静音，媒体音量不变，批次记下静音前态。关掉弹出面板再打开，撤销还在，点撤销后当前标签回到静音。单媒体视频面板不超过 600px 由 `pnpm e2e` 的「单媒体弹出面板」覆盖。
+
+再取消当前标签的静音，打开音乐和会议，并把 `Held tab` 预先静音。点 `Hear only this tab` 只静音仍在发声的音乐和会议，Held 和当前标签不进批次，`Mute others` 仍在。撤销后那两条恢复。接着把当前标签静音再点一次：当前标签的喇叭打开，音乐和会议静音，批次含当前标签的静音前态。音乐那一行取消静音，并把当前标签再次静音后，撤销只恢复会议。设置原文不变，权限仍只有 `storage`。面板高度不超过 600px。它不改 profile。步骤见 `features/listen-current.md`。
+
+写入 `listen-current/`：`popup-idle.png`、`popup-empty-muted.png`、`popup-empty-heard.png`、`popup-empty-undone.png`、`popup-ready.png`、`popup-heard.png`、`popup-later.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
