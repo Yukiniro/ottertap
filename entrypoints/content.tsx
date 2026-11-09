@@ -91,6 +91,9 @@ export default defineContentScript({
       onJumped: (_id, time) => {
         void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'resumeJumped', time }).catch(() => {});
       }
+    }, id => {
+      if (!enabled || watched?.autoMuteOthers !== true) return;
+      void browser.runtime.sendMessage({ namespace: 'ottertap', type: 'autoMute', id }).catch(() => {});
     });
     const topFrame = window.top === window;
     const selectedElement = () => lockedLocalId ? controller.element(lockedLocalId) : undefined;

@@ -34,6 +34,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-other-tabs
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-others-undo
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive listen-current
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-mute-others
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-commands
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-feedback
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-follow-playing
@@ -76,7 +77,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mute-others-undo', 'listen-current', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip', 'page-pip', 'pip-feedback', 'pip-active', 'pip-away-tab', 'pip-auto-hide', 'pip-auto-scroll', 'pip-auto-exit', 'pip-auto-excluded-sites', 'pip-auto-feedback', 'resume-save', 'sleep-timer', 'sleep-timer-cancel', 'sleep-timer-hints', 'sleep-hotkeys', 'remaining-at-rate', 'floating-sleep-note'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mute-others-undo', 'listen-current', 'auto-mute-others', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip', 'page-pip', 'pip-feedback', 'pip-active', 'pip-away-tab', 'pip-auto-hide', 'pip-auto-scroll', 'pip-auto-exit', 'pip-auto-excluded-sites', 'pip-auto-feedback', 'resume-save', 'sleep-timer', 'sleep-timer-cancel', 'sleep-timer-hints', 'sleep-hotkeys', 'remaining-at-rate', 'floating-sleep-note'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -271,6 +272,9 @@ function routedHtml(pathname) {
   if (pathname === '/tone-held') return tonePage('Held tab');
   if (pathname === '/tone-restored') return tonePage('Restored tab');
   if (pathname === '/tone-gone') return tonePage('Gone tab');
+  if (pathname === '/player') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Site player</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" aria-label="Fixture video" src="${wav}" preload="auto" playsinline controls style="display:block;width:640px;height:360px;margin:48px"></video><p id="note">Notes</p><button id="site-play" type="button">Site play</button><script>document.getElementById('site-play').addEventListener('click', () => { document.getElementById('media').play(); });</script></body></html>`;
+  if (pathname === '/frames') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Frames</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="top" aria-label="Top video" src="${wav}" preload="auto" playsinline controls style="display:block;width:640px;height:360px;margin:48px"></video><p id="note">Notes</p><iframe title="Child frame" src="/frame-child" style="display:block;width:640px;height:240px;margin:24px;border:0"></iframe></body></html>`;
+  if (pathname === '/frame-child') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Frame child</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><video id="media" aria-label="Frame video" src="${wav}" preload="auto" playsinline controls style="display:block;width:480px;height:200px"></video><p id="note">Frame notes</p></body></html>`;
   if (pathname === '/chat') return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OtterTap fixture</title></head><body style="min-height:100vh;margin:0;background:#f4f1ea"><div id="stage" style="position:relative;width:960px;height:540px;margin:24px"><video id="media" aria-label="Main player" src="${wav}" preload="auto" playsinline loop style="display:block;width:960px;height:540px;background:#111"></video><div id="chat" data-test-selector="chat-scrollable-area__message-container" class="chat-scrollable-area__message-container" style="position:absolute;top:0;right:0;width:280px;height:540px;overflow:auto;z-index:2;background:#fff;color:#111"><div style="height:2400px;padding:12px">live chat</div></div><aside id="outline" class="VPDocAside" style="position:absolute;top:16px;left:16px;width:180px;height:160px;overflow:auto;z-index:2;background:#fff;color:#111"><div style="height:800px;padding:8px">outline</div></aside><div id="overlay" style="position:absolute;left:16px;bottom:16px;width:140px;height:64px;z-index:2;background:#ddd">notes</div></div></body></html>`;
   return null;
 }
@@ -298,7 +302,7 @@ async function serviceWorker(context) {
 }
 
 /** Every key OtterTap writes to extension storage. A key outside this list means a feature persisted something it should not. */
-const knownStorageKeys = { local: ['ottertap-settings-v1'], localPrefix: 'ottertap-resume-v1:', session: ['ottertap-frames-v1', 'ottertap-holds-v1', 'ottertap-mute-batch-v1'] };
+const knownStorageKeys = { local: ['ottertap-settings-v1'], localPrefix: 'ottertap-resume-v1:', session: ['ottertap-frames-v1', 'ottertap-holds-v1', 'ottertap-mute-batch-v1', 'ottertap-auto-mute-v1'] };
 
 async function unknownStorageKeys(worker) {
   const { local, session } = await worker.evaluate(async () => {
@@ -3266,7 +3270,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mute-others-undo': driveMuteOthersUndo, 'listen-current': driveListenCurrent, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip, 'page-pip': drivePagePip, 'pip-feedback': drivePipFeedback, 'pip-active': drivePipActive, 'pip-away-tab': drivePipAwayTab, 'pip-auto-hide': drivePipAutoHide, 'pip-auto-scroll': drivePipAutoScroll, 'pip-auto-exit': drivePipAutoExit, 'pip-auto-excluded-sites': drivePipAutoExcludedSites, 'pip-auto-feedback': drivePipAutoFeedback, 'resume-save': driveResumeSave, 'sleep-timer': driveSleepTimer, 'sleep-timer-cancel': driveSleepTimerCancel, 'sleep-timer-hints': driveSleepTimerHints, 'sleep-hotkeys': driveSleepHotkeys, 'remaining-at-rate': driveRemainingAtRate, 'floating-sleep-note': driveFloatingSleepNote };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mute-others-undo': driveMuteOthersUndo, 'listen-current': driveListenCurrent, 'auto-mute-others': driveAutoMuteOthers, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip, 'page-pip': drivePagePip, 'pip-feedback': drivePipFeedback, 'pip-active': drivePipActive, 'pip-away-tab': drivePipAwayTab, 'pip-auto-hide': drivePipAutoHide, 'pip-auto-scroll': drivePipAutoScroll, 'pip-auto-exit': drivePipAutoExit, 'pip-auto-excluded-sites': drivePipAutoExcludedSites, 'pip-auto-feedback': drivePipAutoFeedback, 'resume-save': driveResumeSave, 'sleep-timer': driveSleepTimer, 'sleep-timer-cancel': driveSleepTimerCancel, 'sleep-timer-hints': driveSleepTimerHints, 'sleep-hotkeys': driveSleepHotkeys, 'remaining-at-rate': driveRemainingAtRate, 'floating-sleep-note': driveFloatingSleepNote };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -10802,6 +10806,334 @@ async function driveFloatingSleepNote(context, dir, note) {
     await popup?.close().catch(() => {});
     await settings?.close().catch(() => {});
     await page.close().catch(() => {});
+  }
+}
+
+async function driveAutoMuteOthers(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const permissions = await worker.evaluate(() => chrome.runtime.getManifest().permissions);
+  if (JSON.stringify(permissions) !== JSON.stringify(['storage'])) throw new Error(`权限应只有 storage：${JSON.stringify(permissions)}`);
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const music = () => worker.evaluate(async () => {
+    const tab = (await chrome.tabs.query({})).find(item => item.url?.endsWith('/tone-music'));
+    if (!tab?.id) return null;
+    return { id: tab.id, muted: tab.mutedInfo?.muted === true, audible: tab.audible === true };
+  });
+  const pageTab = suffix => worker.evaluate(async path => {
+    const tab = (await chrome.tabs.query({})).find(item => item.url?.endsWith(path));
+    return tab?.id ? { id: tab.id, muted: tab.mutedInfo?.muted === true, active: tab.active === true } : null;
+  }, suffix);
+  const batchIds = () => worker.evaluate(async () => {
+    const storedBatch = await chrome.storage.session.get('ottertap-mute-batch-v1');
+    const value = storedBatch['ottertap-mute-batch-v1'];
+    return value && Array.isArray(value.entries) ? value.entries.map(entry => entry.tabId) : [];
+  });
+  const clock = () => worker.evaluate(async () => {
+    const storedClock = await chrome.storage.session.get('ottertap-auto-mute-v1');
+    const value = storedClock['ottertap-auto-mute-v1'];
+    return value && typeof value.until === 'number' ? value.until : null;
+  });
+  const level = (page, selector = '#media') => page.locator(selector).evaluate(element => ({ volume: element.volume, muted: element.muted, paused: element.paused }));
+  const pausedOf = (page, selector = '#media') => page.locator(selector).evaluate(element => element.paused);
+  const playAudible = async page => {
+    await page.bringToFront();
+    await page.locator('body').click({ position: { x: 8, y: 8 } });
+    await page.locator('#media').evaluate(async element => {
+      element.volume = 0.7;
+      element.muted = true;
+      await element.play();
+      element.muted = false;
+      element.volume = 0.7;
+      if (element.paused) await element.play();
+    });
+    await poll(() => level(page), value => value.paused === false && value.muted === false, '音乐应开始出声');
+    await poll(music, value => Boolean(value?.audible && !value.muted), '音乐标签应被标成正在出声', 12_000);
+  };
+  const expectAudible = label => poll(music, value => Boolean(value?.audible && !value.muted), label);
+  const expectMuted = label => poll(music, value => value?.muted === true, label);
+  const unmuteMusic = async () => {
+    const tab = await music();
+    if (!tab) throw new Error('没有音乐标签');
+    await worker.evaluate(async id => { await chrome.tabs.update(id, { muted: false }); }, tab.id);
+    await expectAudible('音乐应重新出声');
+  };
+  const pause = (page, selector = '#media') => page.locator(selector).evaluate(element => { element.pause(); });
+  const gesturePlay = async (page, selector = '#media') => {
+    await page.bringToFront();
+    await pause(page, selector);
+    await page.locator(selector).focus();
+    await page.keyboard.press('Space');
+    await poll(() => pausedOf(page, selector), value => value === false, '空格应开始播放');
+  };
+  const scriptPlay = async (page, selector = '#media') => {
+    await page.bringToFront();
+    await page.mouse.click(8, 8);
+    await page.locator(selector).evaluate(async element => { await element.play(); });
+    await poll(() => pausedOf(page, selector), value => value === false, '脚本播放应开始');
+  };
+  const choose = async (popup, name) => {
+    if (!await popup.evaluate(`(() => { const trigger = document.getElementById('popup-media'); if (!trigger) return false; trigger.click(); return true; })()`)) throw new Error('没有媒体列表');
+    const picked = await popup.evaluate(`(() => {
+      const item = [...document.querySelectorAll('[role="menuitemradio"]')].find(node => (node.textContent || '').includes(${JSON.stringify(name)}));
+      if (!item) return false;
+      item.click();
+      return true;
+    })()`);
+    if (!picked) throw new Error(`没有点到 ${name}`);
+    await poll(() => popup.view(), value => value.heading === name, `面板应选中 ${name}`);
+  };
+  const waitCooldown = async until => {
+    await poll(async () => Date.now(), now => until != null && now >= until, '应等到 5 秒冷却结束', 8_000);
+  };
+  let settings;
+  let video;
+  let musicPage;
+  let popup;
+  let player;
+  let frames;
+  try {
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#playback`, { waitUntil: 'domcontentloaded' });
+    const toggle = settings.getByRole('switch', { name: 'Mute other tabs when this starts playing', exact: true });
+    await toggle.waitFor({ state: 'visible', timeout: 15_000 });
+    if (await toggle.getAttribute('aria-checked') !== 'false') throw new Error('自动静音其他默认应关闭');
+    const described = settings.locator('#settings-auto-mute-others-description');
+    await described.getByText('Off by default', { exact: false }).waitFor({ state: 'visible' });
+    await described.getByText('5 seconds', { exact: false }).waitFor({ state: 'visible' });
+    await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-off.png'), animations: 'disabled' });
+    note('setting off by default');
+
+    musicPage = await context.newPage();
+    await musicPage.goto(`${origin}/tone-music`, { waitUntil: 'domcontentloaded' });
+    await playAudible(musicPage);
+    video = await context.newPage();
+    await video.goto(`${origin}/video`, { waitUntil: 'domcontentloaded' });
+    await video.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await gesturePlay(video);
+    await video.waitForTimeout(600);
+    await expectAudible('关闭时用户播放不应静音其他标签');
+    await pause(video);
+    note('off ignored a user play');
+
+    await settings.bringToFront();
+    await toggle.click();
+    await poll(() => toggle.getAttribute('aria-checked'), value => value === 'true', '应能打开自动静音其他');
+    await poll(stored, value => value.autoMuteOthers === true && value.followPlaying === true && Object.keys(value.sitePrefs ?? {}).length === 0, '存储里应打开 autoMuteOthers，且不改跟随播放和站点记忆');
+    await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-on.png'), animations: 'disabled' });
+    note('setting on');
+    await video.bringToFront();
+    await video.reload({ waitUntil: 'domcontentloaded' });
+    await video.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await pause(video);
+
+    popup = await openActionPopup(context, video);
+    await video.waitForTimeout(400);
+    await expectAudible('打开面板不应静音其他标签');
+    await popup.close();
+    popup = null;
+    await musicPage.bringToFront();
+    await video.bringToFront();
+    await expectAudible('切换标签不应静音其他标签');
+    note('panel and tab switch left the music audible');
+
+    const before = await level(video);
+    popup = await openActionPopup(context, video);
+    await popup.click('Play');
+    await poll(() => pausedOf(video), value => value === false, '面板播放应开始');
+    const muted = await expectMuted('面板播放应静音正在出声的其他标签');
+    const current = await pageTab('/video');
+    const after = await level(video);
+    if (current?.muted) throw new Error('当前标签的浏览器静音被改了');
+    if (Math.abs(after.volume - before.volume) > 0.02 || after.muted) throw new Error(`当前媒体音量变了：${JSON.stringify({ before, after })}`);
+    const ids = await poll(batchIds, value => value.length === 1 && value[0] === muted.id, '批次应只有音乐标签');
+    const until = await clock();
+    if (typeof until !== 'number') throw new Error('成功的自动静音应记下 5 秒');
+    const laidOut = await poll(() => popup.evaluate(muteUndoView), value => value.undo && value.alerts.length === 0, '成功的自动静音应出现撤销');
+    await popup.screenshot(path.join(dir, 'popup-muted.png'));
+    note(`panel play muted ${muted.id} until=${until}`);
+    await popup.close();
+    popup = null;
+
+    await waitCooldown(until);
+    await unmuteMusic();
+    await video.waitForTimeout(800);
+    await expectAudible('已经在播时不应再次静音');
+    note('already playing did not mute again');
+
+    await pause(video);
+    await scriptPlay(video);
+    await video.waitForTimeout(500);
+    await expectAudible('网页自己调用 play() 不应静音其他标签');
+    await pause(video);
+    note('scripted play ignored');
+
+    await musicPage.bringToFront();
+    await video.locator('#media').evaluate(async element => { await element.play(); });
+    await poll(() => pausedOf(video), value => value === false, '后台播放应开始');
+    await video.waitForTimeout(500);
+    const backgroundTab = await pageTab('/video');
+    if (backgroundTab?.active) throw new Error('视频标签仍在前台，后台检查无效');
+    await expectAudible('后台标签开始播放不应静音其他标签');
+    await video.bringToFront();
+    await pause(video);
+    note('background play ignored');
+
+    player = await context.newPage();
+    await player.goto(`${origin}/player`, { waitUntil: 'domcontentloaded' });
+    await player.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await player.getByRole('button', { name: 'Site play', exact: true }).click();
+    await poll(() => pausedOf(player), value => value === false, '站点按钮应开始播放');
+    await player.waitForTimeout(500);
+    await expectAudible('站点自己的播放按钮不应算作用户在该媒体上的播放');
+    note('site button ignored');
+
+    await video.bringToFront();
+    await gesturePlay(video);
+    const gestured = await expectMuted('媒体上的空格应静音其他标签');
+    const gestureUntil = await clock();
+    if (typeof gestureUntil !== 'number') throw new Error('手势播放成功后应有冷却');
+    await unmuteMusic();
+    await gesturePlay(video);
+    await video.waitForTimeout(400);
+    await expectAudible('5 秒内再次播放不应自动静音');
+    await waitCooldown(gestureUntil);
+    await gesturePlay(video);
+    await expectMuted('满 5 秒后再次播放应静音');
+    note(`gesture boundary until=${gestureUntil}`);
+
+    popup = await openActionPopup(context, video);
+    await popup.click('Undo mute others');
+    await expectAudible('撤销应让音乐重新出声');
+    if ((await batchIds()).length) throw new Error('撤销后批次应被消费');
+    const undoUntil = await clock();
+    if (typeof undoUntil !== 'number' || undoUntil <= gestureUntil) throw new Error('撤销应重新拦住自动静音 5 秒');
+    await popup.close();
+    popup = null;
+    await gesturePlay(video);
+    await video.waitForTimeout(400);
+    await expectAudible('撤销后的 5 秒内不应自动重静音');
+    popup = await openActionPopup(context, video);
+    await popup.click('Mute others');
+    await expectMuted('冷却中的手动静音其他仍应生效');
+    const manualUntil = await clock();
+    if (manualUntil !== undoUntil) throw new Error('手动静音其他不应改自动冷却');
+    await popup.click('Undo mute others');
+    await expectAudible('手动静音后仍可撤销');
+    const secondUndo = await clock();
+    await popup.close();
+    popup = null;
+    await waitCooldown(secondUndo);
+    await gesturePlay(video);
+    const again = await expectMuted('撤销冷却结束后应能再次自动静音');
+    note(`undo cooldown held, manual mute still worked, music=${again.id}`);
+    await unmuteMusic();
+
+    frames = await context.newPage();
+    await frames.goto(`${origin}/frames`, { waitUntil: 'domcontentloaded' });
+    await frames.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    const child = frames.frameLocator('iframe[title="Child frame"]');
+    popup = await openActionPopup(context, frames);
+    if ((await popup.view()).heading !== 'Top video') await choose(popup, 'Top video');
+    await popup.close();
+    popup = null;
+    await frames.locator('#note').click();
+    await child.locator('#media').evaluate(async element => { await element.play(); });
+    await poll(() => child.locator('#media').evaluate(element => element.paused), value => value === false, '内帧脚本播放应开始');
+    await frames.waitForTimeout(500);
+    await expectAudible('内帧脚本播放不应静音');
+    await child.locator('#media').evaluate(element => { element.pause(); });
+    await child.locator('#media').press('Space');
+    await poll(() => child.locator('#media').evaluate(element => element.paused), value => value === false, '内帧媒体上的空格应开始播放');
+    await frames.waitForTimeout(500);
+    await expectAudible('内帧里不是当前控制的媒体不应静音');
+    await child.locator('#media').evaluate(element => { element.pause(); });
+    await pause(frames, '#top');
+    popup = await openActionPopup(context, frames);
+    await choose(popup, 'Top video');
+    await popup.close();
+    popup = null;
+    await waitCooldown(await clock());
+    const beforeFrames = await batchIds();
+    await gesturePlay(frames, '#top');
+    const framed = await expectMuted('顶层当前媒体的空格应静音一次');
+    const frameBatch = await batchIds();
+    if (frameBatch.length !== 1 || frameBatch[0] !== framed.id) throw new Error(`多 frame 应只记一批：${JSON.stringify(frameBatch)}`);
+    if (beforeFrames.length === 1 && beforeFrames[0] === framed.id && frameBatch[0] === beforeFrames[0]) {
+      const replaced = await clock();
+      if (typeof replaced !== 'number') throw new Error('这次静音应刷新冷却');
+    }
+    await unmuteMusic();
+    await frames.locator('#note').click();
+    await frames.locator('#top').evaluate(async element => { await element.play(); });
+    await child.locator('#note').click();
+    await child.locator('#media').evaluate(async element => { await element.play(); });
+    await frames.waitForTimeout(500);
+    await expectAudible('已经在播后再脚本播放顶层和内帧都不应再静音');
+    note('frames stayed a single batch');
+
+    await settings.bringToFront();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#backup`, { waitUntil: 'domcontentloaded' });
+    const [download] = await Promise.all([settings.waitForEvent('download'), settings.getByRole('button', { name: 'Export settings', exact: true }).click()]);
+    const exportPath = path.join(dir, 'export.json');
+    await download.saveAs(exportPath);
+    const exported = JSON.parse(await readFile(exportPath, 'utf8'));
+    if (exported.settings?.autoMuteOthers !== true) throw new Error(`导出应带上打开的自动静音：${JSON.stringify(exported.settings?.autoMuteOthers)}`);
+    const older = structuredClone(exported);
+    delete older.settings.autoMuteOthers;
+    const olderPath = path.join(dir, 'import-without-key.json');
+    await writeFile(olderPath, JSON.stringify(older));
+    await settings.locator('#backup input[type="file"]').setInputFiles(olderPath);
+    await settings.getByRole('button', { name: 'Replace settings', exact: true }).click();
+    await poll(stored, value => value.autoMuteOthers === false && value.followPlaying === true, '缺少该键的旧备份应保持关闭，其他字段还在');
+    await settings.goto(`chrome-extension://${extensionId}/options.html#playback`, { waitUntil: 'domcontentloaded' });
+    if (await toggle.getAttribute('aria-checked') !== 'false') throw new Error('导入旧备份后开关应为关闭');
+    await settings.goto(`chrome-extension://${extensionId}/options.html#backup`, { waitUntil: 'domcontentloaded' });
+    await settings.locator('#backup input[type="file"]').setInputFiles(exportPath);
+    await settings.getByRole('button', { name: 'Replace settings', exact: true }).click();
+    await poll(stored, value => value.autoMuteOthers === true && value.followPlaying === true, '导回原文件应重新打开');
+    await settings.goto(`chrome-extension://${extensionId}/options.html#playback`, { waitUntil: 'domcontentloaded' });
+    await toggle.click();
+    const done = await poll(stored, value => value.autoMuteOthers === false && value.followPlaying === true && Object.keys(value.sitePrefs ?? {}).length === 0, '结束时应关掉开关，且不留下站点记忆');
+    const unknown = await unknownStorageKeys(worker);
+    if (unknown.length) throw new Error(`出现了名单外的存储键：${unknown.join(', ')}`);
+    const state = {
+      ok: true,
+      defaultOff: true,
+      userGestureMuted: true,
+      scriptedIgnored: true,
+      backgroundIgnored: true,
+      siteButtonIgnored: true,
+      alreadyPlayingIgnored: true,
+      cooldownMs: 5_000,
+      undoCooldown: true,
+      manualNotBlocked: true,
+      singleBatch: frameBatch,
+      oldBackupStayedOff: true,
+      restoredExport: true,
+      settingLeftOff: done.autoMuteOthers === false,
+      unknownStorageKeys: unknown,
+      permissions,
+    };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    note('export round-trip kept the switch, then turned it off');
+    return state;
+  } finally {
+    await popup?.close().catch(() => {});
+    if (settings) {
+      await settings.goto(`chrome-extension://${extensionId}/options.html#playback`, { waitUntil: 'domcontentloaded' }).catch(() => {});
+      const finish = settings.getByRole('switch', { name: 'Mute other tabs when this starts playing', exact: true });
+      if (await finish.getAttribute('aria-checked').catch(() => null) === 'true') await finish.click().catch(() => {});
+    }
+    const tab = await music().catch(() => null);
+    if (tab?.muted) await worker.evaluate(async id => { await chrome.tabs.update(id, { muted: false }); }, tab.id).catch(() => {});
+    await frames?.close().catch(() => {});
+    await player?.close().catch(() => {});
+    await musicPage?.close().catch(() => {});
+    await video?.close().catch(() => {});
+    await settings?.close().catch(() => {});
   }
 }
 

@@ -169,6 +169,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive progress-mark
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-other-tabs
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-others-undo
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive listen-current
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-mute-others
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-commands
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-feedback
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-follow-playing
@@ -380,6 +381,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive progress-mark
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-other-tabs
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-others-undo
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive listen-current
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-mute-others
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-commands
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-feedback
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-follow-playing
@@ -762,3 +764,13 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive listen-current
 再取消当前标签的静音，打开音乐和会议，并把 `Held tab` 预先静音。点 `Hear only this tab` 只静音仍在发声的音乐和会议，Held 和当前标签不进批次，`Mute others` 仍在。撤销后那两条恢复。接着把当前标签静音再点一次：当前标签的喇叭打开，音乐和会议静音，批次含当前标签的静音前态。音乐那一行取消静音，并把当前标签再次静音后，撤销只恢复会议。设置原文不变，权限仍只有 `storage`。面板高度不超过 600px。它不改 profile。步骤见 `features/listen-current.md`。
 
 写入 `listen-current/`：`popup-idle.png`、`popup-empty-muted.png`、`popup-empty-heard.png`、`popup-empty-undone.png`、`popup-ready.png`、`popup-heard.png`、`popup-later.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
+## 播放时自动静音其他
+
+```bash
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-mute-others
+```
+
+`auto-mute-others` 确认「Mute other tabs when this starts playing」默认关闭。关闭时，在 `/video` 上对媒体按空格，正在出声的 `/tone-music` 保持有声。打开后，只开面板或切换标签不静音。弹出面板的播放，以及在小獭正在控制的那条媒体上按空格，会像「静音其他」一样静音当时正在出声的其他标签；当前标签的浏览器静音和媒体音量不动，并出现 `Undo mute others`。已经在播、网页自己 `play()`、后台标签、站点自己的播放按钮都不会。成功或撤销之后 5 秒内不再自动静音，到点可以；这 5 秒不挡住手动的 `Mute others` 和撤销。多个 frame 只记一批。导出带上这个开关；删掉该键再导入则保持关闭。结束时关掉开关。权限仍只有 `storage`。站点按钮和 `video.play()` 不算播放意图。步骤见 `features/auto-mute-others.md`。
+
+写入 `auto-mute-others/`：`settings-off.png`、`settings-on.png`、`popup-muted.png`、`export.json`、`import-without-key.json`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
