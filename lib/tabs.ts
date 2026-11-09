@@ -17,10 +17,24 @@ export interface SoundingTab {
   muted: boolean;
 }
 
+export interface SoundingTabsSnapshot {
+  tabs: SoundingTab[];
+  undo: boolean;
+}
+
+export interface MuteOthersResult {
+  failed: boolean;
+  undo: boolean;
+}
+
+export type UndoMuteOthersStatus = 'restored' | 'unavailable' | 'failed';
+
 export interface SoundingTabsClient {
-  list(): Promise<SoundingTab[]>;
+  list(): Promise<SoundingTabsSnapshot>;
   focus(tabId: number): Promise<void>;
   mute(tabId: number, muted: boolean): Promise<void>;
+  muteOthers(): Promise<MuteOthersResult>;
+  undoMuteOthers(): Promise<UndoMuteOthersStatus>;
   watch(onChange: () => void): () => void;
 }
 
