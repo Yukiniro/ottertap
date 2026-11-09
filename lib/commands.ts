@@ -18,7 +18,9 @@ export const extensionCommands = [
   { name: 'media-prev', message: 'cmdMediaPrev', action: { type: 'media', direction: -1 } },
   { name: 'media-next', message: 'cmdMediaNext', action: { type: 'media', direction: 1 } },
   { name: 'sleep-start', message: 'cmdSleepStart', action: { type: 'sleep', action: 'start' } },
-  { name: 'sleep-cancel', message: 'cmdSleepCancel', action: { type: 'sleep', action: 'cancel' } }
+  { name: 'sleep-cancel', message: 'cmdSleepCancel', action: { type: 'sleep', action: 'cancel' } },
+  { name: 'listen-current', message: 'cmdListenCurrent', action: { type: 'listenCurrent' } },
+  { name: 'undo-mute-others', message: 'cmdUndoMuteOthers', action: { type: 'undoMuteOthers' } }
 ] as const satisfies ReadonlyArray<{ name: string; message: string; suggestedKey?: { default: string; mac: string }; action: HotkeyAction }>;
 
 export type ExtensionCommandName = (typeof extensionCommands)[number]['name'];

@@ -22,7 +22,11 @@ export type HotkeyAction =
   | { type: 'mark'; action: 'set' | 'jump' }
   | { type: 'media'; direction: 1 | -1 }
   /** `start` arms the default sleep length from now, replacing a running countdown. */
-  | { type: 'sleep'; action: 'start' | 'cancel' };
+  | { type: 'sleep'; action: 'start' | 'cancel' }
+  /** Mute other audible tabs and unmute this one. Same batch as the panel button. */
+  | { type: 'listenCurrent' }
+  /** Restore the last mute-others or listen-current batch. */
+  | { type: 'undoMuteOthers' };
 
 export type MirrorMarkHintKey = 'mirrorOnHint' | 'mirrorOffHint' | 'markSetHint' | 'markJumpHint';
 export type PipSuccessHintKey = 'pipOnHint' | 'pipOffHint';
@@ -60,7 +64,7 @@ export function hotkeyFromKeyboard(event: KeyInput, { singleKey = false, onMedia
     return name === 'm' ? { type: 'mute' } : null;
   }
   const name = pressedKey(event, keybinds);
-  // Frame keys, and any mirror, mark, media, picture-in-picture, or sleep key the user bound, work even when single-key mode is off.
+  // Frame keys, and any mirror, mark, media, picture-in-picture, sleep, listen-current, or undo key the user bound, work even when single-key mode is off.
   if (name === keybinds.frameBack) return { type: 'frame', direction: -1 };
   if (name === keybinds.frameForward) return { type: 'frame', direction: 1 };
   if (keybinds.mirror && name === keybinds.mirror) return { type: 'mirror' };
@@ -71,6 +75,8 @@ export function hotkeyFromKeyboard(event: KeyInput, { singleKey = false, onMedia
   if (keybinds.pip && name === keybinds.pip) return { type: 'pip' };
   if (keybinds.sleepStart && name === keybinds.sleepStart) return { type: 'sleep', action: 'start' };
   if (keybinds.sleepCancel && name === keybinds.sleepCancel) return { type: 'sleep', action: 'cancel' };
+  if (keybinds.listenCurrent && name === keybinds.listenCurrent) return { type: 'listenCurrent' };
+  if (keybinds.undoMuteOthers && name === keybinds.undoMuteOthers) return { type: 'undoMuteOthers' };
   if (!singleKey) return null;
   if (name === keybinds.rateUp) return rate(1);
   if (name === keybinds.rateDown) return rate(-1);
@@ -147,6 +153,7 @@ export function isHotkeyAction(value: unknown): value is HotkeyAction {
   if (action.type === 'toggle' || action.type === 'mute' || action.type === 'pip' || action.type === 'mirror') return true;
   if (action.type === 'mark') return action.action === 'set' || action.action === 'jump';
   if (action.type === 'sleep') return action.action === 'start' || action.action === 'cancel';
+  if (action.type === 'listenCurrent' || action.type === 'undoMuteOthers') return true;
   if (action.type === 'media') return action.direction === 1 || action.direction === -1;
   if (action.type === 'frame') return action.direction === 1 || action.direction === -1;
   return action.type === 'skip' && isSkipSeconds(Math.abs(action.delta));
@@ -217,7 +224,7 @@ export function actionHintText(key: string, seconds?: number) {
     const minutes = sleepMinutes(seconds);
     return minutes == null ? '' : i18n.t(key, { minutes });
   }
-  if (key === 'play' || key === 'paused' || key === 'mute' || key === 'unmute' || key === 'shortcutFrameBack' || key === 'shortcutFrameForward' || key === 'frameStepUnavailable' || key === 'audioSelectedHint' || key === 'mediaOnlyOne' || key === 'mirrorOnHint' || key === 'mirrorOffHint' || key === 'markSetHint' || key === 'markJumpHint' || key === 'pipOnHint' || key === 'pipOffHint' || key === 'mirrorUnavailableAudio' || key === 'markUnavailable' || key === 'markMissing' || key === 'cannotSeek' || key === 'resumeMissing' || key === 'sleepCancelHint' || key === 'sleepTimerIdle' || key === 'sleepDueHint' || key === 'sleepSoonHint' || isPipFailureKey(key)) return i18n.t(key);
+  if (key === 'play' || key === 'paused' || key === 'mute' || key === 'unmute' || key === 'shortcutFrameBack' || key === 'shortcutFrameForward' || key === 'frameStepUnavailable' || key === 'audioSelectedHint' || key === 'mediaOnlyOne' || key === 'mirrorOnHint' || key === 'mirrorOffHint' || key === 'markSetHint' || key === 'markJumpHint' || key === 'pipOnHint' || key === 'pipOffHint' || key === 'mirrorUnavailableAudio' || key === 'markUnavailable' || key === 'markMissing' || key === 'cannotSeek' || key === 'resumeMissing' || key === 'sleepCancelHint' || key === 'sleepTimerIdle' || key === 'sleepDueHint' || key === 'sleepSoonHint' || key === 'listenCurrentFailed' || key === 'listenCurrentUnavailable' || key === 'undoMuteOthersFailed' || key === 'undoMuteOthersUnavailable' || isPipFailureKey(key)) return i18n.t(key);
   return '';
 }
 
@@ -302,7 +309,7 @@ export function createHotkeyInput(send: (action: HotkeyAction, target?: string) 
       held.add(id);
       if (event.altKey) useAlt();
       // A held key repeats. Mirror, marks, media steps, picture-in-picture, and sleep are one shot per press.
-      if (event.repeat && (action.type === 'mirror' || action.type === 'mark' || action.type === 'media' || action.type === 'pip' || action.type === 'sleep')) return true;
+      if (event.repeat && (action.type === 'mirror' || action.type === 'mark' || action.type === 'media' || action.type === 'pip' || action.type === 'sleep' || action.type === 'listenCurrent' || action.type === 'undoMuteOthers')) return true;
       queue(action, action.type === 'volume' ? target : undefined);
       return true;
     },

@@ -4,6 +4,8 @@
 
 新增功能文件、写旅程之前，先读 `../SKILL.md` 的「写旅程前的四条硬规则」：涉及页面可见性、切走标签、切走自动进画中画的检查，必须另起 Chromium 并用 `connectOverCDP({ noDefaults: true })` 连，不能用会话默认的 Playwright（页面永远 `visible`）；新增相邻设置键或改名存储键前，先把旅程和 e2e 里宽泛的存储正则断言（如 `/sleep/i`）收窄成精确键名或允许名单；happy-dom 断言 DOM 只用 `assert.ok` 或对标量 `strictEqual`，禁止对节点 `assert.equal` / deep equal；设置页名单空态必须 scope 到容器（如 `#floating`），禁止裸 `getByText('No sites yet.')`。
 
+只听当前和撤销上一次静音其他可以绑成页内键或扩展命令。两条默认都不占键，和弹出面板的同一对动作共用静音批次。见 [quiet-hotkeys.md](quiet-hotkeys.md)。
+
 跑 `pnpm e2e` 之前总是先 `pnpm build`、`pnpm verify-build`、`pnpm site:build`，与 `.github/workflows/ci.yml` 相同。不要假设 `site/out` 已在。只开验证会话时不必构建官网。
 
 | 功能 | 文件 | 用户从哪里进入 | 现成回归 |
@@ -23,6 +25,7 @@
 | 静音其他发声标签 | [mute-other-tabs.md](mute-other-tabs.md) | 弹出面板「其他正在播放的标签页」标题旁的 `Mute others`。一点把列表里的标签全部交给浏览器静音，当前标签页音量不变。列表为空时按钮不出现。失败时不把那一条显示成已静音 | `drive mute-other-tabs`；`tests/mute-other-tabs.test.ts` |
 | 撤销静音其他 | [mute-others-undo.md](mute-others-undo.md) | 弹出面板 `Mute others` 旁边的 `Undo mute others`。只恢复最近一次实际静音、且仍能证明是这次操作的其他标签。没有记录时不出现。关掉弹出面板再打开，同一次浏览器会话里还能撤销 | `drive mute-others-undo`；`tests/mute-undo.test.ts`、`tests/mute-undo-background.test.ts` |
 | 只听当前 | [listen-current.md](listen-current.md) | 弹出面板 `Mute others` 旁边的 `Only this tab`。静音列表里仍在发声的其他标签；当前标签若被浏览器静音则取消。没有目标且当前未静音时不可用。撤销恢复这次实际改过的前态，包括当前标签原来的静音 | `drive listen-current`；`tests/listen-current.test.ts`、`tests/listen-current-background.test.ts` |
+| 只听当前与撤销的快捷键 | [quiet-hotkeys.md](quiet-hotkeys.md) | 设置页「Keyboard shortcuts」的 `Hear only this tab` 和 `Undo the last mute others`。页内键和扩展命令默认都不占键。不打开面板也能用。输入框和组合输入不触发 | `drive quiet-hotkeys`；`tests/quiet-hotkeys.test.ts`、`tests/quiet-hotkeys-background.test.ts` |
 | 播放时自动静音其他 | [auto-mute-others.md](auto-mute-others.md) | 设置页「Playback」的 `Mute other tabs when this starts playing`，默认关。当前标签里小獭正在控制的媒体，因小獭的播放或在该媒体上的播放操作从暂停或结束转为播放时，静音其他正在出声的标签。可撤销。成功或撤销后 5 秒内不再自动静音 | `drive auto-mute-others`；`tests/auto-mute.test.ts`、`tests/auto-mute-settings.test.ts`、`tests/auto-mute-background.test.ts` |
 | 同键短按跳、长按加速 | [hold-skip-combo.md](hold-skip-combo.md) | 设置页「Playback」的 `Short press skips, hold speeds up`，默认关，且要先打开按住临时加速。单键模式的 J / L / ← / → 短按仍按步长跳，按住满一会儿用临时档，松开还原且不再跳。Alt+Shift+. 和 S 仍可单独按住；已经在临时加速时另一路按住不会再开一段 | `drive hold-skip-combo`；`tests/hold-skip-combo.test.ts`、`tests/hold-overlap.test.ts` |
 | 快进 / 快退步长 | [skip-step.md](skip-step.md) | 设置页「Playback」的 `Skip step`，影响弹出面板进退按钮、浮动药丸、页内 J / L / ← / →、扩展命令 | `drive skip-step` |

@@ -592,6 +592,8 @@ export function SettingsPage({ back }: { back?: () => void }) {
     pip: i18n.t('cmdPictureInPicture'),
     sleepStart: i18n.t('cmdSleepStart'),
     sleepCancel: i18n.t('cmdSleepCancel'),
+    listenCurrent: i18n.t('cmdListenCurrent'),
+    undoMuteOthers: i18n.t('cmdUndoMuteOthers'),
     volumeUp: i18n.t('shortcutVolumeUp', { percent: volumeStep }),
     volumeDown: i18n.t('shortcutVolumeDown', { percent: volumeStep })
   };
@@ -833,12 +835,14 @@ export function SettingsPage({ back }: { back?: () => void }) {
             { id: 'pip', key: keyButton('pip'), description: ownerLabels.pip },
             { id: 'sleep-start', key: keyButton('sleepStart'), description: ownerLabels.sleepStart },
             { id: 'sleep-cancel', key: keyButton('sleepCancel'), description: ownerLabels.sleepCancel },
+            { id: 'listen-current', key: keyButton('listenCurrent'), description: ownerLabels.listenCurrent },
+            { id: 'undo-mute-others', key: keyButton('undoMuteOthers'), description: ownerLabels.undoMuteOthers },
             { id: 'speed-up', key: 'Alt + .', description: i18n.t('shortcutSpeedUp', { step: formatRate(rateStep) }) },
             { id: 'speed-down', key: 'Alt + ,', description: i18n.t('shortcutSpeedDown', { step: formatRate(rateStep) }) },
             { id: 'speed-reset', key: 'Alt + 0', description: i18n.t('shortcutSpeedReset') },
             { id: 'mute', key: 'Alt + M', description: i18n.t('cmdMute') }
           ]} />
-          {keyErrorFor(['frameBack', 'frameForward', 'mirror', 'markSet', 'markJump', 'mediaPrev', 'mediaNext', 'pip', 'sleepStart', 'sleepCancel'])}
+          {keyErrorFor(['frameBack', 'frameForward', 'mirror', 'markSet', 'markJump', 'mediaPrev', 'mediaNext', 'pip', 'sleepStart', 'sleepCancel', 'listenCurrent', 'undoMuteOthers'])}
           <p className="mt-3 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsMac')}</p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsRateKeys')}</p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">{i18n.t('shortcutsFrameKeys', { back: keyText(keybinds.frameBack), forward: keyText(keybinds.frameForward) })}</p>

@@ -77,7 +77,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mute-others-undo', 'listen-current', 'auto-mute-others', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip', 'page-pip', 'pip-feedback', 'pip-active', 'pip-away-tab', 'pip-auto-hide', 'pip-auto-scroll', 'pip-auto-exit', 'pip-auto-excluded-sites', 'pip-auto-feedback', 'resume-save', 'sleep-timer', 'sleep-timer-cancel', 'sleep-timer-hints', 'sleep-hotkeys', 'remaining-at-rate', 'floating-sleep-note'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mute-others-undo', 'listen-current', 'quiet-hotkeys', 'auto-mute-others', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip', 'page-pip', 'pip-feedback', 'pip-active', 'pip-away-tab', 'pip-auto-hide', 'pip-auto-scroll', 'pip-auto-exit', 'pip-auto-excluded-sites', 'pip-auto-feedback', 'resume-save', 'sleep-timer', 'sleep-timer-cancel', 'sleep-timer-hints', 'sleep-hotkeys', 'remaining-at-rate', 'floating-sleep-note'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -3270,7 +3270,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mute-others-undo': driveMuteOthersUndo, 'listen-current': driveListenCurrent, 'auto-mute-others': driveAutoMuteOthers, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip, 'page-pip': drivePagePip, 'pip-feedback': drivePipFeedback, 'pip-active': drivePipActive, 'pip-away-tab': drivePipAwayTab, 'pip-auto-hide': drivePipAutoHide, 'pip-auto-scroll': drivePipAutoScroll, 'pip-auto-exit': drivePipAutoExit, 'pip-auto-excluded-sites': drivePipAutoExcludedSites, 'pip-auto-feedback': drivePipAutoFeedback, 'resume-save': driveResumeSave, 'sleep-timer': driveSleepTimer, 'sleep-timer-cancel': driveSleepTimerCancel, 'sleep-timer-hints': driveSleepTimerHints, 'sleep-hotkeys': driveSleepHotkeys, 'remaining-at-rate': driveRemainingAtRate, 'floating-sleep-note': driveFloatingSleepNote };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mute-others-undo': driveMuteOthersUndo, 'listen-current': driveListenCurrent, 'quiet-hotkeys': driveQuietHotkeys, 'auto-mute-others': driveAutoMuteOthers, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip, 'page-pip': drivePagePip, 'pip-feedback': drivePipFeedback, 'pip-active': drivePipActive, 'pip-away-tab': drivePipAwayTab, 'pip-auto-hide': drivePipAutoHide, 'pip-auto-scroll': drivePipAutoScroll, 'pip-auto-exit': drivePipAutoExit, 'pip-auto-excluded-sites': drivePipAutoExcludedSites, 'pip-auto-feedback': drivePipAutoFeedback, 'resume-save': driveResumeSave, 'sleep-timer': driveSleepTimer, 'sleep-timer-cancel': driveSleepTimerCancel, 'sleep-timer-hints': driveSleepTimerHints, 'sleep-hotkeys': driveSleepHotkeys, 'remaining-at-rate': driveRemainingAtRate, 'floating-sleep-note': driveFloatingSleepNote };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -5516,6 +5516,354 @@ async function driveListenCurrent(context, dir, note) {
     await music?.close().catch(() => {});
     await held?.close().catch(() => {});
     await page.close().catch(() => {});
+  }
+}
+
+async function driveQuietHotkeys(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const listenLabel = 'Hear only this tab';
+  const undoLabel = 'Undo the last mute others';
+  const idleCopy = 'No other tab is playing, and this tab is already audible.';
+  const undoIdleCopy = "Those tabs can't be safely unmuted.";
+  const quietCommands = () => worker.evaluate(async () => (await chrome.commands.getAll())
+    .filter(item => item.name === 'listen-current' || item.name === 'undo-mute-others')
+    .map(item => ({ name: item.name, shortcut: item.shortcut ?? null, description: item.description ?? '' }))
+    .sort((a, b) => b.name.localeCompare(a.name)));
+  const registered = await worker.evaluate(() => {
+    const manifest = chrome.runtime.getManifest();
+    const commands = manifest.commands ?? {};
+    return {
+      permissions: manifest.permissions ?? [],
+      suggested: Object.entries(commands).filter(([, command]) => command.suggested_key).map(([name]) => name),
+      listen: commands['listen-current'] ?? null,
+      undo: commands['undo-mute-others'] ?? null,
+    };
+  });
+  if (JSON.stringify(registered.permissions) !== JSON.stringify(['storage'])) throw new Error(`权限应仍只有 storage：${JSON.stringify(registered.permissions)}`);
+  if (!registered.listen || !registered.undo || registered.listen.suggested_key || registered.undo.suggested_key) throw new Error(`只听当前命令应登记且不占建议键：${JSON.stringify(registered)}`);
+  if (registered.suggested.length !== 4 || !['play-pause', 'skip-back', 'skip-forward', 'mute'].every(name => registered.suggested.includes(name))) {
+    throw new Error(`建议键应仍是原来四个：${JSON.stringify(registered.suggested)}`);
+  }
+  const listed = await quietCommands();
+  const expectedCommands = [{ name: 'undo-mute-others', shortcut: '', description: undoLabel }, { name: 'listen-current', shortcut: '', description: listenLabel }];
+  if (JSON.stringify(listed) !== JSON.stringify(expectedCommands)) throw new Error(`扩展命令未按未绑定登记：${JSON.stringify(listed)}`);
+  note(`commands ${JSON.stringify(listed)}`);
+
+  const escape = text => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const keyButton = (page, action) => page.getByRole('button', { name: new RegExp(`^Change the key for ${escape(action)}\\. Now `) });
+  const recording = page => page.getByRole('button', { name: 'Press a key', exact: true });
+  const level = page => page.locator('#media').evaluate(element => ({ volume: element.volume, muted: element.muted, paused: element.paused }));
+  const tabs = () => worker.evaluate(async () => (await chrome.tabs.query({})).flatMap(tab => {
+    if (typeof tab.url !== 'string' || !tab.url.startsWith('https://media.ottertap.test/tone-')) return [];
+    const info = tab.mutedInfo ?? {};
+    return [{ id: tab.id, url: tab.url, audible: tab.audible === true, muted: info.muted === true }];
+  }));
+  const byPath = (listed, path) => listed.find(tab => tab.url.endsWith(path));
+  const batch = () => worker.evaluate(async () => {
+    const storedBatch = await chrome.storage.session.get('ottertap-mute-batch-v1');
+    const value = storedBatch['ottertap-mute-batch-v1'];
+    const entries = value && Array.isArray(value.entries) ? value.entries : [];
+    return entries.map(entry => ({ tabId: entry.tabId, previousMuted: entry.previousMuted === true, writtenMuted: entry.writtenMuted === true }));
+  });
+  const play = async (page, volume) => {
+    await page.bringToFront();
+    await page.locator('body').click({ position: { x: 8, y: 8 } });
+    await page.locator('#media').evaluate(async (element, next) => {
+      element.volume = next;
+      element.muted = true;
+      await element.play();
+      element.muted = false;
+      element.volume = next;
+      if (element.paused) await element.play();
+    }, volume);
+    await poll(() => level(page), value => value.paused === false && value.muted === false && Math.abs(value.volume - volume) < 0.02, `应开始播放且音量约为 ${volume}`);
+  };
+  const sameMedia = async (page, earlier, label) => {
+    const later = await level(page);
+    if (Math.abs(later.volume - earlier.volume) > 0.02 || later.muted !== earlier.muted || later.paused) {
+      throw new Error(`${label} 的媒体音量变了：${JSON.stringify({ earlier, later })}`);
+    }
+  };
+  let settings = null;
+  let current = null;
+  let music = null;
+  let held = null;
+  let bound = false;
+  const focusCurrent = async () => {
+    await current.bringToFront();
+    await current.mouse.click(12, 12);
+  };
+  const statuses = () => current.evaluate(() => {
+    const root = document.querySelector('ottertap-controller')?.shadowRoot;
+    return [...(root?.querySelectorAll('[role="status"]') ?? [])].map(node => (node.textContent || '').trim()).filter(Boolean);
+  });
+  const toast = async (text, shot) => {
+    const node = current.getByText(text, { exact: true });
+    await node.waitFor({ state: 'visible', timeout: 8_000 });
+    const pass = await node.evaluate(element => element.className.includes('pointer-events-none') && element.getAttribute('role') === 'status');
+    if (!pass) throw new Error(`${text} 不是不挡点击的状态字样`);
+    await current.screenshot({ path: path.join(dir, shot), animations: 'disabled' });
+    await node.waitFor({ state: 'hidden', timeout: 3_000 });
+  };
+  const quiet = async label => {
+    const deadline = Date.now() + 700;
+    const noise = text => /^\d+%$/.test(text) || text.startsWith('On-page volume');
+    while (Date.now() < deadline) {
+      const seen = (await statuses()).filter(text => !noise(text));
+      if (seen.length) throw new Error(`${label}：不应出现字样 ${JSON.stringify(seen)}`);
+      await current.waitForTimeout(100);
+    }
+  };
+  try {
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
+    const section = settings.locator('#shortcuts');
+    await section.getByRole('heading', { name: 'Keyboard shortcuts' }).waitFor({ state: 'visible', timeout: 15_000 });
+    const extensionList = section.getByRole('heading', { name: 'Extension shortcuts', exact: true }).locator('xpath=following-sibling::dl[1]');
+    for (const label of [listenLabel, undoLabel]) {
+      const row = extensionList.getByText(label, { exact: true }).locator('xpath=ancestor::div[contains(@class,"py-3")][1]');
+      await row.waitFor({ state: 'visible' });
+      if ((await row.locator('dt').innerText()).trim() !== 'Not set') throw new Error(`扩展命令「${label}」应显示 Not set`);
+      const button = keyButton(settings, label);
+      await button.waitFor({ state: 'visible' });
+      if ((await button.innerText()).trim() !== 'Not set') throw new Error(`页内「${label}」默认应是 Not set：${await button.innerText()}`);
+    }
+    const reset = () => settings.getByRole('button', { name: 'Restore default keys', exact: true });
+    if (!await reset().isDisabled()) throw new Error('默认键位时「Restore default keys」应禁用');
+    if (await settings.locator('#keybind-error').count()) throw new Error('未改键时不应有占用提示');
+    if (await settings.getByRole('switch', { name: 'Single-key mode' }).getAttribute('aria-checked') !== 'false') throw new Error('单键模式应保持关闭');
+    await section.screenshot({ path: path.join(dir, 'settings-unbound.png'), animations: 'disabled' });
+    note('both quiet actions are Not set, page and extension');
+
+    await keyButton(settings, listenLabel).click();
+    await recording(settings).waitFor({ state: 'visible' });
+    await settings.keyboard.press('Comma');
+    const conflict = (await settings.locator('#keybind-error').innerText()).trim();
+    const conflictCopy = ', is already used for “Pause, then previous frame”. Press another key, or change that one first.';
+    if (conflict !== conflictCopy) throw new Error(`撞键提示不对：${conflict}`);
+    if ((await stored()).keybinds?.listenCurrent) throw new Error('撞键时不应保存只听当前');
+    if (!await recording(settings).isVisible()) throw new Error('撞键后应继续等待新键');
+    await settings.screenshot({ path: path.join(dir, 'settings-conflict.png'), animations: 'disabled' });
+    await settings.keyboard.press('KeyY');
+    await poll(stored, value => value.keybinds?.listenCurrent === 'y' && value.keybinds?.undoMuteOthers === '' && value.singleKey !== true && value.keybinds?.toggle === 'k', '应保存只听当前 = y，撤销仍未绑，已有键不变');
+    if (await settings.locator('#keybind-error').isVisible()) throw new Error('Y 没人占用，不应报占用');
+    await keyButton(settings, undoLabel).click();
+    await settings.keyboard.press('KeyY');
+    const taken = (await settings.locator('#keybind-error').innerText()).trim();
+    const takenCopy = `Y is already used for “${listenLabel}”. Press another key, or change that one first.`;
+    if (taken !== takenCopy) throw new Error(`Y 的占用提示不对：${taken}`);
+    if ((await stored()).keybinds?.undoMuteOthers) throw new Error('撤销不应保存成已被占用的 Y');
+    await settings.keyboard.press('KeyU');
+    await poll(stored, value => value.keybinds?.undoMuteOthers === 'u' && value.keybinds?.listenCurrent === 'y', '应保存撤销 = u');
+    bound = true;
+    await recording(settings).waitFor({ state: 'hidden' });
+    await section.screenshot({ path: path.join(dir, 'settings-bound.png'), animations: 'disabled' });
+    if (JSON.stringify(await quietCommands()) !== JSON.stringify(expectedCommands)) throw new Error(`页内改键不应改掉扩展命令：${JSON.stringify(await quietCommands())}`);
+    note(`bound y/u; conflict ${conflict}`);
+
+    current = await context.newPage();
+    await current.goto(`${origin}/tone-current`, { waitUntil: 'domcontentloaded' });
+    await current.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await play(current, 0.4);
+    const beforeIdle = await level(current);
+    await focusCurrent();
+    await current.keyboard.press('KeyY');
+    await toast(idleCopy, 'toast-idle.png');
+    if ((await batch()).length) throw new Error('没有其他发声标签时不应写入批次');
+    if (byPath(await tabs(), '/tone-current')?.muted) throw new Error('没有目标时不应静音当前标签');
+    await sameMedia(current, beforeIdle, '当前页');
+    note('idle hint, no batch');
+
+    held = await context.newPage();
+    await held.goto(`${origin}/tone-held`, { waitUntil: 'domcontentloaded' });
+    await play(held, 0.2);
+    const heldId = byPath(await tabs(), '/tone-held')?.id;
+    await worker.evaluate(async id => { await chrome.tabs.update(id, { muted: true }); }, heldId);
+    music = await context.newPage();
+    await music.goto(`${origin}/tone-music`, { waitUntil: 'domcontentloaded' });
+    await play(music, 0.7);
+    await poll(tabs, listed => byPath(listed, '/tone-music')?.audible && !byPath(listed, '/tone-music')?.muted && byPath(listed, '/tone-held')?.muted && !byPath(listed, '/tone-current')?.muted, '音乐在出声，Held 预先静音，当前可听', 15_000);
+    const beforeHear = { current: await level(current), music: await level(music), held: await level(held) };
+    await focusCurrent();
+    await current.keyboard.press('KeyY');
+    const heard = await poll(tabs, listed => byPath(listed, '/tone-music')?.muted === true && byPath(listed, '/tone-current')?.muted !== true && byPath(listed, '/tone-held')?.muted === true, '只听当前应只静音仍在发声的音乐');
+    const heardBatch = await batch();
+    const musicId = byPath(heard, '/tone-music')?.id;
+    const currentId = byPath(heard, '/tone-current')?.id;
+    if (JSON.stringify(heardBatch) !== JSON.stringify([{ tabId: musicId, previousMuted: false, writtenMuted: true }])) throw new Error(`批次应只有音乐：${JSON.stringify(heardBatch)}`);
+    await sameMedia(current, beforeHear.current, '当前页');
+    await sameMedia(music, beforeHear.music, '音乐');
+    await sameMedia(held, beforeHear.held, 'Held');
+    await quiet('只听当前成功');
+    await current.screenshot({ path: path.join(dir, 'fixture-heard.png'), animations: 'disabled' });
+    note('heard music only');
+
+    await focusCurrent();
+    await current.keyboard.press('KeyU');
+    await poll(tabs, listed => byPath(listed, '/tone-music')?.muted === false && byPath(listed, '/tone-current')?.muted !== true && byPath(listed, '/tone-held')?.muted === true, '撤销应只恢复音乐，Held 保持静音');
+    if ((await batch()).length) throw new Error('撤销后批次应被消费');
+    await sameMedia(current, beforeHear.current, '当前页');
+    await quiet('撤销成功');
+    await focusCurrent();
+    await current.keyboard.press('KeyU');
+    await toast(undoIdleCopy, 'toast-undo-idle.png');
+    const afterIdle = await tabs();
+    if (byPath(afterIdle, '/tone-music')?.muted || !byPath(afterIdle, '/tone-held')?.muted) throw new Error('没有记录时不应改动其他标签的静音');
+    note('second undo says it cannot restore');
+
+    await current.evaluate(() => {
+      const input = document.createElement('input');
+      input.setAttribute('aria-label', 'Fixture note');
+      input.style.cssText = 'position:fixed;left:16px;top:420px';
+      const area = document.createElement('textarea');
+      area.setAttribute('aria-label', 'Fixture lines');
+      area.style.cssText = 'position:fixed;left:16px;top:460px';
+      const editor = document.createElement('div');
+      editor.setAttribute('contenteditable', 'true');
+      editor.setAttribute('role', 'textbox');
+      editor.setAttribute('aria-label', 'Fixture editor');
+      editor.style.cssText = 'position:fixed;left:16px;top:520px;width:200px;min-height:24px';
+      document.body.append(input, area, editor);
+    });
+    const field = current.getByRole('textbox', { name: 'Fixture note' });
+    const lines = current.getByRole('textbox', { name: 'Fixture lines' });
+    const editor = current.getByRole('textbox', { name: 'Fixture editor' });
+    await field.focus();
+    await current.keyboard.press('KeyY');
+    await current.keyboard.press('KeyU');
+    await lines.focus();
+    await current.keyboard.press('KeyY');
+    await editor.focus();
+    await current.keyboard.press('KeyU');
+    await quiet('输入框聚焦');
+    if ((await field.inputValue()) !== 'yu') throw new Error(`输入框应收到 Y 和 U：${await field.inputValue()}`);
+    if ((await lines.inputValue()) !== 'y') throw new Error(`文本域应收到 Y：${await lines.inputValue()}`);
+    if ((await editor.innerText()).trim() !== 'u') throw new Error(`可编辑区域应收到 U：${await editor.innerText()}`);
+    if (byPath(await tabs(), '/tone-music')?.muted) throw new Error('输入框聚焦时不应静音音乐');
+    await current.screenshot({ path: path.join(dir, 'fixture-typing.png'), animations: 'disabled' });
+    await editor.evaluate(element => element.blur());
+    const composed = await current.evaluate(() => {
+      const down = new KeyboardEvent('keydown', { key: 'y', code: 'KeyY', bubbles: true, cancelable: true, isComposing: true });
+      const up = new KeyboardEvent('keyup', { key: 'y', code: 'KeyY', bubbles: true, cancelable: true, isComposing: true });
+      window.dispatchEvent(down);
+      window.dispatchEvent(up);
+      return { composing: down.isComposing === true, down: down.defaultPrevented, up: up.defaultPrevented };
+    });
+    if (!composed.composing || composed.down || composed.up) throw new Error(`组合输入应放过按键：${JSON.stringify(composed)}`);
+    await current.waitForTimeout(400);
+    if (byPath(await tabs(), '/tone-music')?.muted) throw new Error('组合输入时不应静音音乐');
+    note('typing and composition leave the tabs alone');
+
+    await worker.evaluate(async id => { await chrome.tabs.update(id, { muted: true }); }, currentId);
+    await poll(tabs, listed => byPath(listed, '/tone-current')?.muted === true && byPath(listed, '/tone-music')?.muted !== true, '当前标签先交给浏览器静音');
+    await focusCurrent();
+    await current.keyboard.press('KeyY');
+    await poll(tabs, listed => byPath(listed, '/tone-current')?.muted === false && byPath(listed, '/tone-music')?.muted === true && byPath(listed, '/tone-held')?.muted === true, '当前被静音时应打开当前标签并静音音乐');
+    const withCurrent = await batch();
+    const currentEntry = withCurrent.find(entry => entry.tabId === currentId);
+    const musicEntry = withCurrent.find(entry => entry.tabId === musicId);
+    if (!currentEntry || currentEntry.previousMuted !== true || currentEntry.writtenMuted !== false) throw new Error(`批次应记下当前标签的静音前态：${JSON.stringify(withCurrent)}`);
+    if (!musicEntry || musicEntry.previousMuted !== false || musicEntry.writtenMuted !== true) throw new Error(`批次应记下音乐：${JSON.stringify(withCurrent)}`);
+    if (withCurrent.some(entry => entry.tabId === heldId)) throw new Error('预先静音的 Held 不应进入批次');
+    await sameMedia(current, beforeHear.current, '当前页');
+    await quiet('打开当前标签成功');
+    await focusCurrent();
+    await current.keyboard.press('KeyU');
+    await poll(tabs, listed => byPath(listed, '/tone-current')?.muted === true && byPath(listed, '/tone-music')?.muted === false && byPath(listed, '/tone-held')?.muted === true, '撤销应把当前标签设回静音并恢复音乐');
+    if ((await batch()).length) throw new Error('第二次撤销后批次应被消费');
+    await worker.evaluate(async id => { await chrome.tabs.update(id, { muted: false }); }, currentId);
+    await poll(tabs, listed => byPath(listed, '/tone-current')?.muted !== true, '后续按键前先取消当前标签的浏览器静音');
+
+    await focusCurrent();
+    const documentFullscreen = await current.evaluate(async () => {
+      const root = document.documentElement;
+      if (typeof root.requestFullscreen !== 'function') return false;
+      try {
+        await root.requestFullscreen();
+        return document.fullscreenElement === root;
+      } catch { return false; }
+    });
+    if (documentFullscreen) {
+      await focusCurrent();
+      await current.keyboard.press('KeyY');
+      await poll(tabs, listed => byPath(listed, '/tone-music')?.muted === true && byPath(listed, '/tone-current')?.muted !== true, '全屏时 Y 仍只听当前');
+      await quiet('全屏只听当前成功');
+      await current.screenshot({ path: path.join(dir, 'fixture-fullscreen.png'), animations: 'disabled' });
+      await current.keyboard.press('KeyU');
+      await poll(tabs, listed => byPath(listed, '/tone-music')?.muted === false, '全屏时 U 仍撤销');
+      await current.evaluate(async () => { if (document.fullscreenElement) await document.exitFullscreen(); });
+      note('fullscreen used the same page keys');
+    } else note('document fullscreen unavailable; the page key already ran without the panel');
+
+    await settings.bringToFront();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#backup`, { waitUntil: 'domcontentloaded' });
+    const [download] = await Promise.all([settings.waitForEvent('download'), settings.getByRole('button', { name: 'Export settings', exact: true }).click()]);
+    const exportPath = path.join(dir, 'export.json');
+    await download.saveAs(exportPath);
+    const exported = JSON.parse(await readFile(exportPath, 'utf8'));
+    if (exported.settings?.keybinds?.listenCurrent !== 'y' || exported.settings?.keybinds?.undoMuteOthers !== 'u') throw new Error(`导出应带上两个新键：${JSON.stringify(exported.settings?.keybinds)}`);
+    if (exported.settings?.keybinds?.toggle !== 'k' || exported.settings?.keybinds?.mute !== 'm') throw new Error('导出不应改掉已有键');
+    await settings.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
+    await reset().click();
+    await poll(stored, value => value.keybinds?.listenCurrent === '' && value.keybinds?.undoMuteOthers === '' && value.keybinds?.toggle === 'k', '恢复默认后两个动作应回到未绑定');
+    bound = false;
+    await focusCurrent();
+    await current.keyboard.press('KeyY');
+    await current.waitForTimeout(400);
+    if (byPath(await tabs(), '/tone-music')?.muted) throw new Error('恢复默认后 Y 不应静音');
+    await settings.bringToFront();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#backup`, { waitUntil: 'domcontentloaded' });
+    await settings.locator('#backup input[type="file"]').setInputFiles(exportPath);
+    await settings.getByRole('button', { name: 'Replace settings', exact: true }).click();
+    await poll(stored, value => value.keybinds?.listenCurrent === 'y' && value.keybinds?.undoMuteOthers === 'u' && value.keybinds?.toggle === 'k', '导入应把两个键带回来，且不改已有键');
+    bound = true;
+    await focusCurrent();
+    await current.keyboard.press('KeyY');
+    await poll(tabs, listed => byPath(listed, '/tone-music')?.muted === true && byPath(listed, '/tone-current')?.muted !== true, '导入后的 Y 应再次只听当前');
+    await quiet('导入后的只听当前成功');
+    await focusCurrent();
+    await current.keyboard.press('KeyU');
+    await poll(tabs, listed => byPath(listed, '/tone-music')?.muted === false, '导入后的 U 应撤销');
+    await settings.bringToFront();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
+    await reset().click();
+    await poll(stored, value => value.keybinds?.listenCurrent === '' && value.keybinds?.undoMuteOthers === '' && value.keybinds?.mute === 'm', '结束时应恢复默认键');
+    bound = false;
+    for (const label of [listenLabel, undoLabel]) await keyButton(settings, label).filter({ hasText: 'Not set' }).waitFor({ state: 'visible' });
+    if (!await reset().isDisabled()) throw new Error('恢复默认后按钮应禁用');
+    await focusCurrent();
+    await current.keyboard.press('KeyY');
+    await current.waitForTimeout(400);
+    if (byPath(await tabs(), '/tone-music')?.muted) throw new Error('再次恢复默认后 Y 不应静音');
+    const prefs = JSON.stringify((await stored()).sitePrefs ?? {});
+    if (prefs !== '{}') throw new Error(`快捷键写入了 sitePrefs：${prefs}`);
+    const unknown = await unknownStorageKeys(worker);
+    if (unknown.length) throw new Error(`出现了未登记的存储键：${unknown.join(',')}`);
+    const state = {
+      ok: true,
+      permissions: registered.permissions,
+      suggested: registered.suggested,
+      commands: await quietCommands(),
+      conflict,
+      taken,
+      idleHint: idleCopy,
+      undoIdleHint: undoIdleCopy,
+      typingValue: 'yu',
+      imported: true,
+      restored: true,
+      sitePrefs: {},
+      unknownStorageKeys: unknown,
+    };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    if (bound && settings && !settings.isClosed()) await settings.getByRole('button', { name: 'Restore default keys', exact: true }).click().catch(() => {});
+    await worker.evaluate(async () => { await chrome.storage.session.remove('ottertap-mute-batch-v1'); }).catch(() => {});
+    for (const page of [held, music, current, settings]) await page?.close().catch(() => {});
   }
 }
 
