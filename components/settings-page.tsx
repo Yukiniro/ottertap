@@ -459,6 +459,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
     floatingSleepNoteAtom,
     floatingWhilePlayingAtom,
     followPlayingAtom,
+    autoMuteOthersAtom,
     autoPipOnHideAtom,
     autoPipOnScrollAtom,
     autoPipExitOnReturnAtom,
@@ -498,6 +499,7 @@ export function SettingsPage({ back }: { back?: () => void }) {
   const floatingSleepNote = useAtomValue(floatingSleepNoteAtom);
   const floatingWhilePlaying = useAtomValue(floatingWhilePlayingAtom);
   const followPlaying = useAtomValue(followPlayingAtom);
+  const autoMuteOthers = useAtomValue(autoMuteOthersAtom);
   const autoPipOnHide = useAtomValue(autoPipOnHideAtom);
   const autoPipOnScroll = useAtomValue(autoPipOnScrollAtom);
   const autoPipExitOnReturn = useAtomValue(autoPipExitOnReturnAtom);
@@ -699,6 +701,9 @@ export function SettingsPage({ back }: { back?: () => void }) {
             {autoPipExcludedSites.length
               ? <PanelSitesList id="auto-pip-excluded" list="auto-pip" sites={autoPipExcludedSites} filter={filterSiteList} filterLabel={i18n.t('autoPipExcludedFilter')} listLabel={i18n.t('autoPipExcludedSites')} noMatch={i18n.t('autoPipExcludedNoMatch')} icon={PictureInPicture2} removeLabel={site => i18n.t('restoreAutoPip', { site })} disabled={disabled} onRemove={site => void save({ autoPipExcludedSites: autoPipExcludedSites.filter(value => value !== site) })} host={currentHost} readHost={readCurrentHost} />
               : <p className="mt-3 rounded-lg bg-background/80 px-3 py-3 text-sm text-muted-foreground">{i18n.t('autoPipExcludedEmpty')}</p>}
+          </div>
+          <div className="mt-4">
+            <SwitchRow id="settings-auto-mute-others" label={i18n.t('autoMuteOthers')} description={i18n.t('autoMuteOthersDescription')} checked={autoMuteOthers} disabled={disabled} onChange={checked => void save({ autoMuteOthers: checked })} />
           </div>
           <div className="mt-4">
             <SwitchRow id="settings-follow-playing" label={i18n.t('followPlaying')} description={i18n.t('followPlayingDescription')} checked={followPlaying} disabled={disabled} onChange={checked => void save({ followPlaying: checked })} />

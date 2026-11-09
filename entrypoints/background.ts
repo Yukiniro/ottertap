@@ -10,6 +10,7 @@ import { steppedVolume, volumeStepForWheel } from '../lib/volume';
 import { volumeBadgeColor, volumeBadgeFromReports, volumeBadgeTtlMs } from '../lib/volume-badge';
 import { shouldFollowPlaying } from '../lib/follow-playing';
 import { canRestore, muteBatchKey, parseMuteBatch, recordableWrite, tabMuteFact, withoutEntry, type MuteBatch, type MuteBatchEntry, type TabMuteFact } from '../lib/mute-batch';
+import { autoMuteBlocked, autoMuteClockKey, nextAutoMuteUntil, parseAutoMuteUntil } from '../lib/auto-mute';
 import { soundingTabs } from '../lib/tabs';
 import { isResumeEntry, resumePage, writeResume, type ResumeReport } from '../lib/resume';
 import { sleepMinutes } from '../lib/sleep-timer';
@@ -170,6 +171,23 @@ export default defineBackground(() => {
     if (muteBatch) return;
     muteBatch = parseMuteBatch(data[muteBatchKey]);
   }).catch(() => undefined) : Promise.resolve();
+  let autoMuteUntil: number | null = null;
+  const persistAutoMute = async () => {
+    const area = browser.storage.session;
+    if (!area) return;
+    try {
+      if (autoMuteUntil == null) await area.remove(autoMuteClockKey);
+      else await area.set({ [autoMuteClockKey]: { until: autoMuteUntil } });
+    } catch { /* This worker still honors the clock it has in memory. */ }
+  };
+  const autoMuteReady: Promise<void> = browser.storage.session ? browser.storage.session.get(autoMuteClockKey).then(data => {
+    if (autoMuteUntil != null) return;
+    autoMuteUntil = parseAutoMuteUntil(data[autoMuteClockKey]);
+  }).catch(() => undefined) : Promise.resolve();
+  const holdAutoMute = async () => {
+    autoMuteUntil = nextAutoMuteUntil(Date.now());
+    await persistAutoMute();
+  };
   const ownExtensionId = () => browser.runtime.id ?? '';
   const dropUnproven = async (tabId: number) => {
     await muteBatchReady;
@@ -581,12 +599,54 @@ export default defineBackground(() => {
       unavailable: !sought && missed.size === 0,
     };
   }
+  async function tabIsCurrent(tabId: number) {
+    let tab: { active?: boolean; windowId?: number } | undefined;
+    try { tab = await browser.tabs.get(tabId); }
+    catch { return false; }
+    if (!tab?.active || typeof tab.windowId !== 'number') return false;
+    try {
+      const windows = await browser.windows.getAll();
+      const mine = windows.find(item => item.id === tab.windowId);
+      if (!mine) return false;
+      // A focused window means the user is in the browser: only that window's active tab counts.
+      // Headless and a fully unfocused browser report every window unfocused; the active tab is still the one being driven.
+      if (windows.some(item => item.focused)) return mine.focused === true;
+      return true;
+    } catch { return false; }
+  }
+  async function autoMuteOnStart(tabId: number, frameId: number, localId: string, selectedAtArrival: string) {
+    if ((await currentSettings()).autoMuteOthers !== true) return { ok: true as const };
+    const playingId = `${frameId}:${localId}`;
+    if (selectedAtArrival) {
+      if (selectedAtArrival !== playingId) return { ok: true as const };
+    } else {
+      const { target } = await controlledMedia(tabId);
+      if (!target || target.id !== playingId) return { ok: true as const };
+    }
+    if (!(await tabIsCurrent(tabId))) return { ok: true as const };
+    return enqueueMute(async () => {
+      await autoMuteReady;
+      await muteBatchReady;
+      if (autoMuteBlocked(Date.now(), autoMuteUntil)) return { ok: true as const };
+      if ((await currentSettings()).autoMuteOthers !== true) return { ok: true as const };
+      if (!(await tabIsCurrent(tabId))) return { ok: true as const };
+      const before = muteBatch;
+      await muteSoundingOthers(tabId);
+      // An empty list or a failed write leaves the previous batch object in place. That is not a success.
+      if (muteBatch === before) return { ok: true as const };
+      await holdAutoMute();
+      return { ok: true as const };
+    });
+  }
   async function undoMuteBatch(currentTabId?: number) {
     await muteBatchReady;
+    await autoMuteReady;
     const batch = muteBatch;
     if (!batch?.entries.length) return { status: 'unavailable' as const };
     muteBatch = null;
     await persistMuteBatch();
+    // Undo and a successful automatic mute share this clock. Manual mute and listen-current do not touch it.
+    await holdAutoMute();
     const id = ownExtensionId();
     let restored = 0;
     let failed = 0;
@@ -648,8 +708,11 @@ export default defineBackground(() => {
       if (sender.tab?.id !== undefined) void browser.tabs.sendMessage(sender.tab.id, { namespace: 'ottertap', type: 'altUsed' }).catch(() => {});
       return;
     }
-    if (!['settings', 'options', 'context', 'register', 'read', 'command', 'select', 'highlight', 'hotkey', 'holdRate', 'soundingTabs', 'focusTab', 'muteTab', 'muteOthers', 'listenCurrent', 'undoMuteOthers', 'rateLock', 'openPopup', 'playing', 'resume', 'resumeJumped', 'sleep', 'sleepCancel', 'sleepExtend', 'sleepDue'].includes(message.type)) return;
+    if (!['settings', 'options', 'context', 'register', 'read', 'command', 'select', 'highlight', 'hotkey', 'holdRate', 'soundingTabs', 'focusTab', 'muteTab', 'muteOthers', 'listenCurrent', 'undoMuteOthers', 'rateLock', 'openPopup', 'playing', 'autoMute', 'resume', 'resumeJumped', 'sleep', 'sleepCancel', 'sleepExtend', 'sleepDue'].includes(message.type)) return;
     const tabId = sender.tab?.id ?? message.tabId;
+    // Read before any await. A following `playing` message may change the selection, and that must not count as already controlled.
+    const autoMuteSelected = message.type === 'autoMute' && typeof tabId === 'number' ? (selectedIds.get(tabId) ?? '') : '';
+    const autoMuteFrame = sender.frameId ?? 0;
     async function handle() {
       if (message.type === 'settings') {
         if (!sender.tab && !extensionPage(sender.url)) return { error: i18n.t('extensionMessageFailed') };
@@ -689,6 +752,7 @@ export default defineBackground(() => {
           return await muteTab(targetId, message.muted);
         } catch (error) { return { error: error instanceof Error ? error.message : i18n.t('pageUnavailable') }; }
       }
+      if (message.type === 'autoMute' && !sender.tab) return { ok: true };
       if (!Number.isInteger(tabId)) return { error: i18n.t('noTab') };
       try {
         await sessionReady;
@@ -728,6 +792,12 @@ export default defineBackground(() => {
           if (!shouldFollowPlaying({ enabled: settings.followPlaying, selectedId: selectedIds.get(tabId) ?? '', playingId, manualAt: manualPicks.get(tabId) ?? null, now: Date.now() })) return { ok: true };
           rememberSelection(tabId, playingId);
           return { ok: true };
+        }
+        if (message.type === 'autoMute') {
+          if (!sender.tab || !enabled) return { ok: true };
+          const local = typeof message.id === 'string' && /^\d+$/.test(message.id) ? message.id : '';
+          if (!local || !Number.isInteger(tabId)) return { ok: true };
+          return await autoMuteOnStart(tabId, autoMuteFrame, local, autoMuteSelected);
         }
         if (message.type === 'resume') {
           const local = typeof message.id === 'string' && /^\d+$/.test(message.id) ? message.id : '';

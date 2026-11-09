@@ -44,6 +44,13 @@ export type WheelDirection = (typeof wheelDirections)[number];
  * Missing values stay on. A manual pick from the panel keeps that media for a few seconds.
  */
 /**
+ * `autoMuteOthers` mutes other sounding tabs when the media OtterTap controls on the active tab
+ * goes from paused or ended to playing. Only an OtterTap play command, or a play gesture on that
+ * media element, counts. Missing values stay off. The current tab's mute and volume stay put.
+ * A successful automatic mute, and an undo, each hold the next automatic mute for 5 seconds.
+ * Mute others, listen-current, and undo are not held back. The hold is not a setting.
+ */
+/**
  * `sleepSoonHint` shows the short on-page note about a minute before a sleep timer pauses.
  * Missing values stay on. Starting, cancelling, and a successful pause still show their own notes.
  */
@@ -82,6 +89,7 @@ export interface Settings {
   floatingSleepNote: boolean;
   floatingWhilePlaying: boolean;
   followPlaying: boolean;
+  autoMuteOthers: boolean;
   autoPipOnHide: boolean;
   autoPipOnScroll: boolean;
   autoPipExitOnReturn: boolean;
@@ -120,6 +128,7 @@ export const defaultSettings: Settings = {
   floatingSleepNote: false,
   floatingWhilePlaying: false,
   followPlaying: true,
+  autoMuteOthers: false,
   autoPipOnHide: false,
   autoPipOnScroll: false,
   autoPipExitOnReturn: false,

@@ -23,6 +23,7 @@ const sameSettings = (a: Settings, b: Settings) =>
   && a.floatingSleepNote === b.floatingSleepNote
   && a.floatingWhilePlaying === b.floatingWhilePlaying
   && a.followPlaying === b.followPlaying
+  && a.autoMuteOthers === b.autoMuteOthers
   && a.autoPipOnHide === b.autoPipOnHide
   && a.autoPipOnScroll === b.autoPipOnScroll
   && a.autoPipExitOnReturn === b.autoPipExitOnReturn
@@ -78,6 +79,7 @@ export interface SettingsAtoms {
   floatingSleepNoteAtom: Atom<boolean>;
   floatingWhilePlayingAtom: Atom<boolean>;
   followPlayingAtom: Atom<boolean>;
+  autoMuteOthersAtom: Atom<boolean>;
   autoPipOnHideAtom: Atom<boolean>;
   autoPipOnScrollAtom: Atom<boolean>;
   autoPipExitOnReturnAtom: Atom<boolean>;
@@ -127,6 +129,7 @@ export function createSettingsAtoms(source: SettingsStore, options?: { initialLo
   const floatingSleepNoteAtom = selectAtom(settingsAtom, settings => settings.floatingSleepNote);
   const floatingWhilePlayingAtom = selectAtom(settingsAtom, settings => settings.floatingWhilePlaying);
   const followPlayingAtom = selectAtom(settingsAtom, settings => settings.followPlaying);
+  const autoMuteOthersAtom = selectAtom(settingsAtom, settings => settings.autoMuteOthers);
   const autoPipOnHideAtom = selectAtom(settingsAtom, settings => settings.autoPipOnHide);
   const autoPipOnScrollAtom = selectAtom(settingsAtom, settings => settings.autoPipOnScroll);
   const autoPipExitOnReturnAtom = selectAtom(settingsAtom, settings => settings.autoPipExitOnReturn);
@@ -253,6 +256,7 @@ export function createSettingsAtoms(source: SettingsStore, options?: { initialLo
     floatingSleepNoteAtom,
     floatingWhilePlayingAtom,
     followPlayingAtom,
+    autoMuteOthersAtom,
     autoPipOnHideAtom,
     autoPipOnScrollAtom,
     autoPipExitOnReturnAtom,

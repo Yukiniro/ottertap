@@ -8,6 +8,7 @@ import type { ChannelMode, MediaCommand, MediaState } from './types';
 import { adjacentFrameTime, frameStepSeconds, stopAllPresentedFrames, stopPresentedFrames, watchPresentedFrames } from './frame';
 import { isHorizontallyMirrored, setHorizontalMirror } from './mirror';
 import { clearSelectionRings, showSelectionRing } from './selection-ring';
+import { createPlayStartTracker, isDirectPlayGesture, playbackPhase } from './auto-mute';
 
 export const mediaPresenceEvent = 'ottertap-media';
 
@@ -352,7 +353,7 @@ export interface ResumeControl {
   onJumped: (localId: string, seconds: number) => void;
 }
 
-export function createMediaController(document: Document, onChange?: () => void, onRateLockGiveUp?: () => void, onPlaying?: (localId: string) => void, onProgress?: (localId: string, element: HTMLMediaElement, paused: boolean) => void, resume?: ResumeControl) {
+export function createMediaController(document: Document, onChange?: () => void, onRateLockGiveUp?: () => void, onPlaying?: (localId: string) => void, onProgress?: (localId: string, element: HTMLMediaElement, paused: boolean) => void, resume?: ResumeControl, onAttributedPlay?: (localId: string) => void) {
   let nextId = 0;
   const ids = new WeakMap<HTMLMediaElement, string>();
   let elements: HTMLMediaElement[] = [];
@@ -495,10 +496,29 @@ export function createMediaController(document: Document, onChange?: () => void,
     return ids.get(element)!;
   };
   const playWatchers = new Set<HTMLMediaElement>();
+  const playStarts = createPlayStartTracker();
   const onElementPlay = (event: Event) => {
     const element = event.currentTarget as HTMLMediaElement | null;
     if (!element?.isConnected) return;
-    onPlaying?.(idOf(element));
+    const id = idOf(element);
+    const cause = playStarts.start(id);
+    if (cause) onAttributedPlay?.(id);
+    onPlaying?.(id);
+  };
+  const onPlayPhase = (event: Event) => {
+    const element = event.currentTarget as HTMLMediaElement | null;
+    if (!element) return;
+    playStarts.see(idOf(element), playbackPhase(element));
+  };
+  // Only a primary click or a play key whose target is this media. A site button elsewhere is not this.
+  const onPlayGesture = (event: Event) => {
+    const element = event.currentTarget as HTMLMediaElement | null;
+    if (!element) return;
+    const key = event instanceof KeyboardEvent ? event.key : undefined;
+    const button = event instanceof PointerEvent ? event.button : undefined;
+    const repeat = event instanceof KeyboardEvent ? event.repeat : undefined;
+    if (!isDirectPlayGesture({ type: event.type, isTrusted: event.isTrusted, key, button, repeat })) return;
+    playStarts.arm(idOf(element), 'gesture');
   };
   // Keyed by media identity, not the element: a player reusing its element for another source still resumes once.
   const resumeTried = new WeakMap<HTMLMediaElement, string>();
@@ -532,6 +552,10 @@ export function createMediaController(document: Document, onChange?: () => void,
   const unwatchPlay = (element: HTMLMediaElement) => {
     if (!playWatchers.delete(element)) return;
     element.removeEventListener('play', onElementPlay);
+    element.removeEventListener('pause', onPlayPhase);
+    element.removeEventListener('ended', onPlayPhase);
+    element.removeEventListener('pointerup', onPlayGesture);
+    element.removeEventListener('keydown', onPlayGesture);
     element.removeEventListener('timeupdate', onElementProgress);
     element.removeEventListener('pause', onElementProgress);
     element.removeEventListener('loadedmetadata', onElementReady);
@@ -539,9 +563,14 @@ export function createMediaController(document: Document, onChange?: () => void,
     element.removeEventListener('progress', onElementReady);
   };
   const watchPlay = (element: HTMLMediaElement) => {
-    if ((!onPlaying && !onProgress && !resume) || playWatchers.has(element)) return;
+    if ((!onPlaying && !onProgress && !onAttributedPlay && !resume) || playWatchers.has(element)) return;
     playWatchers.add(element);
-    if (onPlaying) element.addEventListener('play', onElementPlay);
+    playStarts.see(idOf(element), playbackPhase(element));
+    element.addEventListener('pause', onPlayPhase);
+    element.addEventListener('ended', onPlayPhase);
+    element.addEventListener('pointerup', onPlayGesture);
+    element.addEventListener('keydown', onPlayGesture);
+    if (onPlaying || onAttributedPlay) element.addEventListener('play', onElementPlay);
     if (onProgress) {
       element.addEventListener('timeupdate', onElementProgress);
       element.addEventListener('pause', onElementProgress);
@@ -680,7 +709,16 @@ export function createMediaController(document: Document, onChange?: () => void,
         seenRates.set(element, element.playbackRate);
         rememberRate(element, command.value);
       }
-      await applyMediaCommand(element, command, amplifier);
+      if (command.type === 'play') {
+        playStarts.see(id, playbackPhase(element));
+        playStarts.arm(id, 'control');
+      }
+      try {
+        await applyMediaCommand(element, command, amplifier);
+      } catch (error) {
+        if (command.type === 'play' && (element.paused || element.ended)) playStarts.drop(id);
+        throw error;
+      }
       if (command.type === 'rate') {
         const settled = await readSettledRate(element);
         noteSeen(element, settled);

@@ -35,6 +35,7 @@ test('设置加载防止无效数据覆盖默认值，域名输入支持网址�
     floatingSleepNote: false,
     floatingWhilePlaying: false,
     followPlaying: true,
+    autoMuteOthers: false,
     autoPipOnHide: false,
     autoPipOnScroll: false,
     autoPipExitOnReturn: false,
