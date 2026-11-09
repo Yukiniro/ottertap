@@ -169,6 +169,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive progress-mark
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-other-tabs
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-others-undo
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive listen-current
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive quiet-hotkeys
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-mute-others
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-commands
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-feedback
@@ -381,6 +382,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive progress-mark
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-other-tabs
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-others-undo
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive listen-current
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive quiet-hotkeys
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-mute-others
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-commands
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-feedback
@@ -764,6 +766,18 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive listen-current
 再取消当前标签的静音，打开音乐和会议，并把 `Held tab` 预先静音。点 `Hear only this tab` 只静音仍在发声的音乐和会议，Held 和当前标签不进批次，`Mute others` 仍在。撤销后那两条恢复。接着把当前标签静音再点一次：当前标签的喇叭打开，音乐和会议静音，批次含当前标签的静音前态。音乐那一行取消静音，并把当前标签再次静音后，撤销只恢复会议。设置原文不变，权限仍只有 `storage`。面板高度不超过 600px。它不改 profile。步骤见 `features/listen-current.md`。
 
 写入 `listen-current/`：`popup-idle.png`、`popup-empty-muted.png`、`popup-empty-heard.png`、`popup-empty-undone.png`、`popup-ready.png`、`popup-heard.png`、`popup-later.png`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
+## 只听当前与撤销的快捷键
+
+```bash
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive quiet-hotkeys
+```
+
+`quiet-hotkeys` 确认 manifest 里 `listen-current`、`undo-mute-others` 没有建议键，原来的 4 个建议键不变，浏览器命令列表里两条为空。设置页两条扩展命令和两个页内键都是 `Not set`，`Restore default keys` 不可点。录 `,` 时提示被逐帧占用，录 Y 给只听当前，再给撤销录 Y 时提示被只听当前占用，改录 U。
+
+只打开正在播放的 `/tone-current`，不打开弹出面板，按 Y 出现 `No other tab is playing, and this tab is already audible.`。加上音乐并把 Held 预先静音后，按 Y 只静音音乐，成功没有新提示。按 U 恢复，再按 U 出现 `Those tabs can't be safely unmuted.`。输入框、文本域、可编辑区域和组合输入不触发。当前标签被浏览器静音时，Y 会取消它并静音音乐，U 再设回去。导出带上这两个键，恢复默认后导入能用回来。结束时恢复默认键。权限仍只有 `storage`，`sitePrefs` 仍为空。它会改 profile，退出前恢复默认键。扩展命令的按键分发由单元测试覆盖。步骤见 `features/quiet-hotkeys.md`。
+
+写入 `quiet-hotkeys/`：`settings-unbound.png`、`settings-conflict.png`、`settings-bound.png`、`toast-idle.png`、`fixture-heard.png`、`toast-undo-idle.png`、`fixture-typing.png`、`export.json`、`state.json`（成功时 `ok: true`）、`transcript.txt`。全屏可用时还有 `fixture-fullscreen.png`。
 
 ## 播放时自动静音其他
 

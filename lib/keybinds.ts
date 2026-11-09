@@ -1,9 +1,49 @@
 /** One key per action. An empty string is unbound and is not taken. Alt shortcuts, the mouse wheel, and the single-key arrows stay fixed. */
-export const keybindActions = ['toggle', 'skipBack', 'skipForward', 'rateUp', 'rateDown', 'mute', 'holdBoost', 'frameBack', 'frameForward', 'mirror', 'markSet', 'markJump', 'mediaPrev', 'mediaNext', 'pip', 'sleepStart', 'sleepCancel'] as const;
+export const keybindActions = [
+  'toggle',
+  'skipBack',
+  'skipForward',
+  'rateUp',
+  'rateDown',
+  'mute',
+  'holdBoost',
+  'frameBack',
+  'frameForward',
+  'mirror',
+  'markSet',
+  'markJump',
+  'mediaPrev',
+  'mediaNext',
+  'pip',
+  'sleepStart',
+  'sleepCancel',
+  'listenCurrent',
+  'undoMuteOthers',
+] as const;
 export type KeybindAction = (typeof keybindActions)[number];
 export type Keybinds = Record<KeybindAction, string>;
 
-export const defaultKeybinds: Keybinds = { toggle: 'k', skipBack: 'j', skipForward: 'l', rateUp: '>', rateDown: '<', mute: 'm', holdBoost: 's', frameBack: ',', frameForward: '.', mirror: '', markSet: '', markJump: '', mediaPrev: '', mediaNext: '', pip: '', sleepStart: '', sleepCancel: '' };
+export const defaultKeybinds: Keybinds = {
+  toggle: 'k',
+  skipBack: 'j',
+  skipForward: 'l',
+  rateUp: '>',
+  rateDown: '<',
+  mute: 'm',
+  holdBoost: 's',
+  frameBack: ',',
+  frameForward: '.',
+  mirror: '',
+  markSet: '',
+  markJump: '',
+  mediaPrev: '',
+  mediaNext: '',
+  pip: '',
+  sleepStart: '',
+  sleepCancel: '',
+  listenCurrent: '',
+  undoMuteOthers: '',
+};
 
 /** Single-key mode arrows. They can't be rebound, so a custom key may not take them. */
 export const fixedKeys = { ArrowLeft: 'skipBack', ArrowRight: 'skipForward', ArrowUp: 'volumeUp', ArrowDown: 'volumeDown' } as const;

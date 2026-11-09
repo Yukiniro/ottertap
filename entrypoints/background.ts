@@ -473,7 +473,22 @@ export default defineBackground(() => {
     await applySitePref(tabId, host, nextId, settings.sitePrefs, settings.defaultRate);
     return true;
   }
+  async function applyQuiet(tabId: number, action: 'listenCurrent' | 'undoMuteOthers') {
+    const { typing } = await collect(tabId);
+    if (typing || !(await tabIsCurrent(tabId))) return false;
+    if (action === 'listenCurrent') {
+      const result = await enqueueMute(() => listenCurrent(tabId));
+      if (result.failed) showAction(tabId, 'listenCurrentFailed');
+      else if (result.unavailable) showAction(tabId, 'listenCurrentUnavailable');
+      return true;
+    }
+    const result = await enqueueMute(() => undoMuteBatch(tabId));
+    if (result.status === 'failed') showAction(tabId, 'undoMuteOthersFailed');
+    else if (result.status === 'unavailable') showAction(tabId, 'undoMuteOthersUnavailable');
+    return true;
+  }
   async function performHotkey(tabId: number, host: string, action: HotkeyAction) {
+    if (action.type === 'listenCurrent' || action.type === 'undoMuteOthers') return { handled: await applyQuiet(tabId, action.type) };
     if (action.type === 'rate') {
       const rate = await applyRate(tabId, host, action.direction);
       if (rate === undefined) return { handled: false as const };
@@ -491,6 +506,7 @@ export default defineBackground(() => {
     return { handled: await applyTransport(tabId, host, action) };
   }
   // Chrome passes the focused tab. Picture-in-picture keeps the element on the tab that opened it.
+  // Listen-current and undo do not follow that element: they always mean the tab the user is in.
   async function pictureInPictureTab(settings: Settings) {
     for (const tabId of frames.keys()) {
       let url = '';
@@ -507,10 +523,11 @@ export default defineBackground(() => {
   async function runExtensionCommand(name: string, source?: { id?: number; url?: string }) {
     const raw = actionForCommand(name);
     if (!raw) return;
+    const quiet = raw.type === 'listenCurrent' || raw.type === 'undoMuteOthers';
     try {
       await framesReady;
       const settings = await currentSettings();
-      const pip = await pictureInPictureTab(settings);
+      const pip = quiet ? null : await pictureInPictureTab(settings);
       let tabId = pip?.id ?? source?.id;
       let url = pip?.url ?? source?.url;
       if (typeof tabId !== 'number') {

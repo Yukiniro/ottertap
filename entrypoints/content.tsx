@@ -298,7 +298,7 @@ export default defineContentScript({
         }
         return;
       }
-      if (!shortcutActive() || isTypingEvent(event)) return;
+      if (!shortcutActive() || isTypingEvent(event) || event.isComposing) return;
       // Arrows inside the floater belong to its slider and to docking the otter.
       if (floatingArrow) return;
       hotkeys.key(event, { singleKey: source.singleKey, skipSeconds: source.skipSeconds, volumeStep: source.volumeStep, keybinds: source.keybinds, target: source.singleKey ? controller.pointed(pointer, true) : undefined });
