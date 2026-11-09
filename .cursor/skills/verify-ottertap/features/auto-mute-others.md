@@ -13,6 +13,8 @@
 
 每次自动成功，以及每次撤销，都会在这次浏览器会话里拦住下一次自动静音 5 秒。到点就可以。这 5 秒不是设置，也不进导出。手动的静音其他、只听当前和撤销不受它限制。连续的播放事件和多个 frame 不会记成两批。
 
+自动成功时页面上出现 `Muted other tabs`，与起冷却是同一个条件，所以 5 秒内最多一条。自动失败不起冷却，失败说明按同样的 5 秒去重。见 [quiet-feedback.md](quiet-feedback.md)。
+
 冷却放在 `chrome.storage.session` 的 `ottertap-auto-mute-v1`。关掉浏览器就没了。
 
 ## Sub-features

@@ -8,6 +8,8 @@
 
 归属看浏览器返回的 `mutedInfo`：必须仍是这次写下去的静音值，原因是 `extension`，并且 `extensionId` 是本扩展。用户、其他扩展或后来的行内切换改过之后，这一条跳过，不猜。关掉的标签跳过。有的标签写失败时，面板说明 `Couldn't leave only this tab audible.`，不把没写成的标签记进批次，也不把整次说成成功。一次都没写成功时，不覆盖上一条有效记录。
 
+成功后（至少改写了一个标签且没有失败），页面上出现一条短提示 `Hearing only this tab`，见 [quiet-feedback.md](quiet-feedback.md)；失败仍只在面板里说明。
+
 ## Sub-features
 
 - 当前已可听。效果与只静音列表里仍在发声的标签相同。当前标签不进批次。

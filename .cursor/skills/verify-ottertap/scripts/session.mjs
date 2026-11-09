@@ -35,6 +35,7 @@
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-others-undo
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive listen-current
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-mute-others
+//   node .cursor/skills/verify-ottertap/scripts/session.mjs drive quiet-feedback
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-commands
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-feedback
 //   node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-follow-playing
@@ -77,7 +78,7 @@ const stateRoot = '/tmp/ottertap-verify';
 const host = 'media.ottertap.test';
 const origin = `https://${host}`;
 const fixturePath = '/video';
-const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mute-others-undo', 'listen-current', 'quiet-hotkeys', 'auto-mute-others', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip', 'page-pip', 'pip-feedback', 'pip-active', 'pip-away-tab', 'pip-auto-hide', 'pip-auto-scroll', 'pip-auto-exit', 'pip-auto-excluded-sites', 'pip-auto-feedback', 'resume-save', 'sleep-timer', 'sleep-timer-cancel', 'sleep-timer-hints', 'sleep-hotkeys', 'remaining-at-rate', 'floating-sleep-note'];
+const supportedFeatures = ['popup-playback', 'wheel-volume', 'skip-step', 'skip-with-rate', 'volume-step', 'fine-wheel', 'coarse-step', 'rate-step', 'extension-pip', 'default-rate', 'hold-boost', 'hold-skip-combo', 'frame-step', 'hotkey-remap', 'floating-speed', 'floating-playback', 'floating-entry-note', 'floating-open-panel', 'floating-while-playing', 'floating-hidden-sites', 'wheel-direction', 'fullscreen-wheel', 'sidebar-ignore', 'settings-memory-filter', 'settings-sites-filter', 'settings-floating-hidden-filter', 'settings-current-site', 'settings-clear-remembered', 'horizontal-mirror', 'progress-mark', 'mute-other-tabs', 'mute-others-undo', 'listen-current', 'quiet-hotkeys', 'auto-mute-others', 'mirror-mark-commands', 'mirror-mark-feedback', 'auto-follow-playing', 'selection-highlight', 'prev-next-media', 'panel-media-list', 'float-prev-next', 'float-pip', 'page-pip', 'pip-feedback', 'pip-active', 'pip-away-tab', 'pip-auto-hide', 'pip-auto-scroll', 'pip-auto-exit', 'pip-auto-excluded-sites', 'pip-auto-feedback', 'resume-save', 'sleep-timer', 'sleep-timer-cancel', 'sleep-timer-hints', 'sleep-hotkeys', 'remaining-at-rate', 'floating-sleep-note', 'quiet-feedback'];
 
 const id = sessionId();
 const stateDir = path.join(stateRoot, id);
@@ -3270,7 +3271,7 @@ async function serve() {
           const lines = [];
           const note = line => { lines.push(`${new Date().toISOString()} ${line}`); console.log(line); };
           try {
-            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mute-others-undo': driveMuteOthersUndo, 'listen-current': driveListenCurrent, 'quiet-hotkeys': driveQuietHotkeys, 'auto-mute-others': driveAutoMuteOthers, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip, 'page-pip': drivePagePip, 'pip-feedback': drivePipFeedback, 'pip-active': drivePipActive, 'pip-away-tab': drivePipAwayTab, 'pip-auto-hide': drivePipAutoHide, 'pip-auto-scroll': drivePipAutoScroll, 'pip-auto-exit': drivePipAutoExit, 'pip-auto-excluded-sites': drivePipAutoExcludedSites, 'pip-auto-feedback': drivePipAutoFeedback, 'resume-save': driveResumeSave, 'sleep-timer': driveSleepTimer, 'sleep-timer-cancel': driveSleepTimerCancel, 'sleep-timer-hints': driveSleepTimerHints, 'sleep-hotkeys': driveSleepHotkeys, 'remaining-at-rate': driveRemainingAtRate, 'floating-sleep-note': driveFloatingSleepNote };
+            const drivers = { 'popup-playback': drivePopupPlayback, 'wheel-volume': driveWheelVolume, 'skip-step': driveSkipStep, 'skip-with-rate': driveSkipWithRate, 'volume-step': driveVolumeStep, 'fine-wheel': driveFineWheel, 'coarse-step': driveCoarseStep, 'rate-step': driveRateStep, 'extension-pip': driveExtensionPip, 'default-rate': driveDefaultRate, 'hold-boost': driveHoldBoost, 'hold-skip-combo': driveHoldSkipCombo, 'frame-step': driveFrameStep, 'hotkey-remap': driveHotkeyRemap, 'floating-speed': driveFloatingSpeed, 'floating-playback': driveFloatingPlayback, 'floating-entry-note': driveFloatingEntryNote, 'floating-open-panel': driveFloatingOpenPanel, 'floating-while-playing': driveFloatingWhilePlaying, 'floating-hidden-sites': driveFloatingHiddenSites, 'wheel-direction': driveWheelDirection, 'fullscreen-wheel': driveFullscreenWheel, 'sidebar-ignore': driveSidebarIgnore, 'settings-memory-filter': driveSettingsMemoryFilter, 'settings-sites-filter': driveSettingsSitesFilter, 'settings-floating-hidden-filter': driveSettingsFloatingHiddenFilter, 'settings-current-site': driveSettingsCurrentSite, 'settings-clear-remembered': driveSettingsClearRemembered, 'horizontal-mirror': driveHorizontalMirror, 'progress-mark': driveProgressMark, 'mute-other-tabs': driveMuteOtherTabs, 'mute-others-undo': driveMuteOthersUndo, 'listen-current': driveListenCurrent, 'quiet-hotkeys': driveQuietHotkeys, 'auto-mute-others': driveAutoMuteOthers, 'mirror-mark-commands': driveMirrorMarkCommands, 'mirror-mark-feedback': driveMirrorMarkFeedback, 'auto-follow-playing': driveAutoFollowPlaying, 'selection-highlight': driveSelectionHighlight, 'prev-next-media': drivePrevNextMedia, 'panel-media-list': drivePanelMediaList, 'float-prev-next': driveFloatPrevNext, 'float-pip': driveFloatPip, 'page-pip': drivePagePip, 'pip-feedback': drivePipFeedback, 'pip-active': drivePipActive, 'pip-away-tab': drivePipAwayTab, 'pip-auto-hide': drivePipAutoHide, 'pip-auto-scroll': drivePipAutoScroll, 'pip-auto-exit': drivePipAutoExit, 'pip-auto-excluded-sites': drivePipAutoExcludedSites, 'pip-auto-feedback': drivePipAutoFeedback, 'resume-save': driveResumeSave, 'sleep-timer': driveSleepTimer, 'sleep-timer-cancel': driveSleepTimerCancel, 'sleep-timer-hints': driveSleepTimerHints, 'sleep-hotkeys': driveSleepHotkeys, 'remaining-at-rate': driveRemainingAtRate, 'floating-sleep-note': driveFloatingSleepNote, 'quiet-feedback': driveQuietFeedback };
             const state = await drivers[feature](context, dir, note);
             await writeFile(path.join(dir, 'transcript.txt'), `${lines.join('\n')}\n`);
             send(200, { ok: true, feature, evidenceDir: dir, state });
@@ -5529,6 +5530,8 @@ async function driveQuietHotkeys(context, dir, note) {
   const undoLabel = 'Undo the last mute others';
   const idleCopy = 'No other tab is playing, and this tab is already audible.';
   const undoIdleCopy = "Those tabs can't be safely unmuted.";
+  const heardCopy = 'Hearing only this tab';
+  const undoneCopy = 'Mute undone';
   const quietCommands = () => worker.evaluate(async () => (await chrome.commands.getAll())
     .filter(item => item.name === 'listen-current' || item.name === 'undo-mute-others')
     .map(item => ({ name: item.name, shortcut: item.shortcut ?? null, description: item.description ?? '' }))
@@ -5606,7 +5609,7 @@ async function driveQuietHotkeys(context, dir, note) {
     await node.waitFor({ state: 'visible', timeout: 8_000 });
     const pass = await node.evaluate(element => element.className.includes('pointer-events-none') && element.getAttribute('role') === 'status');
     if (!pass) throw new Error(`${text} 不是不挡点击的状态字样`);
-    await current.screenshot({ path: path.join(dir, shot), animations: 'disabled' });
+    if (shot) await current.screenshot({ path: path.join(dir, shot), animations: 'disabled' });
     await node.waitFor({ state: 'hidden', timeout: 3_000 });
   };
   const quiet = async label => {
@@ -5690,6 +5693,7 @@ async function driveQuietHotkeys(context, dir, note) {
     const beforeHear = { current: await level(current), music: await level(music), held: await level(held) };
     await focusCurrent();
     await current.keyboard.press('KeyY');
+    await toast(heardCopy, 'toast-heard.png');
     const heard = await poll(tabs, listed => byPath(listed, '/tone-music')?.muted === true && byPath(listed, '/tone-current')?.muted !== true && byPath(listed, '/tone-held')?.muted === true, '只听当前应只静音仍在发声的音乐');
     const heardBatch = await batch();
     const musicId = byPath(heard, '/tone-music')?.id;
@@ -5698,16 +5702,15 @@ async function driveQuietHotkeys(context, dir, note) {
     await sameMedia(current, beforeHear.current, '当前页');
     await sameMedia(music, beforeHear.music, '音乐');
     await sameMedia(held, beforeHear.held, 'Held');
-    await quiet('只听当前成功');
     await current.screenshot({ path: path.join(dir, 'fixture-heard.png'), animations: 'disabled' });
     note('heard music only');
 
     await focusCurrent();
     await current.keyboard.press('KeyU');
+    await toast(undoneCopy, 'toast-undone.png');
     await poll(tabs, listed => byPath(listed, '/tone-music')?.muted === false && byPath(listed, '/tone-current')?.muted !== true && byPath(listed, '/tone-held')?.muted === true, '撤销应只恢复音乐，Held 保持静音');
     if ((await batch()).length) throw new Error('撤销后批次应被消费');
     await sameMedia(current, beforeHear.current, '当前页');
-    await quiet('撤销成功');
     await focusCurrent();
     await current.keyboard.press('KeyU');
     await toast(undoIdleCopy, 'toast-undo-idle.png');
@@ -5762,6 +5765,7 @@ async function driveQuietHotkeys(context, dir, note) {
     await poll(tabs, listed => byPath(listed, '/tone-current')?.muted === true && byPath(listed, '/tone-music')?.muted !== true, '当前标签先交给浏览器静音');
     await focusCurrent();
     await current.keyboard.press('KeyY');
+    await toast(heardCopy);
     await poll(tabs, listed => byPath(listed, '/tone-current')?.muted === false && byPath(listed, '/tone-music')?.muted === true && byPath(listed, '/tone-held')?.muted === true, '当前被静音时应打开当前标签并静音音乐');
     const withCurrent = await batch();
     const currentEntry = withCurrent.find(entry => entry.tabId === currentId);
@@ -5770,9 +5774,9 @@ async function driveQuietHotkeys(context, dir, note) {
     if (!musicEntry || musicEntry.previousMuted !== false || musicEntry.writtenMuted !== true) throw new Error(`批次应记下音乐：${JSON.stringify(withCurrent)}`);
     if (withCurrent.some(entry => entry.tabId === heldId)) throw new Error('预先静音的 Held 不应进入批次');
     await sameMedia(current, beforeHear.current, '当前页');
-    await quiet('打开当前标签成功');
     await focusCurrent();
     await current.keyboard.press('KeyU');
+    await toast(undoneCopy);
     await poll(tabs, listed => byPath(listed, '/tone-current')?.muted === true && byPath(listed, '/tone-music')?.muted === false && byPath(listed, '/tone-held')?.muted === true, '撤销应把当前标签设回静音并恢复音乐');
     if ((await batch()).length) throw new Error('第二次撤销后批次应被消费');
     await worker.evaluate(async id => { await chrome.tabs.update(id, { muted: false }); }, currentId);
@@ -5790,10 +5794,10 @@ async function driveQuietHotkeys(context, dir, note) {
     if (documentFullscreen) {
       await focusCurrent();
       await current.keyboard.press('KeyY');
+      await toast(heardCopy, 'fixture-fullscreen.png');
       await poll(tabs, listed => byPath(listed, '/tone-music')?.muted === true && byPath(listed, '/tone-current')?.muted !== true, '全屏时 Y 仍只听当前');
-      await quiet('全屏只听当前成功');
-      await current.screenshot({ path: path.join(dir, 'fixture-fullscreen.png'), animations: 'disabled' });
       await current.keyboard.press('KeyU');
+      await toast(undoneCopy);
       await poll(tabs, listed => byPath(listed, '/tone-music')?.muted === false, '全屏时 U 仍撤销');
       await current.evaluate(async () => { if (document.fullscreenElement) await document.exitFullscreen(); });
       note('fullscreen used the same page keys');
@@ -5823,10 +5827,11 @@ async function driveQuietHotkeys(context, dir, note) {
     bound = true;
     await focusCurrent();
     await current.keyboard.press('KeyY');
+    await toast(heardCopy);
     await poll(tabs, listed => byPath(listed, '/tone-music')?.muted === true && byPath(listed, '/tone-current')?.muted !== true, '导入后的 Y 应再次只听当前');
-    await quiet('导入后的只听当前成功');
     await focusCurrent();
     await current.keyboard.press('KeyU');
+    await toast(undoneCopy);
     await poll(tabs, listed => byPath(listed, '/tone-music')?.muted === false, '导入后的 U 应撤销');
     await settings.bringToFront();
     await settings.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
@@ -11479,6 +11484,290 @@ async function driveAutoMuteOthers(context, dir, note) {
     if (tab?.muted) await worker.evaluate(async id => { await chrome.tabs.update(id, { muted: false }); }, tab.id).catch(() => {});
     await frames?.close().catch(() => {});
     await player?.close().catch(() => {});
+    await musicPage?.close().catch(() => {});
+    await video?.close().catch(() => {});
+    await settings?.close().catch(() => {});
+  }
+}
+
+async function driveQuietFeedback(context, dir, note) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  const worker = await serviceWorker(context);
+  const extensionId = new URL(worker.url()).host;
+  const permissions = await worker.evaluate(() => chrome.runtime.getManifest().permissions);
+  if (JSON.stringify(permissions) !== JSON.stringify(['storage'])) throw new Error(`权限应只有 storage：${JSON.stringify(permissions)}`);
+  const stored = () => worker.evaluate(async () => (await chrome.storage.local.get('ottertap-settings-v1'))['ottertap-settings-v1'] ?? {});
+  const heardCopy = 'Hearing only this tab';
+  const mutedCopy = 'Muted other tabs';
+  const undoneCopy = 'Mute undone';
+  const idleCopy = 'No other tab is playing, and this tab is already audible.';
+  const undoIdleCopy = "Those tabs can't be safely unmuted.";
+  const toastCopies = [heardCopy, mutedCopy, undoneCopy];
+  const music = () => worker.evaluate(async () => {
+    const tab = (await chrome.tabs.query({})).find(item => item.url?.endsWith('/tone-music'));
+    return tab?.id ? { id: tab.id, muted: tab.mutedInfo?.muted === true, audible: tab.audible === true } : null;
+  });
+  const batchIds = () => worker.evaluate(async () => {
+    const value = (await chrome.storage.session.get('ottertap-mute-batch-v1'))['ottertap-mute-batch-v1'];
+    return value && Array.isArray(value.entries) ? value.entries.map(entry => entry.tabId) : [];
+  });
+  const clock = () => worker.evaluate(async () => {
+    const value = (await chrome.storage.session.get('ottertap-auto-mute-v1'))['ottertap-auto-mute-v1'];
+    return value && typeof value.until === 'number' ? value.until : null;
+  });
+  const level = page => page.locator('#media').evaluate(element => ({ volume: element.volume, muted: element.muted, paused: element.paused }));
+  const pausedOf = page => page.locator('#media').evaluate(element => element.paused);
+  const expectAudible = label => poll(music, value => Boolean(value?.audible && !value.muted), label);
+  const expectMuted = label => poll(music, value => value?.muted === true, label);
+  const unmuteMusic = async () => {
+    const tab = await music();
+    await worker.evaluate(async id => { await chrome.tabs.update(id, { muted: false }); }, tab.id);
+    await expectAudible('音乐应重新出声');
+  };
+  const escape = text => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const keyButton = (page, action) => page.getByRole('button', { name: new RegExp(`^Change the key for ${escape(action)}\\. Now `) });
+  const statuses = page => page.evaluate(() => {
+    const root = document.querySelector('ottertap-controller')?.shadowRoot;
+    return [...(root?.querySelectorAll('[role="status"]') ?? [])].map(node => (node.textContent || '').trim()).filter(Boolean);
+  });
+  const toast = async (page, text, shot) => {
+    const node = page.getByText(text, { exact: true });
+    await node.waitFor({ state: 'visible', timeout: 8_000 });
+    const pass = await node.evaluate(element => element.className.includes('pointer-events-none') && element.getAttribute('role') === 'status');
+    if (!pass) throw new Error(`${text} 不是不挡点击的状态字样`);
+    if (shot) await page.screenshot({ path: path.join(dir, shot), animations: 'disabled' });
+    await node.waitFor({ state: 'hidden', timeout: 3_000 });
+  };
+  const silent = async (page, label) => {
+    const deadline = Date.now() + 800;
+    const noise = text => /^\d+%$/.test(text) || text.startsWith('On-page volume');
+    while (Date.now() < deadline) {
+      const seen = (await statuses(page)).filter(text => !noise(text));
+      if (seen.length) throw new Error(`${label}：不应出现字样 ${JSON.stringify(seen)}`);
+      await page.waitForTimeout(100);
+    }
+  };
+  const focusPage = async page => {
+    await page.bringToFront();
+    await page.mouse.click(8, 8);
+  };
+  const gesturePlay = async page => {
+    await page.bringToFront();
+    await page.locator('#media').evaluate(element => { element.pause(); });
+    await page.locator('#media').focus();
+    await page.keyboard.press('Space');
+    await poll(() => pausedOf(page), value => value === false, '空格应开始播放');
+  };
+  const waitCooldown = async until => {
+    await poll(async () => Date.now(), now => until != null && now >= until, '应等到 5 秒冷却结束', 8_000);
+  };
+  let settings = null;
+  let video = null;
+  let musicPage = null;
+  let popup = null;
+  let bound = false;
+  try {
+    settings = await context.newPage();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#playback`, { waitUntil: 'domcontentloaded' });
+    const toggle = settings.getByRole('switch', { name: 'Mute other tabs when this starts playing', exact: true });
+    await toggle.waitFor({ state: 'visible', timeout: 15_000 });
+    if (await toggle.getAttribute('aria-checked') !== 'false') throw new Error('自动静音其他默认应关闭');
+    const described = settings.locator('#settings-auto-mute-others-description');
+    const explained = await described.innerText();
+    for (const phrase of ['Off by default', "browser's tab mute", 'Media volume is never changed', 'background playback', 'last batch', '5 seconds', 'short note']) {
+      if (!explained.includes(phrase)) throw new Error(`设置说明缺少「${phrase}」：${explained}`);
+    }
+    await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-description.png'), animations: 'disabled' });
+    note('settings description spells out the rules');
+
+    await settings.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
+    await keyButton(settings, 'Hear only this tab').click();
+    await settings.keyboard.press('KeyY');
+    await poll(stored, value => value.keybinds?.listenCurrent === 'y', '应绑定只听当前 = y');
+    await keyButton(settings, 'Undo the last mute others').click();
+    await settings.keyboard.press('KeyU');
+    await poll(stored, value => value.keybinds?.undoMuteOthers === 'u', '应绑定撤销 = u');
+    bound = true;
+
+    video = await context.newPage();
+    await video.goto(`${origin}/video`, { waitUntil: 'domcontentloaded' });
+    const pill = video.getByRole('button', { name: /volume pill/i });
+    await pill.waitFor({ state: 'visible', timeout: 15_000 });
+
+    await focusPage(video);
+    await video.keyboard.press('KeyY');
+    await toast(video, idleCopy, 'toast-no-target.png');
+    await focusPage(video);
+    await video.keyboard.press('KeyU');
+    await toast(video, undoIdleCopy);
+    if ((await batchIds()).length) throw new Error('没有目标或记录时不应写入批次');
+    note('no target / no record: existing short notes, no success note');
+
+    musicPage = await context.newPage();
+    await musicPage.goto(`${origin}/tone-music`, { waitUntil: 'domcontentloaded' });
+    await musicPage.bringToFront();
+    await musicPage.locator('body').click({ position: { x: 8, y: 8 } });
+    await musicPage.locator('#media').evaluate(async element => {
+      element.volume = 0.7;
+      element.muted = true;
+      await element.play();
+      element.muted = false;
+      element.volume = 0.7;
+      if (element.paused) await element.play();
+    });
+    await expectAudible('音乐应开始出声');
+    await video.bringToFront();
+    const volumeBefore = await level(video);
+
+    popup = await openActionPopup(context, video);
+    await popup.click('Hear only this tab');
+    await toast(video, heardCopy, 'toast-panel-heard.png');
+    await expectMuted('面板只听当前应静音音乐');
+    await popup.click('Undo mute others');
+    await toast(video, undoneCopy, 'toast-panel-undone.png');
+    await expectAudible('面板撤销应让音乐重新出声');
+    await popup.click('Mute others');
+    await toast(video, mutedCopy, 'toast-panel-muted.png');
+    await expectMuted('面板静音其他应静音音乐');
+    await popup.click('Undo mute others');
+    await toast(video, undoneCopy);
+    await expectAudible('面板第二次撤销应让音乐重新出声');
+    await popup.screenshot(path.join(dir, 'popup-after.png'));
+    await popup.close();
+    popup = null;
+    if ((await batchIds()).length) throw new Error('撤销后批次应被消费');
+    note('panel: heard / undone / muted / undone each showed one note on the source page');
+
+    await focusPage(video);
+    await video.keyboard.press('KeyY');
+    await Promise.all([
+      video.getByText(heardCopy, { exact: true }).waitFor({ state: 'visible', timeout: 8_000 }),
+    ]);
+    await pill.click({ trial: true, timeout: 1_000 });
+    const inShadow = await statuses(video);
+    if (!inShadow.includes(heardCopy)) throw new Error(`字样应在控制器的页内状态区：${JSON.stringify(inShadow)}`);
+    await video.getByText(heardCopy, { exact: true }).waitFor({ state: 'hidden', timeout: 3_000 });
+    await expectMuted('页内键只听当前应静音音乐');
+    await focusPage(video);
+    await video.keyboard.press('KeyU');
+    await toast(video, undoneCopy);
+    await expectAudible('页内键撤销应让音乐重新出声');
+    const volumeAfter = await level(video);
+    if (Math.abs(volumeAfter.volume - volumeBefore.volume) > 0.02 || volumeAfter.muted !== volumeBefore.muted) throw new Error(`媒体音量被改了：${JSON.stringify({ volumeBefore, volumeAfter })}`);
+    note('page keys: note shown and floating pill stayed clickable');
+
+    await focusPage(video);
+    const fullscreen = await video.evaluate(async () => {
+      const root = document.documentElement;
+      if (typeof root.requestFullscreen !== 'function') return false;
+      try { await root.requestFullscreen(); return document.fullscreenElement === root; }
+      catch { return false; }
+    });
+    if (fullscreen) {
+      await focusPage(video);
+      await video.keyboard.press('KeyY');
+      await toast(video, heardCopy, 'toast-fullscreen.png');
+      await expectMuted('全屏里只听当前应静音音乐');
+      await video.keyboard.press('KeyU');
+      await toast(video, undoneCopy);
+      await video.evaluate(async () => { if (document.fullscreenElement) await document.exitFullscreen(); });
+      note('fullscreen showed the same notes');
+    } else note('document fullscreen unavailable; normal page and floating checks already ran');
+    await expectAudible('全屏步骤之后音乐应出声');
+
+    await settings.bringToFront();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#playback`, { waitUntil: 'domcontentloaded' });
+    await toggle.click();
+    await poll(stored, value => value.autoMuteOthers === true, '应打开自动静音其他');
+    await video.bringToFront();
+    await video.reload({ waitUntil: 'domcontentloaded' });
+    await pill.waitFor({ state: 'visible', timeout: 15_000 });
+    await waitCooldown(await clock());
+    const autoSeen = toast(video, mutedCopy, 'toast-auto.png');
+    await gesturePlay(video);
+    await autoSeen;
+    const autoUntil = await clock();
+    if (typeof autoUntil !== 'number') throw new Error('自动静音成功应起 5 秒冷却');
+    await expectMuted('自动静音应静音音乐');
+    note(`auto muted, note shown once, hold until ${autoUntil}`);
+
+    await unmuteMusic();
+    await gesturePlay(video);
+    await silent(video, '5 秒冷却内再次开始播放');
+    await expectAudible('冷却内不应再自动静音');
+    note('cooldown: no second mute, no second note');
+
+    await waitCooldown(autoUntil);
+    const secondSeen = toast(video, mutedCopy);
+    await gesturePlay(video);
+    await secondSeen;
+    await expectMuted('冷却结束后应再次自动静音');
+    await focusPage(video);
+    await video.keyboard.press('KeyU');
+    await toast(video, undoneCopy);
+    await expectAudible('撤销自动静音后音乐应出声');
+    await video.locator('#media').evaluate(element => { element.pause(); });
+    note('auto hint re-armed after the hold, undo showed its note');
+
+    await settings.bringToFront();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#backup`, { waitUntil: 'domcontentloaded' });
+    const [download] = await Promise.all([settings.waitForEvent('download'), settings.getByRole('button', { name: 'Export settings', exact: true }).click()]);
+    const exportPath = path.join(dir, 'export.json');
+    await download.saveAs(exportPath);
+    const exported = JSON.parse(await readFile(exportPath, 'utf8'));
+    const current = await stored();
+    const exportedKeys = Object.keys(exported.settings ?? {}).sort();
+    if (JSON.stringify(exportedKeys) !== JSON.stringify(Object.keys(current).sort())) throw new Error(`导出键应与存储键一致：${JSON.stringify({ exportedKeys, stored: Object.keys(current).sort() })}`);
+    const forbiddenKeys = ['quietHint', 'quietFeedback', 'muteHint', 'muteOthersHint', 'listenCurrentHint', 'undoMuteOthersHint', 'autoMuteHint'];
+    const extra = exportedKeys.filter(key => forbiddenKeys.includes(key));
+    if (extra.length) throw new Error(`不应新增提示开关或配置：${extra.join(', ')}`);
+    if (exported.settings?.autoMuteOthers !== true || exported.settings?.keybinds?.listenCurrent !== 'y' || exported.settings?.keybinds?.undoMuteOthers !== 'u') throw new Error('导出应带上自动静音和两个键');
+    await settings.goto(`chrome-extension://${extensionId}/options.html#playback`, { waitUntil: 'domcontentloaded' });
+    await toggle.click();
+    await poll(stored, value => value.autoMuteOthers === false, '导入前先关掉自动静音');
+    await settings.goto(`chrome-extension://${extensionId}/options.html#backup`, { waitUntil: 'domcontentloaded' });
+    await settings.locator('#backup input[type="file"]').setInputFiles(exportPath);
+    await settings.getByRole('button', { name: 'Replace settings', exact: true }).click();
+    await poll(stored, value => value.autoMuteOthers === true && value.keybinds?.listenCurrent === 'y', '导回原文件应带回自动静音和按键');
+    await settings.goto(`chrome-extension://${extensionId}/options.html#playback`, { waitUntil: 'domcontentloaded' });
+    await toggle.click();
+    await settings.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' });
+    await settings.getByRole('button', { name: 'Restore default keys', exact: true }).click();
+    const done = await poll(stored, value => value.autoMuteOthers === false && value.keybinds?.listenCurrent === '' && value.keybinds?.undoMuteOthers === '' && Object.keys(value.sitePrefs ?? {}).length === 0, '结束时应关掉自动静音、恢复默认键，且不留下站点记忆');
+    bound = false;
+    const unknown = await unknownStorageKeys(worker);
+    if (unknown.length) throw new Error(`出现了名单外的存储键：${unknown.join(', ')}`);
+    const state = {
+      ok: true,
+      copies: toastCopies,
+      noTargetShowsExistingNote: true,
+      panelNotes: true,
+      pageKeyNotes: true,
+      floatingNotBlocked: true,
+      fullscreen,
+      autoNoteOnce: true,
+      cooldownSilent: true,
+      exportedKeysMatchStorage: true,
+      settingLeftOff: done.autoMuteOthers === false,
+      unknownStorageKeys: unknown,
+      permissions,
+    };
+    await writeFile(path.join(dir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
+    return state;
+  } finally {
+    await popup?.close().catch(() => {});
+    if (settings) {
+      await settings.goto(`chrome-extension://${extensionId}/options.html#playback`, { waitUntil: 'domcontentloaded' }).catch(() => {});
+      const finish = settings.getByRole('switch', { name: 'Mute other tabs when this starts playing', exact: true });
+      if (await finish.getAttribute('aria-checked').catch(() => null) === 'true') await finish.click().catch(() => {});
+      if (bound) {
+        await settings.goto(`chrome-extension://${extensionId}/options.html#shortcuts`, { waitUntil: 'domcontentloaded' }).catch(() => {});
+        await settings.getByRole('button', { name: 'Restore default keys', exact: true }).click().catch(() => {});
+      }
+    }
+    const tab = await music().catch(() => null);
+    if (tab?.muted) await worker.evaluate(async id => { await chrome.tabs.update(id, { muted: false }); }, tab.id).catch(() => {});
     await musicPage?.close().catch(() => {});
     await video?.close().catch(() => {});
     await settings?.close().catch(() => {});

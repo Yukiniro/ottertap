@@ -29,6 +29,7 @@ test('后台只记住这次真正静音的标签，撤销时不碰归属不明�
       ...(row.extensionId ? { extensionId: row.extensionId } : {}),
     },
   });
+  const sendMessage = mock.method(fakeBrowser.tabs, 'sendMessage', async () => ({ ok: true }));
   const query = mock.method(fakeBrowser.tabs, 'query', async (info: { audible?: boolean; muted?: boolean }) => {
     return [...rows.values()].filter(row => !closed.has(row.id) && (info.audible ? row.audible : info.muted ? row.muted : false)).map(snapshot);
   });
@@ -165,6 +166,7 @@ test('后台只记住这次真正静音的标签，撤销时不碰归属不明�
     assert.strictEqual(typeof blocked.error, 'string');
   } finally {
     query.mock.restore();
+    sendMessage.mock.restore();
     get.mock.restore();
     update.mock.restore();
     fakeBrowser.reset();

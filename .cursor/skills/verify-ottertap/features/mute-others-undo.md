@@ -10,6 +10,8 @@
 
 同一次扩展把已经静音的标签再写成静音（值没变）时，Chromium 的 `mutedInfo` 往往完全一样，扩展分不清这是不是同值的再点一次。这种看不出来的重复不会扩大恢复范围：字段只要对不上就不恢复；字段仍对得上就仍视为这次操作。旅程把这次同值调用前后的 `mutedInfo` 记在 `state.json` 的 `probe` 里。
 
+`Mute others` 真的静音了至少一个标签、撤销真的恢复了至少一个标签后，页面上出现 `Muted other tabs` 或 `Mute undone`，见 [quiet-feedback.md](quiet-feedback.md)。
+
 ## Sub-features
 
 - 记下实际改动。只有从有声变成静音、并且静音结果能证明是本扩展的标签才进入批次。
