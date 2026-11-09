@@ -60,8 +60,8 @@ test('设置页播放区可以打开自动静音其他，并只改这一项', as
     assert.strictEqual(toggle.getAttribute('aria-checked'), 'false');
     const description = playback.querySelector(`#${toggle.getAttribute('aria-describedby')}`);
     assert.ok(description);
-    assert.match(description.textContent ?? '', /默认关闭/);
-    assert.match(description.textContent ?? '', /5 秒/);
+    assert.match(description.textContent ?? '', /其他正在出声的标签静音/);
+    assert.match(description.textContent ?? '', /不改音量/);
     await click(toggle as unknown as { click(): void });
     assert.strictEqual(value.autoMuteOthers, true);
     assert.strictEqual(toggle.getAttribute('aria-checked'), 'true');

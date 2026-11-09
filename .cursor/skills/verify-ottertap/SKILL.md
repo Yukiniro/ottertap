@@ -798,6 +798,6 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive quiet-feedback
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive quiet-feedback
 ```
 
-`quiet-feedback` 确认静音其他、只听当前、撤销真实成功后，来源页顶部出现 `Muted other tabs`、`Hearing only this tab`、`Mute undone`，字样不挡主控。弹出面板四步（只听当前、撤销、静音其他、撤销）、页内键 Y/U、全屏（浏览器允许时）和自动静音都核验；没有目标或记录时只出现原来的说明，不是成功提示。自动静音冷却内再播放既不静音也不出字样，冷却到点再出一条。设置页说明里要有默认关、只动标签静音、不改媒体音量、后台播放不触发、上一批、5 秒、短提示。导出键与存储键一致，没有任何提示开关。
+`quiet-feedback` 确认静音其他、只听当前、撤销真实成功后，来源页顶部出现 `Muted other tabs`、`Hearing only this tab`、`Mute undone`，字样不挡主控。弹出面板四步（只听当前、撤销、静音其他、撤销）、页内键 Y/U、全屏（浏览器允许时）和自动静音都核验；没有目标或记录时只出现原来的说明，不是成功提示。自动静音冷却内再播放既不静音也不出字样，冷却到点再出一条。视频进入画中画后，用户在另一个标签操作，提示只出现在当前标签，画中画来源页不出现。设置页说明只有两句、不超过 260 个字符。导出键与存储键一致，没有任何提示开关。
 
-写入 `quiet-feedback/`：`settings-description.png`、`toast-no-target.png`、`toast-panel-heard.png`、`toast-panel-undone.png`、`toast-panel-muted.png`、`popup-after.png`、`toast-auto.png`、`export.json`、`state.json`（成功时 `ok: true`）、`transcript.txt`。全屏可用时还有 `toast-fullscreen.png`。步骤见 `features/quiet-feedback.md`。
+写入 `quiet-feedback/`：`settings-description.png`、`toast-no-target.png`、`toast-panel-heard.png`、`toast-panel-undone.png`、`toast-panel-muted.png`、`popup-after.png`、`toast-auto.png`、`toast-pip-current.png`、`export.json`、`state.json`（成功时 `ok: true`）、`transcript.txt`。全屏可用时还有 `toast-fullscreen.png`。步骤见 `features/quiet-feedback.md`。

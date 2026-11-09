@@ -419,8 +419,9 @@ async function openActionPopup(context, fixture, options = {}) {
   return {
     evaluate,
     view: () => evaluate(popupView),
+    // 其他标签列表（含撤销、只听当前）在媒体按钮之后才异步加载，所以按钮可能晚一点才出现，按住等它再点。
     click: async label => {
-      const clicked = await evaluate(clickLabel(label));
+      const clicked = await poll(() => evaluate(clickLabel(label)), value => value === true, `弹出面板里没有按钮 ${label}`).catch(() => false);
       if (!clicked) throw new Error(`弹出面板里没有按钮 ${label}：${JSON.stringify(await evaluate(popupView))}`);
     },
     screenshot,
@@ -11254,8 +11255,7 @@ async function driveAutoMuteOthers(context, dir, note) {
     await toggle.waitFor({ state: 'visible', timeout: 15_000 });
     if (await toggle.getAttribute('aria-checked') !== 'false') throw new Error('自动静音其他默认应关闭');
     const described = settings.locator('#settings-auto-mute-others-description');
-    await described.getByText('Off by default', { exact: false }).waitFor({ state: 'visible' });
-    await described.getByText('5 seconds', { exact: false }).waitFor({ state: 'visible' });
+    await described.getByText("browser's tab mute", { exact: false }).waitFor({ state: 'visible' });
     await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-off.png'), animations: 'disabled' });
     note('setting off by default');
 
@@ -11565,6 +11565,8 @@ async function driveQuietFeedback(context, dir, note) {
   let settings = null;
   let video = null;
   let musicPage = null;
+  let away = null;
+  let pipChecked = false;
   let popup = null;
   let bound = false;
   try {
@@ -11575,9 +11577,10 @@ async function driveQuietFeedback(context, dir, note) {
     if (await toggle.getAttribute('aria-checked') !== 'false') throw new Error('自动静音其他默认应关闭');
     const described = settings.locator('#settings-auto-mute-others-description');
     const explained = await described.innerText();
-    for (const phrase of ['Off by default', "browser's tab mute", 'Media volume is never changed', 'background playback', 'last batch', '5 seconds', 'short note']) {
+    for (const phrase of ["browser's tab mute", 'volume stays as it is', 'by itself']) {
       if (!explained.includes(phrase)) throw new Error(`设置说明缺少「${phrase}」：${explained}`);
     }
+    if (explained.length > 260 || /Off by default|5 seconds/.test(explained)) throw new Error(`设置说明应只留一两句，默认关由开关体现：${explained}`);
     await settings.locator('#playback').screenshot({ path: path.join(dir, 'settings-description.png'), animations: 'disabled' });
     note('settings description spells out the rules');
 
@@ -11676,6 +11679,70 @@ async function driveQuietFeedback(context, dir, note) {
     } else note('document fullscreen unavailable; normal page and floating checks already ran');
     await expectAudible('全屏步骤之后音乐应出声');
 
+    // 画中画：来源页 video 进入画中画后，用户在另一个标签 away 上操作，提示必须出现在 away，而不是 video 或画中画窗口。
+    const picture = await video.locator('#media').evaluate(async element => {
+      if (element.readyState < 1) await Promise.race([new Promise(resolve => element.addEventListener('loadedmetadata', resolve, { once: true })), new Promise(resolve => setTimeout(resolve, 2_000))]);
+      if (element.videoWidth > 0) return { ok: true, reason: 'native' };
+      const canvas = document.createElement('canvas');
+      canvas.width = 64;
+      canvas.height = 36;
+      const drawing = canvas.getContext('2d');
+      if (!drawing || typeof canvas.captureStream !== 'function') return { ok: false, reason: 'no-canvas' };
+      drawing.fillStyle = '#c45c26';
+      drawing.fillRect(0, 0, 64, 36);
+      element.srcObject = canvas.captureStream(5);
+      element.muted = true;
+      try { await element.play(); } catch { /* the pill click is the gesture */ }
+      const deadline = performance.now() + 2_000;
+      while (element.videoWidth === 0 && performance.now() < deadline) await new Promise(resolve => setTimeout(resolve, 50));
+      return { ok: element.videoWidth > 0, reason: 'canvas' };
+    });
+    if (!picture.ok) throw new Error(`夹具没有画面，无法进入画中画：${JSON.stringify(picture)}`);
+    await video.bringToFront();
+    const pillBox = await pill.boundingBox();
+    if (!pillBox) throw new Error('浮动入口没有位置');
+    await video.mouse.move(pillBox.x + Math.min(8, pillBox.width / 4), pillBox.y + pillBox.height / 2);
+    await pill.click();
+    const pillDialog = video.getByRole('dialog', { name: 'Volume pill' });
+    await pillDialog.waitFor({ state: 'visible', timeout: 5_000 });
+    await pillDialog.getByRole('button', { name: 'Picture-in-picture', exact: true }).click();
+    const inPip = () => video.locator('#media').evaluate(element => element.ownerDocument.pictureInPictureElement === element);
+    await poll(inPip, value => value === true, '视频应进入画中画');
+    away = await context.newPage();
+    await away.goto(`${origin}/audio`, { waitUntil: 'domcontentloaded' });
+    await away.getByRole('button', { name: /volume pill/i }).waitFor({ state: 'visible', timeout: 15_000 });
+    await video.evaluate(() => {
+      const root = document.querySelector('ottertap-controller')?.shadowRoot;
+      const seen = [];
+      window.__quietSeen = seen;
+      if (!root) return;
+      const read = () => [...root.querySelectorAll('[role="status"]')].map(node => (node.textContent || '').trim()).filter(Boolean);
+      new MutationObserver(() => { for (const text of read()) seen.push(text); }).observe(root, { subtree: true, childList: true, characterData: true });
+    });
+    const sourceTexts = () => video.evaluate(copies => (window.__quietSeen ?? []).filter(text => copies.includes(text)), [mutedCopy, heardCopy, undoneCopy]);
+    await focusPage(away);
+    await away.keyboard.press('KeyY');
+    await toast(away, heardCopy, 'toast-pip-current.png');
+    await expectMuted('画中画存在时，页内键仍只听当前并静音音乐');
+    await focusPage(away);
+    await away.keyboard.press('KeyU');
+    await toast(away, undoneCopy);
+    await expectAudible('画中画存在时撤销应恢复音乐');
+    popup = await openActionPopup(context, away);
+    await popup.click('Hear only this tab');
+    await toast(away, heardCopy);
+    await popup.click('Undo mute others');
+    await toast(away, undoneCopy);
+    await popup.close();
+    popup = null;
+    await expectAudible('画中画存在时面板撤销应恢复音乐');
+    const leaked = await sourceTexts();
+    if (leaked.length) throw new Error(`画中画来源页不应出现提示：${JSON.stringify(leaked)}`);
+    if (!await inPip()) throw new Error('画中画不应因为这些操作退出');
+    await video.evaluate(async () => { if (document.pictureInPictureElement) await document.exitPictureInPicture(); });
+    pipChecked = true;
+    note('picture-in-picture active: notes appeared on the current tab only, source page stayed quiet');
+
     await settings.bringToFront();
     await settings.goto(`chrome-extension://${extensionId}/options.html#playback`, { waitUntil: 'domcontentloaded' });
     await toggle.click();
@@ -11746,6 +11813,7 @@ async function driveQuietFeedback(context, dir, note) {
       pageKeyNotes: true,
       floatingNotBlocked: true,
       fullscreen,
+      pictureInPicture: pipChecked,
       autoNoteOnce: true,
       cooldownSilent: true,
       exportedKeysMatchStorage: true,
@@ -11768,6 +11836,7 @@ async function driveQuietFeedback(context, dir, note) {
     }
     const tab = await music().catch(() => null);
     if (tab?.muted) await worker.evaluate(async id => { await chrome.tabs.update(id, { muted: false }); }, tab.id).catch(() => {});
+    await away?.close().catch(() => {});
     await musicPage?.close().catch(() => {});
     await video?.close().catch(() => {});
     await settings?.close().catch(() => {});
