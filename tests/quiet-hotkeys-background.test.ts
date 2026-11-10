@@ -8,7 +8,7 @@ import { defaultSettings } from '../lib/types';
 const settingsKey = 'ottertap-settings-v1';
 type Row = { id: number; url: string; audible: boolean; muted: boolean; active: boolean; reason?: string; extensionId?: string };
 type Entry = { tabId: number; previousMuted: boolean; writtenMuted: boolean };
-type Hint = { type?: string; key?: string };
+type Hint = { type?: string; key?: string; tabId?: number };
 
 test('页内键和扩展命令走同一只听当前与撤销，没有明确的当前标签时不动', async () => {
   Object.defineProperty(globalThis, 'browser', { value: fakeBrowser, configurable: true });
@@ -55,7 +55,7 @@ test('页内键和扩展命令走同一只听当前与撤销，没有明确的�
     return snapshot(row);
   });
   const sendMessage = mock.method(fakeBrowser.tabs, 'sendMessage', async (tabId: number, message: Hint) => {
-    sent.push(message);
+    sent.push({ ...message, tabId });
     if (message.type === 'snapshot' && tabId === 9) {
       return { typing, media: [{ id: '1', kind: 'video', paused: false, muted: false, volume: 1, maxVolume: 1, rate: 1, pip: true }] };
     }
@@ -83,7 +83,8 @@ test('页内键和扩展命令走同一只听当前与撤销，没有明确的�
     assert.deepEqual(updates.map(item => item.id).sort((a, b) => a - b), [8, 9], '画中画标签不是当前标签，扩展命令仍静音其他出声标签');
     assert.strictEqual(rows.get(7)?.muted, false);
     assert.deepEqual((await batch()).map(entry => entry.tabId).sort((a, b) => a - b), [8, 9]);
-    assert.deepEqual(hints(), [], '成功不另加提示');
+    assert.deepEqual(hints(), ['listenCurrentHint'], '真实成功后给出短提示');
+    assert.deepEqual(sent.filter(item => item.type === 'actionHint').map(item => item.tabId), [7], '提示留在来源页，不发到画中画所在的标签');
 
     updates.length = 0;
     assert.deepEqual(await ask(7, { type: 'hotkey', action: { type: 'undoMuteOthers' } }), { handled: true });
@@ -91,12 +92,13 @@ test('页内键和扩展命令走同一只听当前与撤销，没有明确的�
     assert.strictEqual(rows.get(8)?.muted, false);
     assert.strictEqual(rows.get(9)?.muted, false);
     assert.strictEqual((await batch()).length, 0);
-    assert.deepEqual(hints(), []);
+    assert.deepEqual(hints(), ['listenCurrentHint', 'undoMuteOthersHint']);
 
     updates.length = 0;
     assert.deepEqual(await ask(7, { type: 'hotkey', action: { type: 'listenCurrent' } }), { handled: true });
     assert.deepEqual(updates.map(item => item.id).sort((a, b) => a - b), [8, 9], '页内键和扩展命令静音同一批标签');
     await fire('undo-mute-others', { id: 7, url: 'https://example.com/watch' });
+    assert.deepEqual(hints().slice(-2), ['listenCurrentHint', 'undoMuteOthersHint'], '扩展命令同样提示');
     assert.strictEqual(rows.get(8)?.muted, false);
     assert.strictEqual((await batch()).length, 0);
 
@@ -107,7 +109,7 @@ test('页内键和扩展命令走同一只听当前与撤销，没有明确的�
     rows.get(9)!.muted = true;
     assert.deepEqual(await ask(7, { type: 'hotkey', action: { type: 'listenCurrent' } }), { handled: true });
     assert.strictEqual(updates.length, 0);
-    assert.deepEqual(hints(), ['listenCurrentUnavailable']);
+    assert.deepEqual(hints().slice(-1), ['listenCurrentUnavailable'], '没有目标不显示成功');
     assert.strictEqual((await batch()).length, 0, '没有目标时不覆盖批次');
 
     assert.deepEqual(await ask(7, { type: 'hotkey', action: { type: 'undoMuteOthers' } }), { handled: true });
@@ -147,11 +149,12 @@ test('页内键和扩展命令走同一只听当前与撤销，没有明确的�
     await fire('listen-current', { id: 4, url: 'chrome://newtab' });
     assert.strictEqual(updates.length, idle, '不是网页的标签不静音');
 
+    const shown = hints().length;
     await fakeBrowser.storage.local.set({ [settingsKey]: { ...defaultSettings, siteMode: 'exclude', sites: ['example.com'] } });
     await new Promise(resolve => setTimeout(resolve, 0));
     await fire('listen-current', { id: 7, url: 'https://example.com/watch' });
     assert.strictEqual(updates.length, idle, '站点被禁用时扩展命令不动');
-    assert.ok(!hints().some(key => key !== 'listenCurrentUnavailable' && key !== 'listenCurrentFailed' && key !== 'undoMuteOthersUnavailable'));
+    assert.strictEqual(hints().length, shown, '站点被禁用时不显示任何提示');
   } finally {
     query.mock.restore();
     get.mock.restore();

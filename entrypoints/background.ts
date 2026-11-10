@@ -10,7 +10,7 @@ import { steppedVolume, volumeStepForWheel } from '../lib/volume';
 import { volumeBadgeColor, volumeBadgeFromReports, volumeBadgeTtlMs } from '../lib/volume-badge';
 import { shouldFollowPlaying } from '../lib/follow-playing';
 import { canRestore, muteBatchKey, parseMuteBatch, recordableWrite, tabMuteFact, withoutEntry, type MuteBatch, type MuteBatchEntry, type TabMuteFact } from '../lib/mute-batch';
-import { autoMuteBlocked, autoMuteClockKey, nextAutoMuteUntil, parseAutoMuteUntil } from '../lib/auto-mute';
+import { autoMuteBlocked, autoMuteClockKey, autoMuteCooldownMs, nextAutoMuteUntil, parseAutoMuteUntil } from '../lib/auto-mute';
 import { soundingTabs } from '../lib/tabs';
 import { isResumeEntry, resumePage, writeResume, type ResumeReport } from '../lib/resume';
 import { sleepMinutes } from '../lib/sleep-timer';
@@ -480,11 +480,13 @@ export default defineBackground(() => {
       const result = await enqueueMute(() => listenCurrent(tabId));
       if (result.failed) showAction(tabId, 'listenCurrentFailed');
       else if (result.unavailable) showAction(tabId, 'listenCurrentUnavailable');
+      else if (result.changed) showAction(tabId, 'listenCurrentHint');
       return true;
     }
     const result = await enqueueMute(() => undoMuteBatch(tabId));
     if (result.status === 'failed') showAction(tabId, 'undoMuteOthersFailed');
     else if (result.status === 'unavailable') showAction(tabId, 'undoMuteOthersUnavailable');
+    else showAction(tabId, 'undoMuteOthersHint');
     return true;
   }
   async function performHotkey(tabId: number, host: string, action: HotkeyAction) {
@@ -557,6 +559,7 @@ export default defineBackground(() => {
     const id = ownExtensionId();
     const missed = new Set<number>();
     const entries: MuteBatchEntry[] = [];
+    let changed = 0;
     for (const listed of tabs) {
       if (listed.id === currentTabId) continue;
       let before: TabMuteFact | null = null;
@@ -568,6 +571,7 @@ export default defineBackground(() => {
         const after = tabMuteFact(updated);
         if (!after || after.muted !== true) missed.add(before.id);
         else {
+          if (!before.muted) changed += 1;
           const entry = recordableWrite(before, true, after, id);
           if (entry) entries.push(entry);
         }
@@ -577,7 +581,7 @@ export default defineBackground(() => {
       muteBatch = { entries };
       await persistMuteBatch();
     }
-    return { failed: missed.size > 0, undo: Boolean(muteBatch?.entries.length) };
+    return { failed: missed.size > 0, undo: Boolean(muteBatch?.entries.length), changed: changed > 0 };
   }
   async function listenCurrent(currentTabId?: number) {
     await muteBatchReady;
@@ -586,6 +590,7 @@ export default defineBackground(() => {
     const missed = new Set<number>();
     const entries: MuteBatchEntry[] = [];
     let sought = false;
+    let changed = false;
     const write = async (tabId: number, muted: boolean) => {
       let before: TabMuteFact | null = null;
       try { before = tabMuteFact(await browser.tabs.get(tabId)); }
@@ -597,6 +602,7 @@ export default defineBackground(() => {
         const updated = await browser.tabs.update(before.id, { muted });
         const after = tabMuteFact(updated);
         if (!after || after.muted !== muted) { missed.add(before.id); return; }
+        changed = true;
         const entry = recordableWrite(before, muted, after, id);
         if (entry) entries.push(entry);
       } catch { missed.add(before.id); }
@@ -614,6 +620,7 @@ export default defineBackground(() => {
       failed: missed.size > 0,
       undo: Boolean(muteBatch?.entries.length),
       unavailable: !sought && missed.size === 0,
+      changed,
     };
   }
   async function tabIsCurrent(tabId: number) {
@@ -631,6 +638,7 @@ export default defineBackground(() => {
       return true;
     } catch { return false; }
   }
+  let autoFailureHintAt: number | null = null;
   async function autoMuteOnStart(tabId: number, frameId: number, localId: string, selectedAtArrival: string) {
     if ((await currentSettings()).autoMuteOthers !== true) return { ok: true as const };
     const playingId = `${frameId}:${localId}`;
@@ -648,9 +656,18 @@ export default defineBackground(() => {
       if ((await currentSettings()).autoMuteOthers !== true) return { ok: true as const };
       if (!(await tabIsCurrent(tabId))) return { ok: true as const };
       const before = muteBatch;
-      await muteSoundingOthers(tabId);
+      const result = await muteSoundingOthers(tabId);
       // An empty list or a failed write leaves the previous batch object in place. That is not a success.
-      if (muteBatch === before) return { ok: true as const };
+      const replaced = muteBatch !== before;
+      // A success starts the 5 second hold, so it shows at most once per hold. A failure holds nothing, so it is spaced the same way.
+      if (result.failed) {
+        const at = Date.now();
+        if (autoFailureHintAt == null || at - autoFailureHintAt >= autoMuteCooldownMs) {
+          autoFailureHintAt = at;
+          showAction(tabId, 'muteOthersFailed');
+        }
+      } else if (replaced) showAction(tabId, 'muteOthersHint');
+      if (!replaced) return { ok: true as const };
       await holdAutoMute();
       return { ok: true as const };
     });
@@ -760,9 +777,23 @@ export default defineBackground(() => {
           const targetId = message.tabId;
           const currentId = Number.isInteger(targetId) ? targetId : undefined;
           if (message.type === 'soundingTabs') return await listSounding(currentId);
-          if (message.type === 'muteOthers') return await enqueueMute(() => muteSoundingOthers(currentId));
-          if (message.type === 'listenCurrent') return await enqueueMute(() => listenCurrent(currentId));
-          if (message.type === 'undoMuteOthers') return await enqueueMute(() => undoMuteBatch(currentId));
+          // The panel words failures itself. A success also shows the short note on the page behind it.
+          const announce = (key: string) => { if (typeof currentId === 'number') showAction(currentId, key); };
+          if (message.type === 'muteOthers') {
+            const result = await enqueueMute(() => muteSoundingOthers(currentId));
+            if (!result.failed && result.changed) announce('muteOthersHint');
+            return result;
+          }
+          if (message.type === 'listenCurrent') {
+            const result = await enqueueMute(() => listenCurrent(currentId));
+            if (!result.failed && result.changed) announce('listenCurrentHint');
+            return result;
+          }
+          if (message.type === 'undoMuteOthers') {
+            const result = await enqueueMute(() => undoMuteBatch(currentId));
+            if (result.status === 'restored') announce('undoMuteOthersHint');
+            return result;
+          }
           if (!Number.isInteger(targetId) || targetId < 0) return { error: i18n.t('invalidCommand') };
           if (message.type === 'focusTab') return await focusTab(targetId);
           if (typeof message.muted !== 'boolean') return { error: i18n.t('invalidCommand') };

@@ -28,6 +28,7 @@ test('只听当前复用静音批次，失败不覆盖，撤销只恢复仍能�
       ...(row.extensionId ? { extensionId: row.extensionId } : {}),
     },
   });
+  const sendMessage = mock.method(fakeBrowser.tabs, 'sendMessage', async () => ({ ok: true }));
   const query = mock.method(fakeBrowser.tabs, 'query', async (info: { audible?: boolean; muted?: boolean }) => {
     return [...rows.values()].filter(row => info.audible ? row.audible : info.muted ? row.muted : false).map(snapshot);
   });
@@ -181,6 +182,7 @@ test('只听当前复用静音批次，失败不覆盖，撤销只恢复仍能�
     assert.strictEqual(typeof blocked.error, 'string');
   } finally {
     query.mock.restore();
+    sendMessage.mock.restore();
     get.mock.restore();
     update.mock.restore();
     fakeBrowser.reset();

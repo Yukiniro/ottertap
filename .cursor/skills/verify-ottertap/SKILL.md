@@ -171,6 +171,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-others-undo
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive listen-current
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive quiet-hotkeys
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-mute-others
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive quiet-feedback
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-commands
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-feedback
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-follow-playing
@@ -384,6 +385,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive mute-others-undo
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive listen-current
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive quiet-hotkeys
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-mute-others
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive quiet-feedback
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-commands
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive mirror-mark-feedback
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-follow-playing
@@ -775,7 +777,7 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive quiet-hotkeys
 
 `quiet-hotkeys` 确认 manifest 里 `listen-current`、`undo-mute-others` 没有建议键，原来的 4 个建议键不变，浏览器命令列表里两条为空。设置页两条扩展命令和两个页内键都是 `Not set`，`Restore default keys` 不可点。录 `,` 时提示被逐帧占用，录 Y 给只听当前，再给撤销录 Y 时提示被只听当前占用，改录 U。
 
-只打开正在播放的 `/tone-current`，不打开弹出面板，按 Y 出现 `No other tab is playing, and this tab is already audible.`。加上音乐并把 Held 预先静音后，按 Y 只静音音乐，成功没有新提示。按 U 恢复，再按 U 出现 `Those tabs can't be safely unmuted.`。输入框、文本域、可编辑区域和组合输入不触发。当前标签被浏览器静音时，Y 会取消它并静音音乐，U 再设回去。导出带上这两个键，恢复默认后导入能用回来。结束时恢复默认键。权限仍只有 `storage`，`sitePrefs` 仍为空。它会改 profile，退出前恢复默认键。扩展命令的按键分发由单元测试覆盖。步骤见 `features/quiet-hotkeys.md`。
+只打开正在播放的 `/tone-current`，不打开弹出面板，按 Y 出现 `No other tab is playing, and this tab is already audible.`。加上音乐并把 Held 预先静音后，按 Y 只静音音乐，出现 `Hearing only this tab`。按 U 恢复，再按 U 出现 `Those tabs can't be safely unmuted.`。输入框、文本域、可编辑区域和组合输入不触发。当前标签被浏览器静音时，Y 会取消它并静音音乐，U 再设回去。导出带上这两个键，恢复默认后导入能用回来。结束时恢复默认键。权限仍只有 `storage`，`sitePrefs` 仍为空。它会改 profile，退出前恢复默认键。扩展命令的按键分发由单元测试覆盖。步骤见 `features/quiet-hotkeys.md`。
 
 写入 `quiet-hotkeys/`：`settings-unbound.png`、`settings-conflict.png`、`settings-bound.png`、`toast-idle.png`、`fixture-heard.png`、`toast-undo-idle.png`、`fixture-typing.png`、`export.json`、`state.json`（成功时 `ok: true`）、`transcript.txt`。全屏可用时还有 `fixture-fullscreen.png`。
 
@@ -783,8 +785,19 @@ node .cursor/skills/verify-ottertap/scripts/session.mjs drive quiet-hotkeys
 
 ```bash
 node .cursor/skills/verify-ottertap/scripts/session.mjs drive auto-mute-others
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive quiet-feedback
 ```
 
 `auto-mute-others` 确认「Mute other tabs when this starts playing」默认关闭。关闭时，在 `/video` 上对媒体按空格，正在出声的 `/tone-music` 保持有声。打开后，只开面板或切换标签不静音。弹出面板的播放，以及在小獭正在控制的那条媒体上按空格，会像「静音其他」一样静音当时正在出声的其他标签；当前标签的浏览器静音和媒体音量不动，并出现 `Undo mute others`。已经在播、网页自己 `play()`、后台标签、站点自己的播放按钮都不会。成功或撤销之后 5 秒内不再自动静音，到点可以；这 5 秒不挡住手动的 `Mute others` 和撤销。多个 frame 只记一批。导出带上这个开关；删掉该键再导入则保持关闭。结束时关掉开关。权限仍只有 `storage`。站点按钮和 `video.play()` 不算播放意图。步骤见 `features/auto-mute-others.md`。
 
 写入 `auto-mute-others/`：`settings-off.png`、`settings-on.png`、`popup-muted.png`、`export.json`、`import-without-key.json`、`state.json`（成功时 `ok: true`）、`transcript.txt`。
+
+## 跨标签安静的统一短提示
+
+```bash
+node .cursor/skills/verify-ottertap/scripts/session.mjs drive quiet-feedback
+```
+
+`quiet-feedback` 确认静音其他、只听当前、撤销真实成功后，来源页顶部出现 `Muted other tabs`、`Hearing only this tab`、`Mute undone`，字样不挡主控。弹出面板四步（只听当前、撤销、静音其他、撤销）、页内键 Y/U、全屏（浏览器允许时）和自动静音都核验；没有目标或记录时只出现原来的说明，不是成功提示。自动静音冷却内再播放既不静音也不出字样，冷却到点再出一条。视频进入画中画后，用户在另一个标签操作，提示只出现在当前标签，画中画来源页不出现。设置页说明只有两句、不超过 260 个字符。导出键与存储键一致，没有任何提示开关。
+
+写入 `quiet-feedback/`：`settings-description.png`、`toast-no-target.png`、`toast-panel-heard.png`、`toast-panel-undone.png`、`toast-panel-muted.png`、`popup-after.png`、`toast-auto.png`、`toast-pip-current.png`、`export.json`、`state.json`（成功时 `ok: true`）、`transcript.txt`。全屏可用时还有 `toast-fullscreen.png`。步骤见 `features/quiet-feedback.md`。
